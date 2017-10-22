@@ -1,0 +1,21 @@
+This chronicals my new research OS, Saturn, named after the Saturn V.
+
+"We choose to do [this], not because [it] is easy, but because [it] is hard; because that goal will serve to organize and measure the best of our energies and skills..."
+
+My initial goal is to boot into a self hosting environment, where I can
+work on the kernel in a live environment.
+
+* Step 1: The Cross Compiler
+compiling with clang:
+
+clang -c filename.c -o filename.o --target=i686-pc-none-elf -march=i686
+    -ffreestanding -fno-exceptions -fno-rtti -Wall -Wextra
+
+boot asm:
+
+i686-elf-as boot.as -o boot.o
+
+linking the kernel:
+
+clang -T src/linker.ld -o saturn.bin -ffreestanding -nostdlib boot.o kernel.o
+    --target=i686-pc-none-elf -march=i686
