@@ -1,19 +1,26 @@
-#include <services/terminal/vga.h>
-#include <services/terminal/terminal.h>
 #include <stdio.h>
 
+
 extern "C" int kernel_main() {
-    Terminal terminal{reinterpret_cast<uint16_t*>(0xB8000)};
-    auto colour = getColour(VGA::Colours::LightBlue, VGA::Colours::DarkGray);
+    
+    printf("%c", 'A');
+    printf("%c", 'B');
+    printf("%c", 'C');
+    printf("%c", 'D');
+    printf("%c\n", 'E');
 
-    auto f = [&](auto c) {
-        terminal.writeCharacter(c, colour);
-    };
+    printf("%s\n", "Hello, World");
 
-    //f('P');
-    //f('a');
-    //f('t');
-    f(printf(nullptr, 0));
+    printf("X: %d\n", -12345);
+    printf("X: %d\n", 45);
+
+    printf("Y: %o\n", 1337);
+
+    printf("Z: %x\n", 1234);
+    printf("Z: %x\n", 716714982);
+
+    printf("Z: %X\n", 198739812);
+    printf("Z: %X\n", 878798);
 
     return 0;
 }
