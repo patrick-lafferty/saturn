@@ -5,7 +5,7 @@ AS = $(CROSS_COMPILER_PATH)/i686-elf-as
 
 CXX = clang++
 MARCH = "--target=i686-pc-none-elf -march=i686"
-WARNINGS = -Wall -Wextra --verbose
+WARNINGS = -Wall -Wextra --verbose 
 CXXFLAGS = $(MARCH) -ffreestanding -fno-exceptions -fno-rtti $(WARNINGS) -std=c++14 -isysroot sysroot/ -iwithsysroot /system/include -I src
 
 LD = $(CROSS_COMPILER_PATH)/i686-elf-ld
