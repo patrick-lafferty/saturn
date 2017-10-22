@@ -1,5 +1,5 @@
-#include "vga.h"
-#include "terminal.h"
+#include <services/terminal/vga.h>
+#include <services/terminal/terminal.h>
 #include <stdio.h>
 
 extern "C" int kernel_main() {

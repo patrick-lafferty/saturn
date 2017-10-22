@@ -6,7 +6,7 @@ AS = $(CROSS_COMPILER_PATH)/i686-elf-as
 CXX = clang++
 MARCH = "--target=i686-pc-none-elf -march=i686"
 WARNINGS = -Wall -Wextra --verbose
-CXXFLAGS = $(MARCH) -ffreestanding -fno-exceptions -fno-rtti $(WARNINGS) -std=c++14 -isysroot sysroot/ -iwithsysroot /system/include
+CXXFLAGS = $(MARCH) -ffreestanding -fno-exceptions -fno-rtti $(WARNINGS) -std=c++14 -isysroot sysroot/ -iwithsysroot /system/include -I src
 
 LD = $(CROSS_COMPILER_PATH)/i686-elf-ld
 LDFLAGS = -L=system/lib --sysroot=sysroot/
@@ -14,20 +14,24 @@ LDFLAGS = -L=system/lib --sysroot=sysroot/
 MKDIR = mkdir -p
 
 ARCHDIR = src/kernel/arch/i386
+SERVICESDIR = src/services
 
 ARCH_OBJS = \
 	$(ARCHDIR)/boot.o
 
 KERNEL_OBJS = \
 	$(ARCH_OBJS) \
-	src/kernel/vga.o \
-	src/kernel/terminal.o \
 	src/kernel/kernel.o
+
+SERVICES_OBJS = \
+	$(SERVICESDIR)/terminal/vga.o \
+	$(SERVICESDIR)/terminal/terminal.o \
 
 OBJS = \
 	$(ARCHDIR)/crti.o \
 	$(shell $(CC) $(CFLAGS) -m32 -print-file-name=crtbegin.o) \
 	$(KERNEL_OBJS) \
+	$(SERVICES_OBJS) \
 	$(shell $(CC) $(CFLAGS) -m32 -print-file-name=crtend.o) \
 	$(ARCHDIR)/crtn.o
 
@@ -38,6 +42,7 @@ LINK_LIST = \
 	$(ARCHDIR)/crti.o \
 	$(shell $(CC) $(CFLAGS) -m32 -print-file-name=crtbegin.o) \
 	$(KERNEL_OBJS) \
+	$(SERVICES_OBJS) \
 	$(LIBS) \
 	$(shell $(CC) $(CFLAGS) -m32 -print-file-name=crtend.o) \
 	$(ARCHDIR)/crtn.o
