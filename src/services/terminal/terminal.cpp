@@ -1,5 +1,4 @@
 #include "terminal.h"
-#include "vga.h"
 
 using namespace VGA;
 
@@ -16,8 +15,14 @@ Terminal::Terminal(uint16_t* buffer) {
 }
 
 void Terminal::writeCharacter(uint8_t character, uint8_t colour) {
-    this->buffer[row * Width + column] = prepareCharacter(character, colour);
-    column++;
+    if (character == '\n') {
+        column = 0;
+        row++;
+    }
+    else {
+        this->buffer[row * Width + column] = prepareCharacter(character, colour);
+        column++;
+    }
 
     if (column >= Width) {
         column = 0;
