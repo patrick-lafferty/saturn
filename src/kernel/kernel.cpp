@@ -1,21 +1,19 @@
 #include "vga.h"
 #include "terminal.h"
+#include <stdio.h>
 
 extern "C" int kernel_main() {
     Terminal terminal{reinterpret_cast<uint16_t*>(0xB8000)};
-    terminal.writeCharacter('P', getColour(VGA::Colours::DarkBlue, VGA::Colours::LightMagenta));
-    terminal.writeCharacter('P', getColour(VGA::Colours::DarkBlue, VGA::Colours::LightMagenta));
-    terminal.writeCharacter('P', getColour(VGA::Colours::DarkBlue, VGA::Colours::LightMagenta));
-    terminal.writeCharacter('P', getColour(VGA::Colours::DarkBlue, VGA::Colours::LightMagenta));
-    terminal.writeCharacter('P', getColour(VGA::Colours::DarkBlue, VGA::Colours::LightMagenta));
-    terminal.writeCharacter('P', getColour(VGA::Colours::DarkBlue, VGA::Colours::LightMagenta));
-    terminal.writeCharacter('P', getColour(VGA::Colours::DarkBlue, VGA::Colours::LightMagenta));
-    terminal.writeCharacter('P', getColour(VGA::Colours::DarkBlue, VGA::Colours::LightMagenta));
-    terminal.writeCharacter('P', getColour(VGA::Colours::DarkBlue, VGA::Colours::LightMagenta));
-    terminal.writeCharacter('P', getColour(VGA::Colours::DarkBlue, VGA::Colours::LightMagenta));
-    terminal.writeCharacter('P', getColour(VGA::Colours::DarkBlue, VGA::Colours::LightMagenta));
-    terminal.writeCharacter('P', getColour(VGA::Colours::DarkBlue, VGA::Colours::LightMagenta));
-    terminal.writeCharacter('P', getColour(VGA::Colours::DarkBlue, VGA::Colours::LightMagenta));
+    auto colour = getColour(VGA::Colours::LightBlue, VGA::Colours::DarkGray);
+
+    auto f = [&](auto c) {
+        terminal.writeCharacter(c, colour);
+    };
+
+    //f('P');
+    //f('a');
+    //f('t');
+    f(printf(nullptr, 0));
 
     return 0;
 }

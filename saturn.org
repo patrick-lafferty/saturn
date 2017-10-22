@@ -13,9 +13,13 @@ clang -c filename.c -o filename.o --target=i686-pc-none-elf -march=i686
 
 boot asm:
 
-i686-elf-as boot.as -o boot.o
+i686-elf-as boot.s -o boot.o
 
 linking the kernel:
 
 clang -T src/linker.ld -o saturn.bin -ffreestanding -nostdlib boot.o kernel.o
     --target=i686-pc-none-elf -march=i686
+
+* Step 2: Basic printing to screen
+
+note: capturing lambdas are supported
