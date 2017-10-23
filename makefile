@@ -1,3 +1,6 @@
+DEPENDENCYDIR := .d
+DEPENDENCYFLAGS = -MT $@ -MMD -MP -MF $(DEPENDENCYDIR)/$*.Td
+
 CROSS_COMPILER_PATH = ~/projects/saturn-cross-compiler/bin
 
 AR = $(CROSS_COMPILER_PATH)/i686-elf-ar
@@ -5,11 +8,11 @@ AS = $(CROSS_COMPILER_PATH)/i686-elf-as
 
 CXX = clang++
 MARCH = "--target=i686-pc-none-elf -march=i686"
-WARNINGS = -Wall -Wextra --verbose 
-CXXFLAGS = $(MARCH) -ffreestanding -fno-exceptions -fno-rtti $(WARNINGS) -std=c++14 -isysroot sysroot/ -iwithsysroot /system/include -I src -I src/libc/include -I src/kernel/arch/i386
+WARNINGS = -Wall -Wextra 
+CXXFLAGS = -O0 -fno-omit-frame-pointer -g $(MARCH) $(DEPENDENCYFLAGS) -ffreestanding -fno-exceptions -fno-rtti $(WARNINGS) -std=c++14 -isysroot sysroot/ -iwithsysroot /system/include -I src -I src/libc/include -I src/kernel/arch/i386
 
 LD = $(CROSS_COMPILER_PATH)/i686-elf-ld
-LDFLAGS = -L=system/lib --sysroot=sysroot/
+LDFLAGS = -L=system/lib --sysroot=sysroot/ -g
 
 MKDIR = mkdir -p
 
@@ -20,6 +23,9 @@ ARCH_OBJS = \
 	$(ARCHDIR)/boot.o \
 	$(ARCHDIR)/gdt/gdt_flush.o \
 	$(ARCHDIR)/gdt/gdt.o \
+	$(ARCHDIR)/idt/isr_stubs.o \
+	$(ARCHDIR)/idt/loadIDT.o \
+	$(ARCHDIR)/idt/idt.o \
 
 KERNEL_OBJS = \
 	$(ARCH_OBJS) \
@@ -43,6 +49,14 @@ OBJS_WITHOUT_CRT = \
 	$(SERVICES_OBJS) \
 	$(ARCHDIR)/crtn.o
 
+DEPS = \
+	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(OBJS_WITHOUT_CRT))) \
+	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(LIBC_FREE_OBJS)))
+
+include src/libc/make.config
+
+$(shell mkdir -p $(dir $(DEPS)) >/dev/null)
+
 LIBS = -lc_freestanding
 
 LINK_LIST = \
@@ -55,9 +69,10 @@ LINK_LIST = \
 	$(shell $(CC) $(CFLAGS) -m32 -print-file-name=crtend.o) \
 	$(ARCHDIR)/crtn.o
 
-include src/libc/make.config
+all: sysroot deps saturn.bin
 
-all: sysroot saturn.bin
+deps:
+	$(MKDIR) .d/ -p
 
 sysroot:
 	$(MKDIR) sysroot/
@@ -76,14 +91,21 @@ libc: $(LIBC_FREE_OBJS)
 	cp -R --preserve=timestamps src/libc/include sysroot/system/
 
 %.o: %.s
-	$(AS) $< -o $@
+	$(AS) $< -o $@ -g
 
-%.o: %.cpp
+-include $(DEPS) 
+
+%.o: %.cpp $(DEPENDENCYDIR)/%.d 
 	$(CXX) -c $< -o $@ $(CXXFLAGS)
+
+$(DEPENDENCYDIR)/%.d: ;
+
+.PRECIOUS: $(DEPENDENCYDIR)/%.d
 
 clean:
 	$(RM) sysroot/ -rf
 	$(RM) $(OBJS_WITHOUT_CRT) $(LIBC_FREE_OBJS)
 	$(RM) src/libc/libc_freestanding.a
+	$(RM) .d/ -rf
 
-.PHONY: all sysroot clean
+.PHONY: all deps sysroot clean

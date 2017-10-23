@@ -10,7 +10,9 @@ namespace GDT {
         gp.base = reinterpret_cast<uint32_t>(&gdt);
 
         gdt[0] = encodeEntry(0, 0, 0, 0);
+        //code segment - 4GB limit, 4KB granularity, 32-bit opcodes 
         gdt[1] = encodeEntry(0, 0xFFFFFFFF, 0x9A, 0xCF);
+        //data segment - 4GB limit, 4KB granularity, 32-bit opcodes
         gdt[2] = encodeEntry(0, 0xFFFFFFFF, 0x92, 0xCF);
 
         gdt_flush();

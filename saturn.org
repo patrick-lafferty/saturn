@@ -23,3 +23,10 @@ clang -T src/linker.ld -o saturn.bin -ffreestanding -nostdlib boot.o kernel.o
 * Step 2: Basic printing to screen
 
 note: capturing lambdas are supported
+
+
+implemented basic printf with %c, %s, %d, %x, %o supported
+
+* Step 3: IDT
+
+note: objdump is really helpful

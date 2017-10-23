@@ -4,3 +4,4 @@ bin/
 *.bin
 *.a
 sysroot/
+.d/
