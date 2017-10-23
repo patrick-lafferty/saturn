@@ -1,9 +1,10 @@
 #include <stdio.h>
+#include <gdt/gdt.h>
 
 
 extern "C" int kernel_main() {
     
-    printf("%c", 'A');
+    /*printf("%c", 'A');
     printf("%c", 'B');
     printf("%c", 'C');
     printf("%c", 'D');
@@ -20,7 +21,11 @@ extern "C" int kernel_main() {
     printf("Z: %x\n", 716714982);
 
     printf("Z: %X\n", 198739812);
-    printf("Z: %X\n", 878798);
+    printf("Z: %X\n", 878798);*/
+
+    GDT::setup();
+
+    printf("GDT Descriptors Installed\n");
 
     return 0;
 }

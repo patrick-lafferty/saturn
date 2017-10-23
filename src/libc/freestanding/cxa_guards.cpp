@@ -1,5 +1,3 @@
-#pragma once
-
 namespace __cpp_internals
 {
     //TODO: rewrite, from osdev

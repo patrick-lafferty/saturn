@@ -6,7 +6,7 @@ AS = $(CROSS_COMPILER_PATH)/i686-elf-as
 CXX = clang++
 MARCH = "--target=i686-pc-none-elf -march=i686"
 WARNINGS = -Wall -Wextra --verbose 
-CXXFLAGS = $(MARCH) -ffreestanding -fno-exceptions -fno-rtti $(WARNINGS) -std=c++14 -isysroot sysroot/ -iwithsysroot /system/include -I src
+CXXFLAGS = $(MARCH) -ffreestanding -fno-exceptions -fno-rtti $(WARNINGS) -std=c++14 -isysroot sysroot/ -iwithsysroot /system/include -I src -I src/libc/include -I src/kernel/arch/i386
 
 LD = $(CROSS_COMPILER_PATH)/i686-elf-ld
 LDFLAGS = -L=system/lib --sysroot=sysroot/
@@ -17,7 +17,9 @@ ARCHDIR = src/kernel/arch/i386
 SERVICESDIR = src/services
 
 ARCH_OBJS = \
-	$(ARCHDIR)/boot.o
+	$(ARCHDIR)/boot.o \
+	$(ARCHDIR)/gdt/gdt_flush.o \
+	$(ARCHDIR)/gdt/gdt.o \
 
 KERNEL_OBJS = \
 	$(ARCH_OBJS) \
@@ -33,6 +35,12 @@ OBJS = \
 	$(KERNEL_OBJS) \
 	$(SERVICES_OBJS) \
 	$(shell $(CC) $(CFLAGS) -m32 -print-file-name=crtend.o) \
+	$(ARCHDIR)/crtn.o
+
+OBJS_WITHOUT_CRT = \
+	$(ARCHDIR)/crti.o \
+	$(KERNEL_OBJS) \
+	$(SERVICES_OBJS) \
 	$(ARCHDIR)/crtn.o
 
 LIBS = -lc_freestanding
@@ -73,4 +81,9 @@ libc: $(LIBC_FREE_OBJS)
 %.o: %.cpp
 	$(CXX) -c $< -o $@ $(CXXFLAGS)
 
-.PHONY: all sysroot
+clean:
+	$(RM) sysroot/ -rf
+	$(RM) $(OBJS_WITHOUT_CRT) $(LIBC_FREE_OBJS)
+	$(RM) src/libc/libc_freestanding.a
+
+.PHONY: all sysroot clean
