@@ -18,7 +18,7 @@ int printInteger(int i, Terminal& terminal, int base = 10, bool upper = false) {
         i *= -1;
     }
     
-    while (i > 0) {
+    do {
         buffer[digits] = hexDigits[i % base];
 
         if (upper && buffer[digits] >= 'a') {
@@ -27,7 +27,7 @@ int printInteger(int i, Terminal& terminal, int base = 10, bool upper = false) {
 
         digits++;
         i /= base;
-    }
+    } while (i > 0);
 
     if (isNegative) {
         buffer[digits++] = '-';
