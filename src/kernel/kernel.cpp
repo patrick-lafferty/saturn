@@ -12,7 +12,6 @@ extern "C" int kernel_main() {
     //asm("sti");
     
     CPUID::printVersionInformation();
-    cpuid_vendor();
 
     return 0;
 }

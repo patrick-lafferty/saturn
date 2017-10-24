@@ -103,7 +103,7 @@ namespace CPUID {
         auto familyId = (eax & 0xf00) >> 8;
         auto brandIndex = (ebx & 0xff);
 
-        if (familyId > 0x0F && model >= 0x03 || brandIndex) {
+        if ((familyId > 0x0F && model >= 0x03) || brandIndex) {
             printf("Brand Index is not supported\n");
         }
         else {
@@ -114,6 +114,46 @@ namespace CPUID {
             getBrandString(brandString);
             printf("BrandString: %s\n", brandString);
         }
+
+        /*EDX:
+        */
+        printf("\nFeatures\n--------\n");
+
+        printf("FPU: %d, ", (edx & (1u << 0)) > 0);    
+        printf("VMU: %d, ", (edx & (1u << 1)) > 0);    
+        printf("DE: %d, ", (edx & (1u << 2)) > 0);    
+        printf("PSE: %d, ", (edx & (1u << 3)) > 0);    
+        printf("TSC: %d, ", (edx & (1u << 4)) > 0);    
+        printf("MSR: %d, ", (edx & (1u << 5)) > 0);    
+        printf("PAE: %d, ", (edx & (1u << 6)) > 0);    
+        printf("MCE: %d\n", (edx & (1u << 7)) > 0);    
+
+        printf("CX8: %d, ", (edx & (1u << 8)) > 0);    
+        printf("APIC: %d, ", (edx & (1u << 9)) > 0);    
+        //bit 10 is reserved
+        printf("SEP: %d, ", (edx & (1u << 11)) > 0);    
+        printf("MTRR: %d, ", (edx & (1u << 12)) > 0);    
+        printf("PGE: %d, ", (edx & (1u << 13)) > 0);    
+        printf("MCA: %d, ", (edx & (1u << 14)) > 0);    
+        printf("CMOV: %d\n", (edx & (1u << 15)) > 0);    
+
+        printf("PAT: %d, ", (edx & (1u << 16)) > 0);    
+        printf("PSE-36: %d, ", (edx & (1u << 17)) > 0);    
+        printf("PSN: %d, ", (edx & (1u << 18)) > 0);    
+        printf("CLFSH: %d, ", (edx & (1u << 19)) > 0);
+        //bit 20 is reserved    
+        printf("DS: %d, ", (edx & (1u << 21)) > 0);    
+        printf("ACPI: %d, ", (edx & (1u << 22)) > 0);    
+        printf("MMX: %d\n", (edx & (1u << 23)) > 0);   
+
+        printf("FXSR: %d, ", (edx & (1u << 24)) > 0);  
+        printf("SSE: %d, ", (edx & (1u << 25)) > 0);    
+        printf("SSE2: %d, ", (edx & (1u << 26)) > 0);    
+        printf("SS: %d, ", (edx & (1u << 27)) > 0);    
+        printf("HTT: %d, ", (edx & (1u << 28)) > 0);    
+        printf("TM: %d, ", (edx & (1u << 29)) > 0);    
+        //bit 30 is reserved
+        printf("PBE: %d\n", (edx & (1u << 31)) > 0);    
 
     }
 }
