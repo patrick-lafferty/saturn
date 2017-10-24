@@ -28,6 +28,7 @@ ARCH_OBJS = \
 	$(ARCHDIR)/idt/idt.o \
 	$(ARCHDIR)/cpu/cpuid.o \
 	$(ARCHDIR)/cpu/cpuid_impl.o \
+	$(ARCHDIR)/cpu/acpi.o \
 
 KERNEL_OBJS = \
 	$(ARCH_OBJS) \
