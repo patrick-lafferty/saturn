@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <gdt/gdt.h>
 #include <idt/idt.h>
-
+#include <cpu/cpuid.h>
 
 extern "C" int kernel_main() {
 
@@ -9,6 +9,10 @@ extern "C" int kernel_main() {
     IDT::setup();
 
     printf("GDT/IDT Descriptors Installed\n");
+    //asm("sti");
+    
+    CPUID::printVersionInformation();
+    cpuid_vendor();
 
     return 0;
 }

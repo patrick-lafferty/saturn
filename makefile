@@ -26,6 +26,8 @@ ARCH_OBJS = \
 	$(ARCHDIR)/idt/isr_stubs.o \
 	$(ARCHDIR)/idt/loadIDT.o \
 	$(ARCHDIR)/idt/idt.o \
+	$(ARCHDIR)/cpu/cpuid.o \
+	$(ARCHDIR)/cpu/cpuid_impl.o \
 
 KERNEL_OBJS = \
 	$(ARCH_OBJS) \

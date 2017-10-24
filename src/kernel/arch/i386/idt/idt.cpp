@@ -1,5 +1,6 @@
 #include "idt.h"
 #include <string.h>
+#include <stdio.h>
 
 IDT::Entry idt[256];
 IDT::EntryPointer idtPointer;
@@ -48,4 +49,6 @@ namespace IDT {
     }
 }
 
-void interruptHandler(CPU::InterruptStackFrame* frame) {}
+void interruptHandler(CPU::InterruptStackFrame* frame) {
+    printf("Inside Interrupt Handler\n");
+}
