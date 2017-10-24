@@ -1,5 +1,5 @@
-.global loadIDT
-.extern idtPointer
+global loadIDT
+extern idtPointer
 loadIDT:
-    lidt (idtPointer)
+    lidt [idtPointer]
     ret

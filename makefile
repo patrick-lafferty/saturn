@@ -5,11 +5,16 @@ CROSS_COMPILER_PATH = ~/projects/saturn-cross-compiler/bin
 
 AR = $(CROSS_COMPILER_PATH)/i686-elf-ar
 AS = $(CROSS_COMPILER_PATH)/i686-elf-as
+AS = yasm
+ASFLAGS = -msyntax=intel -mmnemonic=intel -mnaked-reg -g
+ASFLAGS = -felf32
 
 CXX = clang++
 MARCH = "--target=i686-pc-none-elf -march=i686"
 WARNINGS = -Wall -Wextra 
-CXXFLAGS = -O0 -fno-omit-frame-pointer -g $(MARCH) $(DEPENDENCYFLAGS) -ffreestanding -fno-exceptions -fno-rtti $(WARNINGS) -std=c++14 -isysroot sysroot/ -iwithsysroot /system/include -I src -I src/libc/include -I src/kernel/arch/i386
+CXXPATHS = -isysroot sysroot/ -iwithsysroot /system/include -I src -I src/libc/include -I src/kernel/arch/i386
+FLAGS = -fno-omit-frame-pointer -ffreestanding -fno-exceptions -fno-rtti
+CXXFLAGS = -O0 $(FLAGS) -g $(MARCH) $(DEPENDENCYFLAGS) $(WARNINGS) -std=c++14  $(CXXPATHS) -masm=intel
 
 LD = $(CROSS_COMPILER_PATH)/i686-elf-ld
 LDFLAGS = -L=system/lib --sysroot=sysroot/ -g
@@ -94,7 +99,7 @@ libc: $(LIBC_FREE_OBJS)
 	cp -R --preserve=timestamps src/libc/include sysroot/system/
 
 %.o: %.s
-	$(AS) $< -o $@ -g
+	$(AS) $< -o $@ $(ASFLAGS)
 
 -include $(DEPS) 
 

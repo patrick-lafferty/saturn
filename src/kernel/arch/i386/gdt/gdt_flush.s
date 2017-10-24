@@ -1,18 +1,17 @@
-.section .text
-.global gdt_flush
-.type gdt_flush, @function
-.extern gp
+section .text
+global gdt_flush
+extern gp
 
 gdt_flush:
-    lgdt (gp)
-    movl $0x10, %eax
-    movl %eax, %ds
-    movl %eax, %es
-    movl %eax, %fs
-    movl %eax, %gs
-    movl %eax, %ss
+    lgdt [gp]
+    mov eax, 0x10
+    mov ds, eax
+    mov es, eax
+    mov fs, eax
+    mov gs, eax
+    mov ss, eax
 
-    ljmp $0x8, $flush
+    jmp 0x08:flush 
 
 flush:
     ret
