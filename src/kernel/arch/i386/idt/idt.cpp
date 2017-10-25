@@ -50,5 +50,12 @@ namespace IDT {
 }
 
 void interruptHandler(CPU::InterruptStackFrame* frame) {
-    printf("Inside Interrupt Handler\n");
+    //printf("Inside Interrupt Handler\n");
+
+    if (frame->interruptNumber == 14) {
+        //page fault
+        printf("[IDT] Invalid Memory Access\n");        
+
+        while(true){}
+    }    
 }

@@ -36,7 +36,8 @@ ARCH_OBJS = \
 	$(ARCHDIR)/cpu/acpi.o \
 	$(ARCHDIR)/cpu/initialize_sse.o \
 	$(ARCHDIR)/memory/scan_memory.o \
-	$(ARCHDIR)/memory/physical_memory_manager.o
+	$(ARCHDIR)/memory/physical_memory_manager.o \
+	$(ARCHDIR)/memory/virtual_memory_manager.o
 
 KERNEL_OBJS = \
 	$(ARCH_OBJS) \

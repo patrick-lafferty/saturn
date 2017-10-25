@@ -6,8 +6,12 @@
 #include <cpu/sse.h>
 #include <string.h>
 #include <memory/physical_memory_manager.h>
+#include <memory/virtual_memory_manager.h>
 
 using namespace Kernel;
+
+extern uint32_t __kernel_memory_start;
+extern uint32_t __kernel_memory_end;
 
 extern "C" int kernel_main(MultibootInformation* info) {
 
@@ -16,7 +20,38 @@ extern "C" int kernel_main(MultibootInformation* info) {
     initializeSSE();
 
     Memory::PhysicalMemoryManager physicalMemManager {info};
-    auto a1 = physicalMemManager.allocatePage(3);
+    Memory::VirtualMemoryManager virtualMemManager {physicalMemManager};
+
+    virtualMemManager.map(0xB8000, 0xB8000, 1);
+    virtualMemManager.map(0, 0, 0x100000 / 0x1000);
+    auto kernelStartAddress = reinterpret_cast<uint32_t>(&__kernel_memory_start);
+    auto kernelEndAddress = reinterpret_cast<uint32_t>(&__kernel_memory_end);
+    virtualMemManager.map(kernelStartAddress, kernelStartAddress, 1 + (kernelEndAddress - kernelStartAddress) / 0x1000);
+
+    /*uint32_t cr0, cr4;
+    asm("movl %%cr0, %%eax \n"
+        "movl %%cr4, %%ebx \n"
+        : "=a" (cr0), "=b" (cr4));
+
+    printf("CR0: %d, CR4: %d\n", cr0, cr4);*/
+
+    virtualMemManager.activate();
+
+    printf("Paging Enabled\n");
+
+    auto address = virtualMemManager.allocatePages(1);
+    int* y = (int*)address;
+    printf("This should happen %x\n", *y);
+    
+    /*
+    this is an invalid memory access page fault
+    */
+    int* x = (int*)0xb0000000;
+    printf("This should page fault\n");
+    printf("x: %d\n", *x);
+    printf("This should never print\n");
+
+    /*auto a1 = physicalMemManager.allocatePage(3);
     auto a2 = physicalMemManager.allocatePage(1);
     physicalMemManager.report();
     physicalMemManager.freePage(a1, 3);
@@ -43,7 +78,7 @@ extern "C" int kernel_main(MultibootInformation* info) {
         physicalMemManager.freePage(as[i], i);
     }
 
-    physicalMemManager.report();
+    physicalMemManager.report();*/
     
     //printf("GDT/IDT Descriptors Installed\n");
     //asm("sti");

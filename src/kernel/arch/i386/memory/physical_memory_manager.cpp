@@ -43,17 +43,25 @@ namespace Memory {
     }
     
     uintptr_t PhysicalMemoryManager::allocatePage(uint32_t count) {
-        auto allocated = nextFreeAddress;
-
-        for (uint32_t i = 0; i < count; i++) {
-            auto page = static_cast<Page*>(reinterpret_cast<void*>(nextFreeAddress));
-            nextFreeAddress = page->nextFreePage;
+        if (freePages < count) {
+            return 0;
         }
+
+        auto allocated = nextFreeAddress;
 
         allocatedPages += count;
         freePages -= count;
 
         return allocated;
+    }
+
+    void PhysicalMemoryManager::finishAllocation(uintptr_t pageAddress, uint32_t count) {
+        //NOTE: can't do loop because page->nextFreePage isn't mapped
+        //for demand paging, pageAddress should come from page fault
+        for (uint32_t i = 0; i < count; i++) {
+            auto page = static_cast<Page*>(reinterpret_cast<void*>(pageAddress));
+            nextFreeAddress = page->nextFreePage;
+        }
     }
 
     void PhysicalMemoryManager::report() {
@@ -63,6 +71,10 @@ namespace Memory {
     }
 
     void PhysicalMemoryManager::freePage(uintptr_t pageAddress, uint32_t count) {
+
+        if (freePages == totalPages) {
+            return;
+        }
 
         for (uint32_t i = 0; i < count; i++) {
             auto page = static_cast<Page*>(reinterpret_cast<void*>(pageAddress));
