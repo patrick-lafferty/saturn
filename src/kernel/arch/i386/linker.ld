@@ -20,6 +20,7 @@ SECTIONS
 	   Next we'll put the .text section. */
 	.text BLOCK(4K) : ALIGN(4K)
 	{
+		__kernel_memory_start = .;
 		*(.multiboot)
 		*(.text)
 	}
@@ -41,6 +42,7 @@ SECTIONS
 	{
 		*(COMMON)
 		*(.bss)
+		__kernel_memory_end = .;
 	}
 
 	/* The compiler may produce other sections, by default it will put them in

@@ -12,7 +12,7 @@ ASFLAGS = -felf32
 CXX = clang++
 MARCH = "--target=i686-pc-none-elf -march=i686"
 WARNINGS = -Wall -Wextra 
-CXXPATHS = -isysroot sysroot/ -iwithsysroot /system/include -I src -I src/libc/include -I src/kernel/arch/i386
+CXXPATHS = -isysroot sysroot/ -iwithsysroot /system/include -I src -I src/libc/include -I src/kernel -I src/kernel/arch/i386
 FLAGS = -fno-omit-frame-pointer -ffreestanding -fno-exceptions -fno-rtti
 CXXFLAGS = -O0 $(FLAGS) -g $(MARCH) $(DEPENDENCYFLAGS) $(WARNINGS) -std=c++14  $(CXXPATHS) -masm=intel
 
@@ -34,6 +34,9 @@ ARCH_OBJS = \
 	$(ARCHDIR)/cpu/cpuid.o \
 	$(ARCHDIR)/cpu/cpuid_impl.o \
 	$(ARCHDIR)/cpu/acpi.o \
+	$(ARCHDIR)/cpu/initialize_sse.o \
+	$(ARCHDIR)/memory/scan_memory.o \
+	$(ARCHDIR)/memory/physical_memory_manager.o
 
 KERNEL_OBJS = \
 	$(ARCH_OBJS) \
