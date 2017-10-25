@@ -28,17 +28,38 @@ namespace Memory {
 
                     auto pages = record.lowerLength / PageSize;
                     freePage(address, pages);
-                    pageCount += pages;
+                    totalPages += pages;
                 }
             }
         }
         else 
         {
             freePage(0x8000, 1);
-            pageCount++;
+            totalPages++;
         }
 
-        printf("[PMM] Created %d pages, total physical memory: %dMB\n", pageCount, pageCount * PageSize / 1024);
+        printf("[PMM] Created %d pages, total physical memory: %dKB\n", totalPages, totalPages * PageSize / 1024);
+        allocatedPages = 0;
+    }
+    
+    uintptr_t PhysicalMemoryManager::allocatePage(uint32_t count) {
+        auto allocated = nextFreeAddress;
+
+        for (uint32_t i = 0; i < count; i++) {
+            auto page = static_cast<Page*>(reinterpret_cast<void*>(nextFreeAddress));
+            nextFreeAddress = page->nextFreePage;
+        }
+
+        allocatedPages += count;
+        freePages -= count;
+
+        return allocated;
+    }
+
+    void PhysicalMemoryManager::report() {
+        printf("[PMM] Allocated: %d pages, %d KB; Free: %d pages, %d KB\n", 
+            allocatedPages, allocatedPages * PageSize / 1024,
+            freePages, freePages * PageSize / 1024);
     }
 
     void PhysicalMemoryManager::freePage(uintptr_t pageAddress, uint32_t count) {
@@ -50,5 +71,8 @@ namespace Memory {
             nextFreeAddress = pageAddress;
             pageAddress += PageSize;
         }
+
+        allocatedPages -= count;
+        freePages += count;
     }
 }

@@ -16,6 +16,34 @@ extern "C" int kernel_main(MultibootInformation* info) {
     initializeSSE();
 
     Memory::PhysicalMemoryManager physicalMemManager {info};
+    auto a1 = physicalMemManager.allocatePage(3);
+    auto a2 = physicalMemManager.allocatePage(1);
+    physicalMemManager.report();
+    physicalMemManager.freePage(a1, 3);
+    physicalMemManager.report();
+    auto a3 = physicalMemManager.allocatePage(1);
+    auto a4 = physicalMemManager.allocatePage(1);
+    auto a5 = physicalMemManager.allocatePage(1);
+    physicalMemManager.freePage(a2, 1);
+    physicalMemManager.report();
+
+    uintptr_t as[100];
+    
+    for(int i = 0; i < 100; i++) {
+        as[i] = physicalMemManager.allocatePage(i);
+    }
+
+    physicalMemManager.report();
+    physicalMemManager.freePage(a3, 1);
+    physicalMemManager.freePage(a4, 1);
+    physicalMemManager.freePage(a5, 1);
+    physicalMemManager.report();
+
+    for(int i = 0; i < 100; i++) {
+        physicalMemManager.freePage(as[i], i);
+    }
+
+    physicalMemManager.report();
     
     //printf("GDT/IDT Descriptors Installed\n");
     //asm("sti");

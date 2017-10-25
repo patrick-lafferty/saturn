@@ -18,11 +18,14 @@ namespace Memory {
 
         uintptr_t allocatePage(uint32_t count);
         void freePage(uintptr_t pageAddress, uint32_t count);
+        void report();
 
     private:
 
         uintptr_t nextFreeAddress {0};
-        uint32_t pageCount {0};
+        uint32_t totalPages {0};
+        uint32_t allocatedPages {0};
+        uint32_t freePages {0};
     };
 
 }
