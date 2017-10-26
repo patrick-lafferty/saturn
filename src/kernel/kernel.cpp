@@ -9,6 +9,7 @@
 #include <memory/virtual_memory_manager.h>
 
 using namespace Kernel;
+using namespace Memory;
 
 extern uint32_t __kernel_memory_start;
 extern uint32_t __kernel_memory_end;
@@ -19,8 +20,8 @@ extern "C" int kernel_main(MultibootInformation* info) {
     IDT::setup();
     initializeSSE();
 
-    Memory::PhysicalMemoryManager physicalMemManager {info};
-    Memory::VirtualMemoryManager virtualMemManager {physicalMemManager};
+    PhysicalMemoryManager physicalMemManager {info};
+    VirtualMemoryManager virtualMemManager {physicalMemManager};
 
     virtualMemManager.map_unpaged(0xB8000, 0xB8000, 1);
     virtualMemManager.map_unpaged(0, 0, 0x100000 / 0x1000);
@@ -32,10 +33,10 @@ extern "C" int kernel_main(MultibootInformation* info) {
 
     printf("Paging Enabled\n");
 
-    auto address = virtualMemManager.allocatePages(1);
-    auto phys = physicalMemManager.allocatePage(1);
-    virtualMemManager.map(address, phys);
-    physicalMemManager.finishAllocation(address, 1);
+    auto address = virtualMemManager.allocatePages(1, static_cast<uint32_t>(PageTableFlags::ReadWrite));
+    //auto phys = physicalMemManager.allocatePage(1);
+    //virtualMemManager.map(address, phys);
+    //physicalMemManager.finishAllocation(address, 1);
     int* y = (int*)address;
     printf("This should happen %x\n", *y);
     

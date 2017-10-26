@@ -8,6 +8,8 @@ extern uint32_t __kernel_memory_end;
 
 namespace Memory {
 
+    PhysicalMemoryManager* currentPMM;
+
     PhysicalMemoryManager::PhysicalMemoryManager(const Kernel::MultibootInformation* info) {
 
         if (Kernel::hasValidMemoryMap(info)) {
@@ -41,6 +43,7 @@ namespace Memory {
 
         printf("[PMM] Created %d pages, total physical memory: %dKB\n", totalPages, totalPages * PageSize / 1024);
         allocatedPages = 0;
+        currentPMM = this;
     }
     
     uintptr_t PhysicalMemoryManager::allocatePage(uint32_t count) {

@@ -1,6 +1,8 @@
 #include "idt.h"
 #include <string.h>
 #include <stdio.h>
+#include <memory/physical_memory_manager.h>
+#include <memory/virtual_memory_manager.h>
 
 IDT::Entry idt[256];
 IDT::EntryPointer idtPointer;
@@ -49,13 +51,34 @@ namespace IDT {
     }
 }
 
+void handlePageFault(uintptr_t virtualAddress) {
+    auto pageStatus = Memory::currentVMM->getPageStatus(virtualAddress);
+    
+    if (pageStatus == Memory::PageStatus::Allocated) {
+        //we need to map a physical page
+        printf("[IDT] Page Fault: allocated page not mapped\n");
+        auto physicalPage = Memory::currentPMM->allocatePage(1);
+        Memory::currentVMM->map(virtualAddress, physicalPage);
+        Memory::currentPMM->finishAllocation(virtualAddress, 1);
+    }
+    else if (pageStatus == Memory::PageStatus::Mapped) {
+        //this shouldn't happen?
+        printf("[IDT] Page Fault: mapped address?\n");
+        while(true){}  
+    }
+    else {
+        printf("[IDT] Illegal Memory Access\n");     
+        while(true){}   
+    }
+}
+
 void interruptHandler(CPU::InterruptStackFrame* frame) {
-    //printf("Inside Interrupt Handler\n");
 
     if (frame->interruptNumber == 14) {
         //page fault
-        printf("[IDT] Invalid Memory Access\n");        
+        uintptr_t virtualAddress;
+        asm("movl %%CR2, %%eax" : "=a"(virtualAddress));
 
-        while(true){}
+        handlePageFault(virtualAddress);        
     }    
 }

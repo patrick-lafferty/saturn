@@ -5,6 +5,8 @@
 
 namespace Memory {
 
+    VirtualMemoryManager* currentVMM;
+
     VirtualMemoryManager::VirtualMemoryManager(PhysicalMemoryManager& physical)
         : physicalManager{physical} 
         {
@@ -30,17 +32,22 @@ namespace Memory {
         auto physicalPage = physicalManager.allocatePage(1);
 
         auto table = static_cast<PageTable*>(reinterpret_cast<void*>(physicalPage));
-        memset(table, 0, PageSize);
+        //memset(table, 0, PageSize);
         directory->pageTableAddresses[index] = physicalPage | 3;
 
         updateCR3Address(directory);
 
-        physicalManager.finishAllocation(virtualAddress, 1);
+        if (pagingActive) {
+            physicalManager.finishAllocation(virtualAddress, 1);
+        }
+        else {
+            physicalManager.finishAllocation(physicalPage, 1);
+        }
 
         return physicalPage;
     }
 
-    uintptr_t VirtualMemoryManager::allocatePages(uint32_t count, uintptr_t startingVirtualAddress) {
+    uintptr_t VirtualMemoryManager::allocatePages(uint32_t count, uint32_t flags, uintptr_t startingVirtualAddress) {
         /*
         mark nextAddress -> nextAddress + PageSize * count in the directory
         */
@@ -67,12 +74,13 @@ namespace Memory {
                 nextAddress += PageSize;
             }
 
-            /*auto pageTableAddress = 0xFFC00000 + PageSize * directoryIndex;
-            auto pageTable = static_cast<PageTable*>(reinterpret_cast<void*>(pageTableAddress));
+            if (pagingActive) {
+                auto pageTableAddress = 0xFFC00000 + PageSize * directoryIndex;
+                auto pageTable = static_cast<PageTable*>(reinterpret_cast<void*>(pageTableAddress));
 
-            auto tableIndex = (virtualAddress >> 12) & 0x3FF;
-            //should present be 0 here?
-            pageTable->pageAddresses[tableIndex] = page | 3; */
+                auto tableIndex = (virtualAddress >> 12) & 0x3FF;
+                pageTable->pageAddresses[tableIndex] = flags; 
+            }
 
             virtualAddress += PageSize;
         }
@@ -85,7 +93,7 @@ namespace Memory {
 
     void VirtualMemoryManager::map_unpaged(uintptr_t virtualAddress, uintptr_t physicalAddress, uint32_t pageCount) {
         
-        allocatePages(pageCount, virtualAddress);
+        allocatePages(pageCount, 3, virtualAddress);
 
         for (auto i = 0u; i < pageCount; i++) {
             auto directoryIndex = virtualAddress >> 22;
@@ -104,20 +112,40 @@ namespace Memory {
         }
     }
 
-    void VirtualMemoryManager::map(uintptr_t virtualAddress, uintptr_t physicalAddress) {
+    void VirtualMemoryManager::map(uintptr_t virtualAddress, uintptr_t physicalAddress, uint32_t flags) {
         
         auto directoryIndex = virtualAddress >> 22;
         auto pageTableAddress = 0xFFC00000 + PageSize * directoryIndex;
         auto pageTable = static_cast<PageTable*>(reinterpret_cast<void*>(pageTableAddress));
         auto tableIndex = (virtualAddress >> 12) & 0x3FF;
-        //should present be 0 here?
-        pageTable->pageAddresses[tableIndex] = physicalAddress | 3; 
 
-        virtualAddress += PageSize;
-        physicalAddress += PageSize;
+        if (flags == 0) {
+            flags = pageTable->pageAddresses[tableIndex] & 0xFF; 
+        }
 
-        if (virtualAddress > nextAddress) {
-            nextAddress = virtualAddress;
+        flags |= static_cast<uint32_t>(PageTableFlags::Present);
+
+        pageTable->pageAddresses[tableIndex] = physicalAddress | flags; 
+        updateCR3Address(directory);
+    }
+
+    PageStatus VirtualMemoryManager::getPageStatus(uintptr_t virtualAddress) {
+        auto directoryIndex = virtualAddress >> 22;
+        auto pageTableAddress = 0xFFC00000 + PageSize * directoryIndex;
+        auto pageTable = static_cast<PageTable*>(reinterpret_cast<void*>(pageTableAddress));
+        auto tableIndex = (virtualAddress >> 12) & 0x3FF;       
+        auto physicalAddress = pageTable->pageAddresses[tableIndex];
+
+        if (physicalAddress & 0xFF) {
+            if (physicalAddress & ~0xFF) {
+                return PageStatus::Mapped;
+            }
+            else {
+                return PageStatus::Allocated;
+            }
+        }
+        else {
+            return PageStatus::Invalid;
         }
     }
 
@@ -134,6 +162,8 @@ namespace Memory {
 
         directoryAddress = 0xFFFFF000;
         directory = static_cast<PageDirectory*>(reinterpret_cast<void*>(directoryAddress));
+        pagingActive = true;
+        currentVMM = this;
     }
 
 }
