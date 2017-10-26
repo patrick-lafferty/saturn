@@ -7,6 +7,19 @@ namespace Memory {
 
     VirtualMemoryManager* currentVMM;
 
+    inline uint32_t extractDirectoryIndex(uintptr_t virtualAddress) {
+        return virtualAddress >> 22;
+    }
+
+    inline uint32_t extractTableIndex(uintptr_t virtualAddress) {
+        return (virtualAddress >> 12) & 0x3FF;
+    }
+
+    inline uintptr_t calculatePageTableAddress(uintptr_t virtualAddress) {
+        auto directoryIndex = extractDirectoryIndex(virtualAddress);
+        return 0xFFC00000 + PageSize * directoryIndex;
+    }
+
     VirtualMemoryManager::VirtualMemoryManager(PhysicalMemoryManager& physical)
         : physicalManager{physical} 
         {
@@ -14,8 +27,6 @@ namespace Memory {
         auto page = physical.allocatePage(1);
         physical.finishAllocation(page, 1);
         directory = static_cast<PageDirectory*>(reinterpret_cast<void*>(page));
-        memset(directory->pageTableAddresses, 0, sizeof(directory->pageTableAddresses));
-
         directory->pageTableAddresses[1023] = reinterpret_cast<uintptr_t>(static_cast<void*>(directory)) | 3;
     }
 
@@ -31,8 +42,6 @@ namespace Memory {
     uintptr_t VirtualMemoryManager::allocatePageTable(uintptr_t virtualAddress, int index) {
         auto physicalPage = physicalManager.allocatePage(1);
 
-        auto table = static_cast<PageTable*>(reinterpret_cast<void*>(physicalPage));
-        //memset(table, 0, PageSize);
         directory->pageTableAddresses[index] = physicalPage | 3;
 
         updateCR3Address(directory);
@@ -66,8 +75,7 @@ namespace Memory {
         nextAddress += PageSize * count;
 
         for(uint32_t i = 0; i < count; i++) {
-            //auto page = physicalManager.allocatePage(1);
-            auto directoryIndex = virtualAddress >> 22;
+            auto directoryIndex = extractDirectoryIndex(virtualAddress);
 
             if (directory->pageTableAddresses[directoryIndex] == 0) {
                 allocatePageTable(nextAddress, directoryIndex);
@@ -78,7 +86,7 @@ namespace Memory {
                 auto pageTableAddress = 0xFFC00000 + PageSize * directoryIndex;
                 auto pageTable = static_cast<PageTable*>(reinterpret_cast<void*>(pageTableAddress));
 
-                auto tableIndex = (virtualAddress >> 12) & 0x3FF;
+                auto tableIndex = extractTableIndex(virtualAddress);
                 pageTable->pageAddresses[tableIndex] = flags; 
             }
 
@@ -91,17 +99,17 @@ namespace Memory {
         return startingAddress;
     }
 
-    void VirtualMemoryManager::map_unpaged(uintptr_t virtualAddress, uintptr_t physicalAddress, uint32_t pageCount) {
+    void VirtualMemoryManager::map_unpaged(uintptr_t virtualAddress, uintptr_t physicalAddress, uint32_t pageCount, uint32_t flags) {
         
-        allocatePages(pageCount, 3, virtualAddress);
+        allocatePages(pageCount, flags, virtualAddress);
 
         for (auto i = 0u; i < pageCount; i++) {
-            auto directoryIndex = virtualAddress >> 22;
+            auto directoryIndex = extractDirectoryIndex(virtualAddress);
             auto pageTableAddress = directory->pageTableAddresses[directoryIndex] & 0xFFFFF000;
             auto pageTable = static_cast<PageTable*>(reinterpret_cast<void*>(pageTableAddress));
             
-            auto tableIndex = (virtualAddress >> 12) & 0x3FF;
-            pageTable->pageAddresses[tableIndex] = physicalAddress | 3;
+            auto tableIndex = extractTableIndex(virtualAddress);
+            pageTable->pageAddresses[tableIndex] = physicalAddress | flags;
 
             virtualAddress += PageSize;
             physicalAddress += PageSize;
@@ -114,10 +122,9 @@ namespace Memory {
 
     void VirtualMemoryManager::map(uintptr_t virtualAddress, uintptr_t physicalAddress, uint32_t flags) {
         
-        auto directoryIndex = virtualAddress >> 22;
-        auto pageTableAddress = 0xFFC00000 + PageSize * directoryIndex;
+        auto pageTableAddress = calculatePageTableAddress(virtualAddress);
         auto pageTable = static_cast<PageTable*>(reinterpret_cast<void*>(pageTableAddress));
-        auto tableIndex = (virtualAddress >> 12) & 0x3FF;
+        auto tableIndex = extractTableIndex(virtualAddress);
 
         if (flags == 0) {
             flags = pageTable->pageAddresses[tableIndex] & 0xFF; 
@@ -130,10 +137,10 @@ namespace Memory {
     }
 
     PageStatus VirtualMemoryManager::getPageStatus(uintptr_t virtualAddress) {
-        auto directoryIndex = virtualAddress >> 22;
-        auto pageTableAddress = 0xFFC00000 + PageSize * directoryIndex;
+        
+        auto pageTableAddress = calculatePageTableAddress(virtualAddress);
         auto pageTable = static_cast<PageTable*>(reinterpret_cast<void*>(pageTableAddress));
-        auto tableIndex = (virtualAddress >> 12) & 0x3FF;       
+        auto tableIndex = extractTableIndex(virtualAddress);       
         auto physicalAddress = pageTable->pageAddresses[tableIndex];
 
         if (physicalAddress & 0xFF) {

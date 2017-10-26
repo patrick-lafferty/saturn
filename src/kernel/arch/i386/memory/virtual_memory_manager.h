@@ -14,7 +14,7 @@ namespace Memory {
 
     enum class PageTableFlags {
         Present = 1 << 0,
-        ReadWrite = 1 << 1,
+        AllowWrite = 1 << 1,
         AllowUserModeAccess = 1 << 2,
         WriteThrough = 1 << 3,
         CacheDisable = 1 << 4,
@@ -45,7 +45,7 @@ namespace Memory {
         /*
         must only be called before paging is enabled
         */
-        void map_unpaged(uintptr_t virtualAddress, uintptr_t physicalAddress, uint32_t pageCount = 0);
+        void map_unpaged(uintptr_t virtualAddress, uintptr_t physicalAddress, uint32_t pageCount, uint32_t flags);
 
         /*
         maps the virtual address to the physical address

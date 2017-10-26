@@ -23,20 +23,21 @@ extern "C" int kernel_main(MultibootInformation* info) {
     PhysicalMemoryManager physicalMemManager {info};
     VirtualMemoryManager virtualMemManager {physicalMemManager};
 
-    virtualMemManager.map_unpaged(0xB8000, 0xB8000, 1);
-    virtualMemManager.map_unpaged(0, 0, 0x100000 / 0x1000);
+    auto pageFlags = 
+        static_cast<int>(PageTableFlags::Present)
+        | static_cast<int>(PageTableFlags::AllowWrite);
+
+    virtualMemManager.map_unpaged(0xB8000, 0xB8000, 1, pageFlags);
+    virtualMemManager.map_unpaged(0, 0, 0x100000 / 0x1000, pageFlags);
     auto kernelStartAddress = reinterpret_cast<uint32_t>(&__kernel_memory_start);
     auto kernelEndAddress = reinterpret_cast<uint32_t>(&__kernel_memory_end);
-    virtualMemManager.map_unpaged(kernelStartAddress, kernelStartAddress, 1 + (kernelEndAddress - kernelStartAddress) / 0x1000);
+    virtualMemManager.map_unpaged(kernelStartAddress, kernelStartAddress, 1 + (kernelEndAddress - kernelStartAddress) / 0x1000, pageFlags);
 
     virtualMemManager.activate();
 
     printf("Paging Enabled\n");
 
-    auto address = virtualMemManager.allocatePages(1, static_cast<uint32_t>(PageTableFlags::ReadWrite));
-    //auto phys = physicalMemManager.allocatePage(1);
-    //virtualMemManager.map(address, phys);
-    //physicalMemManager.finishAllocation(address, 1);
+    auto address = virtualMemManager.allocatePages(1, static_cast<uint32_t>(PageTableFlags::AllowWrite));
     int* y = (int*)address;
     printf("This should happen %x\n", *y);
     

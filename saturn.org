@@ -50,11 +50,11 @@ create PageDirectory, PageTables. Identity map from 0 to kernelENd
 Can allocate a page after paging enabled and then access it
 
 next steps:
-** remove/refactor kernel page table hardcoding
-** physical page allocation should happen in page fault handler
+** DONE - remove/refactor kernel page table hardcoding
+** DONE _ physical page allocation should happen in page fault handler
 remove the actual individual *Page* allocations, but keep the allocations
 for page tables and directories
-** page fault handler
+** DONE - page fault handler
 *** detect if its an invalid memory access, or an unallocated one
 *** allocate physical pages on demand
 ** switch to higher half kernel
