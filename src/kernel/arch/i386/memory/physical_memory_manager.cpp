@@ -1,6 +1,7 @@
 #include "physical_memory_manager.h"
 #include "scan_memory.h"
 #include <stdio.h>
+#include <string.h>
 
 extern uint32_t __kernel_memory_start;
 extern uint32_t __kernel_memory_end;
@@ -61,6 +62,7 @@ namespace Memory {
         for (uint32_t i = 0; i < count; i++) {
             auto page = static_cast<Page*>(reinterpret_cast<void*>(pageAddress));
             nextFreeAddress = page->nextFreePage;
+            memset(page, 0, PageSize);
         }
     }
 

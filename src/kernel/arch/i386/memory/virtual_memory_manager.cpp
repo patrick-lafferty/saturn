@@ -12,42 +12,12 @@ namespace Memory {
         auto page = physical.allocatePage(1);
         physical.finishAllocation(page, 1);
         directory = static_cast<PageDirectory*>(reinterpret_cast<void*>(page));
-
         memset(directory->pageTableAddresses, 0, sizeof(directory->pageTableAddresses));
 
-        page = physical.allocatePage(1);
-        physical.finishAllocation(page, 1);
-        PageTable* table = static_cast<PageTable*>(reinterpret_cast<void*>(page));
-        memset(table, 0, PageSize);
-
-        directory->pageTableAddresses[0] = page | 3;
-
-        /*
-        hardcoding tables 256->265 for kernel
-        */
-        for(int i = 256; i < 270; i++) {
-            page = physical.allocatePage(1);
-            physical.finishAllocation(page, 1);
-            table = static_cast<PageTable*>(reinterpret_cast<void*>(page));
-            memset(table, 0, PageSize);
-            directory->pageTableAddresses[i] = page | 3;
-        }
-
-        /*page = physical.allocatePage(1);
-        physical.finishAllocation(page, 1);
-        table = static_cast<PageTable*>(reinterpret_cast<void*>(page));
-        memset(table, 0, PageSize);
-        directory->pageTableAddresses[1023] = page | 3;
-        for (int i = 0; i < 1023; i++) {
-            table->pageAddresses[i] = 
-        }
-        table->pageAddresses[1023] = reinterpret_cast<uintptr_t>(static_cast<void*>(directory)) | 3; 
-        */
         directory->pageTableAddresses[1023] = reinterpret_cast<uintptr_t>(static_cast<void*>(directory)) | 3;
     }
 
     void updateCR3Address(PageDirectory* directory) {
-        //auto directoryAddress = reinterpret_cast<uintptr_t>(static_cast<void*>(directory));
         auto directoryAddress = directory->pageTableAddresses[1023] & ~0x3ff;
         
         asm("movl %%eax, %%CR3 \n"
@@ -70,25 +40,26 @@ namespace Memory {
         return physicalPage;
     }
 
-    uintptr_t VirtualMemoryManager::allocatePages(uint32_t count) {
-        /*auto physicalAddress = physicalManager.allocatePage(1);
-        map(virtualAddress, physicalAddress);
-        physicalManager.finishAllocation(virtualAddress, 1);*/
-
+    uintptr_t VirtualMemoryManager::allocatePages(uint32_t count, uintptr_t startingVirtualAddress) {
         /*
         mark nextAddress -> nextAddress + PageSize * count in the directory
         */
         //TODO: use avl tree to assign virtual address
-        auto startingAddress = nextAddress;
-        auto virtualAddress = nextAddress;
+        uintptr_t startingAddress, virtualAddress;
+
+        if (startingVirtualAddress != 0) {
+            startingAddress = startingVirtualAddress;
+            virtualAddress = startingVirtualAddress;
+        }
+        else {
+            startingAddress = nextAddress;
+            virtualAddress = nextAddress;
+        }
+
         nextAddress += PageSize * count;
 
         for(uint32_t i = 0; i < count; i++) {
-            auto page = physicalManager.allocatePage(1);
-            
-            //table = static_cast<PageTable*>(reinterpret_cast<void*>(page));
-            //memset(table, 0, PageSize);
-
+            //auto page = physicalManager.allocatePage(1);
             auto directoryIndex = virtualAddress >> 22;
 
             if (directory->pageTableAddresses[directoryIndex] == 0) {
@@ -96,24 +67,25 @@ namespace Memory {
                 nextAddress += PageSize;
             }
 
-            //auto pageTableAddress = directory->pageTableAddresses[directoryIndex] & 0xFFFFF000;
-            auto pageTableAddress = 0xFFC00000 + PageSize * directoryIndex;
+            /*auto pageTableAddress = 0xFFC00000 + PageSize * directoryIndex;
             auto pageTable = static_cast<PageTable*>(reinterpret_cast<void*>(pageTableAddress));
 
             auto tableIndex = (virtualAddress >> 12) & 0x3FF;
             //should present be 0 here?
-            pageTable->pageAddresses[tableIndex] = page | 3; //page | 3;
+            pageTable->pageAddresses[tableIndex] = page | 3; */
 
             virtualAddress += PageSize;
         }
 
+        //TODO: add dirty flag to check if this is necessary
         updateCR3Address(directory);
 
         return startingAddress;
     }
 
-    void VirtualMemoryManager::map(uintptr_t virtualAddress, uintptr_t physicalAddress, uint32_t pageCount) {
+    void VirtualMemoryManager::map_unpaged(uintptr_t virtualAddress, uintptr_t physicalAddress, uint32_t pageCount) {
         
+        allocatePages(pageCount, virtualAddress);
 
         for (auto i = 0u; i < pageCount; i++) {
             auto directoryIndex = virtualAddress >> 22;
@@ -122,9 +94,6 @@ namespace Memory {
             
             auto tableIndex = (virtualAddress >> 12) & 0x3FF;
             pageTable->pageAddresses[tableIndex] = physicalAddress | 3;
-
-            //printf("[VMM] Mapped %d at %d in dir: %d, table: %d\n", 
-            //    physicalAddress, virtualAddress, directoryIndex, tableIndex);
 
             virtualAddress += PageSize;
             physicalAddress += PageSize;
@@ -135,8 +104,24 @@ namespace Memory {
         }
     }
 
+    void VirtualMemoryManager::map(uintptr_t virtualAddress, uintptr_t physicalAddress) {
+        
+        auto directoryIndex = virtualAddress >> 22;
+        auto pageTableAddress = 0xFFC00000 + PageSize * directoryIndex;
+        auto pageTable = static_cast<PageTable*>(reinterpret_cast<void*>(pageTableAddress));
+        auto tableIndex = (virtualAddress >> 12) & 0x3FF;
+        //should present be 0 here?
+        pageTable->pageAddresses[tableIndex] = physicalAddress | 3; 
+
+        virtualAddress += PageSize;
+        physicalAddress += PageSize;
+
+        if (virtualAddress > nextAddress) {
+            nextAddress = virtualAddress;
+        }
+    }
+
     void VirtualMemoryManager::activate() {
-        //auto directoryAddress = reinterpret_cast<uintptr_t>(static_cast<void*>(&directory));
         auto directoryAddress = reinterpret_cast<uintptr_t>(static_cast<void*>(directory));
 
         asm("movl %%eax, %%CR3 \n"

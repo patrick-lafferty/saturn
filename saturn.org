@@ -30,3 +30,31 @@ implemented basic printf with %c, %s, %d, %x, %o supported
 * Step 3: IDT
 
 note: objdump is really helpful
+
+cpuid_vendor values:
+eax: 4, ebx: 0x756e6547, ecx: 6c65746e, edx: 49656e69
+
+* GDB:
+
+x/20d address
+s
+n
+si
+info registers
+x/i $pc
+
+* Step 4: Paging
+
+got basic paging to work. so far:
+create PageDirectory, PageTables. Identity map from 0 to kernelENd
+Can allocate a page after paging enabled and then access it
+
+next steps:
+** remove/refactor kernel page table hardcoding
+** physical page allocation should happen in page fault handler
+remove the actual individual *Page* allocations, but keep the allocations
+for page tables and directories
+** page fault handler
+*** detect if its an invalid memory access, or an unallocated one
+*** allocate physical pages on demand
+** switch to higher half kernel
