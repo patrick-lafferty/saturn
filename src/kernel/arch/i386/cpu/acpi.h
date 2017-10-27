@@ -44,5 +44,5 @@ namespace CPU {
     } __attribute__((packed));
 
     SystemDescriptionTableHeader findSDT(uintptr_t address);
-    bool verifySDTChecksum(const SystemDescriptionTableHeader& sdt);
+    bool verifySDTChecksum(SystemDescriptionTableHeader* p);//const SystemDescriptionTableHeader& sdt);
 }

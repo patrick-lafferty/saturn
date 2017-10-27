@@ -67,7 +67,7 @@ void handlePageFault(uintptr_t virtualAddress) {
         while(true){}  
     }
     else {
-        printf("[IDT] Illegal Memory Access\n");     
+        printf("[IDT] Illegal Memory Access: %x\n", virtualAddress);     
         while(true){}   
     }
 }

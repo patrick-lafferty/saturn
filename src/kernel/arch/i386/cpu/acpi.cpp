@@ -50,8 +50,21 @@ namespace CPU {
         return *static_cast<SystemDescriptionTableHeader*>(ptr);
     }
 
-    bool verifySDTChecksum(const SystemDescriptionTableHeader& sdt) {
-        uint32_t check = sdt.checksum;
+    bool verifySDTChecksum(SystemDescriptionTableHeader* p) {//const SystemDescriptionTableHeader& sdt) {
+
+        auto ptr = static_cast<unsigned char*>(static_cast<void*>(p));//(&sdt));
+
+        auto l = p->length;
+        uint8_t c = 0;
+        for (int i = 0; i < l; i++) {
+            c += ptr[i];
+        }
+
+        printf("checksum: %d\n", c);
+
+        return c == 0;
+
+        /*uint32_t check = sdt.checksum;
 
         for(int i = 0; i < 4; i++) {
             check += sdt.signature[i];
@@ -83,6 +96,6 @@ namespace CPU {
             check += *intPtr++;
         }
 
-        return (check & 0xFF) == 0;
+        return (check & 0xFF) == 0;*/
     }
 }
