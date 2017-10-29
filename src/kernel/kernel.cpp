@@ -16,20 +16,6 @@ extern uint32_t __kernel_memory_end;
 
 void acpi_stuff() {
     auto rsdp = CPU::findRSDP();
-    /*char sig[9];
-    memcpy(sig, rsdp.signature, 8);
-    sig[8] = '\0';
-    printf("RSDP.signature: %s\n", sig);
-    printf("RSDP.checksum: %d\n", rsdp.checksum);
-    memset(sig, '\0', 8);
-    memcpy(sig, rsdp.oemid, 6);
-    printf("RSDP.oemid: %s\n", sig);
-    printf("RSDP.revision: %d\n", rsdp.revision);
-    printf("RSDP.rsdtAddress: %x\n", rsdp.rsdtAddress);*/
-    /*printf("RSDP.length: %d\n", rsdp.length);
-    printf("RSDP.xsdtAddressLow: %d\n", rsdp.xsdtAddress & 0xffffffff);
-    printf("RSDP.xsdtAddressHigh: %d\n", (rsdp.xsdtAddress & 0xffffffff00000000) >> 32);
-    printf("RSDP.extendedChecksum: %d\n", rsdp.extendedChecksum);*/
 
     if (verifyRSDPChecksum(rsdp)) {
         printf("\nRSDP Checksum validated\n");
@@ -38,29 +24,11 @@ void acpi_stuff() {
         printf("\nChecksum invalid\n");
     }
 
-    //auto systemDescriptionTable = CPU::findSDT(rsdp.rsdtAddress);
-    auto ptr = static_cast<CPU::SystemDescriptionTableHeader*>(reinterpret_cast<void*>(rsdp.rsdtAddress));
+    auto rootSystemHeader = CPU::getRootSystemHeader(rsdp.rsdtAddress);
 
-    //char sig[9];
-    /*memcpy(sig, systemDescriptionTable.signature, 4);
-    sig[4] = '\0';
-    printf("SDT.signature: %s\n", sig);
-    printf("SDT.length: %d\n", systemDescriptionTable.length);
-    printf("SDT.revision: %d\n", systemDescriptionTable.revision);
-    printf("SDT.checksum: %d\n", systemDescriptionTable.checksum);
-    memset(sig, '\0', 9);
-    memcpy(sig, systemDescriptionTable.oemid, 6);
-    printf("SDT.oemid: %s\n", sig);
-    memset(sig, '\0', 9);
-    memcpy(sig, systemDescriptionTable.oemTableId, 8);
-    printf("SDT.oemTableId: %s\n", sig);
-    memset(sig, '\0', 9);*/
-    //memcpy(sig, &systemDescriptionTable.creatorId, 4);
-    //printf("SDT.creatorId: %s\n", sig);
-    //printf("SDT.creatorRevision: %d\n", systemDescriptionTable.creatorRevision);
-
-    if (verifySDTChecksum(ptr)) {//systemDescriptionTable)) {
+    if (verifySystemHeaderChecksum(rootSystemHeader)) {
         printf("\nSDT Checksum validated\n");
+        getAPICHeader(rootSystemHeader, (rootSystemHeader->length - sizeof(CPU::SystemDescriptionTableHeader)) / 4);
     }
     else {
         printf("\nChecksum invalid\n");

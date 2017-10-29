@@ -44,58 +44,45 @@ namespace CPU {
     /*
     System Description Table
     */
-    SystemDescriptionTableHeader findSDT(uintptr_t address) {
+    SystemDescriptionTableHeader* getRootSystemHeader(uintptr_t address) {
         auto ptr = reinterpret_cast<void*>(address);
         
-        return *static_cast<SystemDescriptionTableHeader*>(ptr);
+        return static_cast<SystemDescriptionTableHeader*>(ptr);
     }
 
-    bool verifySDTChecksum(SystemDescriptionTableHeader* p) {//const SystemDescriptionTableHeader& sdt) {
+    bool verifySystemHeaderChecksum(SystemDescriptionTableHeader* p) {
 
-        auto ptr = static_cast<unsigned char*>(static_cast<void*>(p));//(&sdt));
+        auto ptr = static_cast<unsigned char*>(static_cast<void*>(p));
 
         auto l = p->length;
         uint8_t c = 0;
-        for (int i = 0; i < l; i++) {
+        for (auto i = 0u; i < l; i++) {
             c += ptr[i];
         }
 
-        printf("checksum: %d\n", c);
-
         return c == 0;
+    }
 
-        /*uint32_t check = sdt.checksum;
+    SystemDescriptionTableHeader* getAPICHeader(SystemDescriptionTableHeader* rootSystemHeader, uint32_t entryCount) {
+        auto ptr = reinterpret_cast<uintptr_t*>(rootSystemHeader);
+        ptr += sizeof(SystemDescriptionTableHeader) / 4;
 
-        for(int i = 0; i < 4; i++) {
-            check += sdt.signature[i];
+        for (auto i = 0u; i < entryCount; i++) {
+            auto address = *(ptr + i);
+            auto header = static_cast<SystemDescriptionTableHeader*>(reinterpret_cast<void*>(address));
+
+            if (memcmp(header, "APIC", 4) == 0) {
+                printf("[ACPI] Found APIC header at %x\n", header);
+                return header;
+            }
+            else {
+                char s[5];
+                memcpy(s, header->signature, 4);
+                s[4] = '\0';
+                printf("found %s header at %x\n", s, header);
+            }
         }
 
-        check += sdt.length;
-        check += sdt.revision;
-
-        for (int i = 0; i < 6; i++) {
-            check += sdt.oemid[i];
-        }
-
-        for (int i = 0; i < 8; i++) {
-            check += sdt.oemTableId[i];
-        }
-
-        check += sdt.oemRevision;
-        check += sdt.creatorId;
-        check += sdt.creatorRevision;
-
-        int entryArrayLength = (sdt.length - sizeof(SystemDescriptionTableHeader)) / 4;
-        printf("Entry array length: %d\n", entryArrayLength);
-        
-        const void* ptr = static_cast<const void*>(&sdt);
-        auto intPtr = static_cast<const int*>(ptr);
-        intPtr += sizeof(SystemDescriptionTableHeader);
-
-        for(int i = 0; i < entryArrayLength; i++) {
-            check += *intPtr++;
-        }
-
-        return (check & 0xFF) == 0;*/
+        return rootSystemHeader;
     }
 }

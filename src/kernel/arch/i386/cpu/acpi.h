@@ -10,10 +10,6 @@ namespace CPU {
         uint8_t oemid[6];
         uint8_t revision;
         uint32_t rsdtAddress;
-        /*uint32_t length;
-        uint64_t xsdtAddress;
-        uint8_t extendedChecksum;
-        uint8_t reserved[3];*/
     } __attribute__((packed));
 
     RootSystemDescriptionPointer findRSDP();
@@ -43,6 +39,8 @@ namespace CPU {
         uint32_t creatorRevision;
     } __attribute__((packed));
 
-    SystemDescriptionTableHeader findSDT(uintptr_t address);
-    bool verifySDTChecksum(SystemDescriptionTableHeader* p);//const SystemDescriptionTableHeader& sdt);
+    SystemDescriptionTableHeader* getRootSystemHeader(uintptr_t address);
+    bool verifySystemHeaderChecksum(SystemDescriptionTableHeader* p);
+    
+    SystemDescriptionTableHeader* getAPICHeader(SystemDescriptionTableHeader* rootSystemHeader, uint32_t entryCount);
 }
