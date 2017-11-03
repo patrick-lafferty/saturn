@@ -4,6 +4,7 @@
 #include <cpu/cpuid.h>
 #include <cpu/acpi.h>
 #include <cpu/sse.h>
+#include <cpu/apic.h>
 #include <string.h>
 #include <memory/physical_memory_manager.h>
 #include <memory/virtual_memory_manager.h>
@@ -18,20 +19,28 @@ void acpi_stuff() {
     auto rsdp = CPU::findRSDP();
 
     if (verifyRSDPChecksum(rsdp)) {
-        printf("\nRSDP Checksum validated\n");
+        //printf("\n[ACPI] RSDP Checksum validated\n");
     }
     else {
-        printf("\nChecksum invalid\n");
+        //printf("\n[ACPI] RSDP Checksum invalid\n");
     }
 
     auto rootSystemHeader = CPU::getRootSystemHeader(rsdp.rsdtAddress);
 
     if (verifySystemHeaderChecksum(rootSystemHeader)) {
-        printf("\nSDT Checksum validated\n");
-        getAPICHeader(rootSystemHeader, (rootSystemHeader->length - sizeof(CPU::SystemDescriptionTableHeader)) / 4);
+        //printf("\n[ACPI] SDT Checksum validated\n");
+        auto apicHeader = getAPICHeader(rootSystemHeader, (rootSystemHeader->length - sizeof(CPU::SystemDescriptionTableHeader)) / 4);
+
+        if (verifySystemHeaderChecksum(apicHeader)) {
+            auto apicStartingAddress = reinterpret_cast<uintptr_t>(apicHeader);
+            apicStartingAddress += sizeof(CPU::SystemDescriptionTableHeader);
+            
+            APIC::loadAPICStructures(apicStartingAddress, apicHeader->length - sizeof(CPU::SystemDescriptionTableHeader));
+
+        }
     }
     else {
-        printf("\nChecksum invalid\n");
+        printf("\n[ACPI] Root Checksum invalid\n");
     }
 }
 
@@ -56,9 +65,11 @@ extern "C" int kernel_main(MultibootInformation* info) {
 
     //virtualMemManager.activate();
 
-    printf("Paging Enabled\n");
-
+    //printf("Paging Enabled\n");
+    
     acpi_stuff();
+
+    printf("Finished loading, halting now\n");
 
     return 0;
 }

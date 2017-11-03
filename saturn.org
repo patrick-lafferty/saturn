@@ -42,6 +42,7 @@ n
 si
 info registers
 x/i $pc
+fin
 
 * Step 4: Paging
 

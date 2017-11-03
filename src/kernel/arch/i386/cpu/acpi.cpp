@@ -12,7 +12,7 @@ namespace CPU {
 
         for (auto ptr = start; ptr < end; ptr += 16) {
             if (memcmp(ptr, "RSD PTR ", 8) == 0) {
-                printf("Found RDSP at: %x\n", ptr);
+                //printf("[ACPI] Found RDSP at: %x\n", ptr);
                 return *reinterpret_cast<RootSystemDescriptionPointer*>(ptr);
             }
         }
@@ -72,14 +72,14 @@ namespace CPU {
             auto header = static_cast<SystemDescriptionTableHeader*>(reinterpret_cast<void*>(address));
 
             if (memcmp(header, "APIC", 4) == 0) {
-                printf("[ACPI] Found APIC header at %x\n", header);
+                printf("[ACPI] Found APIC header at %x, length: %d\n", header, header->length);
                 return header;
             }
             else {
                 char s[5];
                 memcpy(s, header->signature, 4);
                 s[4] = '\0';
-                printf("found %s header at %x\n", s, header);
+                printf("[ACPI] Found %s header at %x\n", s, header);
             }
         }
 
