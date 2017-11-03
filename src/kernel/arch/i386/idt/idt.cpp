@@ -36,6 +36,24 @@ namespace IDT {
         idt[19] = encodeEntry(reinterpret_cast<uint32_t>(&isr19), 0x08);
         idt[20] = encodeEntry(reinterpret_cast<uint32_t>(&isr20), 0x08);
 
+        //remapped PIC, IRQs 0-15 = 32-47
+        idt[32] = encodeEntry(reinterpret_cast<uint32_t>(&isr32), 0x08);
+        idt[33] = encodeEntry(reinterpret_cast<uint32_t>(&isr33), 0x08);
+        idt[34] = encodeEntry(reinterpret_cast<uint32_t>(&isr34), 0x08);
+        idt[35] = encodeEntry(reinterpret_cast<uint32_t>(&isr35), 0x08);
+        idt[36] = encodeEntry(reinterpret_cast<uint32_t>(&isr36), 0x08);
+        idt[37] = encodeEntry(reinterpret_cast<uint32_t>(&isr37), 0x08);
+        idt[38] = encodeEntry(reinterpret_cast<uint32_t>(&isr38), 0x08);
+        idt[39] = encodeEntry(reinterpret_cast<uint32_t>(&isr39), 0x08);
+        idt[40] = encodeEntry(reinterpret_cast<uint32_t>(&isr40), 0x08);
+        idt[41] = encodeEntry(reinterpret_cast<uint32_t>(&isr41), 0x08);
+        idt[42] = encodeEntry(reinterpret_cast<uint32_t>(&isr42), 0x08);
+        idt[43] = encodeEntry(reinterpret_cast<uint32_t>(&isr43), 0x08);
+        idt[44] = encodeEntry(reinterpret_cast<uint32_t>(&isr44), 0x08);
+        idt[45] = encodeEntry(reinterpret_cast<uint32_t>(&isr45), 0x08);
+        idt[46] = encodeEntry(reinterpret_cast<uint32_t>(&isr46), 0x08);
+        idt[47] = encodeEntry(reinterpret_cast<uint32_t>(&isr47), 0x08);
+
         loadIDT();
     }
     

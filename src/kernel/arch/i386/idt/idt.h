@@ -49,3 +49,21 @@ extern "C" void isr17();
 extern "C" void isr18();
 extern "C" void isr19();
 extern "C" void isr20();
+
+//remapped IRQs
+extern "C" void isr32();
+extern "C" void isr33();
+extern "C" void isr34();
+extern "C" void isr35();
+extern "C" void isr36();
+extern "C" void isr37();
+extern "C" void isr38();
+extern "C" void isr39();
+extern "C" void isr40();
+extern "C" void isr41();
+extern "C" void isr42();
+extern "C" void isr43();
+extern "C" void isr44();
+extern "C" void isr45();
+extern "C" void isr46();
+extern "C" void isr47();

@@ -41,6 +41,25 @@ InterruptServiceRoutine_Errorless 18 ;machine check
 InterruptServiceRoutine_Errorless 19 ;simd floating-point excpetion
 InterruptServiceRoutine_Errorless 20 ;virtualization exception
 
+;remapped IRQs
+
+InterruptServiceRoutine_Errorless 32; IRQ 0
+InterruptServiceRoutine_Errorless 33; IRQ 1
+InterruptServiceRoutine_Errorless 34; IRQ 2
+InterruptServiceRoutine_Errorless 35; IRQ 3
+InterruptServiceRoutine_Errorless 36; IRQ 4
+InterruptServiceRoutine_Errorless 37; IRQ 5
+InterruptServiceRoutine_Errorless 38; IRQ 6
+InterruptServiceRoutine_Errorless 39; IRQ 7
+InterruptServiceRoutine_Errorless 40; IRQ 8
+InterruptServiceRoutine_Errorless 41; IRQ 9
+InterruptServiceRoutine_Errorless 42; IRQ 10
+InterruptServiceRoutine_Errorless 43; IRQ 11
+InterruptServiceRoutine_Errorless 44; IRQ 12
+InterruptServiceRoutine_Errorless 45; IRQ 13
+InterruptServiceRoutine_Errorless 46; IRQ 14
+InterruptServiceRoutine_Errorless 47; IRQ 15
+
 extern interruptHandler
 type interruptHandler, @function
 
