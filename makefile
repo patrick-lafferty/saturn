@@ -35,6 +35,7 @@ ARCH_OBJS = \
 	$(ARCHDIR)/cpu/cpuid_impl.o \
 	$(ARCHDIR)/cpu/acpi.o \
 	$(ARCHDIR)/cpu/initialize_sse.o \
+	$(ARCHDIR)/cpu/pic.o \
 	$(ARCHDIR)/cpu/apic.o \
 	$(ARCHDIR)/memory/scan_memory.o \
 	$(ARCHDIR)/memory/physical_memory_manager.o \
