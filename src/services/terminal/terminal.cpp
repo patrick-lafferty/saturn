@@ -1,4 +1,5 @@
 #include "terminal.h"
+#include <string.h>
 
 using namespace VGA;
 
@@ -27,5 +28,12 @@ void Terminal::writeCharacter(uint8_t character, uint8_t colour) {
     if (column >= Width) {
         column = 0;
         row++;
+    }
+
+    if (row > Height) {
+        auto offset = sizeof(uint16_t) * Width * (Height - 1);
+        memcpy(buffer, buffer + Width, offset);
+        memset(buffer + offset, 0, offset);
+        row--;
     }
 }
