@@ -60,6 +60,9 @@ InterruptServiceRoutine_Errorless 45; IRQ 13
 InterruptServiceRoutine_Errorless 46; IRQ 14
 InterruptServiceRoutine_Errorless 47; IRQ 15
 
+;APIC
+InterruptServiceRoutine_Errorless 48; APIC IRQ 0
+
 extern interruptHandler
 type interruptHandler, @function
 

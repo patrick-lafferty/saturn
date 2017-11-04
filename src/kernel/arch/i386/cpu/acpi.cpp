@@ -72,14 +72,14 @@ namespace CPU {
             auto header = static_cast<SystemDescriptionTableHeader*>(reinterpret_cast<void*>(address));
 
             if (memcmp(header, "APIC", 4) == 0) {
-                printf("[ACPI] Found APIC header at %x, length: %d\n", header, header->length);
+                //printf("[ACPI] Found APIC header at %x, length: %d\n", header, header->length);
                 return header;
             }
             else {
                 char s[5];
                 memcpy(s, header->signature, 4);
                 s[4] = '\0';
-                printf("[ACPI] Found %s header at %x\n", s, header);
+                //printf("[ACPI] Found %s header at %x\n", s, header);
             }
         }
 

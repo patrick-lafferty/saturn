@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <gdt/gdt.h>
 #include <idt/idt.h>
+#include <cpu/pic.h>
 #include <cpu/cpuid.h>
 #include <cpu/acpi.h>
 #include <cpu/sse.h>
@@ -49,6 +50,7 @@ extern "C" int kernel_main(MultibootInformation* info) {
     GDT::setup();
     IDT::setup();
     initializeSSE();
+    PIC::disable();
 
     PhysicalMemoryManager physicalMemManager {info};
     VirtualMemoryManager virtualMemManager {physicalMemManager};
@@ -62,14 +64,22 @@ extern "C" int kernel_main(MultibootInformation* info) {
     auto kernelStartAddress = reinterpret_cast<uint32_t>(&__kernel_memory_start);
     auto kernelEndAddress = reinterpret_cast<uint32_t>(&__kernel_memory_end);
     virtualMemManager.map_unpaged(kernelStartAddress, kernelStartAddress, 1 + (kernelEndAddress - kernelStartAddress) / 0x1000, pageFlags);
+    virtualMemManager.map_unpaged(0x7fe0000, 0x7fe0000, (0x8fe0000 - 0x7fe0000) / 0x1000, pageFlags);
+    virtualMemManager.map_unpaged(0xfec00000, 0xfec00000, (0xfef00000 - 0xfec00000) / 0x1000, pageFlags | 0b10000);
 
-    //virtualMemManager.activate();
+    virtualMemManager.activate();
 
     //printf("Paging Enabled\n");
     
     acpi_stuff();
 
+    asm("sti");
+
     printf("Finished loading, halting now\n");
+
+    while(true) {
+        asm("hlt");
+    }
 
     return 0;
 }

@@ -67,3 +67,6 @@ extern "C" void isr44();
 extern "C" void isr45();
 extern "C" void isr46();
 extern "C" void isr47();
+
+//APIC
+extern "C" void isr48();

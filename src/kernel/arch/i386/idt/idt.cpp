@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <memory/physical_memory_manager.h>
 #include <memory/virtual_memory_manager.h>
+#include <cpu/apic.h>
 
 IDT::Entry idt[256];
 IDT::EntryPointer idtPointer;
@@ -54,6 +55,9 @@ namespace IDT {
         idt[46] = encodeEntry(reinterpret_cast<uint32_t>(&isr46), 0x08);
         idt[47] = encodeEntry(reinterpret_cast<uint32_t>(&isr47), 0x08);
 
+        //APIC
+        idt[48] = encodeEntry(reinterpret_cast<uint32_t>(&isr48), 0x08);
+
         loadIDT();
     }
     
@@ -99,4 +103,33 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
 
         handlePageFault(virtualAddress);        
     }    
+    else if (frame->interruptNumber == 48) {
+
+        uint8_t full {1};
+        uint16_t statusRegister {0x64};
+        uint16_t dataPort {0x60};
+
+        printf("[IDT] Keyboard ");
+
+        while (full & 0x1) {
+            uint8_t c;
+            asm("inb %1, %0"
+                : "=a" (c)
+                : "Nd" (dataPort));
+
+            printf("%d ", c);
+
+            asm("inb %1, %0"
+                : "=a" (full)
+                : "Nd" (statusRegister));
+
+        }
+
+        printf("\n");
+
+        APIC::writeLocalAPICRegister(0xB0, 0);
+    }
+    else {
+        printf("[IDT] Unhandled interrupt %d\n", frame->interruptNumber);
+    }
 }
