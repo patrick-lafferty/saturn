@@ -36,6 +36,7 @@ void acpi_stuff() {
             auto apicStartingAddress = reinterpret_cast<uintptr_t>(apicHeader);
             apicStartingAddress += sizeof(CPU::SystemDescriptionTableHeader);
             
+            APIC::initialize();
             APIC::loadAPICStructures(apicStartingAddress, apicHeader->length - sizeof(CPU::SystemDescriptionTableHeader));
 
         }

@@ -62,6 +62,7 @@ InterruptServiceRoutine_Errorless 47; IRQ 15
 
 ;APIC
 InterruptServiceRoutine_Errorless 48; APIC IRQ 0
+InterruptServiceRoutine_Errorless 255; APIC spurious interrupt
 
 extern interruptHandler
 type interruptHandler, @function

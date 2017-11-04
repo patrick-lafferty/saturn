@@ -14,7 +14,7 @@ MARCH = "--target=i686-pc-none-elf -march=i686"
 WARNINGS = -Wall -Wextra 
 CXXPATHS = -isysroot sysroot/ -iwithsysroot /system/include -I src -I src/libc/include -I src/kernel -I src/kernel/arch/i386
 FLAGS = -fno-omit-frame-pointer -ffreestanding -fno-exceptions -fno-rtti
-CXXFLAGS = -O0 $(FLAGS) -g $(MARCH) $(DEPENDENCYFLAGS) $(WARNINGS) -std=c++14  $(CXXPATHS) -masm=intel
+CXXFLAGS = -O0 $(FLAGS) -g $(MARCH) $(DEPENDENCYFLAGS) $(WARNINGS) -std=c++1z  $(CXXPATHS) -masm=intel
 
 LD = $(CROSS_COMPILER_PATH)/i686-elf-ld
 LDFLAGS = -L=system/lib --sysroot=sysroot/ -g

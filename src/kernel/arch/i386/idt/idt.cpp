@@ -57,6 +57,7 @@ namespace IDT {
 
         //APIC
         idt[48] = encodeEntry(reinterpret_cast<uint32_t>(&isr48), 0x08);
+        idt[255] = encodeEntry(reinterpret_cast<uint32_t>(&isr255), 0x08);
 
         loadIDT();
     }
@@ -127,7 +128,7 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
 
         printf("\n");
 
-        APIC::writeLocalAPICRegister(0xB0, 0);
+        APIC::signalEndOfInterrupt();
     }
     else {
         printf("[IDT] Unhandled interrupt %d\n", frame->interruptNumber);

@@ -3,9 +3,49 @@
 
 namespace APIC {
     void writeLocalAPICRegister(uint32_t offset, uint32_t value);
+    void signalEndOfInterrupt();
 
     void initialize();
     void loadAPICStructures(uintptr_t address, uint32_t byteLength);
+
+    enum class Registers {
+        TaskPriority = 0x80,
+        EndOfInterrupt = 0xB0,
+        LogicalDestination = 0xD0,
+        DestinationFormat = 0xE0,
+        SpuriousInterruptVector = 0xF0,
+        InterruptCommandLower = 0x300,
+        InterruptCommandHigher = 0x310,
+        LVT_Timer = 0x320,
+        LINT0 = 0x350,
+        LINT1 = 0x360,
+        LVT_Error = 0x370,
+        InitialCount = 0x380,
+        CurrentCount= 0x390,
+        DivideConfiguration = 0x3E0,
+    };
+
+    enum class LVT_DeliveryMode {
+        Fixed = 0b0000'0000'0000,
+        SMI = 0b0100'0000'0000,
+        NMI = 0b0100'0000'0000,
+        ExtINT = 0b0111'0000'0000,
+        INIT = 0b0101'0000'0000
+    };
+
+    enum class LVT_Trigger {
+        Edge = 0x0000,
+        Level = 0x8000
+    };
+
+    enum class LVT_Mask {
+        EnableInterrupt = 0x0,
+        DisableInterrupt = 0x10000
+    };
+
+    template<typename... Arg> uint32_t combineFlags(Arg... args) {
+        return (static_cast<uint32_t>(args) | ...);
+    }
 
     enum class DescriptionFlags {
         PCAT_COMPAT = 0x1
