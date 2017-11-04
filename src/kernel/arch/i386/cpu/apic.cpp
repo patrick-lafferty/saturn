@@ -21,16 +21,93 @@ namespace APIC {
         *ptr = value;
     }
 
+    uint32_t readLocalAPICRegister(Registers apicRegister) {
+        uint32_t volatile* ptr = reinterpret_cast<uint32_t volatile*>(0xFEE00000 + static_cast<uint32_t>(apicRegister));
+        return *ptr;
+    }
+
     void signalEndOfInterrupt() {
         writeLocalAPICRegister(Registers::EndOfInterrupt, 0);
+    }
+
+    void setupRTC(bool enabled) {
+        uint16_t rtcIndexPort {0x70};
+        uint16_t rtcIOPort {0x71};
+        uint8_t statusRegisterB {0};
+
+        auto setIndex = [=](uint8_t index) {
+            asm("out %0, %1"
+                : //no output
+                : "a" (index), "Nd" (rtcIndexPort));
+        };
+
+        auto writePort = [=](uint8_t value) {
+            asm("out %0, %1"
+                : //no output
+                : "a" (value), "Nd" (rtcIOPort));
+        };
+
+        auto readPort = [=]() {
+            uint8_t result;
+            asm("inb %1, %0"
+                : "=a" (result)
+                : "Nd" (rtcIOPort));
+
+            return result;
+        };
+        
+        setIndex(0x8B);
+        statusRegisterB = readPort();
+        setIndex(0x8B);
+
+        if (enabled) {
+            statusRegisterB |= 0x40;
+        }
+        else {
+            statusRegisterB &= ~0x40;
+        }
+
+        writePort(statusRegisterB);
+
+        setIndex(0x8A);
+        auto statusRegisterA = readPort();
+        setIndex(0x8A);
+        writePort((statusRegisterA & 0xF0) | 0xD);
+        
+    }
+
+    void setupAPICTimer() {
+
+        writeLocalAPICRegister(Registers::LVT_Timer, combineFlags(
+            52,
+            LVT_TimerMode::OneShot
+        ));
+
+        writeLocalAPICRegister(Registers::DivideConfiguration, combineFlags(DivideConfiguration::By16));
+        writeLocalAPICRegister(Registers::InitialCount, 0xFFFFFFFF);
+
+        setupRTC(true);
+    }
+
+    void calibrateAPICTimer() {
+
+        writeLocalAPICRegister(Registers::LVT_Timer, combineFlags(LVT_Mask::DisableInterrupt));
+        uint32_t ticks = 0xFFFFFFFF - readLocalAPICRegister(Registers::CurrentCount);
+        setupRTC(false);
+        ticks *= 8;
+        writeLocalAPICRegister(Registers::LVT_Timer, combineFlags(
+            52,
+            LVT_TimerMode::Periodic
+        )); 
+        writeLocalAPICRegister(Registers::DivideConfiguration, combineFlags(DivideConfiguration::By16));
+
+        writeLocalAPICRegister(Registers::InitialCount, ticks);
     }
 
     void initialize() {
         /*
         The following values/descriptions are from Intel 64 and IA-32 
         Architectures Software Developer Manual, Volume 3: System Programming Guide
-
-
 
         local apic state after power up
         
@@ -71,6 +148,7 @@ namespace APIC {
         Bit 14: Remote IRR [Read Only]
         Bit 15: Trigger Mode (0: Edge, 1: Level)
         Bit 16: Mask (0: enables reception of the interrupt, 1 inhibits reception)
+        Bits 17-31: Reserved
 
         LINT1:
         -Trigger mode should always be 0 (edge sensitive), level-sensitive interrupts are not supported for LINT1
@@ -115,7 +193,7 @@ namespace APIC {
 
         Value after reset: 0
         */
-        writeLocalAPICRegister(Registers::DivideConfiguration, 0x0);
+        writeLocalAPICRegister(Registers::DivideConfiguration, combineFlags(DivideConfiguration::By2));
 
         /*
         Initial Count, offset 0x380
@@ -333,7 +411,15 @@ namespace APIC {
                 IO_TriggerMode::Edge
             ), 0);
 
-        }
+            writeIOAPICRegister(ioAPICAddress, 8, combineFlags(
+                51,
+                IO_DeliveryMode::Fixed,
+                IO_DestinationMode::Physical,
+                IO_Polarity::ActiveHigh,
+                IO_TriggerMode::Edge
+            ), 0);
 
+        }
+        setupAPICTimer();
     }
 }

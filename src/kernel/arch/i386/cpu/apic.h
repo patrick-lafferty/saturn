@@ -7,6 +7,7 @@ namespace APIC {
 
     void initialize();
     void loadAPICStructures(uintptr_t address, uint32_t byteLength);
+    void calibrateAPICTimer();
 
     enum class Registers {
         TaskPriority = 0x80,
@@ -31,6 +32,23 @@ namespace APIC {
         NMI = 0b0100'0000'0000,
         ExtINT = 0b0111'0000'0000,
         INIT = 0b0101'0000'0000
+    };
+
+    enum class LVT_TimerMode {
+        OneShot = 0b000'0000'0000'0000'0000,
+        Periodic = 0b010'0000'0000'0000'0000,
+        TSCDeadline = 0b100'0000'0000'0000'0000,
+    };
+
+    enum class DivideConfiguration {
+        By2 = 0b000,
+        By4 = 0b001,
+        By8 = 0b010,
+        By16 = 0b011,
+        By32 = 0b100,
+        By64 = 0b101,
+        By128 = 0b110,
+        By1 = 0b111,
     };
 
     enum class LVT_Trigger {

@@ -105,7 +105,7 @@ void handlePageFault(uintptr_t virtualAddress) {
         while(true){}   
     }
 }
-
+int seconds = 0;
 void interruptHandler(CPU::InterruptStackFrame* frame) {
 
     if (frame->interruptNumber == 14) {
@@ -140,6 +140,19 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
             }
 
             printf("\n");
+        }
+        else if (frame->interruptNumber == 51) {
+            APIC::calibrateAPICTimer();
+        }
+        else if (frame->interruptNumber == 52) {
+            printf("%d seconds\n", seconds);
+            if (seconds < 60) {
+                seconds++;
+            }
+            else {
+                printf("One minute elapsed\n");
+                seconds = 0;
+            }
         }
         else {
             printf("[IDT] Unhandled APIC IRQ %d\n", frame->interruptNumber);
