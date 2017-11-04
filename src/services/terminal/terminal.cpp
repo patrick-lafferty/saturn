@@ -5,14 +5,27 @@ using namespace VGA;
 
 Terminal::Terminal(uint16_t* buffer) {
     this->buffer = buffer;
-    auto colour = getColour(Colours::LightBlue, Colours::DarkGray);
+
+    bool nightMode = true;
+
+    if (nightMode) {
+        defaultColour = getColour(Colours::White, Colours::Black);
+    }
+    else {
+        defaultColour = getColour(Colours::LightBlue, Colours::DarkGray);
+    }
+    
 
     for (uint32_t y = 0; y < Height; y++) {
         for (uint32_t x = 0; x < Width; x++) {
             auto index = y * Width + x;
-            buffer[index] = prepareCharacter(' ', colour);
+            buffer[index] = prepareCharacter(' ', defaultColour);
         }
     }
+}
+
+void Terminal::writeCharacter(uint8_t character) {
+    writeCharacter(character, defaultColour);
 }
 
 void Terminal::writeCharacter(uint8_t character, uint8_t colour) {
@@ -38,7 +51,7 @@ void Terminal::writeCharacter(uint8_t character, uint8_t colour) {
 
         for (uint32_t x = 0; x < Width; x++) {
             auto index = row * Width + x;
-            buffer[index] = prepareCharacter(' ', getColour(Colours::LightBlue, Colours::DarkGray));
+            buffer[index] = prepareCharacter(' ', defaultColour);
         }
     }
 }

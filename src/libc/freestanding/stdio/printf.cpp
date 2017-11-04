@@ -55,9 +55,9 @@ int printf(const char* format, ...) {
     int charactersWritten = 0;
 
     auto& terminal = Terminal::getInstance();
-    auto colour = getColour(VGA::Colours::LightBlue, VGA::Colours::DarkGray);
+    //auto colour = getColour(VGA::Colours::LightBlue, VGA::Colours::DarkGray);
     auto write = [&](auto c) {
-        terminal.writeCharacter(c, colour);
+        terminal.writeCharacter(c);//, colour);
         charactersWritten++;
     };
 
