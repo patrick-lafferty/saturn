@@ -6,17 +6,17 @@
 #include <services/terminal/vga.h>
 #include <services/terminal/terminal.h>
 
-int printInteger(int i, Terminal& terminal, int base = 10, bool upper = false) {
+int printInteger(uint32_t i, Terminal& terminal, bool isNegative, int base = 10, bool upper = false) {
     char buffer[CHAR_BIT * sizeof(int) - 1];
     char hexDigits[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
         'a', 'b', 'c', 'd', 'e', 'f'};
     int digits {0};
 
-    bool isNegative {i < 0};
+    /*bool isNegative {i < 0};
     
-    if (i < 0) {
+    if (isNegative) {
         i *= -1;
-    }
+    }*/
     
     do {
         buffer[digits] = hexDigits[i % base];
@@ -42,6 +42,15 @@ int printInteger(int i, Terminal& terminal, int base = 10, bool upper = false) {
     }
 
     return charactersWritten;
+}
+
+int printInteger(int32_t i, Terminal& terminal, int base = 10, bool upper = false) {
+    if (i < 0) {
+        return printInteger(i * -1, terminal, true, base, upper);
+    }
+    else {
+        return printInteger(i, terminal, false, base, upper); 
+    }
 }
 
 int printf(const char* format, ...) {
@@ -108,14 +117,21 @@ int printf(const char* format, ...) {
                         }
                         case 'x': {
                             auto i = va_arg(args, int);
-                            charactersWritten += printInteger(i, terminal, 16);   
+                            charactersWritten += printInteger(static_cast<uint32_t>(i), terminal, false, 16);   
 
                             done = true;
                             break;
                         }
                         case 'X': {
                             auto i = va_arg(args, int);
-                            charactersWritten += printInteger(i, terminal, 16, true);
+                            charactersWritten += printInteger(i, terminal, false, 16, true);
+
+                            done = true;
+                            break;
+                        }
+                        case 'u': {
+                            auto i = va_arg(args, int);
+                            charactersWritten += printInteger(static_cast<uint32_t>(i), terminal, false);
 
                             done = true;
                             break;
