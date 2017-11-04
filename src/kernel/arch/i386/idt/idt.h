@@ -70,4 +70,15 @@ extern "C" void isr47();
 
 //APIC
 extern "C" void isr48();
+extern "C" void isr49();
+extern "C" void isr50();
+extern "C" void isr51();
+extern "C" void isr52();
+extern "C" void isr53();
+extern "C" void isr54();
+extern "C" void isr55();
+extern "C" void isr56();
+extern "C" void isr57();
+extern "C" void isr58();
+extern "C" void isr59();
 extern "C" void isr255(); //APIC spurious interrupt

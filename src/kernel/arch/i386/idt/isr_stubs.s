@@ -62,6 +62,17 @@ InterruptServiceRoutine_Errorless 47; IRQ 15
 
 ;APIC
 InterruptServiceRoutine_Errorless 48; APIC IRQ 0
+InterruptServiceRoutine_Errorless 49; APIC IRQ 1
+InterruptServiceRoutine_Errorless 50; APIC IRQ 2
+InterruptServiceRoutine_Errorless 51; APIC IRQ 3
+InterruptServiceRoutine_Errorless 52; APIC IRQ 4
+InterruptServiceRoutine_Errorless 53; APIC IRQ 5
+InterruptServiceRoutine_Errorless 54; APIC IRQ 6
+InterruptServiceRoutine_Errorless 55; APIC IRQ 7
+InterruptServiceRoutine_Errorless 56; APIC IRQ 8
+InterruptServiceRoutine_Errorless 57; APIC IRQ 9
+InterruptServiceRoutine_Errorless 58; APIC IRQ 10
+InterruptServiceRoutine_Errorless 59; APIC IRQ 11
 InterruptServiceRoutine_Errorless 255; APIC spurious interrupt
 
 extern interruptHandler

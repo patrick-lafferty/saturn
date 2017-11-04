@@ -57,6 +57,17 @@ namespace IDT {
 
         //APIC
         idt[48] = encodeEntry(reinterpret_cast<uint32_t>(&isr48), 0x08);
+        idt[49] = encodeEntry(reinterpret_cast<uint32_t>(&isr49), 0x08);
+        idt[50] = encodeEntry(reinterpret_cast<uint32_t>(&isr50), 0x08);
+        idt[51] = encodeEntry(reinterpret_cast<uint32_t>(&isr51), 0x08);
+        idt[52] = encodeEntry(reinterpret_cast<uint32_t>(&isr52), 0x08);
+        idt[53] = encodeEntry(reinterpret_cast<uint32_t>(&isr53), 0x08);
+        idt[54] = encodeEntry(reinterpret_cast<uint32_t>(&isr54), 0x08);
+        idt[55] = encodeEntry(reinterpret_cast<uint32_t>(&isr55), 0x08);
+        idt[56] = encodeEntry(reinterpret_cast<uint32_t>(&isr56), 0x08);
+        idt[57] = encodeEntry(reinterpret_cast<uint32_t>(&isr57), 0x08);
+        idt[58] = encodeEntry(reinterpret_cast<uint32_t>(&isr58), 0x08);
+        idt[59] = encodeEntry(reinterpret_cast<uint32_t>(&isr59), 0x08);
         idt[255] = encodeEntry(reinterpret_cast<uint32_t>(&isr255), 0x08);
 
         loadIDT();
@@ -104,29 +115,35 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
 
         handlePageFault(virtualAddress);        
     }    
-    else if (frame->interruptNumber == 48) {
+    else if (frame->interruptNumber >= 48 && frame->interruptNumber <= 59) {
+        //io apic irq
 
-        uint8_t full {1};
-        uint16_t statusRegister {0x64};
-        uint16_t dataPort {0x60};
+        if (frame->interruptNumber == 49) {
+            uint8_t full {1};
+            uint16_t statusRegister {0x64};
+            uint16_t dataPort {0x60};
 
-        printf("[IDT] Keyboard ");
+            printf("[IDT] Keyboard ");
 
-        while (full & 0x1) {
-            uint8_t c;
-            asm("inb %1, %0"
-                : "=a" (c)
-                : "Nd" (dataPort));
+            while (full & 0x1) {
+                uint8_t c;
+                asm("inb %1, %0"
+                    : "=a" (c)
+                    : "Nd" (dataPort));
 
-            printf("%d ", c);
+                printf("%d ", c);
 
-            asm("inb %1, %0"
-                : "=a" (full)
-                : "Nd" (statusRegister));
+                asm("inb %1, %0"
+                    : "=a" (full)
+                    : "Nd" (statusRegister));
 
+            }
+
+            printf("\n");
         }
-
-        printf("\n");
+        else {
+            printf("[IDT] Unhandled APIC IRQ %d\n", frame->interruptNumber);
+        }
 
         APIC::signalEndOfInterrupt();
     }

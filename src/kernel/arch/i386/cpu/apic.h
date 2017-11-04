@@ -80,6 +80,30 @@ namespace APIC {
         uint32_t systemVectorBase;
     } __attribute__((packed));
 
+    enum class IO_DeliveryMode {
+        Fixed = 0b000'0000'0000,
+        LowestPriority = 0b001'0000'0000,
+        SMI = 0b010'0000'0000,
+        NMI = 0b100'0000'0000,
+        INIT = 0b101'0000'0000,
+        ExtINT = 0b111'0000'0000
+    };
+
+    enum class IO_DestinationMode {
+        Physical = 0b0000'0000'0000,
+        Logical = 0b1000'0000'0000
+    };
+
+    enum class IO_Polarity {
+        ActiveHigh = 0b00'0000'0000'0000,
+        ActiveLow = 0b10'0000'0000'0000
+    };
+
+    enum class IO_TriggerMode {
+        Edge = 0b0000'0000'0000'0000,
+        Level = 0b1000'0000'0000'0000
+    };
+
     struct InterruptSourceOverride {
         uint8_t type;
         uint8_t length;

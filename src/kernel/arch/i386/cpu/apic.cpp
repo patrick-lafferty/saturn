@@ -4,11 +4,16 @@
 
 namespace APIC {
 
-    void writeRegister(uintptr_t address, uint8_t registerIndex, uint32_t value) {
+    void writeIOAPICRegister(uintptr_t address, uint8_t select, uint32_t value) {
         uint32_t volatile* selector = reinterpret_cast<uint32_t volatile*>(address);
         uint32_t volatile* val = reinterpret_cast<uint32_t volatile*>(address + 0x10);
-        *selector = registerIndex;
+        *selector = select;
         *val = value;
+    }
+
+    void writeIOAPICRegister(uintptr_t address, uint8_t registerIndex, uint32_t value, uint8_t destination) {
+        writeIOAPICRegister(address, 0x10 + registerIndex * 2, value);
+        writeIOAPICRegister(address, 0x10 + registerIndex * 2 + 1, destination << 24);
     }
 
     void writeLocalAPICRegister(Registers apicRegister, uint32_t value) {
@@ -255,6 +260,7 @@ namespace APIC {
         }
 
         //printf("[APIC] Bytes remaining: %d, sizes: local %d io %d\n", byteLength, sizeof(LocalAPICHeader), sizeof(IOAPICHeader));
+        uintptr_t ioAPICAddress {0};
 
         while(byteLength > 0) {
             uint8_t type = *ptr;
@@ -276,12 +282,8 @@ namespace APIC {
                         ioAPIC->apicId, ioAPIC->address, ioAPIC->systemVectorBase);
                     byteLength -= sizeof(IOAPICHeader);
                     ptr += sizeof(IOAPICHeader);
-                    
-                    /*for(int i = 0; i < 10; i++) {
-                        writeRegister(ioAPIC->address, 0x10 + i * 2, 20);
-                    }*/
-
-                    writeRegister(ioAPIC->address, 0x10 + 1 * 2, 48);
+                   
+                    ioAPICAddress = ioAPIC->address;
 
                     break;
                 }
@@ -295,6 +297,16 @@ namespace APIC {
                         interruptOverride->flags);
                     byteLength -= sizeof(InterruptSourceOverride);
                     ptr += sizeof(InterruptSourceOverride);
+                    
+                    /*writeIOAPICRegister(ioAPICAddress, interruptOverride->globalSystemInterruptVector, 
+                        combineFlags(
+                            48 + interruptOverride->globalSystemInterruptVector,
+                            IO_DeliveryMode::Fixed,
+                            IO_DestinationMode::Physical,
+                            interruptOverride->flags & 0b01 ? IO_Polarity::ActiveHigh : IO_Polarity::ActiveLow,
+                            interruptOverride->flags & 0b0100 ? IO_TriggerMode::Edge : IO_TriggerMode::Level
+                    ), 0);*/
+
                     break;
                 }
 
@@ -312,6 +324,14 @@ namespace APIC {
                     ptr += length;
                 }
             }
+
+            writeIOAPICRegister(ioAPICAddress, 1, combineFlags(
+                49,
+                IO_DeliveryMode::Fixed,
+                IO_DestinationMode::Physical,
+                IO_Polarity::ActiveHigh,
+                IO_TriggerMode::Edge
+            ), 0);
 
         }
 
