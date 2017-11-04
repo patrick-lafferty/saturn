@@ -30,10 +30,15 @@ void Terminal::writeCharacter(uint8_t character, uint8_t colour) {
         row++;
     }
 
-    if (row > Height) {
-        auto offset = sizeof(uint16_t) * Width * (Height - 1);
-        memcpy(buffer, buffer + Width, offset);
-        memset(buffer + offset, 0, offset);
-        row--;
+    if (row >= Height) {
+        auto byteCount = sizeof(uint16_t) * Width * (Height - 1);
+        memcpy(buffer, buffer + Width, byteCount);
+
+        row = Height - 1;
+
+        for (uint32_t x = 0; x < Width; x++) {
+            auto index = row * Width + x;
+            buffer[index] = prepareCharacter(' ', getColour(Colours::LightBlue, Colours::DarkGray));
+        }
     }
 }
