@@ -46,22 +46,21 @@ namespace Kernel {
     }
 
     Task* Scheduler::createTestTask(uintptr_t functionAddress) {
-        auto processStack = Memory::currentVMM->allocatePages(1, static_cast<int>(Memory::PageTableFlags::Present)
+        auto processStack = Memory::currentVMM->allocatePages(1, 
+            static_cast<int>(Memory::PageTableFlags::Present)
             | static_cast<int>(Memory::PageTableFlags::AllowWrite));
         auto physicalPage = Memory::currentPMM->allocatePage(1);
         Memory::currentVMM->map(processStack, physicalPage);
         Memory::currentPMM->finishAllocation(processStack, 1);
 
-        uint32_t volatile* stackPointer = static_cast<uint32_t volatile*>(reinterpret_cast<void volatile*>(processStack + 4096));
-        *(--stackPointer) = functionAddress; 
-        *(--stackPointer) = 0; //eax
-        *(--stackPointer) = 0; //ecx
-        *(--stackPointer) = 0; //edx
-        *(--stackPointer) = 0; //ebx
-        *(--stackPointer) = 0; //ebp
-        *(--stackPointer) = 0; //esi
-        *(--stackPointer) = 0; //edi
-        *(--stackPointer) = 1 << 9 | 1 << 1; 
+        uint8_t volatile* stackPointer = static_cast<uint8_t volatile*>(reinterpret_cast<void volatile*>(processStack + 4096));
+        stackPointer -= sizeof(TaskStack);
+
+        TaskStack volatile* stack = reinterpret_cast<TaskStack volatile*>(stackPointer);
+        stack->eflags = 
+            static_cast<uint32_t>(EFlags::InterruptEnable) | 
+            static_cast<uint32_t>(EFlags::Reserved);
+        stack->eip = functionAddress;
 
         Task* task = taskBuffer;
         task->context.esp = reinterpret_cast<uint32_t>(stackPointer);
