@@ -6,6 +6,7 @@ namespace Kernel {
     struct Task {
         TaskContext context;
         Task* nextTask {nullptr};
+        uint32_t id {0};
     };
 
     enum class EFlags {

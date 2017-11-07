@@ -1,24 +1,50 @@
 #include "gdt.h"
 
-GDT::Descriptor gdt[3];
+GDT::Descriptor gdt[6];
 GDT::DescriptorPointer gp;
 
 namespace GDT {
 
+    template<typename... Arg> uint32_t combineFlags(Arg... args) {
+        return (static_cast<uint32_t>(args) | ...);
+    }
+
     void setup() {
-        gp.limit = sizeof(Descriptor) * 3 - 1;
+        gp.limit = sizeof(Descriptor) * 6 - 1;
         gp.base = reinterpret_cast<uint32_t>(&gdt);
 
+        //null descriptor
         gdt[0] = encodeEntry(0, 0, 0, 0);
-        //code segment - 4GB limit, 4KB granularity, 32-bit opcodes 
-        gdt[1] = encodeEntry(0, 0xFFFFFFFF, 0x9A, 0xCF);
-        //data segment - 4GB limit, 4KB granularity, 32-bit opcodes
-        gdt[2] = encodeEntry(0, 0xFFFFFFFF, 0x92, 0xCF);
+
+        /*
+        The upper 4 bits of flags is [Gr, Sz, 0, 0], where:
+        Gr = Granularity (0 = Byte granularity, 1 = 4K Page granularity)
+        Sz = Size (0 = 16 bit protected mode, 1 = 32 bit protected mode)
+
+        Normally we want Gr = 1 and Sz = 1 for regular pages
+        */
+        
+        //kernel code segment 
+        gdt[1] = encodeEntry(0, 0xFFFFF, combineFlags(
+            AccessCodeSegment::Present,
+            AccessCodeSegment::Executable,
+            AccessCodeSegment::Readable
+        ), combineFlags(Flags::Size, Flags::Granularity));
+        //kernel data segment 
+        gdt[2] = encodeEntry(0, 0xFFFFF, combineFlags(
+            AccessDataSegment::Present,
+            AccessDataSegment::Writeable
+        ), combineFlags(Flags::Size, Flags::Granularity));
+
+        //tss
+        //gdt[3] = encodeEntry(?, ?, combineFlags(
+
+        //));
 
         gdt_flush();
     }
 
-    Descriptor encodeEntry(uint32_t base, uint32_t limit, uint8_t access, uint8_t granularity) {
+    Descriptor encodeEntry(uint32_t base, uint32_t limit, uint8_t access, uint8_t flags) {
         Descriptor descriptor;
 
         descriptor.baseLow = base & 0xFFFF;
@@ -26,10 +52,12 @@ namespace GDT {
         descriptor.baseHigh = (base >> 24) & 0xFF;
 
         descriptor.limitLow = limit & 0xFFFF;
-        descriptor.granularity = (limit >> 16) & 0x0F;
+        descriptor.flags = (limit >> 16) & 0x0F;
 
-        descriptor.granularity |= granularity & 0xF0;
-        descriptor.access = access;
+        
+        descriptor.flags |= flags;
+        //bit 4 is always 1
+        descriptor.access = access | (1 << 4);
 
         return descriptor;
     }
