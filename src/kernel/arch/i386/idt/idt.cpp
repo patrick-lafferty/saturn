@@ -105,8 +105,67 @@ void handlePageFault(uintptr_t virtualAddress) {
         while(true){}   
     }
 }
-int seconds = 0;
+
+void thread() {
+    printf("Inside second thread\n");
+    asm volatile("hlt");
+    thread();
+}
+
+void kern_thread() {
+    printf("Inside first thread\n");
+    asm volatile("hlt");
+    kern_thread();
+}
+
+struct TaskContext {
+    uint32_t esp;
+};
+
+struct Task {
+    TaskContext context;
+    Task* next;
+};
+
+extern "C" void changeProcess(Task* current, Task* next);
+
+Task kernelTask;
+Task newTask;
+Task* currentTask = &kernelTask;
+
+bool created = false;
+void createTask() {
+    auto processStack = Memory::currentVMM->allocatePages(1, static_cast<int>(Memory::PageTableFlags::Present)
+    | static_cast<int>(Memory::PageTableFlags::AllowWrite));
+    auto physicalPage = Memory::currentPMM->allocatePage(1);
+    Memory::currentVMM->map(processStack, physicalPage);
+    Memory::currentPMM->finishAllocation(processStack, 1);
+    //newTask.context.esp = static_cast<uint32_t>(processStack);
+    uint32_t volatile* stackPointer = static_cast<uint32_t volatile*>(reinterpret_cast<void volatile*>(processStack + 4096));
+    *(--stackPointer) = reinterpret_cast<uint32_t>(thread);
+    *(--stackPointer) = 0; //eax
+    *(--stackPointer) = 0; //ecx
+    *(--stackPointer) = 0; //edx
+    *(--stackPointer) = 0; //ebx
+    //*(--stackPointer) = 0; //junk esp
+    *(--stackPointer) = 0; //ebp
+    *(--stackPointer) = 0; //esi
+    *(--stackPointer) = 0; //edi
+    *(--stackPointer) = 1 << 9 | 1 << 1; //eflags
+    //stackPointer -= 4;
+    newTask.context.esp = reinterpret_cast<uint32_t>(stackPointer);
+
+    //changeProcess(&newTask);
+    kernelTask.next = &newTask;
+    newTask.next = &kernelTask;
+}
+
+void schedule() {
+
+}
+
 void interruptHandler(CPU::InterruptStackFrame* frame) {
+    //printf("Interrupt\n");
 
     if (frame->interruptNumber == 14) {
         //page fault
@@ -145,20 +204,34 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
             APIC::calibrateAPICTimer();
         }
         else if (frame->interruptNumber == 52) {
-            printf("%d seconds\n", seconds);
+            //printf("Tick\n");
+            /*printf("%d seconds\n", seconds);
             if (seconds < 60) {
                 seconds++;
             }
             else {
                 printf("One minute elapsed\n");
                 seconds = 0;
+            }*/
+            if (!created) {
+                created = true;
+                createTask();
+            }
+            else {
+                auto current = currentTask;
+                auto next = currentTask->next;
+                //kernelTask.context.esp = frame->esp;
+            APIC::signalEndOfInterrupt();
+
+                currentTask = currentTask->next;
+                changeProcess(current, next);
             }
         }
         else {
             printf("[IDT] Unhandled APIC IRQ %d\n", frame->interruptNumber);
         }
-
         APIC::signalEndOfInterrupt();
+
     }
     else {
         printf("[IDT] Unhandled interrupt %d\n", frame->interruptNumber);
