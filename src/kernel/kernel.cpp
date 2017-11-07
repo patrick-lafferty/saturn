@@ -9,6 +9,7 @@
 #include <string.h>
 #include <memory/physical_memory_manager.h>
 #include <memory/virtual_memory_manager.h>
+#include <scheduler.h>
 
 using namespace Kernel;
 using namespace Memory;
@@ -76,9 +77,29 @@ struct TSS {
     uint16_t ioMapBaseAddress;
 };
 
+void taskA() {
+    printf("[TaskA] Hello, world\n");
+    asm volatile("hlt");
+    taskA();
+}
 
+void taskB() {
+    printf("[TaskB] This is\n");
+    asm volatile("hlt");
+    taskB();
+}
 
+void taskC() {
+    printf("[TaskC] a test of\n");
+    asm volatile("hlt");
+    taskC();
+}
 
+void taskD() {
+    printf("[TaskD] the emergency broadcast system\n");
+    asm volatile("hlt");
+    taskD();
+}
 
 extern "C" int kernel_main(MultibootInformation* info) {
 
@@ -108,14 +129,15 @@ extern "C" int kernel_main(MultibootInformation* info) {
 
     acpi_stuff();
 
+    Kernel::Scheduler scheduler;
+    scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskA)));
+    scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskB)));
+    scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskC)));
+    scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskD)));
+
     asm("sti");
 
-    printf("Finished loading, halting now\n");
-
-    while(true) {
-        printf("Kernel thread\n");
-        asm("hlt");
-    }
+    scheduler.enterIdle();
 
     return 0;
 }

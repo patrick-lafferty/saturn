@@ -44,6 +44,7 @@ ARCH_OBJS = \
 
 KERNEL_OBJS = \
 	$(ARCH_OBJS) \
+	src/kernel/scheduler.o \
 	src/kernel/kernel.o
 
 SERVICES_OBJS = \

@@ -1,46 +1,41 @@
 section .text
 global changeProcess
 changeProcess:
+    ;c signature:
+    ;void changeProcess(Task* current, Task* next)
+
+    ;save the important registers to the current
+    ;task's stack
 
     push eax
     push ecx
     push edx
     push ebx
-    ;push esp
     push ebp
     push esi
     push edi
     pushfd 
 
-    ;mov ebp, [esp + 16]
-    ;mov ebp, DWORD [esp + 32]
+    ;store the stack pointer to the current
+    ;task's context.esp
+    mov eax, [esp + 36] 
+    mov DWORD [eax], esp 
 
-    mov eax, [esp + 36] ;[ebp + 4]
-    mov DWORD [eax], esp ;ebp
-
-    mov eax, DWORD [esp + 40] ;[ebp + 8]
+    ;change the current stack pointer
+    ;to the next task's context.esp
+    mov eax, DWORD [esp + 40] 
     mov esp, DWORD [eax]
 
+    ;restore the important registers from the
+    ;next task's stack
+    
     popfd
     pop edi
     pop esi
     pop ebp
-    ;pop esp
     pop ebx
     pop edx
     pop ecx
     pop eax
 
-    ret
-
-
-;works
-changeProcess2:
-    ;push all the registers on the current process's stack
-
-    ;switch to the next process's stack
-    mov eax, [esp + 4]
-    mov esp, [eax]
-
-    ;pop all the registers from the new process's stack
     ret
