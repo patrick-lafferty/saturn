@@ -73,7 +73,10 @@ InterruptServiceRoutine_Errorless 56; APIC IRQ 8
 InterruptServiceRoutine_Errorless 57; APIC IRQ 9
 InterruptServiceRoutine_Errorless 58; APIC IRQ 10
 InterruptServiceRoutine_Errorless 59; APIC IRQ 11
-InterruptServiceRoutine_Errorless 255; APIC spurious interrupt
+InterruptServiceRoutine_Errorless 207; APIC spurious interrupt
+
+;Usermode system calls
+InterruptServiceRoutine_Errorless 255
 
 extern interruptHandler
 type interruptHandler, @function

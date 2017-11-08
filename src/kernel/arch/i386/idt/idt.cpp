@@ -69,17 +69,43 @@ namespace IDT {
         idt[57] = encodeEntry(reinterpret_cast<uint32_t>(&isr57), 0x08);
         idt[58] = encodeEntry(reinterpret_cast<uint32_t>(&isr58), 0x08);
         idt[59] = encodeEntry(reinterpret_cast<uint32_t>(&isr59), 0x08);
-        idt[255] = encodeEntry(reinterpret_cast<uint32_t>(&isr255), 0x08);
+        idt[207] = encodeEntry(reinterpret_cast<uint32_t>(&isr207), 0x08);
+
+        //System calls
+        idt[255] = encodeEntry(reinterpret_cast<uint32_t>(&isr255), 0x08, true);
 
         loadIDT();
     }
     
-    Entry encodeEntry(uint32_t base, uint16_t kernelSegment) {
+    Entry encodeEntry(uint32_t base, uint16_t kernelSegment, bool isUserspaceCallable) {
         Entry entry;
 
         entry.baseLow = base & 0xFFFF;
         entry.kernelSegment = kernelSegment;
+
+        /*
+        Flags bits:
+        Bits 0 to 3: GateType 
+            (1111 = 386 32-bit trap gate, 1110 = 386 32-bit interrupt gate,
+                0111 = 286 16-bit trap gate, 0110 = 286 16-bit interrupt gate,
+                0101 = 386 32-bit task gate)
+        Bit 4: Storage Segment (0 for interrupt/trap gates)
+        Bits 5 to 6: Descriptor Priviledge Level (minimum privilege level
+            the calling descriptor must have)
+        Bit 7: Present (0 for unused interupts, 1 for used)
+
+        For the majority of interrupts, we want
+        0b10001110 = 0x8E
+        */
         entry.flags = 0x8E;
+
+        if (isUserspaceCallable) {
+            /*
+            Set the DPL (see above) to 0b11 for ring3
+            */
+            entry.flags |= 0x60;
+        }
+
         entry.baseHigh = (base & 0xFFFF0000) >> 16;
 
         return entry;
@@ -128,6 +154,10 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
             printf("RESP: %x, SS: %x\n", 
                 frame->resp, frame->ss);
             asm volatile("hlt");
+        }
+        case 255: {
+            printf("[IDT] System call detected!\n");
+            break;
         }
     }
 

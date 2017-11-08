@@ -314,7 +314,7 @@ namespace APIC {
 
         Value after reset: 0xFF
         */
-        writeLocalAPICRegister(Registers::SpuriousInterruptVector, 0x1FF);
+        writeLocalAPICRegister(Registers::SpuriousInterruptVector, 0x1CF);
     }
 
     void loadAPICStructures(uintptr_t address, uint32_t byteLength) {

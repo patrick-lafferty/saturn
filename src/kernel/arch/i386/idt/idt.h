@@ -19,7 +19,7 @@ namespace IDT {
 
     void setup();
     
-    Entry encodeEntry(uint32_t base, uint16_t kernelSegment);
+    Entry encodeEntry(uint32_t base, uint16_t kernelSegment, bool isUserspaceCallable = false);
 }
 
 extern "C" IDT::Entry idt[256];
@@ -81,4 +81,7 @@ extern "C" void isr56();
 extern "C" void isr57();
 extern "C" void isr58();
 extern "C" void isr59();
-extern "C" void isr255(); //APIC spurious interrupt
+extern "C" void isr207(); //APIC spurious interrupt
+
+//System calls
+extern "C" void isr255();

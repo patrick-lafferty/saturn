@@ -82,7 +82,8 @@ extern "C" void taskA() {
     printf("[TaskA] Hello, world\n");
     for(int i = 0; i < 1000000; i++) 
         x++;
-    asm volatile("cli");
+    //asm volatile("cli");
+    asm volatile("int $0xFF");
     taskA();
 }
 
@@ -147,9 +148,9 @@ extern "C" int kernel_main(MultibootInformation* info) {
     acpi_stuff();
 
     Kernel::Scheduler scheduler;
-    //scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(launchProcess)));
+    scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(launchProcess)));
     //scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskA)));
-    scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskB)));
+    //scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskB)));
     //scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskC)));
     //scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskD)));
 

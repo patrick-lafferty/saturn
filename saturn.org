@@ -59,3 +59,23 @@ for page tables and directories
 *** detect if its an invalid memory access, or an unallocated one
 *** allocate physical pages on demand
 ** switch to higher half kernel
+
+* Step 5: APIC & Interrupts
+
+Note: PMM must be able to mark specific addresses as used
+
+* Step 6: Multitasking
+
+Very interesting note from f.osdev.org/viewtopic.php?f=15&t=30555
+
+"This was exactly my line of thinking. If the driver identifies itself as belonging to a class (say "keyboard", to keep with the discussion), only grant it permissions for keyboard access. If it attempts to access services that it is not granted permissions to, the OS could either deny those requests or unload the driver entirely, depending on how critical the operation it performs is.
+
+Of course, this doesn't prevent some odd behavior, such as a driver that simply transmutes the data (i.e. when an "A" is pressed, forward a "Q" to the kernel). In practice though, there is no reasonable precaution to be taken against that.
+
+This also allows for the kernel to have some interesting/novel features to aid the programmer, as Brendan alluded to awhile back - the kernel could be instructed to log all driver I/O activity, for example, which would greatly aid in debugging new or experimental drivers."
+
+
+-----------------
+
+System calls: 0xFF (Final Fantasy)
+0xFF, EAX=7, 9, A
