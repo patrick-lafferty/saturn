@@ -42,7 +42,7 @@ namespace GDT {
 
     void setup();
 
-    Descriptor encodeEntry(uint32_t base, uint32_t limit, uint8_t access, uint8_t flags);
+    Descriptor encodeEntry(uint32_t base, uint32_t limit, uint8_t access, uint8_t flags, bool setBit4 = true);
 
     void addTSSEntry(uint32_t address, uint32_t size);
 }

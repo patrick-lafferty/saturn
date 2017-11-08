@@ -82,7 +82,7 @@ extern "C" void taskA() {
     printf("[TaskA] Hello, world\n");
     for(int i = 0; i < 1000000; i++) 
         x++;
-    //asm volatile("cli");
+    asm volatile("cli");
     taskA();
 }
 
@@ -106,6 +106,7 @@ void taskD() {
 
 extern "C" void launchProcess();
 extern "C" void fillTSS(TSS* tss);
+extern "C" void loadTSS();
 
 extern "C" int kernel_main(MultibootInformation* info) {
 
@@ -133,20 +134,22 @@ extern "C" int kernel_main(MultibootInformation* info) {
 
     virtualMemManager.activate();
 
+    virtualMemManager.HACK_setNextAddress(0xa0000000);
     auto tssAddress = virtualMemManager.allocatePages(3, pageFlags);
     GDT::addTSSEntry(tssAddress, 0x1000 * 3);
 
     TSS* tss = static_cast<TSS*>(reinterpret_cast<void*>(tssAddress));
     fillTSS(tss);
+    loadTSS();
 
     //printf("Paging Enabled\n");
 
     acpi_stuff();
 
     Kernel::Scheduler scheduler;
-    scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(launchProcess)));
+    //scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(launchProcess)));
     //scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskA)));
-    //scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskB)));
+    scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskB)));
     //scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskC)));
     //scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskD)));
 

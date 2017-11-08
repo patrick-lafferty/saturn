@@ -57,7 +57,7 @@ namespace GDT {
         gdt_flush();
     }
 
-    Descriptor encodeEntry(uint32_t base, uint32_t limit, uint8_t access, uint8_t flags) {
+    Descriptor encodeEntry(uint32_t base, uint32_t limit, uint8_t access, uint8_t flags, bool setBit4) {
         Descriptor descriptor;
 
         descriptor.baseLow = base & 0xFFFF;
@@ -67,8 +67,12 @@ namespace GDT {
         descriptor.limitLow = limit & 0xFFFF;
         descriptor.flags = (limit >> 16) & 0x0F;
         descriptor.flags |= flags;
-        //bit 4 is always 1
-        descriptor.access = access | (1 << 4);
+        descriptor.access = access;
+
+        //bit 4 is always 1 for code/data segments, for tss its 0
+        if (setBit4) {
+            descriptor.access |= (1 << 4);
+        }
 
         return descriptor;
     }
@@ -79,7 +83,7 @@ namespace GDT {
             AccessCodeSegment::Accessed,
             AccessCodeSegment::Executable,
             AccessCodeSegment::Present
-        ), combineFlags(Flags::Size));
+        ), combineFlags(Flags::Size), false);
 
         nextGDTIndex++;
 

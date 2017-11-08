@@ -78,7 +78,13 @@ namespace Memory {
             auto directoryIndex = extractDirectoryIndex(virtualAddress);
 
             if (directory->pageTableAddresses[directoryIndex] == 0) {
-                allocatePageTable(nextAddress, directoryIndex);
+                if (pagingActive) {
+                    allocatePageTable(0xFFC00000 + PageSize * directoryIndex, directoryIndex);
+                }
+                else {
+                    allocatePageTable(nextAddress, directoryIndex);
+                }
+
                 nextAddress += PageSize;
             }
 
@@ -154,6 +160,11 @@ namespace Memory {
         else {
             return PageStatus::Invalid;
         }
+    }
+
+    void VirtualMemoryManager::HACK_setNextAddress(uint32_t address)
+    {
+        nextAddress = address;
     }
 
     void VirtualMemoryManager::activate() {

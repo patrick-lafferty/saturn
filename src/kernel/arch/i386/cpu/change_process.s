@@ -73,4 +73,11 @@ fillTSS:
     mov ebp, [esp + 4]
     mov [ebp + 4], esp
     mov [ebp + 8], DWORD 0x10
+    mov [ebp + 12], DWORD 0x68
+    ret
+
+global loadTSS
+loadTSS:
+    mov ax, 0x28
+    ltr ax
     ret

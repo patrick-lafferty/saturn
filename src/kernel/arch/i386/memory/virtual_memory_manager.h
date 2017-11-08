@@ -63,6 +63,8 @@ namespace Memory {
 
         PageStatus getPageStatus(uintptr_t virtualAddress);
 
+        void HACK_setNextAddress(uint32_t address);
+
     private:
 
         uintptr_t allocatePageTable(uintptr_t virtualAddress, int index);
