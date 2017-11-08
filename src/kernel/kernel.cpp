@@ -77,9 +77,12 @@ struct TSS {
     uint16_t ioMapBaseAddress;
 };
 
-void taskA() {
+volatile int x;
+extern "C" void taskA() {
     printf("[TaskA] Hello, world\n");
-    asm volatile("hlt");
+    for(int i = 0; i < 1000000; i++) 
+        x++;
+    //asm volatile("cli");
     taskA();
 }
 
@@ -101,6 +104,9 @@ void taskD() {
     taskD();
 }
 
+extern "C" void launchProcess();
+extern "C" void fillTSS(TSS* tss);
+
 extern "C" int kernel_main(MultibootInformation* info) {
 
     GDT::setup();
@@ -113,7 +119,9 @@ extern "C" int kernel_main(MultibootInformation* info) {
 
     auto pageFlags = 
         static_cast<int>(PageTableFlags::Present)
-        | static_cast<int>(PageTableFlags::AllowWrite);
+        | static_cast<int>(PageTableFlags::AllowWrite)
+        | static_cast<int>(PageTableFlags::AllowUserModeAccess)
+        ;
 
     virtualMemManager.map_unpaged(0xB8000, 0xB8000, 1, pageFlags);
     virtualMemManager.map_unpaged(0, 0, 0x100000 / 0x1000, pageFlags);
@@ -125,15 +133,22 @@ extern "C" int kernel_main(MultibootInformation* info) {
 
     virtualMemManager.activate();
 
+    auto tssAddress = virtualMemManager.allocatePages(3, pageFlags);
+    GDT::addTSSEntry(tssAddress, 0x1000 * 3);
+
+    TSS* tss = static_cast<TSS*>(reinterpret_cast<void*>(tssAddress));
+    fillTSS(tss);
+
     //printf("Paging Enabled\n");
 
     acpi_stuff();
 
     Kernel::Scheduler scheduler;
-    scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskA)));
-    scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskB)));
-    scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskC)));
-    scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskD)));
+    scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(launchProcess)));
+    //scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskA)));
+    //scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskB)));
+    //scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskC)));
+    //scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskD)));
 
     asm("sti");
 

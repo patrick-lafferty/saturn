@@ -108,6 +108,28 @@ void handlePageFault(uintptr_t virtualAddress) {
 }
 
 void interruptHandler(CPU::InterruptStackFrame* frame) {
+    
+    switch(frame->interruptNumber) {
+        case 0: {
+            printf("[IDT] Divide Error\n");
+            break;
+        }
+        //...TODO...
+        case 13: {
+            printf("[IDT] General Protection Fault\n");
+            printf("GS: %x, FS: %x, ES: %x, DS: %x\n", 
+                frame->gs, frame->fs, frame->es, frame->ds);
+            printf("EDI: %x, ESI: %x, EBP: %x, ESP: %x\n", 
+                frame->edi, frame->esi, frame->ebp, frame->esp);
+            printf("EBX: %x, EDX: %x, ECX: %x, EAX: %x\n", 
+                frame->ebx, frame->edx, frame->ecx, frame->eax);
+            printf("Error code: %x, EIP: %x, CS: %x, EFLAGS: %x\n", 
+                frame->errorCode, frame->eip, frame->cs, frame->eflags);
+            printf("RESP: %x, SS: %x\n", 
+                frame->resp, frame->ss);
+            asm volatile("hlt");
+        }
+    }
 
     if (frame->interruptNumber == 14) {
         //page fault
@@ -148,6 +170,7 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
         else if (frame->interruptNumber == 52) {
             
             APIC::signalEndOfInterrupt();
+            printf("APIC Timer fired\n");
             Kernel::currentScheduler->notifyTimesliceExpired();
             return;
         }
@@ -159,5 +182,6 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
     }
     else {
         printf("[IDT] Unhandled interrupt %d\n", frame->interruptNumber);
+        asm("hlt");
     }
 }

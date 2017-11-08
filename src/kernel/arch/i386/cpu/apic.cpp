@@ -97,7 +97,8 @@ namespace APIC {
         ticks *= 8;
         writeLocalAPICRegister(Registers::LVT_Timer, combineFlags(
             52,
-            LVT_TimerMode::Periodic
+            //LVT_TimerMode::Periodic
+            LVT_TimerMode::OneShot
         )); 
         writeLocalAPICRegister(Registers::DivideConfiguration, combineFlags(DivideConfiguration::By16));
 

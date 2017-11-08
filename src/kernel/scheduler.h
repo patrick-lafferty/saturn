@@ -23,7 +23,19 @@ namespace Kernel {
         uint32_t edx {0};
         uint32_t ecx {0};
         uint32_t eax {0};
+
+        /*uint32_t ss;
+        uint32_t esp;
+        uint32_t eflags2;
+        uint32_t cs {0};
+        */
         uint32_t eip {0};
+
+        /*uint32_t eip;
+        uint32_t cs;
+        uint32_t eflags2;
+        uint32_t esp;
+        uint32_t ss;*/
     };
 
     extern class Scheduler* currentScheduler;

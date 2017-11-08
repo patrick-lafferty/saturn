@@ -48,7 +48,8 @@ namespace Kernel {
     Task* Scheduler::createTestTask(uintptr_t functionAddress) {
         auto processStack = Memory::currentVMM->allocatePages(1, 
             static_cast<int>(Memory::PageTableFlags::Present)
-            | static_cast<int>(Memory::PageTableFlags::AllowWrite));
+            | static_cast<int>(Memory::PageTableFlags::AllowWrite)
+            | static_cast<int>(Memory::PageTableFlags::AllowUserModeAccess));
         auto physicalPage = Memory::currentPMM->allocatePage(1);
         Memory::currentVMM->map(processStack, physicalPage);
         Memory::currentPMM->finishAllocation(processStack, 1);
@@ -58,12 +59,17 @@ namespace Kernel {
 
         TaskStack volatile* stack = reinterpret_cast<TaskStack volatile*>(stackPointer);
         stack->eflags = 
-            static_cast<uint32_t>(EFlags::InterruptEnable) | 
+            //static_cast<uint32_t>(EFlags::InterruptEnable) | 
             static_cast<uint32_t>(EFlags::Reserved);
         stack->eip = functionAddress;
+        /*stack->cs = 0x1B;
+        stack->eflags2 = stack->eflags;
+        stack->ss = 0x23;*/
 
         Task* task = taskBuffer;
         task->context.esp = reinterpret_cast<uint32_t>(stackPointer);
+        //stack->esp = task->context.esp;
+        //stack->esp = processStack + 4096;//task->context.esp;
 
         taskBuffer++;
 

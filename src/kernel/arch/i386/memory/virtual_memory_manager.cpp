@@ -27,7 +27,7 @@ namespace Memory {
         auto page = physical.allocatePage(1);
         physical.finishAllocation(page, 1);
         directory = static_cast<PageDirectory*>(reinterpret_cast<void*>(page));
-        directory->pageTableAddresses[1023] = reinterpret_cast<uintptr_t>(static_cast<void*>(directory)) | 3;
+        directory->pageTableAddresses[1023] = reinterpret_cast<uintptr_t>(static_cast<void*>(directory)) | 7;//3;
     }
 
     void updateCR3Address(PageDirectory* directory) {
@@ -42,7 +42,7 @@ namespace Memory {
     uintptr_t VirtualMemoryManager::allocatePageTable(uintptr_t virtualAddress, int index) {
         auto physicalPage = physicalManager.allocatePage(1);
 
-        directory->pageTableAddresses[index] = physicalPage | 3;
+        directory->pageTableAddresses[index] = physicalPage | 7;//3;
 
         updateCR3Address(directory);
 

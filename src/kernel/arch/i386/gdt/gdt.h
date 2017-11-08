@@ -14,15 +14,19 @@ namespace GDT {
     } __attribute__((packed));
 
     enum class AccessDataSegment {
+        Accessed = 1 << 0,
         Writeable = 1 << 1,
         Direction = 1 << 2,
+        Ring3 = 0x60,
         Present = 1 << 7
     };
 
     enum class AccessCodeSegment {
+        Accessed = 1 << 0,
         Readable = 1 << 1,
         Conforming = 1 << 2,
         Executable = 1 << 3,
+        Ring3 = 0x60,
         Present = 1 << 7
     };
 
@@ -39,6 +43,8 @@ namespace GDT {
     void setup();
 
     Descriptor encodeEntry(uint32_t base, uint32_t limit, uint8_t access, uint8_t flags);
+
+    void addTSSEntry(uint32_t address, uint32_t size);
 }
 
 extern "C" GDT::Descriptor gdt[6];

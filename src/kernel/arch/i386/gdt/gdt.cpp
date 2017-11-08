@@ -9,6 +9,8 @@ namespace GDT {
         return (static_cast<uint32_t>(args) | ...);
     }
 
+    int nextGDTIndex = 0;
+
     void setup() {
         gp.limit = sizeof(Descriptor) * 6 - 1;
         gp.base = reinterpret_cast<uint32_t>(&gdt);
@@ -36,11 +38,22 @@ namespace GDT {
             AccessDataSegment::Writeable
         ), combineFlags(Flags::Size, Flags::Granularity));
 
-        //tss
-        //gdt[3] = encodeEntry(?, ?, combineFlags(
-
-        //));
-
+        //user code segment 
+        gdt[3] = encodeEntry(0, 0xFFFFF, combineFlags(
+            AccessCodeSegment::Present,
+            AccessCodeSegment::Executable,
+            AccessCodeSegment::Readable,
+            AccessCodeSegment::Ring3
+        ), combineFlags(Flags::Size, Flags::Granularity));
+        //user data segment 
+        gdt[4] = encodeEntry(0, 0xFFFFF, combineFlags(
+            AccessDataSegment::Present,
+            AccessDataSegment::Writeable,
+            AccessDataSegment::Ring3
+        ), combineFlags(Flags::Size, Flags::Granularity));
+        
+        nextGDTIndex = 5;
+        
         gdt_flush();
     }
 
@@ -53,12 +66,24 @@ namespace GDT {
 
         descriptor.limitLow = limit & 0xFFFF;
         descriptor.flags = (limit >> 16) & 0x0F;
-
-        
         descriptor.flags |= flags;
         //bit 4 is always 1
         descriptor.access = access | (1 << 4);
 
         return descriptor;
+    }
+
+    void addTSSEntry(uint32_t address, uint32_t size) {
+        //tss per cpu (hardware thread?)
+        gdt[nextGDTIndex] = encodeEntry(address, size, combineFlags(
+            AccessCodeSegment::Accessed,
+            AccessCodeSegment::Executable,
+            AccessCodeSegment::Present
+        ), combineFlags(Flags::Size));
+
+        nextGDTIndex++;
+
+        //TODO: is this necessary?
+        gdt_flush();
     }
 }
