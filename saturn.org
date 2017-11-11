@@ -79,3 +79,12 @@ This also allows for the kernel to have some interesting/novel features to aid t
 
 System calls: 0xFF (Final Fantasy)
 0xFF, EAX=7, 9, A
+
+** Next Steps
+- [ ] extract the TSS stuff and put it in its proper place
+- [ ] pass address to ring3 function instead of hardcoding taskA's
+- [ ] implement thread state
+- [ ] implement switch_to(thread)
+- [ ] implement find_thread_to_switch_to()
+- [ ] implement block_thread(reason)
+- [ ] implement unblock_thread(reason)

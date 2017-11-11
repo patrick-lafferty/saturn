@@ -29,11 +29,11 @@ void acpi_stuff() {
 
     auto rootSystemHeader = CPU::getRootSystemHeader(rsdp.rsdtAddress);
 
-    if (verifySystemHeaderChecksum(rootSystemHeader)) {
+    if (CPU::verifySystemHeaderChecksum(rootSystemHeader)) {
         //printf("\n[ACPI] SDT Checksum validated\n");
-        auto apicHeader = getAPICHeader(rootSystemHeader, (rootSystemHeader->length - sizeof(CPU::SystemDescriptionTableHeader)) / 4);
+        auto apicHeader = CPU::getAPICHeader(rootSystemHeader, (rootSystemHeader->length - sizeof(CPU::SystemDescriptionTableHeader)) / 4);
 
-        if (verifySystemHeaderChecksum(apicHeader)) {
+        if (CPU::verifySystemHeaderChecksum(apicHeader)) {
             auto apicStartingAddress = reinterpret_cast<uintptr_t>(apicHeader);
             apicStartingAddress += sizeof(CPU::SystemDescriptionTableHeader);
             
