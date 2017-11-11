@@ -38,6 +38,7 @@ ARCH_OBJS = \
 	$(ARCHDIR)/cpu/pic.o \
 	$(ARCHDIR)/cpu/apic.o \
 	$(ARCHDIR)/cpu/change_process.o \
+	$(ARCHDIR)/cpu/tss.o \
 	$(ARCHDIR)/memory/scan_memory.o \
 	$(ARCHDIR)/memory/physical_memory_manager.o \
 	$(ARCHDIR)/memory/virtual_memory_manager.o

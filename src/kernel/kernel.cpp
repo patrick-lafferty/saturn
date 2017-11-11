@@ -6,6 +6,7 @@
 #include <cpu/acpi.h>
 #include <cpu/sse.h>
 #include <cpu/apic.h>
+#include <cpu/tss.h>
 #include <string.h>
 #include <memory/physical_memory_manager.h>
 #include <memory/virtual_memory_manager.h>
@@ -47,36 +48,6 @@ void acpi_stuff() {
     }
 }
 
-struct TSS {
-    uint32_t previousTaskLink;
-    uint32_t esp0;
-    uint32_t ss0;
-    uint32_t esp1;
-    uint32_t ss1;
-    uint32_t esp2;
-    uint32_t ss2;
-    uint32_t cr3;
-    uint32_t eip;
-    uint32_t eflags;
-    uint32_t eax;
-    uint32_t ecx;
-    uint32_t edx;
-    uint32_t ebx;
-    uint32_t esp;
-    uint32_t ebp;
-    uint32_t esi;
-    uint32_t edi;
-    uint32_t es;
-    uint32_t cs;
-    uint32_t ss;
-    uint32_t ds;
-    uint32_t fs;
-    uint32_t gs;
-    uint32_t ldtSegmentSelector;
-    uint16_t reserved;
-    uint16_t ioMapBaseAddress;
-};
-
 volatile int x;
 extern "C" void taskA() {
     printf("[TaskA] Hello, world\n");
@@ -106,8 +77,6 @@ void taskD() {
 }
 
 extern "C" void launchProcess();
-extern "C" void fillTSS(TSS* tss);
-extern "C" void loadTSS();
 
 extern "C" int kernel_main(MultibootInformation* info) {
 
@@ -139,10 +108,7 @@ extern "C" int kernel_main(MultibootInformation* info) {
     auto tssAddress = virtualMemManager.allocatePages(3, pageFlags);
     GDT::addTSSEntry(tssAddress, 0x1000 * 3);
 
-    TSS* tss = static_cast<TSS*>(reinterpret_cast<void*>(tssAddress));
-    fillTSS(tss);
-    loadTSS();
-
+    CPU::setupTSS(tssAddress);
     //printf("Paging Enabled\n");
 
     acpi_stuff();
@@ -154,7 +120,7 @@ extern "C" int kernel_main(MultibootInformation* info) {
     //scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskC)));
     //scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskD)));
 
-    asm("sti");
+    asm volatile("sti");
 
     scheduler.enterIdle();
 
