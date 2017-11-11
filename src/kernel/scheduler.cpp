@@ -3,8 +3,9 @@
 #include <memory/physical_memory_manager.h>
 #include <memory/virtual_memory_manager.h>
 
+extern "C" void startProcess(Kernel::Task* task);
 extern "C" void changeProcess(Kernel::Task* current, Kernel::Task* next);
-
+extern "C" void launchProcess();
 namespace Kernel {
 
     Scheduler* currentScheduler;
@@ -59,7 +60,7 @@ namespace Kernel {
 
         TaskStack volatile* stack = reinterpret_cast<TaskStack volatile*>(stackPointer);
         stack->eflags = 
-            //static_cast<uint32_t>(EFlags::InterruptEnable) | 
+            static_cast<uint32_t>(EFlags::InterruptEnable) | 
             static_cast<uint32_t>(EFlags::Reserved);
         stack->eip = functionAddress;
         /*stack->cs = 0x1B;
@@ -70,6 +71,33 @@ namespace Kernel {
         task->context.esp = reinterpret_cast<uint32_t>(stackPointer);
         //stack->esp = task->context.esp;
         //stack->esp = processStack + 4096;//task->context.esp;
+
+        taskBuffer++;
+
+        return task;
+    }
+
+    Task* Scheduler::launchUserProcess(uintptr_t functionAddress) {
+        auto processStack = Memory::currentVMM->allocatePages(1, 
+            static_cast<int>(Memory::PageTableFlags::Present)
+            | static_cast<int>(Memory::PageTableFlags::AllowWrite)
+            | static_cast<int>(Memory::PageTableFlags::AllowUserModeAccess));
+        auto physicalPage = Memory::currentPMM->allocatePage(1);
+        Memory::currentVMM->map(processStack, physicalPage);
+        Memory::currentPMM->finishAllocation(processStack, 1);
+
+        uint8_t volatile* stackPointer = static_cast<uint8_t volatile*>(reinterpret_cast<void volatile*>(processStack + 4096));
+        stackPointer -= sizeof(TaskStack);
+
+        TaskStack volatile* stack = reinterpret_cast<TaskStack volatile*>(stackPointer);
+        stack->eflags = 
+            static_cast<uint32_t>(EFlags::InterruptEnable) | 
+            static_cast<uint32_t>(EFlags::Reserved);
+        stack->eip = reinterpret_cast<uint32_t>(launchProcess);
+        stack->eax = functionAddress;
+
+        Task* task = taskBuffer;
+        task->context.esp = reinterpret_cast<uint32_t>(stackPointer);
 
         taskBuffer++;
 
@@ -88,6 +116,7 @@ namespace Kernel {
     }
 
     void Scheduler::enterIdle() {
-        idleLoop();
+        //idleLoop();
+        startProcess(startTask);
     }
 }

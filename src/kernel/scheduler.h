@@ -49,6 +49,7 @@ namespace Kernel {
         Task* createTestTask(uintptr_t functionAddress);
         void scheduleTask(Task* task);
         void enterIdle();
+        Task* launchUserProcess(uintptr_t functionAddress);
 
     private:
 
@@ -59,3 +60,4 @@ namespace Kernel {
         Task* startTask;
     };
 }
+

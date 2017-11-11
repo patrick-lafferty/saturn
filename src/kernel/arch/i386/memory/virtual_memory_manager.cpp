@@ -85,7 +85,7 @@ namespace Memory {
                     allocatePageTable(nextAddress, directoryIndex);
                 }
 
-                nextAddress += PageSize;
+                //nextAddress += PageSize;
             }
 
             if (pagingActive) {

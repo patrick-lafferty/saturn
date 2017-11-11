@@ -125,11 +125,11 @@ void handlePageFault(uintptr_t virtualAddress) {
     else if (pageStatus == Memory::PageStatus::Mapped) {
         //this shouldn't happen?
         printf("[IDT] Page Fault: mapped address?\n");
-        while(true){}  
+        asm volatile("hlt");
     }
     else {
         printf("[IDT] Illegal Memory Access: %x\n", virtualAddress);     
-        while(true){}   
+        asm volatile("hlt");
     }
 }
 
@@ -200,7 +200,7 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
         else if (frame->interruptNumber == 52) {
             
             APIC::signalEndOfInterrupt();
-            printf("APIC Timer fired\n");
+            //printf("APIC Timer fired\n");
             Kernel::currentScheduler->notifyTimesliceExpired();
             return;
         }
@@ -212,6 +212,6 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
     }
     else {
         printf("[IDT] Unhandled interrupt %d\n", frame->interruptNumber);
-        asm("hlt");
+        asm volatile("hlt");
     }
 }

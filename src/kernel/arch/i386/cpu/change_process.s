@@ -1,4 +1,28 @@
 section .text
+
+global startProcess
+startProcess:
+    mov eax, DWORD [esp + 4] 
+    mov esp, DWORD [eax]
+
+    ;restore the important registers from the
+    ;next task's stack
+
+    mov ebp, 0xa0000000
+    mov [ebp + 4], esp
+
+    popfd
+    pop edi
+    pop esi
+    pop ebp
+    pop ebx
+    pop edx
+    pop ecx
+    pop eax
+
+    ret
+
+;changes from one ring0 process to another
 global changeProcess
 changeProcess:
     ;c signature:
@@ -26,6 +50,10 @@ changeProcess:
     mov eax, DWORD [esp + 40] 
     mov esp, DWORD [eax]
 
+    ;store the current kernel stack's esp to the TSS
+    mov ebp, 0xa0000000
+    mov [ebp + 4], esp
+
     ;restore the important registers from the
     ;next task's stack
 
@@ -36,22 +64,18 @@ changeProcess:
     pop ebx
     pop edx
     pop ecx
-
-    ;no
-    ;mov eax, 0x23
-    ;mov ds, ax
-    ;mov es, ax
-    ;mov fs, ax
-    ;mov gs, ax
-
-
     pop eax
 
     ret
 
-extern taskA;
+;launches a usermode process
 global launchProcess
 launchProcess:
+
+    ;address of user function is stored in eax
+    mov ebx, eax
+    
+    ;set the selectors to usermode's gdt entries
     mov eax, 0x23
     mov ds, ax
     mov es, ax
@@ -63,8 +87,7 @@ launchProcess:
     push eax
     pushfd
     push 0x1B
-    ;push dword [taskA]
-    push taskA
+    push ebx
 
     iret
     

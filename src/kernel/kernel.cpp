@@ -51,32 +51,36 @@ void acpi_stuff() {
 volatile int x;
 extern "C" void taskA() {
     printf("[TaskA] Hello, world\n");
-    for(int i = 0; i < 1000000; i++) 
+    for(int i = 0; i < 10'000'000; i++) 
         x++;
     //asm volatile("cli");
-    asm volatile("int $0xFF");
+    //asm volatile("int $0xFF");
     taskA();
 }
 
 void taskB() {
     printf("[TaskB] This is\n");
-    asm volatile("hlt");
+    for(int i = 0; i < 10'000'000; i++) 
+        x++;
+    //asm volatile("hlt");
     taskB();
 }
 
 void taskC() {
     printf("[TaskC] a test of\n");
-    asm volatile("hlt");
+    for(int i = 0; i < 10'000'000; i++) 
+        x++;
+    //asm volatile("hlt");
     taskC();
 }
 
 void taskD() {
     printf("[TaskD] the emergency broadcast system\n");
-    asm volatile("hlt");
+    for(int i = 0; i < 10'000'000; i++) 
+        x++;
+    //asm volatile("hlt");
     taskD();
 }
-
-extern "C" void launchProcess();
 
 extern "C" int kernel_main(MultibootInformation* info) {
 
@@ -103,22 +107,19 @@ extern "C" int kernel_main(MultibootInformation* info) {
     virtualMemManager.map_unpaged(0xfec00000, 0xfec00000, (0xfef00000 - 0xfec00000) / 0x1000, pageFlags | 0b10000);
 
     virtualMemManager.activate();
-
     virtualMemManager.HACK_setNextAddress(0xa0000000);
+
     auto tssAddress = virtualMemManager.allocatePages(3, pageFlags);
     GDT::addTSSEntry(tssAddress, 0x1000 * 3);
-
     CPU::setupTSS(tssAddress);
-    //printf("Paging Enabled\n");
 
     acpi_stuff();
 
     Kernel::Scheduler scheduler;
-    scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(launchProcess)));
-    //scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskA)));
-    //scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskB)));
-    //scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskC)));
-    //scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskD)));
+    scheduler.scheduleTask(scheduler.launchUserProcess(reinterpret_cast<uint32_t>(taskA)));
+    scheduler.scheduleTask(scheduler.launchUserProcess(reinterpret_cast<uint32_t>(taskB)));
+    scheduler.scheduleTask(scheduler.launchUserProcess(reinterpret_cast<uint32_t>(taskC)));
+    scheduler.scheduleTask(scheduler.launchUserProcess(reinterpret_cast<uint32_t>(taskD)));
 
     asm volatile("sti");
 
