@@ -51,31 +51,58 @@ void acpi_stuff() {
 
 volatile int x;
 extern "C" void taskA() {
-    
-    printf("[TaskA] Hello, world\n");
-    //sleep(1000);    
-    taskA();
+    int a = 0; 
+
+    while(true) {
+        print(1, a);
+        //printf("[TaskA] %d\n", a);
+        //sleep(1000);    
+        a++;
+    }
 }
 
 void taskB() {
-    printf("[TaskB] This is\n");
-    while(true) {}
-    //sleep(2000); 
-    taskB();
+    int b = 0;
+    
+    while(true) {
+        print(2, b);
+        //printf("[TaskB] %d\n", b);
+        //sleep(2000); 
+        b += 2;
+    }
 }
 
 void taskC() {
-    printf("[TaskC] a test of\n");
-    while(true) {}
-    //sleep(3000); 
-    taskC();
+    int c = 0;
+
+    while(true) {
+        print(3, c);
+        //printf("[TaskC] %d\n", c);
+        //sleep(3000); 
+        c += 3;
+    }
 }
 
 void taskD() {
-    printf("[TaskD] the emergency broadcast system\n");
-    while(true) {}
-    //sleep(4000); 
-    taskD();
+    int d = 0;
+
+    while(true) {
+        print(4, d);
+        //printf("[TaskD] %d\n", d);
+        //sleep(4000); 
+        d += 4;
+    }
+}
+
+void taskE() {
+    int e = 0;
+
+    while(true) {
+        print(5, e);
+        //printf("[TaskD] %d\n", d);
+        //sleep(4000); 
+        e += 10;
+    }
 }
 
 extern "C" int kernel_main(MultibootInformation* info) {
@@ -116,6 +143,7 @@ extern "C" int kernel_main(MultibootInformation* info) {
     scheduler.scheduleTask(scheduler.launchUserProcess(reinterpret_cast<uint32_t>(taskB)));
     scheduler.scheduleTask(scheduler.launchUserProcess(reinterpret_cast<uint32_t>(taskC)));
     scheduler.scheduleTask(scheduler.launchUserProcess(reinterpret_cast<uint32_t>(taskD)));
+    scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskE)));
 
     asm volatile("sti");
 

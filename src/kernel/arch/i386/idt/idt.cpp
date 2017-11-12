@@ -140,6 +140,34 @@ void handleSystemCall(CPU::InterruptStackFrame* frame) {
             Kernel::currentScheduler->blockThread(Kernel::BlockReason::Sleep, frame->ebx);
             break;
         }
+
+        case 2: {
+            switch(frame->ebx) {
+                case 1: {
+                    printf("[TaskA] ");
+                    break;
+                }
+                case 2: {
+                    printf("[TaskB] ");
+                    break;
+                }
+                case 3: {
+                    printf("[TaskC] ");
+                    break;
+                }
+                case 4: {
+                    printf("[TaskD] ");
+                    break;
+                }
+                case 5: {
+                    printf("[TaskE] ");
+                    break;
+                }
+            }
+
+            printf("%d\n", frame->ecx);
+            break;
+        }
     }
 }
 

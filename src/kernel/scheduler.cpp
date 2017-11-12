@@ -7,6 +7,11 @@
 extern "C" void startProcess(Kernel::Task* task);
 extern "C" void changeProcess(Kernel::Task* current, Kernel::Task* next);
 extern "C" void launchProcess();
+
+extern "C" void printLaunchProcess() {
+    printf("launchProcess\n");
+}
+
 namespace Kernel {
 
     Scheduler* currentScheduler;
@@ -31,14 +36,15 @@ namespace Kernel {
         startTask = currentTask;
 
         elapsedTime_milliseconds = 0;
-        timeslice_milliseconds = 100;
+        timeslice_milliseconds = 10;
     }
 
     void Scheduler::scheduleNextTask() {
         if (currentTask == nullptr && readyQueue != nullptr) {
-            printf("[Scheduler] Current null\n");
+            //printf("[Scheduler] Current null\n");
             currentTask = readyQueue;
-            startProcess(currentTask);
+            //startProcess(currentTask);
+            state = State::StartCurrent;
         }
         else {
 
@@ -47,16 +53,19 @@ namespace Kernel {
             if (next == nullptr) {
                 //no task available
                 //enterIdle();
-                printf("[Scheduler] Next = nullptr\n");
-                auto current = currentTask;
-                currentTask = nullptr;
-                changeProcess(current, startTask);
+                //printf("[Scheduler] Next = nullptr\n");
+                //auto current = currentTask;
+                //currentTask = nullptr;
+                //changeProcess(current, startTask);
+                state = State::ChangeToStart;
             }
             else {
-                printf("[Scheduler] Found next\n");
-                auto current = currentTask;
-                currentTask = next;
-                changeProcess(current, next);
+                //printf("[Scheduler] Found next\n");
+                //auto current = currentTask;
+                //currentTask = next;
+                nextTask = next;
+                //changeProcess(current, next);
+                state = State::ChangeToNext;
             }
         }
     }
@@ -73,8 +82,12 @@ namespace Kernel {
                     blockedQueue = blocked->nextTask;
 
                     if (blocked->prevTask != nullptr) {
-                        blocked->prevTask = blocked->nextTask;
+                        blocked->prevTask->nextTask = blocked->nextTask;
+                        blocked->nextTask->prevTask = blocked->prevTask;
                     }
+
+                    blocked->nextTask = nullptr;
+                    blocked->prevTask = nullptr;
                     
                     break;
                 }
@@ -95,10 +108,33 @@ namespace Kernel {
         }
     }
 
+    void Scheduler::runNextTask() {
+        if (state == State::StartCurrent) {
+            //printf("[Scheduler] s(c)\n");
+            startProcess(currentTask);
+        }
+        else if (state == State::ChangeToStart) {
+            //printf("[Scheduler] c(c, s)\n");
+            auto current = currentTask;
+            currentTask = nullptr;
+            changeProcess(current, startTask);
+            
+        }
+        else {
+            //printf("[Scheduler] c(c, n)\n");
+            auto current = currentTask;
+            currentTask = nextTask;
+            //printf("Before change\n");
+            changeProcess(current, nextTask);
+            //printf("After change\n");
+        }
+    }
+
     void Scheduler::notifyTimesliceExpired() {
         elapsedTime_milliseconds += timeslice_milliseconds;
 
         scheduleNextTask(); 
+        runNextTask();
 
         /*auto current = currentTask;
         auto next = currentTask->nextTask;
@@ -131,7 +167,7 @@ namespace Kernel {
         changeProcess(current, next);*/
     }
 
-    Task* Scheduler::createTestTask(uintptr_t functionAddress) {
+    uint32_t createStack() {
         auto processStack = Memory::currentVMM->allocatePages(1, 
             static_cast<int>(Memory::PageTableFlags::Present)
             | static_cast<int>(Memory::PageTableFlags::AllowWrite)
@@ -139,6 +175,12 @@ namespace Kernel {
         auto physicalPage = Memory::currentPMM->allocatePage(1);
         Memory::currentVMM->map(processStack, physicalPage);
         Memory::currentPMM->finishAllocation(processStack, 1);
+
+        return processStack;
+    }
+
+    Task* Scheduler::createTestTask(uintptr_t functionAddress) {
+        auto processStack = createStack();
 
         uint8_t volatile* stackPointer = static_cast<uint8_t volatile*>(reinterpret_cast<void volatile*>(processStack + 4096));
         stackPointer -= sizeof(TaskStack);
@@ -154,6 +196,7 @@ namespace Kernel {
 
         Task* task = taskBuffer;
         task->context.esp = reinterpret_cast<uint32_t>(stackPointer);
+        task->context.kernelESP = processStack + 4096;
         //stack->esp = task->context.esp;
         //stack->esp = processStack + 4096;//task->context.esp;
 
@@ -163,15 +206,10 @@ namespace Kernel {
     }
 
     Task* Scheduler::launchUserProcess(uintptr_t functionAddress) {
-        auto processStack = Memory::currentVMM->allocatePages(1, 
-            static_cast<int>(Memory::PageTableFlags::Present)
-            | static_cast<int>(Memory::PageTableFlags::AllowWrite)
-            | static_cast<int>(Memory::PageTableFlags::AllowUserModeAccess));
-        auto physicalPage = Memory::currentPMM->allocatePage(1);
-        Memory::currentVMM->map(processStack, physicalPage);
-        Memory::currentPMM->finishAllocation(processStack, 1);
+        auto kernelStack = createStack();
+        auto userStack = createStack();
 
-        uint8_t volatile* stackPointer = static_cast<uint8_t volatile*>(reinterpret_cast<void volatile*>(processStack + 4096));
+        uint8_t volatile* stackPointer = static_cast<uint8_t volatile*>(reinterpret_cast<void volatile*>(kernelStack + 4096));
         stackPointer -= sizeof(TaskStack);
 
         TaskStack volatile* stack = reinterpret_cast<TaskStack volatile*>(stackPointer);
@@ -181,8 +219,18 @@ namespace Kernel {
         stack->eip = reinterpret_cast<uint32_t>(launchProcess);
         stack->eax = functionAddress;
 
+        uint8_t volatile* userStackPointer = static_cast<uint8_t volatile*>(reinterpret_cast<void volatile*>(userStack + 4096));
+        userStackPointer -= sizeof(TaskStack);
+        TaskStack volatile* uStack = reinterpret_cast<TaskStack volatile*>(userStackPointer);
+
+        uStack->eflags = stack->eflags;
+        uStack->eip = functionAddress;
+
+        stack->ecx = reinterpret_cast<uint32_t>(userStackPointer);//userStack + 4096 - sizeof(TaskStack);
+
         Task* task = taskBuffer;
         task->context.esp = reinterpret_cast<uint32_t>(stackPointer);
+        task->context.kernelESP = kernelStack + 4096;
 
         taskBuffer++;
 
@@ -191,57 +239,74 @@ namespace Kernel {
 
     void Scheduler::blockThread(BlockReason reason, uint32_t arg) {
         if (reason == BlockReason::Sleep) {
+
+            //printf("[Scheduler] Sleeping thread\n");
+            auto current = currentTask;
+
             currentTask->state = TaskState::Sleeping;
             currentTask->wakeTime = elapsedTime_milliseconds + arg;
 
+            scheduleNextTask();
+
             //remove from ready queue
-            if (currentTask->prevTask != nullptr) {
-                auto previous = currentTask->prevTask;
-                previous->nextTask = currentTask->nextTask;
-                currentTask->nextTask = previous;
+            if (current->prevTask != nullptr) {
+                auto previous = current->prevTask;
+                previous->nextTask = current->nextTask;
+                if (current->nextTask != nullptr) {
+                    current->nextTask->prevTask = previous;
+                }
+                //currentTask->nextTask = previous;
                 //currentTask->prevTask = currentTask->nextTask;
                 //currentTask->nextTask->prevTask = previous;
             }
             else {
-                readyQueue = currentTask->nextTask;
+                readyQueue = current->nextTask;
                 //currentTask->prevTask = nullptr;
             }
 
+
+
+            current->nextTask = nullptr;
+            current->prevTask = nullptr;
+
             //insert into blocked queue
             if (blockedQueue == nullptr) {
-                blockedQueue = currentTask;
+                blockedQueue = current;
             }
             else {
                 auto blocked = blockedQueue;
 
                 while (blocked != nullptr) {
-                    if (blocked->wakeTime >= currentTask->wakeTime) {
-                        currentTask->nextTask = blocked;
+                    if (blocked->wakeTime >= current->wakeTime) {
+                        current->nextTask = blocked;
 
                         if (blocked->prevTask != nullptr) {
-                            currentTask->prevTask = blocked->prevTask;
-                            blocked->prevTask->nextTask = currentTask;
+                            current->prevTask = blocked->prevTask;
+                            blocked->prevTask->nextTask = current;
                         }
                         else {
-                            blockedQueue = currentTask;
-                            currentTask->prevTask = nullptr;
+                            blockedQueue = current;
+                            current->prevTask = nullptr;
                         }
 
-                        blocked->prevTask = currentTask;
+                        blocked->prevTask = current;
 
                         break;
                     }
 
                     if (blocked->nextTask == nullptr) {
-                        blocked->nextTask = currentTask;
-                        currentTask->prevTask = blocked;
+                        blocked->nextTask = current;
+                        current->prevTask = blocked;
                         break;
                     }
+
+                    blocked = blocked->nextTask;
                 }
                 
-                scheduleNextTask();
+                //scheduleNextTask();
             }
             //notifyTimesliceExpired();
+            runNextTask();
         }
     }
 

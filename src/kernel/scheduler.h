@@ -36,9 +36,9 @@ namespace Kernel {
         uint32_t esi {0};
         uint32_t ebp {0};
         uint32_t ebx {0};
-        uint32_t edx {0};
-        uint32_t ecx {0};
-        uint32_t eax {0};
+        //uint32_t edx {0};
+        //uint32_t ecx {0};
+        //uint32_t eax {0};
 
         /*uint32_t ss;
         uint32_t esp;
@@ -46,7 +46,8 @@ namespace Kernel {
         uint32_t cs {0};
         */
         uint32_t eip {0};
-
+        uint32_t ecx {0};
+        uint32_t eax {0};
         /*uint32_t eip;
         uint32_t cs;
         uint32_t eflags2;
@@ -55,6 +56,12 @@ namespace Kernel {
     };
 
     extern class Scheduler* currentScheduler;
+
+    enum class State {
+        StartCurrent,
+        ChangeToStart,
+        ChangeToNext
+    };
 
     class Scheduler {
     public:
@@ -73,17 +80,21 @@ namespace Kernel {
 
         void scheduleNextTask();
         Task* findNextTask();
+        void runNextTask();
 
         Task idleTask;
         //TODO: HACK: need to make a proper kernel allocator for this
         Task* taskBuffer;
         Task* currentTask {nullptr};
+        Task* nextTask {nullptr};
         Task* readyQueue {nullptr};
         Task* blockedQueue {nullptr};
         Task* startTask;
 
         uint64_t elapsedTime_milliseconds;
         uint32_t timeslice_milliseconds;
+
+        State state {State::StartCurrent};
     };
 }
 

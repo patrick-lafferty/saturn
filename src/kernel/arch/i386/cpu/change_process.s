@@ -2,7 +2,7 @@ section .text
 
 global startProcess
 startProcess:
-    mov eax, DWORD [esp + 4] 
+    mov ecx, DWORD [esp + 4] 
     mov esp, DWORD [eax]
 
     ;restore the important registers from the
@@ -12,19 +12,23 @@ startProcess:
     ;ie one per cpu
 
     ;store the current kernel stack's esp to the TSS
-    ;mov ebp, 0xa0000000
-    ;mov [ebp + 4], esp
+    mov eax, 0xa0000000
+    mov ecx, [ecx + 4]
+    mov [eax + 4], ecx
 
     popfd
     pop edi
     pop esi
     pop ebp
     pop ebx
-    pop edx
-    pop ecx
-    pop eax
+    ;pop edx
+    ;pop ecx
+    ;pop eax
 
     ret
+
+;getEIP:
+;    mov 
 
 ;changes from one ring0 process to another
 global changeProcess
@@ -34,10 +38,13 @@ changeProcess:
 
     ;save the important registers to the current
     ;task's stack
+    ;mov ebp, esp
+    mov eax, [esp + 4]
+    mov ecx, [esp + 8]
 
-    push eax
-    push ecx
-    push edx
+    ;push eax
+    ;push ecx
+    ;push edx
     push ebx
     push ebp
     push esi
@@ -46,20 +53,20 @@ changeProcess:
 
     ;store the stack pointer to the current
     ;task's context.esp
-    mov eax, [esp + 36] 
-    mov DWORD [eax], esp 
+    ;mov eax, [esp + 36] 
+    ;mov DWORD [eax], esp 
+    mov [eax], esp
 
     ;change the current stack pointer
     ;to the next task's context.esp
-    mov eax, DWORD [esp + 40] 
-    mov esp, DWORD [eax]
+    ;mov eax, DWORD [esp + 40] 
+    ;mov esp, DWORD [eax]
+    mov esp, [ecx]
 
     ;TODO: HACK: don't hardcode TSS address, and there might be multiple
     ;ie one per cpu
 
-    ;store the current kernel stack's esp to the TSS
-    ;mov ebp, 0xa0000000
-    ;mov [ebp + 4], esp
+    
 
     ;restore the important registers from the
     ;next task's stack
@@ -69,18 +76,40 @@ changeProcess:
     pop esi
     pop ebp
     pop ebx
-    pop edx
-    pop ecx
-    pop eax
+    ;pop edx
+    ;pop ecx
+    ;pop eax
+    ;store the current kernel stack's esp to the TSS
+    mov eax, 0xa0000000
+    ;mov ecx, esp
+    ;add ecx, 12
+    mov ecx, [ecx + 4]
+    mov [eax + 4], ecx
 
     ret
+
+extern printLaunchProcess
 
 ;launches a usermode process
 global launchProcess
 launchProcess:
 
     ;address of user function is stored in eax
-    mov ebx, eax
+    ;mov ebx, eax
+    pop ecx
+    pop ebx
+
+    ;store the current kernel stack's esp to the TSS
+    ;mov eax, 0xa0000000
+    ;mov [eax + 4], esp
+
+    ;ret
+
+pusha
+    call printLaunchProcess
+popa
+
+    ;push returnToUsermode
     
     ;set the selectors to usermode's gdt entries
     mov eax, 0x23
@@ -89,14 +118,33 @@ launchProcess:
     mov fs, ax
     mov gs, ax
 
-    push 0x23
-    mov eax, esp
-    push eax
-    pushfd
-    push 0x1B
-    push ebx
+    push 0x23 ;usermode data segment
+    ;mov eax, esp
+    ;push eax
+    ;user stack is stored in ecx
+    push ecx ;esp
+    pushfd ;eflags
+    push 0x1B ;usermode code segment
+    push ebx ;eip
 
     iret
+
+returnToUsermode:
+    ;a usermode process was running
+
+    ;set the selectors to usermode's gdt entries
+    mov eax, 0x23
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+
+    push 0x23
+    ;user stack
+    pushfd
+    push 0x1B
+    ;user eip
+
     
 global fillTSS
 fillTSS:
