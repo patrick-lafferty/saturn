@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
+//TODO: this will all have to be overhauled to handle multiple apics (per cpu)
 namespace APIC {
 
     void writeIOAPICRegister(uintptr_t address, uint8_t select, uint32_t value) {
@@ -72,6 +73,13 @@ namespace APIC {
         setIndex(0x8A);
         auto statusRegisterA = readPort();
         setIndex(0x8A);
+        /*
+        0xD corresponds to a rate of 13
+        frequency is calculated as:
+        32768 >> (rate - 1)
+
+        so this gives a rate of 8Hz
+        */
         writePort((statusRegisterA & 0xF0) | 0xD);
         
     }
@@ -89,19 +97,31 @@ namespace APIC {
         setupRTC(true);
     }
 
+    uint32_t ticksPerMilliSecond = 0;
     void calibrateAPICTimer() {
 
         writeLocalAPICRegister(Registers::LVT_Timer, combineFlags(LVT_Mask::DisableInterrupt));
         uint32_t ticks = 0xFFFFFFFF - readLocalAPICRegister(Registers::CurrentCount);
         setupRTC(false);
-        ticks *= 8;
-        writeLocalAPICRegister(Registers::LVT_Timer, combineFlags(
+        auto ticksPerSecond = ticks * 8; //RTC was using 8Hz rate
+        ticksPerMilliSecond = ticksPerSecond / 1000;
+        /*writeLocalAPICRegister(Registers::LVT_Timer, combineFlags(
             52,
             LVT_TimerMode::Periodic
-        )); 
+        )); */
+        writeLocalAPICRegister(Registers::InitialCount, 0x0);
         writeLocalAPICRegister(Registers::DivideConfiguration, combineFlags(DivideConfiguration::By16));
 
-        writeLocalAPICRegister(Registers::InitialCount, ticks);
+        //writeLocalAPICRegister(Registers::InitialCount, ticks);
+    }
+
+    void setAPICTimer(LVT_TimerMode mode, uint32_t timeInMilliseconds) {
+        writeLocalAPICRegister(Registers::LVT_Timer, combineFlags(
+            52,
+            mode
+        )); 
+
+        writeLocalAPICRegister(Registers::InitialCount, timeInMilliseconds * ticksPerMilliSecond);
     }
 
     void initialize() {

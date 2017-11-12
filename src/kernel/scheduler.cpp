@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <memory/physical_memory_manager.h>
 #include <memory/virtual_memory_manager.h>
+#include <cpu/apic.h>
 
 extern "C" void startProcess(Kernel::Task* task);
 extern "C" void changeProcess(Kernel::Task* current, Kernel::Task* next);
@@ -11,7 +12,7 @@ namespace Kernel {
     Scheduler* currentScheduler;
 
     void idleLoop() {
-        printf("[Scheduler] Idle\n");
+        //printf("[Scheduler] Idle\n");
         asm volatile("hlt");
         idleLoop();
     }
@@ -28,22 +29,106 @@ namespace Kernel {
         taskBuffer = static_cast<Task*>(reinterpret_cast<void*>(taskBufferAddress));
         currentTask = createTestTask(reinterpret_cast<uint32_t>(idleLoop));
         startTask = currentTask;
+
+        elapsedTime_milliseconds = 0;
+        timeslice_milliseconds = 100;
+    }
+
+    void Scheduler::scheduleNextTask() {
+        if (currentTask == nullptr && readyQueue != nullptr) {
+            printf("[Scheduler] Current null\n");
+            currentTask = readyQueue;
+            startProcess(currentTask);
+        }
+        else {
+
+            auto next = findNextTask();
+
+            if (next == nullptr) {
+                //no task available
+                //enterIdle();
+                printf("[Scheduler] Next = nullptr\n");
+                auto current = currentTask;
+                currentTask = nullptr;
+                changeProcess(current, startTask);
+            }
+            else {
+                printf("[Scheduler] Found next\n");
+                auto current = currentTask;
+                currentTask = next;
+                changeProcess(current, next);
+            }
+        }
+    }
+
+    Task* Scheduler::findNextTask() {
+        
+        if (readyQueue == nullptr) {
+            //nothings ready, did a blocked task's wake time elapse?
+            auto blocked = blockedQueue;
+
+            while(blocked != nullptr) {
+                if (blocked->wakeTime >= elapsedTime_milliseconds) {
+                    readyQueue = blocked;
+                    blockedQueue = blocked->nextTask;
+
+                    if (blocked->prevTask != nullptr) {
+                        blocked->prevTask = blocked->nextTask;
+                    }
+                    
+                    break;
+                }
+
+                blocked = blocked->nextTask;
+            }
+
+            return readyQueue;
+        }
+        else {
+            auto next = currentTask->nextTask;
+
+            if (next == nullptr) {
+                next = readyQueue; //startTask;
+            }
+
+            return next;
+        }
     }
 
     void Scheduler::notifyTimesliceExpired() {
+        elapsedTime_milliseconds += timeslice_milliseconds;
 
-        auto current = currentTask;
+        scheduleNextTask(); 
+
+        /*auto current = currentTask;
         auto next = currentTask->nextTask;
 
-        if (currentTask->nextTask == nullptr) {
+        if (next == nullptr) {
             next = startTask;
             currentTask = startTask;
+        }
+        else if (next->state != TaskState::Running) {
+            while (next != nullptr) {
+                next = next->nextTask;
+
+                if (next->state == TaskState::Running) {
+                    break;
+                }
+            }
+
+            if (next == nullptr) {
+                next = startTask;
+                currentTask = startTask;
+            }
+            else {
+                currentTask = next;
+            }
         }
         else {
             currentTask = currentTask->nextTask;
         }
 
-        changeProcess(current, next);
+        changeProcess(current, next);*/
     }
 
     Task* Scheduler::createTestTask(uintptr_t functionAddress) {
@@ -104,19 +189,84 @@ namespace Kernel {
         return task;
     }
 
-    void Scheduler::scheduleTask(Task* task) {
+    void Scheduler::blockThread(BlockReason reason, uint32_t arg) {
+        if (reason == BlockReason::Sleep) {
+            currentTask->state = TaskState::Sleeping;
+            currentTask->wakeTime = elapsedTime_milliseconds + arg;
 
-        auto current = currentTask;
+            //remove from ready queue
+            if (currentTask->prevTask != nullptr) {
+                auto previous = currentTask->prevTask;
+                previous->nextTask = currentTask->nextTask;
+                currentTask->nextTask = previous;
+                //currentTask->prevTask = currentTask->nextTask;
+                //currentTask->nextTask->prevTask = previous;
+            }
+            else {
+                readyQueue = currentTask->nextTask;
+                //currentTask->prevTask = nullptr;
+            }
 
-        while (current->nextTask != nullptr) {
-            current = current->nextTask;
+            //insert into blocked queue
+            if (blockedQueue == nullptr) {
+                blockedQueue = currentTask;
+            }
+            else {
+                auto blocked = blockedQueue;
+
+                while (blocked != nullptr) {
+                    if (blocked->wakeTime >= currentTask->wakeTime) {
+                        currentTask->nextTask = blocked;
+
+                        if (blocked->prevTask != nullptr) {
+                            currentTask->prevTask = blocked->prevTask;
+                            blocked->prevTask->nextTask = currentTask;
+                        }
+                        else {
+                            blockedQueue = currentTask;
+                            currentTask->prevTask = nullptr;
+                        }
+
+                        blocked->prevTask = currentTask;
+
+                        break;
+                    }
+
+                    if (blocked->nextTask == nullptr) {
+                        blocked->nextTask = currentTask;
+                        currentTask->prevTask = blocked;
+                        break;
+                    }
+                }
+                
+                scheduleNextTask();
+            }
+            //notifyTimesliceExpired();
         }
+    }
 
-        current->nextTask = task;
+    void Scheduler::scheduleTask(Task* task) {
+        if (readyQueue == nullptr) {
+            readyQueue = task;
+            //currentTask = task;
+        }
+        else {
+            auto current = readyQueue;//currentTask;
+
+            while (current->nextTask != nullptr) {
+                current = current->nextTask;
+            }
+
+            current->nextTask = task;
+            task->prevTask = current;
+        }
+    }
+
+    void Scheduler::setupTimeslice() {
+        APIC::setAPICTimer(APIC::LVT_TimerMode::Periodic, timeslice_milliseconds);
     }
 
     void Scheduler::enterIdle() {
-        //idleLoop();
         startProcess(startTask);
     }
 }

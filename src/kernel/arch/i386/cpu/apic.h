@@ -9,6 +9,7 @@ namespace APIC {
     void loadAPICStructures(uintptr_t address, uint32_t byteLength);
     void calibrateAPICTimer();
 
+
     enum class Registers {
         TaskPriority = 0x80,
         EndOfInterrupt = 0xB0,
@@ -39,6 +40,8 @@ namespace APIC {
         Periodic = 0b010'0000'0000'0000'0000,
         TSCDeadline = 0b100'0000'0000'0000'0000,
     };
+
+    void setAPICTimer(LVT_TimerMode mode, uint32_t timeInMilliseconds);
 
     enum class DivideConfiguration {
         By2 = 0b000,

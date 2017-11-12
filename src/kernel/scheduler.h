@@ -1,12 +1,28 @@
 #pragma once
 
+#include <stdint.h>
 #include <task_context.h>
 
 namespace Kernel {
+
+    enum class TaskState {
+        Running,
+        Sleeping,
+        Blocked
+    };
+
+    enum class BlockReason {
+        Sleep,
+        WaitingOnResource
+    };
+
     struct Task {
         TaskContext context;
         Task* nextTask {nullptr};
+        Task* prevTask {nullptr};
         uint32_t id {0};
+        TaskState state;
+        uint64_t wakeTime {0};
     };
 
     enum class EFlags {
@@ -50,14 +66,24 @@ namespace Kernel {
         void scheduleTask(Task* task);
         void enterIdle();
         Task* launchUserProcess(uintptr_t functionAddress);
+        void blockThread(BlockReason reason, uint32_t arg);
+        void setupTimeslice();
 
     private:
+
+        void scheduleNextTask();
+        Task* findNextTask();
 
         Task idleTask;
         //TODO: HACK: need to make a proper kernel allocator for this
         Task* taskBuffer;
-        Task* currentTask;
+        Task* currentTask {nullptr};
+        Task* readyQueue {nullptr};
+        Task* blockedQueue {nullptr};
         Task* startTask;
+
+        uint64_t elapsedTime_milliseconds;
+        uint32_t timeslice_milliseconds;
     };
 }
 

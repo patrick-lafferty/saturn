@@ -8,8 +8,12 @@ startProcess:
     ;restore the important registers from the
     ;next task's stack
 
-    mov ebp, 0xa0000000
-    mov [ebp + 4], esp
+    ;TODO: HACK: don't hardcode TSS address, and there might be multiple
+    ;ie one per cpu
+
+    ;store the current kernel stack's esp to the TSS
+    ;mov ebp, 0xa0000000
+    ;mov [ebp + 4], esp
 
     popfd
     pop edi
@@ -50,9 +54,12 @@ changeProcess:
     mov eax, DWORD [esp + 40] 
     mov esp, DWORD [eax]
 
+    ;TODO: HACK: don't hardcode TSS address, and there might be multiple
+    ;ie one per cpu
+
     ;store the current kernel stack's esp to the TSS
-    mov ebp, 0xa0000000
-    mov [ebp + 4], esp
+    ;mov ebp, 0xa0000000
+    ;mov [ebp + 4], esp
 
     ;restore the important registers from the
     ;next task's stack

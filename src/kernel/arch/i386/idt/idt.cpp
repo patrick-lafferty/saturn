@@ -133,6 +133,16 @@ void handlePageFault(uintptr_t virtualAddress) {
     }
 }
 
+void handleSystemCall(CPU::InterruptStackFrame* frame) {
+
+    switch(frame->eax) {
+        case 1: {
+            Kernel::currentScheduler->blockThread(Kernel::BlockReason::Sleep, frame->ebx);
+            break;
+        }
+    }
+}
+
 void interruptHandler(CPU::InterruptStackFrame* frame) {
     
     switch(frame->interruptNumber) {
@@ -155,63 +165,76 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
                 frame->resp, frame->ss);
             asm volatile("hlt");
         }
-        case 255: {
-            printf("[IDT] System call detected!\n");
+        case 14: {
+            //page fault
+            uintptr_t virtualAddress;
+            asm("movl %%CR2, %%eax" : "=a"(virtualAddress));
+
+            handlePageFault(virtualAddress); 
             break;
         }
-    }
+        case 48:
+        case 49:
+        case 50:
+        case 51:
+        case 52:
+        case 53:
+        case 54:
+        case 55:
+        case 56:
+        case 57:
+        case 58:
+        case 59: {
+            //io apic irq
 
-    if (frame->interruptNumber == 14) {
-        //page fault
-        uintptr_t virtualAddress;
-        asm("movl %%CR2, %%eax" : "=a"(virtualAddress));
+            if (frame->interruptNumber == 49) {
+                uint8_t full {1};
+                uint16_t statusRegister {0x64};
+                uint16_t dataPort {0x60};
 
-        handlePageFault(virtualAddress);        
-    }    
-    else if (frame->interruptNumber >= 48 && frame->interruptNumber <= 59) {
-        //io apic irq
+                printf("[IDT] Keyboard ");
 
-        if (frame->interruptNumber == 49) {
-            uint8_t full {1};
-            uint16_t statusRegister {0x64};
-            uint16_t dataPort {0x60};
+                while (full & 0x1) {
+                    uint8_t c;
+                    asm("inb %1, %0"
+                        : "=a" (c)
+                        : "Nd" (dataPort));
 
-            printf("[IDT] Keyboard ");
+                    printf("%d ", c);
 
-            while (full & 0x1) {
-                uint8_t c;
-                asm("inb %1, %0"
-                    : "=a" (c)
-                    : "Nd" (dataPort));
+                    asm("inb %1, %0"
+                        : "=a" (full)
+                        : "Nd" (statusRegister));
 
-                printf("%d ", c);
+                }
 
-                asm("inb %1, %0"
-                    : "=a" (full)
-                    : "Nd" (statusRegister));
-
+                printf("\n");
             }
-
-            printf("\n");
-        }
-        else if (frame->interruptNumber == 51) {
-            APIC::calibrateAPICTimer();
-        }
-        else if (frame->interruptNumber == 52) {
-            
+            else if (frame->interruptNumber == 51) {
+                APIC::calibrateAPICTimer();
+                Kernel::currentScheduler->setupTimeslice();
+            }
+            else if (frame->interruptNumber == 52) {
+                
+                APIC::signalEndOfInterrupt();
+                Kernel::currentScheduler->notifyTimesliceExpired();
+                return;
+            }
+            else {
+                printf("[IDT] Unhandled APIC IRQ %d\n", frame->interruptNumber);
+            }
             APIC::signalEndOfInterrupt();
-            //printf("APIC Timer fired\n");
-            Kernel::currentScheduler->notifyTimesliceExpired();
-            return;
+            break;
         }
-        else {
-            printf("[IDT] Unhandled APIC IRQ %d\n", frame->interruptNumber);
-        }
-        APIC::signalEndOfInterrupt();
+        case 255: {
+            handleSystemCall(frame);
 
-    }
-    else {
-        printf("[IDT] Unhandled interrupt %d\n", frame->interruptNumber);
-        asm volatile("hlt");
+            break;
+        }
+        default: {
+            printf("[IDT] Unhandled interrupt %d\n", frame->interruptNumber);
+            asm volatile("hlt");
+            break;
+        }
     }
 }
