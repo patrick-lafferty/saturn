@@ -56,7 +56,7 @@ extern "C" void taskA() {
     while(true) {
         print(1, a);
         //printf("[TaskA] %d\n", a);
-        //sleep(1000);    
+        sleep(1000);    
         a++;
     }
 }
@@ -67,7 +67,7 @@ void taskB() {
     while(true) {
         print(2, b);
         //printf("[TaskB] %d\n", b);
-        //sleep(2000); 
+        sleep(1000); 
         b += 2;
     }
 }
@@ -78,7 +78,7 @@ void taskC() {
     while(true) {
         print(3, c);
         //printf("[TaskC] %d\n", c);
-        //sleep(3000); 
+        sleep(1000); 
         c += 3;
     }
 }
@@ -89,7 +89,7 @@ void taskD() {
     while(true) {
         print(4, d);
         //printf("[TaskD] %d\n", d);
-        //sleep(4000); 
+        sleep(1000); 
         d += 4;
     }
 }
@@ -100,7 +100,7 @@ void taskE() {
     while(true) {
         print(5, e);
         //printf("[TaskD] %d\n", d);
-        //sleep(4000); 
+        sleep(1000); 
         e += 10;
     }
 }

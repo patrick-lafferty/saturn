@@ -3,7 +3,7 @@ section .text
 global startProcess
 startProcess:
     mov ecx, DWORD [esp + 4] 
-    mov esp, DWORD [eax]
+    mov esp, DWORD [ecx]
 
     ;restore the important registers from the
     ;next task's stack
