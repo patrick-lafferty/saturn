@@ -82,7 +82,7 @@ System calls: 0xFF (Final Fantasy)
 
 ** Next Steps
 - [X] extract the TSS stuff and put it in its proper place
-- [ ] pass address to ring3 function instead of hardcoding taskA's
+- [X] pass address to ring3 function instead of hardcoding taskA's
 - [ ] implement thread state
 - [ ] implement switch_to(thread)
 - [ ] implement find_thread_to_switch_to()

@@ -11,6 +11,7 @@
 #include <memory/physical_memory_manager.h>
 #include <memory/virtual_memory_manager.h>
 #include <scheduler.h>
+#include <system_calls.h>
 
 using namespace Kernel;
 using namespace Memory;
@@ -50,35 +51,30 @@ void acpi_stuff() {
 
 volatile int x;
 extern "C" void taskA() {
+    
     printf("[TaskA] Hello, world\n");
-    for(int i = 0; i < 10'000'000; i++) 
-        x++;
-    //asm volatile("cli");
-    //asm volatile("int $0xFF");
+    //sleep(1000);    
     taskA();
 }
 
 void taskB() {
     printf("[TaskB] This is\n");
-    for(int i = 0; i < 10'000'000; i++) 
-        x++;
-    //asm volatile("hlt");
+    while(true) {}
+    //sleep(2000); 
     taskB();
 }
 
 void taskC() {
     printf("[TaskC] a test of\n");
-    for(int i = 0; i < 10'000'000; i++) 
-        x++;
-    //asm volatile("hlt");
+    while(true) {}
+    //sleep(3000); 
     taskC();
 }
 
 void taskD() {
     printf("[TaskD] the emergency broadcast system\n");
-    for(int i = 0; i < 10'000'000; i++) 
-        x++;
-    //asm volatile("hlt");
+    while(true) {}
+    //sleep(4000); 
     taskD();
 }
 
