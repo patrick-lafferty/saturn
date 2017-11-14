@@ -67,7 +67,7 @@ void taskB() {
     while(true) {
         print(2, b);
         //printf("[TaskB] %d\n", b);
-        sleep(1000); 
+        sleep(2000); 
         b += 2;
     }
 }
@@ -78,7 +78,7 @@ void taskC() {
     while(true) {
         print(3, c);
         //printf("[TaskC] %d\n", c);
-        sleep(1000); 
+        sleep(3000); 
         c += 3;
     }
 }
@@ -87,9 +87,9 @@ void taskD() {
     int d = 0;
 
     while(true) {
-        print(4, d);
+        //print(4, d);
         //printf("[TaskD] %d\n", d);
-        sleep(1000); 
+        sleep(4000); 
         d += 4;
     }
 }
@@ -98,9 +98,9 @@ void taskE() {
     int e = 0;
 
     while(true) {
-        print(5, e);
+        //print(5, e);
         //printf("[TaskD] %d\n", d);
-        sleep(1000); 
+        sleep(5000); 
         e += 10;
     }
 }
@@ -142,8 +142,8 @@ extern "C" int kernel_main(MultibootInformation* info) {
     scheduler.scheduleTask(scheduler.launchUserProcess(reinterpret_cast<uint32_t>(taskA)));
     scheduler.scheduleTask(scheduler.launchUserProcess(reinterpret_cast<uint32_t>(taskB)));
     scheduler.scheduleTask(scheduler.launchUserProcess(reinterpret_cast<uint32_t>(taskC)));
-    scheduler.scheduleTask(scheduler.launchUserProcess(reinterpret_cast<uint32_t>(taskD)));
-    scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskE)));
+    //scheduler.scheduleTask(scheduler.launchUserProcess(reinterpret_cast<uint32_t>(taskD)));
+    //scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskE)));
 
     asm volatile("sti");
 

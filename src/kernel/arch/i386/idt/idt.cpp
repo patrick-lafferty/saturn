@@ -160,7 +160,7 @@ void handleSystemCall(CPU::InterruptStackFrame* frame) {
                     break;
                 }
                 case 5: {
-                    printf("[TaskE] ");
+                    printf("                                         ");
                     break;
                 }
             }

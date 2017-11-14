@@ -86,6 +86,8 @@ namespace Kernel {
 
                 if (blocked->wakeTime <= elapsedTime_milliseconds) {
                     blockedQueue = next;
+                    //printf("Unblocked, next: %x\n", next);
+                printf("woke %x waketime %d elapsedtime %d\n", blocked, (uint32_t)blocked->wakeTime, elapsedTime_milliseconds);
 
                     if (blocked->prevTask != nullptr) {
                         blocked->prevTask->nextTask = next;
@@ -109,7 +111,7 @@ namespace Kernel {
         else {
             auto next = currentTask->nextTask;
 
-            if (next == nullptr) {
+            if (next == nullptr && readyQueue->state != TaskState::Sleeping) {
                 next = readyQueue; //startTask;
             }
 
@@ -149,6 +151,9 @@ namespace Kernel {
 
             if (blocked->wakeTime <= elapsedTime_milliseconds) {
                 blockedQueue = next;
+                //printf("Unblocked, next: %x\n", next);
+                printf("woke %x waketime %d elapsedtime %d\n", blocked, (uint32_t)blocked->wakeTime, elapsedTime_milliseconds);
+
 
                 if (blocked->prevTask != nullptr) {
                     blocked->prevTask->nextTask = next;
@@ -280,6 +285,8 @@ namespace Kernel {
             currentTask->state = TaskState::Sleeping;
             currentTask->wakeTime = elapsedTime_milliseconds + arg;
 
+            printf("%x waketime %d duration %d\n", current, (uint32_t)current->wakeTime, arg);
+
             scheduleNextTask();
 
             {
@@ -307,6 +314,7 @@ namespace Kernel {
                 blockedQueue = current;
             }
             else {
+                
                 auto blocked = blockedQueue;
 
                 while (blocked != nullptr) {
@@ -359,6 +367,8 @@ namespace Kernel {
             current->nextTask = task;
             task->prevTask = current;
         }
+
+        task->state = TaskState::Running;
     }
 
     void Scheduler::setupTimeslice() {
