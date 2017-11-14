@@ -67,7 +67,7 @@ void taskB() {
     while(true) {
         print(2, b);
         //printf("[TaskB] %d\n", b);
-        sleep(2000); 
+        sleep(1000); 
         b += 2;
     }
 }
@@ -141,7 +141,7 @@ extern "C" int kernel_main(MultibootInformation* info) {
     Kernel::Scheduler scheduler;
     scheduler.scheduleTask(scheduler.launchUserProcess(reinterpret_cast<uint32_t>(taskA)));
     scheduler.scheduleTask(scheduler.launchUserProcess(reinterpret_cast<uint32_t>(taskB)));
-    scheduler.scheduleTask(scheduler.launchUserProcess(reinterpret_cast<uint32_t>(taskC)));
+    //scheduler.scheduleTask(scheduler.launchUserProcess(reinterpret_cast<uint32_t>(taskC)));
     //scheduler.scheduleTask(scheduler.launchUserProcess(reinterpret_cast<uint32_t>(taskD)));
     //scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskE)));
 

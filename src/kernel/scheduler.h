@@ -5,6 +5,77 @@
 
 namespace Kernel {
 
+    template<typename T> class LinkedList {
+        public:
+            
+            void insertBefore(T* item, T* before) {
+                if (head == nullptr) {
+                    head = item;
+                }
+                else {
+                    item->nextTask = before;
+
+                    if (before->previousTask != nullptr) {
+                        item->previousTask = before->previousTask;
+                        item->previousTask->nextTask = item;
+                    }
+                    else {
+                        head = item;
+                        item->previousTask = nullptr;
+                    }
+
+                    before->previousTask = item;
+                }
+            }
+
+            void insertAfter(T* item, T* after) {
+                after->nextTask = item;
+                item->previousTask = after;
+            }
+
+            void append(T* item) {
+                auto current = head;
+
+                while (current->nextTask != nullptr) {
+                    current = current->nextTask;
+                }
+
+                current->nextTask = item;
+                item->previousTask = current;
+            }
+
+            void remove(T* item) {
+                auto previous = item->previousTask;
+                auto next = item->nextTask;
+
+                if (previous != nullptr) {
+                    previous->nextTask = item->nextTask;
+                }
+                else {
+                    head = next;
+                }
+
+                if (next != nullptr) {
+                    next->previousTask = previous;
+                }
+
+                item->previousTask = nullptr;
+                item->nextTask = nullptr;
+            }
+
+            T* getHead() {
+                return head;
+            }
+
+            bool isEmpty() {
+                return head == nullptr;
+            }
+
+        private:
+
+        T* head {nullptr};
+    };
+
     enum class TaskState {
         Running,
         Sleeping,
@@ -19,7 +90,7 @@ namespace Kernel {
     struct Task {
         TaskContext context;
         Task* nextTask {nullptr};
-        Task* prevTask {nullptr};
+        Task* previousTask {nullptr};
         uint32_t id {0};
         TaskState state;
         uint64_t wakeTime {0};
@@ -74,6 +145,7 @@ namespace Kernel {
         void enterIdle();
         Task* launchUserProcess(uintptr_t functionAddress);
         void blockThread(BlockReason reason, uint32_t arg);
+        void unblockTask();
         void setupTimeslice();
 
     private:
@@ -87,8 +159,10 @@ namespace Kernel {
         Task* taskBuffer;
         Task* currentTask {nullptr};
         Task* nextTask {nullptr};
-        Task* readyQueue {nullptr};
-        Task* blockedQueue {nullptr};
+        //Task* readyQueue {nullptr};
+        LinkedList<Task> readyQueue;
+        //Task* blockedQueue {nullptr};
+        LinkedList<Task> blockedQueue;
         Task* startTask;
 
         uint64_t elapsedTime_milliseconds;

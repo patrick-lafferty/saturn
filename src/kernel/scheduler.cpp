@@ -40,8 +40,8 @@ namespace Kernel {
     }
 
     void Scheduler::scheduleNextTask() {
-        if (currentTask == nullptr && readyQueue != nullptr) {
-            currentTask = readyQueue;
+        if (currentTask == nullptr && !readyQueue.isEmpty()) {
+            currentTask = readyQueue.getHead();
             state = State::StartCurrent;
         }
         else {
@@ -64,27 +64,18 @@ namespace Kernel {
 
     Task* Scheduler::findNextTask() {
         
-        if (readyQueue == nullptr) {
+        if (readyQueue.isEmpty()) {
             //nothings ready, did a blocked task's wake time elapse?
-            auto blocked = blockedQueue;
+            auto blocked = blockedQueue.getHead();
 
             while(blocked != nullptr) {
                 auto next = blocked->nextTask;
 
                 if (blocked->wakeTime <= elapsedTime_milliseconds) {
-                    blockedQueue = next;
+                    
                 printf("woke %x waketime %d elapsedtime %d\n", blocked, (uint32_t)blocked->wakeTime, elapsedTime_milliseconds);
-
-                    if (blocked->prevTask != nullptr) {
-                        blocked->prevTask->nextTask = next;
-                    }
-
-                    if (next != nullptr) {
-                        next->prevTask = blocked->prevTask;
-                    }
-
-                    blocked->nextTask = nullptr;
-                    blocked->prevTask = nullptr;
+                   
+                    blockedQueue.remove(blocked);
                     
                     scheduleTask(blocked);
                 }
@@ -92,13 +83,13 @@ namespace Kernel {
                 blocked = next;
             }
 
-            return readyQueue;
+            return readyQueue.getHead();
         }
         else {
             auto next = currentTask->nextTask;
 
-            if (next == nullptr && readyQueue->state != TaskState::Sleeping) {
-                next = readyQueue; 
+            if (next == nullptr && readyQueue.getHead()->state != TaskState::Sleeping) {
+                next = readyQueue.getHead(); 
             }
 
             return next;
@@ -125,25 +116,15 @@ namespace Kernel {
     void Scheduler::notifyTimesliceExpired() {
         elapsedTime_milliseconds += timeslice_milliseconds;
 
-        auto blocked = blockedQueue;
+        auto blocked = blockedQueue.getHead();
 
         while(blocked != nullptr) {
             auto next = blocked->nextTask;
 
             if (blocked->wakeTime <= elapsedTime_milliseconds) {
-                blockedQueue = next;
-                printf("woke %x waketime %d elapsedtime %d\n", blocked, (uint32_t)blocked->wakeTime, elapsedTime_milliseconds);
+                //printf("woke %x waketime %d elapsedtime %d\n", blocked, (uint32_t)blocked->wakeTime, elapsedTime_milliseconds);
 
-                if (blocked->prevTask != nullptr) {
-                    blocked->prevTask->nextTask = next;
-                }
-
-                if (next != nullptr) {
-                    next->prevTask = blocked->prevTask;
-                }
-
-                blocked->nextTask = nullptr;
-                blocked->prevTask = nullptr;
+                blockedQueue.remove(blocked);
                 
                 scheduleTask(blocked);
             }
@@ -228,61 +209,30 @@ namespace Kernel {
             currentTask->state = TaskState::Sleeping;
             currentTask->wakeTime = elapsedTime_milliseconds + arg;
 
-            printf("%x waketime %d duration %d\n", current, (uint32_t)current->wakeTime, arg);
+            //printf("%x waketime %d duration %d\n", current, (uint32_t)current->wakeTime, arg);
 
             scheduleNextTask();
 
-            {
-                auto prev = current->prevTask;
-                auto next = current->nextTask;
-
-                //remove from ready queue
-                if (prev != nullptr) {
-                    prev->nextTask = current->nextTask;
-                }
-                else {
-                    readyQueue = next;
-                }
-
-                if (next != nullptr) {
-                    next->prevTask = prev;
-                }
-            }
-
-            current->nextTask = nullptr;
-            current->prevTask = nullptr;
+            readyQueue.remove(current);
 
             //insert into blocked queue
-            if (blockedQueue == nullptr) {
-                blockedQueue = current;
+            if (blockedQueue.isEmpty()) {
+                blockedQueue.insertBefore(current, nullptr);
             }
             else {
                 
-                auto blocked = blockedQueue;
+                auto blocked = blockedQueue.getHead();
 
                 while (blocked != nullptr) {
                     if (blocked->wakeTime > current->wakeTime) {
-                        current->nextTask = blocked;
 
-                        if (blocked->prevTask != nullptr) {
-                            current->prevTask = blocked->prevTask;
-                            blocked->prevTask->nextTask = current;
-                        }
-                        else {
-                            blockedQueue = current;
-                            current->prevTask = nullptr;
-                        }
-
-                        blocked->prevTask = current;
-
+                        blockedQueue.insertBefore(current, blocked);
                         break;
                     }
-                    else {
-                        if (blocked->nextTask == nullptr) {
-                            blocked->nextTask = current;
-                            current->prevTask = blocked;
-                            break;
-                        }
+                    else if (blocked->nextTask == nullptr) {
+                       
+                        blockedQueue.insertAfter(current, blocked);
+                        break;
                     }
 
                     blocked = blocked->nextTask;
@@ -295,18 +245,11 @@ namespace Kernel {
     }
 
     void Scheduler::scheduleTask(Task* task) {
-        if (readyQueue == nullptr) {
-            readyQueue = task;
+        if (readyQueue.isEmpty()) {
+            readyQueue.insertBefore(task, nullptr);
         }
         else {
-            auto current = readyQueue;
-
-            while (current->nextTask != nullptr) {
-                current = current->nextTask;
-            }
-
-            current->nextTask = task;
-            task->prevTask = current;
+            readyQueue.append(task);
         }
 
         task->state = TaskState::Running;
