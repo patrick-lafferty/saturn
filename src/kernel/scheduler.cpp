@@ -17,7 +17,6 @@ namespace Kernel {
     Scheduler* currentScheduler;
 
     void idleLoop() {
-        //printf("[Scheduler] Idle\n");
         while(true) {
             asm volatile("hlt");
         }
@@ -42,9 +41,7 @@ namespace Kernel {
 
     void Scheduler::scheduleNextTask() {
         if (currentTask == nullptr && readyQueue != nullptr) {
-            //printf("[Scheduler] Current null\n");
             currentTask = readyQueue;
-            //startProcess(currentTask);
             state = State::StartCurrent;
         }
         else {
@@ -56,20 +53,10 @@ namespace Kernel {
                 currentTask = startTask;
             }
             else if (next == nullptr) {
-                //no task available
-                //enterIdle();
-                //printf("[Scheduler] Next = nullptr\n");
-                //auto current = currentTask;
-                //currentTask = nullptr;
-                //changeProcess(current, startTask);
                 state = State::ChangeToStart;
             }
             else {
-                //printf("[Scheduler] Found next\n");
-                //auto current = currentTask;
-                //currentTask = next;
                 nextTask = next;
-                //changeProcess(current, next);
                 state = State::ChangeToNext;
             }
         }
@@ -86,7 +73,6 @@ namespace Kernel {
 
                 if (blocked->wakeTime <= elapsedTime_milliseconds) {
                     blockedQueue = next;
-                    //printf("Unblocked, next: %x\n", next);
                 printf("woke %x waketime %d elapsedtime %d\n", blocked, (uint32_t)blocked->wakeTime, elapsedTime_milliseconds);
 
                     if (blocked->prevTask != nullptr) {
@@ -112,7 +98,7 @@ namespace Kernel {
             auto next = currentTask->nextTask;
 
             if (next == nullptr && readyQueue->state != TaskState::Sleeping) {
-                next = readyQueue; //startTask;
+                next = readyQueue; 
             }
 
             return next;
@@ -121,23 +107,18 @@ namespace Kernel {
 
     void Scheduler::runNextTask() {
         if (state == State::StartCurrent) {
-            //printf("[Scheduler] s(c)\n");
             startProcess(currentTask);
         }
         else if (state == State::ChangeToStart) {
-            //printf("[Scheduler] c(%x, s)\n", currentTask);
             auto current = currentTask;
             currentTask = nullptr;
             changeProcess(current, startTask);
             
         }
         else {
-            //printf("[Scheduler] c(c, n)\n");
             auto current = currentTask;
             currentTask = nextTask;
-            //printf("Before change\n");
             changeProcess(current, nextTask);
-            //printf("After change\n");
         }
     }
 
@@ -151,9 +132,7 @@ namespace Kernel {
 
             if (blocked->wakeTime <= elapsedTime_milliseconds) {
                 blockedQueue = next;
-                //printf("Unblocked, next: %x\n", next);
                 printf("woke %x waketime %d elapsedtime %d\n", blocked, (uint32_t)blocked->wakeTime, elapsedTime_milliseconds);
-
 
                 if (blocked->prevTask != nullptr) {
                     blocked->prevTask->nextTask = next;
@@ -174,36 +153,6 @@ namespace Kernel {
 
         scheduleNextTask(); 
         runNextTask();
-
-        /*auto current = currentTask;
-        auto next = currentTask->nextTask;
-
-        if (next == nullptr) {
-            next = startTask;
-            currentTask = startTask;
-        }
-        else if (next->state != TaskState::Running) {
-            while (next != nullptr) {
-                next = next->nextTask;
-
-                if (next->state == TaskState::Running) {
-                    break;
-                }
-            }
-
-            if (next == nullptr) {
-                next = startTask;
-                currentTask = startTask;
-            }
-            else {
-                currentTask = next;
-            }
-        }
-        else {
-            currentTask = currentTask->nextTask;
-        }
-
-        changeProcess(current, next);*/
     }
 
     uint32_t createStack() {
@@ -229,15 +178,10 @@ namespace Kernel {
             static_cast<uint32_t>(EFlags::InterruptEnable) | 
             static_cast<uint32_t>(EFlags::Reserved);
         stack->eip = functionAddress;
-        /*stack->cs = 0x1B;
-        stack->eflags2 = stack->eflags;
-        stack->ss = 0x23;*/
 
         Task* task = taskBuffer;
         task->context.esp = reinterpret_cast<uint32_t>(stackPointer);
         task->context.kernelESP = processStack + 4096;
-        //stack->esp = task->context.esp;
-        //stack->esp = processStack + 4096;//task->context.esp;
 
         taskBuffer++;
 
@@ -265,7 +209,7 @@ namespace Kernel {
         uStack->eflags = stack->eflags;
         uStack->eip = functionAddress;
 
-        stack->ecx = reinterpret_cast<uint32_t>(userStackPointer);//userStack + 4096 - sizeof(TaskStack);
+        stack->ecx = reinterpret_cast<uint32_t>(userStackPointer);
 
         Task* task = taskBuffer;
         task->context.esp = reinterpret_cast<uint32_t>(stackPointer);
@@ -279,7 +223,6 @@ namespace Kernel {
     void Scheduler::blockThread(BlockReason reason, uint32_t arg) {
         if (reason == BlockReason::Sleep) {
 
-            //printf("[Scheduler] Sleeping thread\n");
             auto current = currentTask;
 
             currentTask->state = TaskState::Sleeping;
@@ -345,9 +288,8 @@ namespace Kernel {
                     blocked = blocked->nextTask;
                 }
                 
-                //scheduleNextTask();
             }
-            //notifyTimesliceExpired();
+
             runNextTask();
         }
     }
@@ -355,10 +297,9 @@ namespace Kernel {
     void Scheduler::scheduleTask(Task* task) {
         if (readyQueue == nullptr) {
             readyQueue = task;
-            //currentTask = task;
         }
         else {
-            auto current = readyQueue;//currentTask;
+            auto current = readyQueue;
 
             while (current->nextTask != nullptr) {
                 current = current->nextTask;

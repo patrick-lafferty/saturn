@@ -27,9 +27,6 @@ startProcess:
 
     ret
 
-;getEIP:
-;    mov 
-
 ;changes from one ring0 process to another
 global changeProcess
 changeProcess:
@@ -38,7 +35,6 @@ changeProcess:
 
     ;save the important registers to the current
     ;task's stack
-    ;mov ebp, esp
     mov eax, [esp + 4]
     mov ecx, [esp + 8]
 
@@ -66,8 +62,6 @@ changeProcess:
     ;TODO: HACK: don't hardcode TSS address, and there might be multiple
     ;ie one per cpu
 
-    
-
     ;restore the important registers from the
     ;next task's stack
 
@@ -81,8 +75,6 @@ changeProcess:
     ;pop eax
     ;store the current kernel stack's esp to the TSS
     mov eax, 0xa0000000
-    ;mov ecx, esp
-    ;add ecx, 12
     mov ecx, [ecx + 4]
     mov [eax + 4], ecx
 
@@ -99,18 +91,6 @@ launchProcess:
     pop ecx
     pop ebx
 
-    ;store the current kernel stack's esp to the TSS
-    ;mov eax, 0xa0000000
-    ;mov [eax + 4], esp
-
-    ;ret
-
-pusha
-    call printLaunchProcess
-popa
-
-    ;push returnToUsermode
-    
     ;set the selectors to usermode's gdt entries
     mov eax, 0x23
     mov ds, ax
@@ -119,8 +99,6 @@ popa
     mov gs, ax
 
     push 0x23 ;usermode data segment
-    ;mov eax, esp
-    ;push eax
     ;user stack is stored in ecx
     push ecx ;esp
     pushfd ;eflags
@@ -129,23 +107,6 @@ popa
 
     iret
 
-returnToUsermode:
-    ;a usermode process was running
-
-    ;set the selectors to usermode's gdt entries
-    mov eax, 0x23
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-
-    push 0x23
-    ;user stack
-    pushfd
-    push 0x1B
-    ;user eip
-
-    
 global fillTSS
 fillTSS:
     mov ebp, [esp + 4]
