@@ -5,9 +5,6 @@ startProcess:
     mov ecx, DWORD [esp + 4] 
     mov esp, DWORD [ecx]
 
-    ;restore the important registers from the
-    ;next task's stack
-
     ;TODO: HACK: don't hardcode TSS address, and there might be multiple
     ;ie one per cpu
 
@@ -21,9 +18,6 @@ startProcess:
     pop esi
     pop ebp
     pop ebx
-    ;pop edx
-    ;pop ecx
-    ;pop eax
 
     ret
 
@@ -38,9 +32,6 @@ changeProcess:
     mov eax, [esp + 4]
     mov ecx, [esp + 8]
 
-    ;push eax
-    ;push ecx
-    ;push edx
     push ebx
     push ebp
     push esi
@@ -49,14 +40,10 @@ changeProcess:
 
     ;store the stack pointer to the current
     ;task's context.esp
-    ;mov eax, [esp + 36] 
-    ;mov DWORD [eax], esp 
     mov [eax], esp
 
     ;change the current stack pointer
     ;to the next task's context.esp
-    ;mov eax, DWORD [esp + 40] 
-    ;mov esp, DWORD [eax]
     mov esp, [ecx]
 
     ;TODO: HACK: don't hardcode TSS address, and there might be multiple
@@ -70,9 +57,7 @@ changeProcess:
     pop esi
     pop ebp
     pop ebx
-    ;pop edx
-    ;pop ecx
-    ;pop eax
+
     ;store the current kernel stack's esp to the TSS
     mov eax, 0xa0000000
     mov ecx, [ecx + 4]
@@ -86,12 +71,12 @@ extern taskA
 global launchProcess
 launchProcess:
 
-    ;address of user function is stored in eax
-    ;mov ebx, eax
+    ;when launchProcess is called, the stack contains
+    ; user esp
+    ; user eip
+
     pop ecx
     pop ebx
-    ;mov ecx, 0xa0007000
-    ;mov ebx, taskA
 
     ;set the selectors to usermode's gdt entries
     mov eax, 0x23
@@ -100,12 +85,11 @@ launchProcess:
     mov fs, ax
     mov gs, ax
 
-    push 0x23 ;usermode data segment
-    ;user stack is stored in ecx
-    push ecx ;esp
-    pushfd ;eflags
-    push 0x1B ;usermode code segment
-    push ebx ;eip
+    push 0x23 ; usermode data segment
+    push ecx ; user esp
+    pushfd ; eflags
+    push 0x1B ; usermode code segment
+    push ebx ; user eip
 
     iret
 

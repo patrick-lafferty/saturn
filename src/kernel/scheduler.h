@@ -17,7 +17,6 @@ namespace Kernel {
 
                     if (before->previousTask != nullptr) {
                         item->previousTask = before->previousTask;
-                        //item->previousTask->nextTask = item;
                         before->previousTask->nextTask = item;
                     }
                     else {
@@ -108,23 +107,7 @@ namespace Kernel {
         uint32_t esi {0};
         uint32_t ebp {0};
         uint32_t ebx {0};
-        //uint32_t edx {0};
-        //uint32_t ecx {0};
-        //uint32_t eax {0};
-
-        /*uint32_t ss;
-        uint32_t esp;
-        uint32_t eflags2;
-        uint32_t cs {0};
-        */
         uint32_t eip {0};
-        //uint32_t ecx {0};
-        //uint32_t eax {0};
-        /*uint32_t eip;
-        uint32_t cs;
-        uint32_t eflags2;
-        uint32_t esp;
-        uint32_t ss;*/
     };
 
     extern class Scheduler* currentScheduler;
@@ -139,14 +122,17 @@ namespace Kernel {
     public:
 
         Scheduler();
+
+        Task* createKernelTask(uintptr_t functionAddress);
+        Task* createUserTask(uintptr_t functionAddress);
         
         void notifyTimesliceExpired();
-        Task* createTestTask(uintptr_t functionAddress);
         void scheduleTask(Task* task);
-        void enterIdle();
-        Task* launchUserProcess(uintptr_t functionAddress);
         void blockThread(BlockReason reason, uint32_t arg);
         void unblockTask(uint32_t taskId);
+
+
+        void enterIdle();
         void setupTimeslice();
 
     private:

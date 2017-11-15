@@ -168,12 +168,12 @@ extern "C" int kernel_main(MultibootInformation* info) {
     acpi_stuff();
 
     Kernel::Scheduler scheduler;
-    scheduler.scheduleTask(scheduler.launchUserProcess(reinterpret_cast<uint32_t>(taskA)));
-    scheduler.scheduleTask(scheduler.launchUserProcess(reinterpret_cast<uint32_t>(taskB)));
-    scheduler.scheduleTask(scheduler.launchUserProcess(reinterpret_cast<uint32_t>(taskC)));
-    scheduler.scheduleTask(scheduler.launchUserProcess(reinterpret_cast<uint32_t>(taskD)));
-    scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskE)));
-    scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskF)));
+    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(taskA)));
+    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(taskB)));
+    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(taskC)));
+    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(taskD)));
+    scheduler.scheduleTask(scheduler.createKernelTask(reinterpret_cast<uint32_t>(taskE)));
+    scheduler.scheduleTask(scheduler.createKernelTask(reinterpret_cast<uint32_t>(taskF)));
 
     asm volatile("sti");
 

@@ -14,9 +14,20 @@ namespace Kernel {
 
     void idleLoop() {
         while(true) {
-            //printf("IDLE\n");
             asm volatile("hlt");
         }
+    }
+
+    uint32_t createStack() {
+        auto processStack = Memory::currentVMM->allocatePages(1, 
+            static_cast<int>(Memory::PageTableFlags::Present)
+            | static_cast<int>(Memory::PageTableFlags::AllowWrite)
+            | static_cast<int>(Memory::PageTableFlags::AllowUserModeAccess));
+        auto physicalPage = Memory::currentPMM->allocatePage(1);
+        Memory::currentVMM->map(processStack, physicalPage);
+        Memory::currentPMM->finishAllocation(processStack, 1);
+
+        return processStack;
     }
 
     Scheduler::Scheduler() {
@@ -29,7 +40,7 @@ namespace Kernel {
         Memory::currentPMM->finishAllocation(taskBufferAddress, 1);
         
         taskBuffer = static_cast<Task*>(reinterpret_cast<void*>(taskBufferAddress));
-        startTask = createTestTask(reinterpret_cast<uint32_t>(idleLoop));
+        startTask = createKernelTask(reinterpret_cast<uint32_t>(idleLoop));
 
         elapsedTime_milliseconds = 0;
         timeslice_milliseconds = 10;
@@ -79,7 +90,6 @@ namespace Kernel {
 
     void Scheduler::runNextTask() {
         if (state == State::StartCurrent) {
-            //startProcess(currentTask);
             changeProcess(startTask, currentTask);
         }
         else if (state == State::ChangeToStart) {
@@ -105,26 +115,12 @@ namespace Kernel {
         scheduleNextTask(); 
         runNextTask();
     }
-
-    uint32_t createStack() {
-        auto processStack = Memory::currentVMM->allocatePages(1, 
-            static_cast<int>(Memory::PageTableFlags::Present)
-            | static_cast<int>(Memory::PageTableFlags::AllowWrite)
-            | static_cast<int>(Memory::PageTableFlags::AllowUserModeAccess));
-        auto physicalPage = Memory::currentPMM->allocatePage(1);
-        Memory::currentVMM->map(processStack, physicalPage);
-        Memory::currentPMM->finishAllocation(processStack, 1);
-
-        return processStack;
-    }
-
-    Task* Scheduler::createTestTask(uintptr_t functionAddress) {
+    
+    Task* Scheduler::createKernelTask(uintptr_t functionAddress) {
         auto processStack = createStack();
-        auto userStack = createStack();
 
         uint8_t volatile* stackPointer = static_cast<uint8_t volatile*>(reinterpret_cast<void volatile*>(processStack + 4096));
         stackPointer -= sizeof(TaskStack);
-        //stackPointer += 8;
 
         TaskStack volatile* stack = reinterpret_cast<TaskStack volatile*>(stackPointer);
         stack->eflags = 
@@ -134,45 +130,72 @@ namespace Kernel {
 
         Task* task = taskBuffer;
         task->context.esp = reinterpret_cast<uint32_t>(stackPointer);
-        task->context.kernelESP = userStack + 4096;
+        task->context.kernelESP = task->context.esp;
 
         taskBuffer++;
 
         return task;
     }
 
-    Task* Scheduler::launchUserProcess(uintptr_t functionAddress) {
-        auto kernelStack = createStack();
-        auto userStack = createStack();
-
-        uint8_t volatile* stackPointer = static_cast<uint8_t volatile*>(reinterpret_cast<void volatile*>(kernelStack + 4096));
-        stackPointer -= sizeof(TaskStack);
-        stackPointer -= 8;
+    /*
+    When creating a user task, we need to push additional arguments to the stack
+    that launchProcess uses to run the actual user code. So we need to move
+    the kernel stack up a bit to fit those arguments at the bottom of the stack.
+    */
+    uint8_t volatile* adjustStack(Task* task) {
+        auto address = task->context.esp;
+        uint8_t volatile* stackPointer = static_cast<uint8_t volatile*>
+            (reinterpret_cast<void volatile*>(address));
 
         TaskStack volatile* stack = reinterpret_cast<TaskStack volatile*>(stackPointer);
-        stack->eflags = 
-            static_cast<uint32_t>(EFlags::InterruptEnable) | 
-            static_cast<uint32_t>(EFlags::Reserved);
-        stack->eip = reinterpret_cast<uint32_t>(launchProcess);
-        //stack->eax = functionAddress;
 
-        uint8_t volatile* userStackPointer = static_cast<uint8_t volatile*>(reinterpret_cast<void volatile*>(userStack + 4096));
+        auto eflags = stack->eflags;
+        auto eip = stack->eip;
+        
+        for(auto i = 0u; i < sizeof(TaskStack); i++) {
+            *stackPointer = 0;
+        }
+
+        stackPointer -= 8;
+        stack = reinterpret_cast<TaskStack volatile*>(stackPointer);
+
+        stack->eflags = eflags;
+        stack->eip = eip;
+
+        task->context.esp = reinterpret_cast<uint32_t>(stackPointer);
+
+        return stackPointer + sizeof(TaskStack);
+    }
+
+    Task* Scheduler::createUserTask(uintptr_t functionAddress) {
+        auto task = createKernelTask(reinterpret_cast<uintptr_t>(launchProcess));
+        auto userStackAddress = createStack();
+
+        /*
+        Need to adjust the kernel stack because we want to add
+        userESP and userEIP to the top
+        */
+        auto kernelStackPointer = adjustStack(task);
+
+        uint8_t volatile* userStackPointer = static_cast<uint8_t volatile*>
+            (reinterpret_cast<void volatile*>(userStackAddress + 4096));
         userStackPointer -= sizeof(TaskStack);
-        TaskStack volatile* uStack = reinterpret_cast<TaskStack volatile*>(userStackPointer);
+        TaskStack volatile* userStack = reinterpret_cast<TaskStack volatile*>
+            (userStackPointer);
 
-        uStack->eflags = stack->eflags;
-        uStack->eip = functionAddress;
-
-        //stack->ecx = reinterpret_cast<uint32_t>(userStackPointer);
-        uint32_t volatile* stackExtras = reinterpret_cast<uint32_t volatile*>(stackPointer + sizeof(TaskStack));
+        userStack->eflags = reinterpret_cast<TaskStack volatile*>
+            (kernelStackPointer - sizeof(TaskStack))->eflags;
+        userStack->eip = functionAddress;
+        
+        /*
+        createUserTask creates a task that starts inside launchProcess,
+        which pops off two values off the stack (user ESP and user EIP)
+        and then enters the user task. So we need to write those two values
+        here
+        */
+        auto stackExtras = reinterpret_cast<uint32_t volatile*>(kernelStackPointer);
         *stackExtras++ = reinterpret_cast<uint32_t>(userStackPointer);
         *stackExtras++ = functionAddress;
-
-        Task* task = taskBuffer;
-        task->context.esp = reinterpret_cast<uint32_t>(stackPointer);
-        task->context.kernelESP = kernelStack + 4096;
-
-        taskBuffer++;
 
         return task;
     }
@@ -186,13 +209,10 @@ namespace Kernel {
             currentTask->state = TaskState::Sleeping;
             currentTask->wakeTime = elapsedTime_milliseconds + arg;
 
-            //printf("%x waketime %d duration %d\n", current, (uint32_t)current->wakeTime, arg);
-
             scheduleNextTask();
 
             readyQueue.remove(current);
 
-            //insert into blocked queue
             if (blockedQueue.isEmpty()) {
                 blockedQueue.insertBefore(current, nullptr);
             }
@@ -221,7 +241,7 @@ namespace Kernel {
         }
     }
 
-    /*void Scheduler::unblockTask(uint32_t taskId) {
+    void Scheduler::unblockTask(uint32_t taskId) {
         auto blocked = blockedQueue.getHead();
 
         while(blocked != nullptr) {
@@ -230,7 +250,7 @@ namespace Kernel {
                 break;
             }
         }
-    }*/
+    }
 
     void Scheduler::unblockTask(Task* task) {
         task->state = TaskState::Running;
@@ -246,7 +266,6 @@ namespace Kernel {
             auto next = blocked->nextTask;
 
             if (blocked->wakeTime <= elapsedTime_milliseconds) {
-                //printf("woke %x waketime %d elapsedtime %d\n", blocked, (uint32_t)blocked->wakeTime, elapsedTime_milliseconds);
                 unblockTask(blocked);
             }
 
