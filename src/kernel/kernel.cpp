@@ -19,20 +19,17 @@ using namespace Memory;
 extern uint32_t __kernel_memory_start;
 extern uint32_t __kernel_memory_end;
 
-void acpi_stuff() {
+bool parseACPITables() {
     auto rsdp = CPU::findRSDP();
 
-    if (verifyRSDPChecksum(rsdp)) {
-        //printf("\n[ACPI] RSDP Checksum validated\n");
-    }
-    else {
-        //printf("\n[ACPI] RSDP Checksum invalid\n");
+    if (!verifyRSDPChecksum(rsdp)) {
+        printf("\n[ACPI] RSDP Checksum invalid\n");
+        return false;
     }
 
     auto rootSystemHeader = CPU::getRootSystemHeader(rsdp.rsdtAddress);
 
     if (CPU::verifySystemHeaderChecksum(rootSystemHeader)) {
-        //printf("\n[ACPI] SDT Checksum validated\n");
         auto apicHeader = CPU::getAPICHeader(rootSystemHeader, (rootSystemHeader->length - sizeof(CPU::SystemDescriptionTableHeader)) / 4);
 
         if (CPU::verifySystemHeaderChecksum(apicHeader)) {
@@ -41,97 +38,18 @@ void acpi_stuff() {
             
             APIC::initialize();
             APIC::loadAPICStructures(apicStartingAddress, apicHeader->length - sizeof(CPU::SystemDescriptionTableHeader));
-
+        }
+        else {
+            printf("\n[ACPI] APIC Header Checksum invalid\n");
+            return false;
         }
     }
     else {
         printf("\n[ACPI] Root Checksum invalid\n");
+        return false;
     }
-}
 
-extern "C" void taskA() {
-    int a = 0; 
-    int a2 = 50;
-
-    while(true) {
-        print(1, a);
-        sleep(1000);    
-        a++;
-
-        print(1, a2);
-        sleep(1000);
-        a2++;
-    }
-}
-
-void taskB() {
-    int b = 0;
-    int b2 = 50;
-    
-    while(true) {
-        //print(2, b);
-        sleep(1000); 
-        b += 2;
-        //print(2, b2);
-        sleep(1000); 
-        b2 += 2;
-    }
-}
-
-void taskC() {
-    int c = 0;
-    int c2 = 50;
-
-    while(true) {
-        //print(3, c);
-        sleep(3000); 
-        c += 3;
-        //print(3, c2);
-        sleep(3000); 
-        c2 += 3;
-    }
-}
-
-void taskD() {
-    int d = 0;
-    int d2 = 50;
-
-    while(true) {
-        //print(4, d);
-        sleep(4000); 
-        d += 4;
-        //print(4, d2);
-        sleep(4000); 
-        d2 += 4;
-    }
-}
-
-void taskE() {
-    int e = 0;
-    int e2 = 50;
-
-    while(true) {
-        //print(5, e);
-        sleep(5000); 
-        e += 10;
-        //print(5, e2);
-        sleep(5000); 
-        e2 += 10;
-    }
-}
-
-void taskF() {
-    int f = 0;
-    int f2 = 50;
-
-    while(true) {
-        //print(6, f);
-        sleep(2000); 
-        f += 10;
-        //print(6, f2);
-        sleep(2000); 
-        f2 += 10;
-    }
+    return true;
 }
 
 extern "C" int kernel_main(MultibootInformation* info) {
@@ -147,8 +65,7 @@ extern "C" int kernel_main(MultibootInformation* info) {
     auto pageFlags = 
         static_cast<int>(PageTableFlags::Present)
         | static_cast<int>(PageTableFlags::AllowWrite)
-        | static_cast<int>(PageTableFlags::AllowUserModeAccess)
-        ;
+        | static_cast<int>(PageTableFlags::AllowUserModeAccess);
 
     virtualMemManager.map_unpaged(0xB8000, 0xB8000, 1, pageFlags);
     virtualMemManager.map_unpaged(0, 0, 0x100000 / 0x1000, pageFlags);
@@ -165,15 +82,12 @@ extern "C" int kernel_main(MultibootInformation* info) {
     GDT::addTSSEntry(tssAddress, 0x1000 * 3);
     CPU::setupTSS(tssAddress);
 
-    acpi_stuff();
+    if (!parseACPITables()) {
+        printf("[Kernel] Parsing ACPI Tables failed, halting\n");
+        asm volatile("hlt");
+    }
 
     Kernel::Scheduler scheduler;
-    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(taskA)));
-    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(taskB)));
-    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(taskC)));
-    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(taskD)));
-    scheduler.scheduleTask(scheduler.createKernelTask(reinterpret_cast<uint32_t>(taskE)));
-    scheduler.scheduleTask(scheduler.createKernelTask(reinterpret_cast<uint32_t>(taskF)));
 
     asm volatile("sti");
 

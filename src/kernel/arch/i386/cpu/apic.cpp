@@ -122,7 +122,7 @@ namespace APIC {
     }
 
     void setAPICTimer(LVT_TimerMode mode, uint32_t timeInMilliseconds) {
-        printf("[APIC] Initializing timer for %u ms, %u ticks\n", timeInMilliseconds, timeInMilliseconds * ticksPerMilliSecond);
+        //printf("[APIC] Initializing timer for %u ms, %u ticks\n", timeInMilliseconds, timeInMilliseconds * ticksPerMilliSecond);
 
         writeLocalAPICRegister(Registers::LVT_Timer, combineFlags(
             52,
