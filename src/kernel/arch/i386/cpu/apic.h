@@ -7,7 +7,7 @@ namespace APIC {
 
     void initialize();
     void loadAPICStructures(uintptr_t address, uint32_t byteLength);
-    void calibrateAPICTimer();
+    bool calibrateAPICTimer();
 
 
     enum class Registers {

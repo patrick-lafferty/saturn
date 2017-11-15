@@ -137,7 +137,7 @@ void handleSystemCall(CPU::InterruptStackFrame* frame) {
 
     switch(frame->eax) {
         case 1: {
-            Kernel::currentScheduler->blockThread(Kernel::BlockReason::Sleep, frame->ebx);
+            Kernel::currentScheduler->blockTask(Kernel::BlockReason::Sleep, frame->ebx);
             break;
         }
 
@@ -220,6 +220,7 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
             printf("RESP: %x, SS: %x\n", 
                 frame->resp, frame->ss);
             asm volatile("hlt");
+            break;
         }
         case 14: {
             //page fault
@@ -267,8 +268,9 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
                 printf("\n");
             }
             else if (frame->interruptNumber == 51) {
-                APIC::calibrateAPICTimer();
-                Kernel::currentScheduler->setupTimeslice();
+                if (APIC::calibrateAPICTimer()) {
+                    Kernel::currentScheduler->setupTimeslice();
+                }
             }
             else if (frame->interruptNumber == 52) {
                 

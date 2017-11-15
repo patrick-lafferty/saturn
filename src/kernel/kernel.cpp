@@ -69,10 +69,10 @@ void taskB() {
     int b2 = 50;
     
     while(true) {
-        print(2, b);
+        //print(2, b);
         sleep(1000); 
         b += 2;
-        print(2, b2);
+        //print(2, b2);
         sleep(1000); 
         b2 += 2;
     }
@@ -83,10 +83,10 @@ void taskC() {
     int c2 = 50;
 
     while(true) {
-        print(3, c);
+        //print(3, c);
         sleep(3000); 
         c += 3;
-        print(3, c2);
+        //print(3, c2);
         sleep(3000); 
         c2 += 3;
     }
@@ -97,10 +97,10 @@ void taskD() {
     int d2 = 50;
 
     while(true) {
-        print(4, d);
+        //print(4, d);
         sleep(4000); 
         d += 4;
-        print(4, d2);
+        //print(4, d2);
         sleep(4000); 
         d2 += 4;
     }
@@ -111,10 +111,10 @@ void taskE() {
     int e2 = 50;
 
     while(true) {
-        print(5, e);
+        //print(5, e);
         sleep(5000); 
         e += 10;
-        print(5, e2);
+        //print(5, e2);
         sleep(5000); 
         e2 += 10;
     }
@@ -125,10 +125,10 @@ void taskF() {
     int f2 = 50;
 
     while(true) {
-        print(6, f);
+        //print(6, f);
         sleep(2000); 
         f += 10;
-        print(6, f2);
+        //print(6, f2);
         sleep(2000); 
         f2 += 10;
     }

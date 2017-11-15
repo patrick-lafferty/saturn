@@ -98,24 +98,32 @@ namespace APIC {
     }
 
     uint32_t ticksPerMilliSecond = 0;
-    void calibrateAPICTimer() {
+    int tries {0};
+    const int MaxTries {8};
+    bool calibrateAPICTimer() {
 
-        writeLocalAPICRegister(Registers::LVT_Timer, combineFlags(LVT_Mask::DisableInterrupt));
-        uint32_t ticks = 0xFFFFFFFF - readLocalAPICRegister(Registers::CurrentCount);
-        setupRTC(false);
-        auto ticksPerSecond = ticks * 8; //RTC was using 8Hz rate
-        ticksPerMilliSecond = ticksPerSecond / 1000;
-        /*writeLocalAPICRegister(Registers::LVT_Timer, combineFlags(
-            52,
-            LVT_TimerMode::Periodic
-        )); */
-        writeLocalAPICRegister(Registers::InitialCount, 0x0);
-        writeLocalAPICRegister(Registers::DivideConfiguration, combineFlags(DivideConfiguration::By16));
+        if (tries == MaxTries) {
 
-        //writeLocalAPICRegister(Registers::InitialCount, ticks);
+            writeLocalAPICRegister(Registers::LVT_Timer, combineFlags(LVT_Mask::DisableInterrupt));
+            uint32_t ticks = 0xFFFFFFFF - readLocalAPICRegister(Registers::CurrentCount);
+            setupRTC(false);
+            auto ticksPerSecond = ticks * 8; //RTC was using 8Hz rate
+            ticksPerMilliSecond = ticksPerSecond / (1000 * (tries + 1));
+            
+            writeLocalAPICRegister(Registers::InitialCount, 0x0);
+            writeLocalAPICRegister(Registers::DivideConfiguration, combineFlags(DivideConfiguration::By16));
+
+            return true;
+        }
+        else {
+            tries++;
+            return false;
+        }
     }
 
     void setAPICTimer(LVT_TimerMode mode, uint32_t timeInMilliseconds) {
+        printf("[APIC] Initializing timer for %u ms, %u ticks\n", timeInMilliseconds, timeInMilliseconds * ticksPerMilliSecond);
+
         writeLocalAPICRegister(Registers::LVT_Timer, combineFlags(
             52,
             mode
