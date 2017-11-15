@@ -49,59 +49,88 @@ void acpi_stuff() {
     }
 }
 
-volatile int x;
 extern "C" void taskA() {
     int a = 0; 
+    int a2 = 50;
 
     while(true) {
         print(1, a);
-        //printf("[TaskA] %d\n", a);
         sleep(1000);    
         a++;
+
+        print(1, a2);
+        sleep(1000);
+        a2++;
     }
 }
 
 void taskB() {
     int b = 0;
+    int b2 = 50;
     
     while(true) {
         print(2, b);
-        //printf("[TaskB] %d\n", b);
         sleep(1000); 
         b += 2;
+        print(2, b2);
+        sleep(1000); 
+        b2 += 2;
     }
 }
 
 void taskC() {
     int c = 0;
+    int c2 = 50;
 
     while(true) {
         print(3, c);
-        //printf("[TaskC] %d\n", c);
         sleep(3000); 
         c += 3;
+        print(3, c2);
+        sleep(3000); 
+        c2 += 3;
     }
 }
 
 void taskD() {
     int d = 0;
+    int d2 = 50;
 
     while(true) {
-        //print(4, d);
-        //printf("[TaskD] %d\n", d);
+        print(4, d);
         sleep(4000); 
         d += 4;
+        print(4, d2);
+        sleep(4000); 
+        d2 += 4;
     }
 }
 
 void taskE() {
     int e = 0;
+    int e2 = 50;
 
     while(true) {
-        //print(5, e);
-        //printf("[TaskD] %d\n", d);
+        print(5, e);
         sleep(5000); 
         e += 10;
+        print(5, e2);
+        sleep(5000); 
+        e2 += 10;
+    }
+}
+
+void taskF() {
+    int f = 0;
+    int f2 = 50;
+
+    while(true) {
+        print(6, f);
+        sleep(2000); 
+        f += 10;
+        print(6, f2);
+        sleep(2000); 
+        f2 += 10;
     }
 }
 
@@ -141,9 +170,10 @@ extern "C" int kernel_main(MultibootInformation* info) {
     Kernel::Scheduler scheduler;
     scheduler.scheduleTask(scheduler.launchUserProcess(reinterpret_cast<uint32_t>(taskA)));
     scheduler.scheduleTask(scheduler.launchUserProcess(reinterpret_cast<uint32_t>(taskB)));
-    //scheduler.scheduleTask(scheduler.launchUserProcess(reinterpret_cast<uint32_t>(taskC)));
-    //scheduler.scheduleTask(scheduler.launchUserProcess(reinterpret_cast<uint32_t>(taskD)));
-    //scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskE)));
+    scheduler.scheduleTask(scheduler.launchUserProcess(reinterpret_cast<uint32_t>(taskC)));
+    scheduler.scheduleTask(scheduler.launchUserProcess(reinterpret_cast<uint32_t>(taskD)));
+    scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskE)));
+    scheduler.scheduleTask(scheduler.createTestTask(reinterpret_cast<uint32_t>(taskF)));
 
     asm volatile("sti");
 

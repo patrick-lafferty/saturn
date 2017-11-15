@@ -160,7 +160,11 @@ void handleSystemCall(CPU::InterruptStackFrame* frame) {
                     break;
                 }
                 case 5: {
-                    printf("                                         ");
+                    printf("[TaskE] ");
+                    break;
+                }
+                case 6: {
+                    printf("[TaskF] ");
                     break;
                 }
             }
@@ -170,6 +174,30 @@ void handleSystemCall(CPU::InterruptStackFrame* frame) {
         }
     }
 }
+
+const char* exceptions[] = {
+    "Divide Error",
+    "Debug Exception",
+    "Non-Maskable External Interrupt",
+    "Breakpoint",
+    "Overflow",
+    "Bound Range Exceeded",
+    "Invalid/Undefined Opcode",
+    "Device not available [math coprocessor]",
+    "Double Fault",
+    "Coprocessor Segment Overrun",
+    "Invalid TSS",
+    "Segment not present"
+    "Stack-Segment Fault",
+    "General Protection Fault",
+    "Page Fault",
+    "Reserved [15]",
+    "x87 FPU Error",
+    "Alignment Check",
+    "Machine Check",
+    "SIMD Floating-Point Exception",
+    "Virtualization Exception"
+};
 
 void interruptHandler(CPU::InterruptStackFrame* frame) {
     
@@ -260,7 +288,14 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
             break;
         }
         default: {
-            printf("[IDT] Unhandled interrupt %d\n", frame->interruptNumber);
+            printf("[IDT] Unhandled interrupt %d, ", frame->interruptNumber);
+
+            if (frame->interruptNumber < 21) {
+                printf(exceptions[frame->interruptNumber]);
+            }
+
+            printf("\n");
+
             asm volatile("hlt");
             break;
         }

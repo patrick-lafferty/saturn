@@ -17,7 +17,8 @@ namespace Kernel {
 
                     if (before->previousTask != nullptr) {
                         item->previousTask = before->previousTask;
-                        item->previousTask->nextTask = item;
+                        //item->previousTask->nextTask = item;
+                        before->previousTask->nextTask = item;
                     }
                     else {
                         head = item;
@@ -49,7 +50,7 @@ namespace Kernel {
                 auto next = item->nextTask;
 
                 if (previous != nullptr) {
-                    previous->nextTask = item->nextTask;
+                    previous->nextTask = next;
                 }
                 else {
                     head = next;
@@ -117,8 +118,8 @@ namespace Kernel {
         uint32_t cs {0};
         */
         uint32_t eip {0};
-        uint32_t ecx {0};
-        uint32_t eax {0};
+        //uint32_t ecx {0};
+        //uint32_t eax {0};
         /*uint32_t eip;
         uint32_t cs;
         uint32_t eflags2;
@@ -145,7 +146,7 @@ namespace Kernel {
         void enterIdle();
         Task* launchUserProcess(uintptr_t functionAddress);
         void blockThread(BlockReason reason, uint32_t arg);
-        void unblockTask();
+        void unblockTask(uint32_t taskId);
         void setupTimeslice();
 
     private:
@@ -153,15 +154,15 @@ namespace Kernel {
         void scheduleNextTask();
         Task* findNextTask();
         void runNextTask();
+        void unblockTask(Task* task);
+        void unblockWakeableTasks();
 
         Task idleTask;
         //TODO: HACK: need to make a proper kernel allocator for this
         Task* taskBuffer;
         Task* currentTask {nullptr};
         Task* nextTask {nullptr};
-        //Task* readyQueue {nullptr};
         LinkedList<Task> readyQueue;
-        //Task* blockedQueue {nullptr};
         LinkedList<Task> blockedQueue;
         Task* startTask;
 

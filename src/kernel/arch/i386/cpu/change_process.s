@@ -80,7 +80,7 @@ changeProcess:
 
     ret
 
-extern printLaunchProcess
+extern taskA
 
 ;launches a usermode process
 global launchProcess
@@ -90,6 +90,8 @@ launchProcess:
     ;mov ebx, eax
     pop ecx
     pop ebx
+    ;mov ecx, 0xa0007000
+    ;mov ebx, taskA
 
     ;set the selectors to usermode's gdt entries
     mov eax, 0x23

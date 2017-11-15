@@ -21,7 +21,7 @@ section .text
 
 InterruptServiceRoutine_Errorless 0 ;divide error
 InterruptServiceRoutine_Errorless 1 ;debug exception
-InterruptServiceRoutine_Errorless 2 ;non-maskable exxternal interrupt
+InterruptServiceRoutine_Errorless 2 ;non-maskable external interrupt
 InterruptServiceRoutine_Errorless 3 ;breakpoint
 InterruptServiceRoutine_Errorless 4 ;overflow
 InterruptServiceRoutine_Errorless 5 ;bound range exceeded
@@ -38,7 +38,7 @@ InterruptServiceRoutine_Errorless 15 ;reserved
 InterruptServiceRoutine_Errorless 16 ;x87 fpu floating-point error
 InterruptServiceRoutine 17 ;alignment check
 InterruptServiceRoutine_Errorless 18 ;machine check
-InterruptServiceRoutine_Errorless 19 ;simd floating-point excpetion
+InterruptServiceRoutine_Errorless 19 ;simd floating-point exception
 InterruptServiceRoutine_Errorless 20 ;virtualization exception
 
 ;remapped IRQs

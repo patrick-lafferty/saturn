@@ -336,6 +336,8 @@ namespace APIC {
         writeLocalAPICRegister(Registers::SpuriousInterruptVector, 0x1CF);
     }
 
+    bool VerboseAPIC {false};
+
     void loadAPICStructures(uintptr_t address, uint32_t byteLength) {
 
         uint8_t* ptr = static_cast<uint8_t*>(reinterpret_cast<void*>(address));
@@ -343,7 +345,9 @@ namespace APIC {
         memcpy(&localAPICAddress, ptr, 4);
         ptr += 4;
 
-        printf("[APIC] Local APIC Address: %x\n", localAPICAddress);
+        if (VerboseAPIC) {
+            printf("[APIC] Local APIC Address: %x\n", localAPICAddress);
+        }
 
         uint32_t apicFlags;
         memcpy(&apicFlags, ptr, 4);
@@ -353,7 +357,8 @@ namespace APIC {
 
         byteLength -= 8;
 
-        if (apicFlags & static_cast<uint32_t>(DescriptionFlags::PCAT_COMPAT)) {
+        if (apicFlags & static_cast<uint32_t>(DescriptionFlags::PCAT_COMPAT)
+            && VerboseAPIC) {
             printf("[APIC] Dual 8259 detected, will be disabled\n");
         }
 
@@ -366,8 +371,12 @@ namespace APIC {
             switch(static_cast<APICType>(type)) {
                 case APICType::Local: {
                     auto localAPIC = reinterpret_cast<LocalAPICHeader*>(ptr);
-                    printf("[APIC] Loading Local APIC structure\n");
-                    printf("[APIC] Local APIC Id: %d, address: %d\n", localAPIC->apicId);
+                    
+                    if (VerboseAPIC) {
+                        printf("[APIC] Loading Local APIC structure\n");
+                        printf("[APIC] Local APIC Id: %d, address: %d\n", localAPIC->apicId);
+                    }
+
                     byteLength -= sizeof(LocalAPICHeader);
                     ptr += sizeof(LocalAPICHeader);
                     break;
@@ -375,9 +384,13 @@ namespace APIC {
 
                 case APICType::IO: {
                     auto ioAPIC = reinterpret_cast<IOAPICHeader*>(ptr);
-                    printf("[APIC] Loading IO APIC structure\n");
-                    printf("[APIC] IOAPIC id: %d, address: %x, sysVecBase: %d\n", 
+
+                    if (VerboseAPIC) {
+                        printf("[APIC] Loading IO APIC structure\n");
+                        printf("[APIC] IOAPIC id: %d, address: %x, sysVecBase: %d\n", 
                         ioAPIC->apicId, ioAPIC->address, ioAPIC->systemVectorBase);
+                    }
+
                     byteLength -= sizeof(IOAPICHeader);
                     ptr += sizeof(IOAPICHeader);
                    
@@ -388,11 +401,15 @@ namespace APIC {
 
                 case APICType::InterruptSourceOverride: {
                     auto interruptOverride = reinterpret_cast<InterruptSourceOverride*>(ptr);
-                    printf("[APIC] Loading InterruptSourceOverride structure\n");
-                    printf("[APIC] NMI bus: %d, source: %d, globSysIntV: %d, flags: %d\n",
-                        interruptOverride->bus, interruptOverride->source,
-                        interruptOverride->globalSystemInterruptVector,
-                        interruptOverride->flags);
+
+                    if (VerboseAPIC) {
+                        printf("[APIC] Loading InterruptSourceOverride structure\n");
+                        printf("[APIC] NMI bus: %d, source: %d, globSysIntV: %d, flags: %d\n",
+                            interruptOverride->bus, interruptOverride->source,
+                            interruptOverride->globalSystemInterruptVector,
+                            interruptOverride->flags);
+                    }
+
                     byteLength -= sizeof(InterruptSourceOverride);
                     ptr += sizeof(InterruptSourceOverride);
                     
@@ -409,7 +426,10 @@ namespace APIC {
                 }
 
                 case APICType::NMI: {
-                    printf("[APIC] Loading NMI structure\n");
+                    if (VerboseAPIC) {
+                        printf("[APIC] Loading NMI structure\n");
+                    }
+
                     byteLength -= sizeof(LocalAPICNMI);
                     ptr += sizeof(LocalAPICNMI);
                     break;
@@ -417,7 +437,11 @@ namespace APIC {
 
                 default: {
                     uint8_t length = *(ptr + 1);
-                    printf("[APIC] Skipping reserved APIC structure type: %d length: %d\n", type, length);
+
+                    if (VerboseAPIC) {
+                        printf("[APIC] Skipping reserved APIC structure type: %d length: %d\n", type, length);
+                    }
+                    
                     byteLength -= length;
                     ptr += length;
                 }

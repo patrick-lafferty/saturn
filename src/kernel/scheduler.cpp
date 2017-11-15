@@ -8,16 +8,13 @@ extern "C" void startProcess(Kernel::Task* task);
 extern "C" void changeProcess(Kernel::Task* current, Kernel::Task* next);
 extern "C" void launchProcess();
 
-extern "C" void printLaunchProcess() {
-    printf("launchProcess\n");
-}
-
 namespace Kernel {
 
     Scheduler* currentScheduler;
 
     void idleLoop() {
         while(true) {
+            //printf("IDLE\n");
             asm volatile("hlt");
         }
     }
@@ -32,8 +29,7 @@ namespace Kernel {
         Memory::currentPMM->finishAllocation(taskBufferAddress, 1);
         
         taskBuffer = static_cast<Task*>(reinterpret_cast<void*>(taskBufferAddress));
-        currentTask = createTestTask(reinterpret_cast<uint32_t>(idleLoop));
-        startTask = currentTask;
+        startTask = createTestTask(reinterpret_cast<uint32_t>(idleLoop));
 
         elapsedTime_milliseconds = 0;
         timeslice_milliseconds = 10;
@@ -66,22 +62,7 @@ namespace Kernel {
         
         if (readyQueue.isEmpty()) {
             //nothings ready, did a blocked task's wake time elapse?
-            auto blocked = blockedQueue.getHead();
-
-            while(blocked != nullptr) {
-                auto next = blocked->nextTask;
-
-                if (blocked->wakeTime <= elapsedTime_milliseconds) {
-                    
-                printf("woke %x waketime %d elapsedtime %d\n", blocked, (uint32_t)blocked->wakeTime, elapsedTime_milliseconds);
-                   
-                    blockedQueue.remove(blocked);
-                    
-                    scheduleTask(blocked);
-                }
-
-                blocked = next;
-            }
+            unblockWakeableTasks();
 
             return readyQueue.getHead();
         }
@@ -98,7 +79,8 @@ namespace Kernel {
 
     void Scheduler::runNextTask() {
         if (state == State::StartCurrent) {
-            startProcess(currentTask);
+            //startProcess(currentTask);
+            changeProcess(startTask, currentTask);
         }
         else if (state == State::ChangeToStart) {
             auto current = currentTask;
@@ -109,29 +91,17 @@ namespace Kernel {
         else {
             auto current = currentTask;
             currentTask = nextTask;
-            changeProcess(current, nextTask);
+
+            if (current != nextTask) {
+                changeProcess(current, nextTask);
+            }
         }
     }
 
     void Scheduler::notifyTimesliceExpired() {
         elapsedTime_milliseconds += timeslice_milliseconds;
 
-        auto blocked = blockedQueue.getHead();
-
-        while(blocked != nullptr) {
-            auto next = blocked->nextTask;
-
-            if (blocked->wakeTime <= elapsedTime_milliseconds) {
-                //printf("woke %x waketime %d elapsedtime %d\n", blocked, (uint32_t)blocked->wakeTime, elapsedTime_milliseconds);
-
-                blockedQueue.remove(blocked);
-                
-                scheduleTask(blocked);
-            }
-
-            blocked = next;
-        }
-
+        unblockWakeableTasks();
         scheduleNextTask(); 
         runNextTask();
     }
@@ -150,9 +120,11 @@ namespace Kernel {
 
     Task* Scheduler::createTestTask(uintptr_t functionAddress) {
         auto processStack = createStack();
+        auto userStack = createStack();
 
         uint8_t volatile* stackPointer = static_cast<uint8_t volatile*>(reinterpret_cast<void volatile*>(processStack + 4096));
         stackPointer -= sizeof(TaskStack);
+        //stackPointer += 8;
 
         TaskStack volatile* stack = reinterpret_cast<TaskStack volatile*>(stackPointer);
         stack->eflags = 
@@ -162,7 +134,7 @@ namespace Kernel {
 
         Task* task = taskBuffer;
         task->context.esp = reinterpret_cast<uint32_t>(stackPointer);
-        task->context.kernelESP = processStack + 4096;
+        task->context.kernelESP = userStack + 4096;
 
         taskBuffer++;
 
@@ -175,13 +147,14 @@ namespace Kernel {
 
         uint8_t volatile* stackPointer = static_cast<uint8_t volatile*>(reinterpret_cast<void volatile*>(kernelStack + 4096));
         stackPointer -= sizeof(TaskStack);
+        stackPointer -= 8;
 
         TaskStack volatile* stack = reinterpret_cast<TaskStack volatile*>(stackPointer);
         stack->eflags = 
             static_cast<uint32_t>(EFlags::InterruptEnable) | 
             static_cast<uint32_t>(EFlags::Reserved);
         stack->eip = reinterpret_cast<uint32_t>(launchProcess);
-        stack->eax = functionAddress;
+        //stack->eax = functionAddress;
 
         uint8_t volatile* userStackPointer = static_cast<uint8_t volatile*>(reinterpret_cast<void volatile*>(userStack + 4096));
         userStackPointer -= sizeof(TaskStack);
@@ -190,7 +163,10 @@ namespace Kernel {
         uStack->eflags = stack->eflags;
         uStack->eip = functionAddress;
 
-        stack->ecx = reinterpret_cast<uint32_t>(userStackPointer);
+        //stack->ecx = reinterpret_cast<uint32_t>(userStackPointer);
+        uint32_t volatile* stackExtras = reinterpret_cast<uint32_t volatile*>(stackPointer + sizeof(TaskStack));
+        *stackExtras++ = reinterpret_cast<uint32_t>(userStackPointer);
+        *stackExtras++ = functionAddress;
 
         Task* task = taskBuffer;
         task->context.esp = reinterpret_cast<uint32_t>(stackPointer);
@@ -205,6 +181,7 @@ namespace Kernel {
         if (reason == BlockReason::Sleep) {
 
             auto current = currentTask;
+            current->state = TaskState::Sleeping;
 
             currentTask->state = TaskState::Sleeping;
             currentTask->wakeTime = elapsedTime_milliseconds + arg;
@@ -241,6 +218,39 @@ namespace Kernel {
             }
 
             runNextTask();
+        }
+    }
+
+    /*void Scheduler::unblockTask(uint32_t taskId) {
+        auto blocked = blockedQueue.getHead();
+
+        while(blocked != nullptr) {
+            if (blocked->id == taskId) {
+                unblockTask(blocked);
+                break;
+            }
+        }
+    }*/
+
+    void Scheduler::unblockTask(Task* task) {
+        task->state = TaskState::Running;
+
+        blockedQueue.remove(task);
+        scheduleTask(task);
+    }
+
+    void Scheduler::unblockWakeableTasks() {
+        auto blocked = blockedQueue.getHead();
+
+        while(blocked != nullptr) {
+            auto next = blocked->nextTask;
+
+            if (blocked->wakeTime <= elapsedTime_milliseconds) {
+                //printf("woke %x waketime %d elapsedtime %d\n", blocked, (uint32_t)blocked->wakeTime, elapsedTime_milliseconds);
+                unblockTask(blocked);
+            }
+
+            blocked = next;
         }
     }
 
