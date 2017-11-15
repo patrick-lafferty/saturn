@@ -18,11 +18,15 @@ namespace Kernel {
         }
     }
 
-    uint32_t createStack() {
-        auto processStack = Memory::currentVMM->allocatePages(1, 
-            static_cast<int>(Memory::PageTableFlags::Present)
-            | static_cast<int>(Memory::PageTableFlags::AllowWrite)
-            | static_cast<int>(Memory::PageTableFlags::AllowUserModeAccess));
+    uint32_t createStack(bool allowUserMode) {
+        auto flags = static_cast<int>(Memory::PageTableFlags::Present)
+            | static_cast<int>(Memory::PageTableFlags::AllowWrite);
+
+        if (allowUserMode) {
+            flags |= static_cast<int>(Memory::PageTableFlags::AllowUserModeAccess);
+        }
+
+        auto processStack = Memory::currentVMM->allocatePages(1, flags);
         auto physicalPage = Memory::currentPMM->allocatePage(1);
         Memory::currentVMM->map(processStack, physicalPage);
         Memory::currentPMM->finishAllocation(processStack, 1);
@@ -33,11 +37,7 @@ namespace Kernel {
     Scheduler::Scheduler() {
         currentScheduler = this;
 
-        auto taskBufferAddress = Memory::currentVMM->allocatePages(1, static_cast<int>(Memory::PageTableFlags::Present)
-            | static_cast<int>(Memory::PageTableFlags::AllowWrite));
-        auto physicalPage = Memory::currentPMM->allocatePage(1);
-        Memory::currentVMM->map(taskBufferAddress, physicalPage);
-        Memory::currentPMM->finishAllocation(taskBufferAddress, 1);
+        auto taskBufferAddress = createStack(false);
         
         taskBuffer = static_cast<Task*>(reinterpret_cast<void*>(taskBufferAddress));
         startTask = createKernelTask(reinterpret_cast<uint32_t>(idleLoop));
@@ -117,7 +117,7 @@ namespace Kernel {
     }
     
     Task* Scheduler::createKernelTask(uintptr_t functionAddress) {
-        auto processStack = createStack();
+        auto processStack = createStack(false);
 
         uint8_t volatile* stackPointer = static_cast<uint8_t volatile*>(reinterpret_cast<void volatile*>(processStack + 4096));
         stackPointer -= sizeof(TaskStack);
@@ -169,7 +169,7 @@ namespace Kernel {
 
     Task* Scheduler::createUserTask(uintptr_t functionAddress) {
         auto task = createKernelTask(reinterpret_cast<uintptr_t>(launchProcess));
-        auto userStackAddress = createStack();
+        auto userStackAddress = createStack(true);
 
         /*
         Need to adjust the kernel stack because we want to add
@@ -200,7 +200,7 @@ namespace Kernel {
         return task;
     }
 
-    void Scheduler::blockThread(BlockReason reason, uint32_t arg) {
+    void Scheduler::blockTask(BlockReason reason, uint32_t arg) {
         if (reason == BlockReason::Sleep) {
 
             auto current = currentTask;

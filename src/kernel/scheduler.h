@@ -128,7 +128,8 @@ namespace Kernel {
         
         void notifyTimesliceExpired();
         void scheduleTask(Task* task);
-        void blockThread(BlockReason reason, uint32_t arg);
+
+        void blockTask(BlockReason reason, uint32_t arg);
         void unblockTask(uint32_t taskId);
 
 
@@ -140,6 +141,7 @@ namespace Kernel {
         void scheduleNextTask();
         Task* findNextTask();
         void runNextTask();
+        
         void unblockTask(Task* task);
         void unblockWakeableTasks();
 
