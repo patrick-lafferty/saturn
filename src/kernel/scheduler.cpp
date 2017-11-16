@@ -8,12 +8,15 @@ extern "C" void startProcess(Kernel::Task* task);
 extern "C" void changeProcess(Kernel::Task* current, Kernel::Task* next);
 extern "C" void launchProcess();
 
+uint32_t HACK_TSS_ADDRESS;
+
 namespace Kernel {
 
     Scheduler* currentScheduler;
 
     void idleLoop() {
         while(true) {
+            printf("Idle\n");
             asm volatile("hlt");
         }
     }

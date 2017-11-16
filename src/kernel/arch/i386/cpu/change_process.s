@@ -1,6 +1,7 @@
 section .text
 
 global startProcess
+extern HACK_TSS_ADDRESS
 startProcess:
     mov ecx, DWORD [esp + 4] 
     mov esp, DWORD [ecx]
@@ -9,7 +10,7 @@ startProcess:
     ;ie one per cpu
 
     ;store the current kernel stack's esp to the TSS
-    mov eax, 0xa0000000
+    mov eax, [HACK_TSS_ADDRESS]
     mov ecx, [ecx + 4]
     mov [eax + 4], ecx
 
@@ -59,7 +60,7 @@ changeProcess:
     pop ebx
 
     ;store the current kernel stack's esp to the TSS
-    mov eax, 0xa0000000
+    mov eax, [HACK_TSS_ADDRESS]
     mov ecx, [ecx + 4]
     mov [eax + 4], ecx
 
@@ -95,10 +96,10 @@ launchProcess:
 
 global fillTSS
 fillTSS:
-    mov ebp, [esp + 4]
-    mov [ebp + 4], esp
-    mov [ebp + 8], DWORD 0x10
-    mov [ebp + 12], DWORD 0x68
+    mov eax, [esp + 4]
+    mov [eax + 4], esp
+    mov [eax + 8], DWORD 0x10
+    mov [eax + 102], DWORD 0x68
     ret
 
 global loadTSS

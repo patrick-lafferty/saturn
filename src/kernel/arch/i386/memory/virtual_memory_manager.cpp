@@ -6,26 +6,24 @@
 namespace Memory {
 
     VirtualMemoryManager* currentVMM;
-
+__attribute__((section(".setup")))
     inline uint32_t extractDirectoryIndex(uintptr_t virtualAddress) {
         return virtualAddress >> 22;
     }
-
+__attribute__((section(".setup")))
     inline uint32_t extractTableIndex(uintptr_t virtualAddress) {
         return (virtualAddress >> 12) & 0x3FF;
     }
-
+__attribute__((section(".setup")))
     inline uintptr_t calculatePageTableAddress(uintptr_t virtualAddress) {
         auto directoryIndex = extractDirectoryIndex(virtualAddress);
         return 0xFFC00000 + PageSize * directoryIndex;
     }
 
-    VirtualMemoryManager::VirtualMemoryManager(PhysicalMemoryManager& physical)
-        : physicalManager{physical} 
-        {
-
-        auto page = physical.allocatePage(1);
-        physical.finishAllocation(page, 1);
+    void VirtualMemoryManager::initialize(PhysicalMemoryManager* physical) {
+        physicalManager = physical;
+        auto page = physical->allocatePage(1);
+        physical->finishAllocation(page, 1);
         directory = static_cast<PageDirectory*>(reinterpret_cast<void*>(page));
         directory->pageTableAddresses[1023] = reinterpret_cast<uintptr_t>(static_cast<void*>(directory)) | 7;//3;
     }
@@ -40,17 +38,17 @@ namespace Memory {
     }
 
     uintptr_t VirtualMemoryManager::allocatePageTable(uintptr_t virtualAddress, int index) {
-        auto physicalPage = physicalManager.allocatePage(1);
+        auto physicalPage = physicalManager->allocatePage(1);
 
         directory->pageTableAddresses[index] = physicalPage | 7;//3;
 
         updateCR3Address(directory);
 
         if (pagingActive) {
-            physicalManager.finishAllocation(virtualAddress, 1);
+            physicalManager->finishAllocation(virtualAddress, 1);
         }
         else {
-            physicalManager.finishAllocation(physicalPage, 1);
+            physicalManager->finishAllocation(physicalPage, 1);
         }
 
         return physicalPage;
@@ -139,6 +137,19 @@ namespace Memory {
         flags |= static_cast<uint32_t>(PageTableFlags::Present);
 
         pageTable->pageAddresses[tableIndex] = physicalAddress | flags; 
+        updateCR3Address(directory);
+    }
+
+    void VirtualMemoryManager::unmap(uintptr_t virtualAddress, uint32_t count) {
+        auto end = virtualAddress + count * 0x1000;
+        for(auto address = virtualAddress; address < end; address += 0x1000) {
+            auto pageTableAddress = calculatePageTableAddress(address);
+            auto pageTable = static_cast<PageTable*>(reinterpret_cast<void*>(pageTableAddress));
+            auto tableIndex = extractTableIndex(address);
+
+            pageTable->pageAddresses[tableIndex] = 0;   
+        }
+
         updateCR3Address(directory);
     }
 

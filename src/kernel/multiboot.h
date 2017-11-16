@@ -16,6 +16,7 @@ namespace Kernel {
         uint32_t memoryMapAddress;
     } __attribute__((packed));
 
+__attribute__((section(".setup")))
     inline bool hasValidMemoryMap(const MultibootInformation* info) {
         return info->flags & (1 << 6);
     }

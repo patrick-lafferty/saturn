@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <task_context.h>
 
+extern "C" uint32_t HACK_TSS_ADDRESS;
+
 namespace Kernel {
 
     template<typename T> class LinkedList {

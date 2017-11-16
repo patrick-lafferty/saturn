@@ -455,7 +455,9 @@ namespace APIC {
                 }
             }
 
-            writeIOAPICRegister(ioAPICAddress, 1, combineFlags(
+        }
+
+        writeIOAPICRegister(ioAPICAddress, 1, combineFlags(
                 49,
                 IO_DeliveryMode::Fixed,
                 IO_DestinationMode::Physical,
@@ -471,7 +473,6 @@ namespace APIC {
                 IO_TriggerMode::Edge
             ), 0);
 
-        }
         setupAPICTimer();
     }
 }

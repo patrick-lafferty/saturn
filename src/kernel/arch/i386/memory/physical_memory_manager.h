@@ -13,11 +13,13 @@ namespace Memory {
 
     //TODO: HACK: decide how ISR can get access to current PMM
     extern class PhysicalMemoryManager* currentPMM;
-
     class PhysicalMemoryManager {
     public:
 
-        PhysicalMemoryManager(const Kernel::MultibootInformation* info);
+        //PhysicalMemoryManager(const Kernel::MultibootInformation* info);
+        PhysicalMemoryManager();
+
+        void initialize(const Kernel::MultibootInformation* info);
 
         /*
         returns a physical address to a free page, and tracks stats.

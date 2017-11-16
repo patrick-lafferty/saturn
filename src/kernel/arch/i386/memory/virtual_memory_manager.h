@@ -34,7 +34,8 @@ namespace Memory {
     class VirtualMemoryManager {
     public:
 
-        VirtualMemoryManager(class PhysicalMemoryManager& physical);
+        //VirtualMemoryManager();//class PhysicalMemoryManager& physical);
+        void initialize(class PhysicalMemoryManager* physical);
 
         /*
         ensures that the appropriate page table exists, and creates one
@@ -55,6 +56,8 @@ namespace Memory {
         */
         void map(uintptr_t virtualAddress, uintptr_t physicalAddress, uint32_t flags = 0);
 
+        void unmap(uintptr_t virtualAddress, uint32_t count);
+
         /*
         enables paging and sets this VMM's directory as the current one
         reassigns directory to use the virtual address instead of physical
@@ -69,7 +72,7 @@ namespace Memory {
 
         uintptr_t allocatePageTable(uintptr_t virtualAddress, int index);
 
-        PhysicalMemoryManager& physicalManager;
+        PhysicalMemoryManager* physicalManager;
         PageDirectory* directory;
         uintptr_t nextAddress {0};
         bool pagingActive {false};

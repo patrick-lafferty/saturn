@@ -11,7 +11,7 @@ public:
     void writeCharacter(uint8_t character, uint8_t colour);
 
     static Terminal& getInstance() {
-        static Terminal instance{reinterpret_cast<uint16_t*>(0xB8000)};
+        static Terminal instance{reinterpret_cast<uint16_t*>(0xD00B8000)};
         return instance;
     }
 

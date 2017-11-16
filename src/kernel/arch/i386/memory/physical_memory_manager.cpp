@@ -10,14 +10,19 @@ namespace Memory {
 
     PhysicalMemoryManager* currentPMM;
 
-    PhysicalMemoryManager::PhysicalMemoryManager(const Kernel::MultibootInformation* info) {
+    PhysicalMemoryManager::PhysicalMemoryManager() {
+        allocatedPages = 0;
+        currentPMM = this;
+    }
 
+    void PhysicalMemoryManager::initialize(const Kernel::MultibootInformation* info) {
         if (Kernel::hasValidMemoryMap(info)) {
 
             auto memoryMap = static_cast<MemoryMapRecord*>(reinterpret_cast<void*>(info->memoryMapAddress));
             auto count = info->memoryMapLength / sizeof(MemoryMapRecord);
             auto kernelStartAddress = reinterpret_cast<uint32_t>(&__kernel_memory_start);
             auto kernelEndAddress = reinterpret_cast<uint32_t>(&__kernel_memory_end);
+            kernelEndAddress -= 0xD000'0000;
      
             for (auto i = 0u; i < count; i++) {
                 auto& record = *memoryMap++;
@@ -41,9 +46,7 @@ namespace Memory {
             totalPages++;
         }
 
-        printf("[PMM] Created %d pages, total physical memory: %dKB\n", totalPages, totalPages * PageSize / 1024);
-        allocatedPages = 0;
-        currentPMM = this;
+        //printf("[PMM] Created %d pages, total physical memory: %dKB\n", totalPages, totalPages * PageSize / 1024);
     }
     
     uintptr_t PhysicalMemoryManager::allocatePage(uint32_t count) {

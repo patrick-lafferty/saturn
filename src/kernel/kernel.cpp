@@ -52,33 +52,65 @@ bool parseACPITables() {
     return true;
 }
 
-extern "C" int kernel_main(MultibootInformation* info) {
+__attribute__((section(".setup")))
+PhysicalMemoryManager physicalMemManager;// {info};
+__attribute__((section(".setup")))
+VirtualMemoryManager virtualMemManager;// {physicalMemManager};
 
-    GDT::setup();
-    IDT::setup();
-    initializeSSE();
-    PIC::disable();
+const uint32_t virtualOffset = 0xD000'0000;
 
-    PhysicalMemoryManager physicalMemManager {info};
-    VirtualMemoryManager virtualMemManager {physicalMemManager};
+extern "C" void 
+__attribute__((section(".setup")))
+setupKernel(MultibootInformation* info) {
+
+    physicalMemManager.initialize(info);
+    virtualMemManager.initialize(&physicalMemManager);
 
     auto pageFlags = 
         static_cast<int>(PageTableFlags::Present)
         | static_cast<int>(PageTableFlags::AllowWrite)
         | static_cast<int>(PageTableFlags::AllowUserModeAccess);
 
-    virtualMemManager.map_unpaged(0xB8000, 0xB8000, 1, pageFlags);
-    virtualMemManager.map_unpaged(0, 0, 0x100000 / 0x1000, pageFlags);
+    virtualMemManager.map_unpaged(0xB8000 + virtualOffset, 0xB8000, 1, pageFlags);
+    virtualMemManager.map_unpaged(virtualOffset, 0, 0x100000 / 0x1000, pageFlags);
     auto kernelStartAddress = reinterpret_cast<uint32_t>(&__kernel_memory_start);
     auto kernelEndAddress = reinterpret_cast<uint32_t>(&__kernel_memory_end);
-    virtualMemManager.map_unpaged(kernelStartAddress, kernelStartAddress, 1 + (kernelEndAddress - kernelStartAddress) / 0x1000, pageFlags);
+    virtualMemManager.map_unpaged(kernelStartAddress + virtualOffset, kernelStartAddress, 1 + (kernelEndAddress - virtualOffset - kernelStartAddress) / 0x1000, pageFlags);
+    virtualMemManager.map_unpaged(kernelStartAddress, kernelStartAddress , 1 + (kernelEndAddress - virtualOffset - kernelStartAddress) / 0x1000, pageFlags);
     virtualMemManager.map_unpaged(0x7fe0000, 0x7fe0000, (0x8fe0000 - 0x7fe0000) / 0x1000, pageFlags);
+    virtualMemManager.map_unpaged(0x7fd000, 0x7fd000, (0x8fe000 - 0x7fd000) / 0x1000, pageFlags);
     virtualMemManager.map_unpaged(0xfec00000, 0xfec00000, (0xfef00000 - 0xfec00000) / 0x1000, pageFlags | 0b10000);
 
     virtualMemManager.activate();
-    virtualMemManager.HACK_setNextAddress(0xa0000000);
+
+    //virtualMemManager.unmap(kernelStartAddress, 1 + (kernelEndAddress - kernelStartAddress) / 0x1000);
+}
+
+extern "C" int kernel_main() {
+
+    Memory::currentPMM = &physicalMemManager;
+
+    GDT::setup();
+    IDT::setup();
+    initializeSSE();
+    PIC::disable();
+
+     auto pageFlags = 
+        static_cast<int>(PageTableFlags::Present)
+        | static_cast<int>(PageTableFlags::AllowWrite)
+        | static_cast<int>(PageTableFlags::AllowUserModeAccess);
+
+    
+    auto kernelStartAddress = reinterpret_cast<uint32_t>(&__kernel_memory_start);
+    auto kernelEndAddress = reinterpret_cast<uint32_t>(&__kernel_memory_end);
+    auto afterKernel = virtualOffset + kernelStartAddress + (20 + (kernelEndAddress - kernelStartAddress) / 0x1000) * 0x1000;
+    virtualMemManager.HACK_setNextAddress(afterKernel);
 
     auto tssAddress = virtualMemManager.allocatePages(3, pageFlags);
+    HACK_TSS_ADDRESS = tssAddress;
+    asm volatile("sti");
+    //uint32_t* t = static_cast<uint32_t*>(reinterpret_cast<void*>(tssAddress));
+    //*t = 0;
     GDT::addTSSEntry(tssAddress, 0x1000 * 3);
     CPU::setupTSS(tssAddress);
 
@@ -89,7 +121,6 @@ extern "C" int kernel_main(MultibootInformation* info) {
 
     Kernel::Scheduler scheduler;
 
-    asm volatile("sti");
 
     scheduler.enterIdle();
 

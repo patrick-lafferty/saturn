@@ -1,5 +1,5 @@
 #include <string.h>
-
+__attribute__((section(".setup")))
 void* memset(void* destination, int fillByte, size_t count) {
     if (destination == nullptr) {
         return destination;

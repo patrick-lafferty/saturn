@@ -4,6 +4,14 @@ extern gp
 
 gdt_flush:
     lgdt [gp]
+
+    call reloadSegments
+    ret
+
+reloadSegments:
+    jmp 0x08:flush 
+
+flush:
     mov eax, 0x10
     mov ds, eax
     mov es, eax
@@ -11,7 +19,5 @@ gdt_flush:
     mov gs, eax
     mov ss, eax
 
-    jmp 0x08:flush 
 
-flush:
     ret

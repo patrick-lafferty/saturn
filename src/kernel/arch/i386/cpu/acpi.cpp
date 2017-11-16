@@ -7,8 +7,8 @@ namespace CPU {
     Root System Description Pointer
     */
     RootSystemDescriptionPointer findRSDP() {
-        auto start = reinterpret_cast<unsigned char*>(0x000e0000);
-        auto end = reinterpret_cast<unsigned char*>(0x000fffff);
+        auto start = reinterpret_cast<unsigned char*>(0xd00e0000);
+        auto end = reinterpret_cast<unsigned char*>(0xd00fffff);
 
         for (auto ptr = start; ptr < end; ptr += 16) {
             if (memcmp(ptr, "RSD PTR ", 8) == 0) {
