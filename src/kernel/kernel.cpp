@@ -52,6 +52,11 @@ bool parseACPITables() {
     return true;
 }
 
+/*
+We get a pointer to this struct passed in from boot.s to kernel_main.
+The address is to an instance of the struct created in the pre-kernel,
+in pre_kernel.cpp
+*/
 struct MemManagerAddresses {
     uint32_t physicalManager;
     uint32_t virtualManager;
@@ -59,6 +64,11 @@ struct MemManagerAddresses {
 
 extern "C" int kernel_main(MemManagerAddresses* addresses) {
 
+    /*
+    The prekernel creates its own PMM and VMM in lower addresses.
+    We want the higher-half kernel to have its own proper versions
+    so we can unmap the old addresses, so copy them over here.
+    */
     PhysicalMemoryManager physicalMemManager = 
         *reinterpret_cast<PhysicalMemoryManager*>(
             addresses->physicalManager);
@@ -72,6 +82,8 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     auto kernelStartAddress = reinterpret_cast<uint32_t>(&__kernel_memory_start);
     auto kernelEndAddress = reinterpret_cast<uint32_t>(&__kernel_memory_end);
     const uint32_t virtualOffset = 0xD000'0000;
+
+    //we don't need the identity map anymore
     virtualMemManager.unmap(kernelStartAddress, 1 + (kernelEndAddress - virtualOffset - kernelStartAddress) / 0x1000);
 
     Memory::currentPMM = &physicalMemManager;

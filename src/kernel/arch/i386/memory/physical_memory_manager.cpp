@@ -21,6 +21,7 @@ namespace Memory {
         //currentPMM = this;
     }
 
+    #if TARGET_PREKERNEL
     void PhysicalMemoryManager::initialize(const Kernel::MultibootInformation* info) {
         if (Kernel::hasValidMemoryMap(info)) {
 
@@ -54,6 +55,7 @@ namespace Memory {
 
         //printf("[PMM] Created %d pages, total physical memory: %dKB\n", totalPages, totalPages * PageSize / 1024);
     }
+    #endif
     
     uintptr_t PhysicalMemoryManager::allocatePage(uint32_t count) {
         if (freePages < count) {

@@ -39,14 +39,29 @@ extern "C" void setupKernel(MultibootInformation* info) {
         | static_cast<int>(PageTableFlags::AllowWrite)
         | static_cast<int>(PageTableFlags::AllowUserModeAccess);
 
+    //VGA video memory
     _virtualMemManager.map_unpaged(0xB8000 + virtualOffset, 0xB8000, 1, pageFlags);
+
+    //the first megabyte of memory, for bios stuff
     _virtualMemManager.map_unpaged(virtualOffset, 0, 0x100000 / 0x1000, pageFlags);
+
     auto kernelStartAddress = reinterpret_cast<uint32_t>(&__kernel_memory_start);
     auto kernelEndAddress = reinterpret_cast<uint32_t>(&__kernel_memory_end);
+    //the higher-half kernel address
     _virtualMemManager.map_unpaged(kernelStartAddress + virtualOffset, kernelStartAddress, 1 + (kernelEndAddress - virtualOffset - kernelStartAddress) / 0x1000, pageFlags);
+    
+    /*
+    temporarily identity map the kernel until we enter the higher half, so EIP
+    is always valid
+    */
     _virtualMemManager.map_unpaged(kernelStartAddress, kernelStartAddress , 1 + (kernelEndAddress - virtualOffset - kernelStartAddress) / 0x1000, pageFlags);
+
+    //TODO: whats this?
     _virtualMemManager.map_unpaged(0x7fe0000, 0x7fe0000, (0x8fe0000 - 0x7fe0000) / 0x1000, pageFlags);
+    //TODO: whats this?
     _virtualMemManager.map_unpaged(0x7fd000, 0x7fd000, (0x8fe000 - 0x7fd000) / 0x1000, pageFlags);
+
+    //APIC registers
     _virtualMemManager.map_unpaged(0xfec00000, 0xfec00000, (0xfef00000 - 0xfec00000) / 0x1000, pageFlags | 0b10000);
 
     _virtualMemManager.activate();

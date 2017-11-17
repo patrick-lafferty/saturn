@@ -1,15 +1,7 @@
-/*
-TODO - rewrite, copied from osdev barebones
-*/
-
 HigherStart = 0xD0000000;
 
-/* The bootloader will look at this image and start execution at the symbol
-   designated as the entry point. */
 ENTRY(_start)
 
-/* Tell where the various sections of the object files will be put in the final
-   kernel image. */
 SECTIONS
 {
 	/* Begin putting sections at 1 MiB, a conventional place for kernels to be
@@ -46,11 +38,7 @@ SECTIONS
 
 
 	. += HigherStart;
-	/*. = 1M + HigherStart;*/
 
-	/* First put the multiboot header, as it is required to be put very early
-	   early in the image or the bootloader won't recognize the file format.
-	   Next we'll put the .text section. */
 	.text ALIGN(4K) : AT(ADDR(.text) - HigherStart)
 	{
 		/*__kernel_memory_start = .; - HigherStart;*/
@@ -82,9 +70,6 @@ SECTIONS
 		*(.bss)
 		src/kernel/arch/i386/memory/physical_memory_manager.o (.bss, COMMON)
 		src/kernel/arch/i386/memory/virtual_memory_manager.o (.bss, COMMON)
-		__kernel_memory_end = .;/* - HigherStart;*/
+		__kernel_memory_end = .;
 	}
-
-	/* The compiler may produce other sections, by default it will put them in
-	   a segment with the same name. Simply add stuff here as needed. */
 }

@@ -24,7 +24,6 @@ stack_bottom:
 resb 16384
 stack_top:
 
-;/*kernel entry*/
 section .text
 
 extern _init
@@ -32,14 +31,12 @@ extern setupKernel
 extern kernel_main
 
 global _start
-start equ 0x100000
-global start
 
 section .setup
 extern MemoryManagerAddresses
 
 _start:
-    mov esp, stack_top_ ; - 0xD0000000
+    mov esp, stack_top_ ;
 
     ;call _init
     

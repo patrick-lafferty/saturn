@@ -2,11 +2,12 @@
 
 #include <stdint.h>
 
-#ifdef TARGET_PREKERNEL
-#define SECTION __attribute__((section(".setup")))
-#else
-#define SECTION __attribute__((section(".text")))
-#endif
+/*
+Two instances of this file are compiled to two separate objs, one
+to be linked at a low address to be used for the prekernel before paging,
+and one to be used by the real kernel after paging is setup. So there isn't
+any duplicate symbols, have different namespaces for each obj.
+*/
 
 #if TARGET_PREKERNEL
 namespace MemoryPrekernel {
@@ -46,9 +47,24 @@ namespace Memory {
     class VirtualMemoryManager {
     public:
 
+        /*
+        Only called once, when kernel_main starts. The pre-kernel setup
+        creates a PhysicalMemoryManager at a low address, and once
+        we jump to the higher half kernel we create a brand new one
+        with its values copied. Same thing for the VirtualMemoryManager,
+        once it gets copied it has a pointer to the low address PMM,
+        hence why we replace it with this.
+        */
         void setPhysicalManager(PhysicalMemoryManager* physical);
 
-        //VirtualMemoryManager();//class PhysicalMemoryManager& physical);
+        /*
+        Normally this would be a constructor, but:
+        1) we need a static instance declared for the prekernel to reserve
+            space for it, and the actual construction has to wait until setupKernel()
+        2) we don't have an allocator setup before the VMM is setup, so we couldn't
+            just replace 1) with a pointer instead of a value and = new instead of 
+            initialize
+        */
         void initialize(PhysicalMemoryManager* physical);
 
         /*
@@ -59,6 +75,9 @@ namespace Memory {
 
         /*
         must only be called before paging is enabled
+        to enforce that, make use of the fact that two VirtualMemoryManager objects
+        will be compiled, one for the prekernel and one for the real one, so only
+        compile this function for the prekernel version
         */
         #if TARGET_PREKERNEL
         void map_unpaged(uintptr_t virtualAddress, uintptr_t physicalAddress, uint32_t pageCount, uint32_t flags);
@@ -72,6 +91,11 @@ namespace Memory {
         */
         void map(uintptr_t virtualAddress, uintptr_t physicalAddress, uint32_t flags = 0);
 
+        /*
+        unmaps the virtual address
+
+        TODO - should this also free the physical address?
+        */
         void unmap(uintptr_t virtualAddress, uint32_t count);
 
         /*

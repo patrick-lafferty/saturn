@@ -36,7 +36,6 @@ namespace Memory {
         directory->pageTableAddresses[1023] = reinterpret_cast<uintptr_t>(static_cast<void*>(directory)) | 7;//3;
     }
 
-    SECTION
     void updateCR3Address(PageDirectory* directory) {
         auto directoryAddress = directory->pageTableAddresses[1023] & ~0x3ff;
         
@@ -45,7 +44,6 @@ namespace Memory {
             : "a" (directoryAddress)
         );
     }
-
 
     uintptr_t VirtualMemoryManager::allocatePageTable(uintptr_t virtualAddress, int index) {
         auto physicalPage = physicalManager->allocatePage(1);
