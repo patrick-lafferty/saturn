@@ -13,6 +13,8 @@
 #include <scheduler.h>
 #include <system_calls.h>
 
+#include <test/libc/stdlib.h>
+
 using namespace Kernel;
 using namespace Memory;
 
@@ -119,6 +121,10 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     Kernel::Scheduler scheduler;
 
     asm volatile("sti");
+
+    printf("Saturn OS v 0.1.0\n------------------\n\n");
+
+    runMallocTests();
 
     scheduler.enterIdle();
 

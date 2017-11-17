@@ -16,7 +16,6 @@ namespace Kernel {
 
     void idleLoop() {
         while(true) {
-            printf("Idle\n");
             asm volatile("hlt");
         }
     }
