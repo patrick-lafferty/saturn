@@ -83,8 +83,22 @@ System calls: 0xFF (Final Fantasy)
 ** Next Steps
 - [X] extract the TSS stuff and put it in its proper place
 - [X] pass address to ring3 function instead of hardcoding taskA's
-- [ ] implement thread state
-- [ ] implement switch_to(thread)
-- [ ] implement find_thread_to_switch_to()
-- [ ] implement block_thread(reason)
-- [ ] implement unblock_thread(reason)
+- [X] implement thread state
+- [X] implement switch_to(thread)
+- [X] implement find_thread_to_switch_to()
+- [X] implement block_thread(reason)
+- [X] implement unblock_thread(reason)
+
+* Intermission
+- [ ] malloc
+- [ ] libc++
+  - [ ] new
+
+* Step 7: Usermode VGA Driver
+- [ ] IPC
+- [ ] Driver framework, driver identification (eg load as VGA_DRIVER grants 0xb000 user-mode memory mapped to the driver)
+  
+* Step 8: Usermode Terminal Emulator
+- [ ] handle common ansi escape sequences (colour, moving the cursor)
+
+* Step 9: Usermode Keyboard Driver
