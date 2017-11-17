@@ -94,7 +94,7 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     initializeSSE();
     PIC::disable();
 
-     auto pageFlags = 
+    auto pageFlags = 
         static_cast<int>(PageTableFlags::Present)
         | static_cast<int>(PageTableFlags::AllowWrite)
         | static_cast<int>(PageTableFlags::AllowUserModeAccess);
@@ -111,6 +111,10 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
         printf("[Kernel] Parsing ACPI Tables failed, halting\n");
         asm volatile("hlt");
     }
+
+    //also don't need APIC tables anymore
+    //NOTE: if we actually do, copy them before this line to a new address space
+    virtualMemManager.unmap(0x7fe0000, (0x8fe0000 - 0x7fe0000) / 0x1000);
 
     Kernel::Scheduler scheduler;
 
