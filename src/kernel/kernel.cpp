@@ -14,6 +14,7 @@
 #include <system_calls.h>
 
 #include <test/libc/stdlib.h>
+#include <test/libc++/new.h>
 
 using namespace Kernel;
 using namespace Memory;
@@ -125,6 +126,7 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     printf("Saturn OS v 0.1.0\n------------------\n\n");
 
     runMallocTests();
+    runNewTests();
 
     scheduler.enterIdle();
 

@@ -49,6 +49,7 @@
                 "${workspaceRoot}",
                 "${workspaceRoot}/src/kernel",
                 "${workspaceRoot}/src/libc/include",
+                "${workspaceRoot}/src/libc++/include",
                 "${workspaceRoot}/src/kernel/arch/i386",
                 "${workspaceRoot}/sysroot/system/include"
             ],
@@ -73,6 +74,7 @@
                     "${workspaceRoot}",
                     "${workspaceRoot}/src/kernel",
                     "${workspaceRoot}/src/libc/include",
+                    "${workspaceRoot}/src/libc++/include",
                     "${workspaceRoot}/src/kernel/arch/i386",
                     "${workspaceRoot}/sysroot/system/include"
                 ],

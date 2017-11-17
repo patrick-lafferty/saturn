@@ -12,7 +12,7 @@ ASFLAGS = -felf32
 CXX = clang++
 MARCH = "--target=i686-pc-none-elf -march=i686"
 WARNINGS = -Wall -Wextra 
-CXXPATHS = -isysroot sysroot/ -iwithsysroot /system/include -I src -I src/libc/include -I src/kernel -I src/kernel/arch/i386 -I .
+CXXPATHS = -isysroot sysroot/ -iwithsysroot /system/include -I src -I src/libc/include -I src/libc++/include -I src/kernel -I src/kernel/arch/i386 -I .
 	
 FLAGS = -fno-omit-frame-pointer -ffreestanding -fno-exceptions -fno-rtti
 CXXFLAGS = -O0 $(FLAGS) -g $(MARCH) $(DEPENDENCYFLAGS) $(WARNINGS) -std=c++1z  $(CXXPATHS) -masm=intel
@@ -73,14 +73,19 @@ OBJS_WITHOUT_CRT = \
 DEPS = \
 	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(OBJS_WITHOUT_CRT))) \
 	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(LIBC_FREE_OBJS))) \
-	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(TEST_LIBC_FREE_OBJS))) 
+	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(TEST_LIBC_FREE_OBJS))) \
+	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(LIBC++_FREE_OBJS))) \
+	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(TEST_LIBC++_FREE_OBJS)))
 
 include src/libc/make.config
 include test/libc/make.config
 
+include src/libc++/make.config
+include test/libc++/make.config
+
 $(shell mkdir -p $(dir $(DEPS)) >/dev/null)
 
-LIBS = -lc_test_freestanding -lc_freestanding 
+LIBS = -lc_test_freestanding -lc++_test_freestanding -lc++_freestanding -lc_freestanding 
 
 LINK_LIST = \
 	$(LDFLAGS) \
@@ -104,7 +109,7 @@ sysroot:
 	$(MKDIR) sysroot/system/lib
 	$(MKDIR) sysroot/system/include
 
-saturn.bin: libc test_libc $(OBJS) $(ARCHDIR)/linker.ld
+saturn.bin: libc test_libc libc++ test_libc++ $(OBJS) $(ARCHDIR)/linker.ld
 	$(LD) -T $(ARCHDIR)/linker.ld -o sysroot/system/boot/$@ $(LINK_LIST) $(LDFLAGS) 
 
 libc: $(LIBC_FREE_OBJS)
@@ -117,6 +122,17 @@ test_libc: $(TEST_LIBC_FREE_OBJS)
 	$(AR) rcs test/libc/libc_test_freestanding.a $(TEST_LIBC_FREE_OBJS)
 	ranlib test/libc/libc_test_freestanding.a
 	cp test/libc/libc_test_freestanding.a sysroot/system/lib
+
+libc++: $(LIBC++_FREE_OBJS)
+	$(AR) rcs src/libc++/libc++_freestanding.a $(LIBC++_FREE_OBJS)
+	ranlib src/libc++/libc++_freestanding.a
+	cp src/libc++/libc++_freestanding.a sysroot/system/lib
+	cp -R --preserve=timestamps src/libc++/include sysroot/system/
+
+test_libc++: $(TEST_LIBC++_FREE_OBJS)
+	$(AR) rcs test/libc++/libc++_test_freestanding.a $(TEST_LIBC++_FREE_OBJS)
+	ranlib test/libc++/libc++_test_freestanding.a
+	cp test/libc++/libc++_test_freestanding.a sysroot/system/lib
 
 %.o: %.s
 	$(AS) $< -o $@ $(ASFLAGS)
