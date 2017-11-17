@@ -41,11 +41,14 @@ ARCH_OBJS = \
 	$(ARCHDIR)/cpu/tss.o \
 	$(ARCHDIR)/memory/scan_memory.o \
 	$(ARCHDIR)/memory/physical_memory_manager.o \
-	$(ARCHDIR)/memory/virtual_memory_manager.o
+	$(ARCHDIR)/memory/physical_memory_manager_pre_kernel.o \
+	$(ARCHDIR)/memory/virtual_memory_manager.o \
+	$(ARCHDIR)/memory/virtual_memory_manager_pre_kernel.o
 
 KERNEL_OBJS = \
 	$(ARCH_OBJS) \
 	src/kernel/scheduler.o \
+	src/kernel/pre_kernel.o \
 	src/kernel/kernel.o
 
 SERVICES_OBJS = \
@@ -99,7 +102,7 @@ sysroot:
 	$(MKDIR) sysroot/system/include
 
 saturn.bin: libc $(OBJS) $(ARCHDIR)/linker.ld
-	$(LD) -T $(ARCHDIR)/linker.ld -o sysroot/system/boot/$@ $(LINK_LIST) $(LDFLAGS)
+	$(LD) -T $(ARCHDIR)/linker.ld -o sysroot/system/boot/$@ $(LINK_LIST) $(LDFLAGS) 
 
 libc: $(LIBC_FREE_OBJS)
 	$(AR) rcs src/libc/libc_freestanding.a $(LIBC_FREE_OBJS)
@@ -114,6 +117,12 @@ libc: $(LIBC_FREE_OBJS)
 
 %.o: %.cpp $(DEPENDENCYDIR)/%.d 
 	$(CXX) -c $< -o $@ $(CXXFLAGS)
+
+src/kernel/arch/i386/memory/physical_memory_manager_pre_kernel.o: src/kernel/arch/i386/memory/physical_memory_manager.cpp $(DEPENDENCYDIR)/src/kernel/arch/i386/memory/virtual_memory_manager.d
+	$(CXX) -c $< -o $@ $(CXXFLAGS) -DTARGET_PREKERNEL
+
+src/kernel/arch/i386/memory/virtual_memory_manager_pre_kernel.o: src/kernel/arch/i386/memory/virtual_memory_manager.cpp $(DEPENDENCYDIR)/src/kernel/arch/i386/memory/virtual_memory_manager.d
+	$(CXX) -c $< -o $@ $(CXXFLAGS) -DTARGET_PREKERNEL
 
 $(DEPENDENCYDIR)/%.d: ;
 

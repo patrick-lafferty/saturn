@@ -2,7 +2,19 @@
 
 #include <stdint.h>
 
+#ifdef TARGET_PREKERNEL
+#define SECTION __attribute__((section(".setup")))
+#else
+#define SECTION __attribute__((section(".text")))
+#endif
+
+#if TARGET_PREKERNEL
+namespace MemoryPrekernel {
+#else
 namespace Memory {
+#endif
+
+    class PhysicalMemoryManager;
 
     struct PageDirectory {
         uintptr_t pageTableAddresses[1024];
@@ -34,8 +46,10 @@ namespace Memory {
     class VirtualMemoryManager {
     public:
 
+        void setPhysicalManager(PhysicalMemoryManager* physical);
+
         //VirtualMemoryManager();//class PhysicalMemoryManager& physical);
-        void initialize(class PhysicalMemoryManager* physical);
+        void initialize(PhysicalMemoryManager* physical);
 
         /*
         ensures that the appropriate page table exists, and creates one
@@ -46,7 +60,9 @@ namespace Memory {
         /*
         must only be called before paging is enabled
         */
+        #if TARGET_PREKERNEL
         void map_unpaged(uintptr_t virtualAddress, uintptr_t physicalAddress, uint32_t pageCount, uint32_t flags);
+        #endif
 
         /*
         maps the virtual address to the physical address

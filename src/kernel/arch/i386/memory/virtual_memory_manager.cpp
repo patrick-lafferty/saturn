@@ -3,21 +3,29 @@
 #include <string.h>
 #include <stdio.h>
 
+#if TARGET_PREKERNEL
+namespace MemoryPrekernel {
+#else
 namespace Memory {
+#endif
 
     VirtualMemoryManager* currentVMM;
-__attribute__((section(".setup")))
-    inline uint32_t extractDirectoryIndex(uintptr_t virtualAddress) {
+
+    uint32_t extractDirectoryIndex(uintptr_t virtualAddress) {
         return virtualAddress >> 22;
     }
-__attribute__((section(".setup")))
-    inline uint32_t extractTableIndex(uintptr_t virtualAddress) {
+
+    uint32_t extractTableIndex(uintptr_t virtualAddress) {
         return (virtualAddress >> 12) & 0x3FF;
     }
-__attribute__((section(".setup")))
-    inline uintptr_t calculatePageTableAddress(uintptr_t virtualAddress) {
+
+    uintptr_t calculatePageTableAddress(uintptr_t virtualAddress) {
         auto directoryIndex = extractDirectoryIndex(virtualAddress);
         return 0xFFC00000 + PageSize * directoryIndex;
+    }
+
+    void VirtualMemoryManager::setPhysicalManager(PhysicalMemoryManager* physical) {
+        physicalManager = physical;
     }
 
     void VirtualMemoryManager::initialize(PhysicalMemoryManager* physical) {
@@ -28,6 +36,7 @@ __attribute__((section(".setup")))
         directory->pageTableAddresses[1023] = reinterpret_cast<uintptr_t>(static_cast<void*>(directory)) | 7;//3;
     }
 
+    SECTION
     void updateCR3Address(PageDirectory* directory) {
         auto directoryAddress = directory->pageTableAddresses[1023] & ~0x3ff;
         
@@ -36,6 +45,7 @@ __attribute__((section(".setup")))
             : "a" (directoryAddress)
         );
     }
+
 
     uintptr_t VirtualMemoryManager::allocatePageTable(uintptr_t virtualAddress, int index) {
         auto physicalPage = physicalManager->allocatePage(1);
@@ -82,8 +92,6 @@ __attribute__((section(".setup")))
                 else {
                     allocatePageTable(nextAddress, directoryIndex);
                 }
-
-                //nextAddress += PageSize;
             }
 
             if (pagingActive) {
@@ -103,6 +111,7 @@ __attribute__((section(".setup")))
         return startingAddress;
     }
 
+    #if TARGET_PREKERNEL
     void VirtualMemoryManager::map_unpaged(uintptr_t virtualAddress, uintptr_t physicalAddress, uint32_t pageCount, uint32_t flags) {
         
         allocatePages(pageCount, flags, virtualAddress);
@@ -123,6 +132,7 @@ __attribute__((section(".setup")))
             nextAddress = virtualAddress;
         }
     }
+    #endif
 
     void VirtualMemoryManager::map(uintptr_t virtualAddress, uintptr_t physicalAddress, uint32_t flags) {
         

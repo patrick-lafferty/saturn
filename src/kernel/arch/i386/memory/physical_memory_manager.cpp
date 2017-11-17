@@ -6,20 +6,26 @@
 extern uint32_t __kernel_memory_start;
 extern uint32_t __kernel_memory_end;
 
+#if TARGET_PREKERNEL
+#define MEMORY_NS Memory::
+namespace MemoryPrekernel {
+#else
+#define MEMORY_NS
 namespace Memory {
+#endif
 
     PhysicalMemoryManager* currentPMM;
 
     PhysicalMemoryManager::PhysicalMemoryManager() {
         allocatedPages = 0;
-        currentPMM = this;
+        //currentPMM = this;
     }
 
     void PhysicalMemoryManager::initialize(const Kernel::MultibootInformation* info) {
         if (Kernel::hasValidMemoryMap(info)) {
 
-            auto memoryMap = static_cast<MemoryMapRecord*>(reinterpret_cast<void*>(info->memoryMapAddress));
-            auto count = info->memoryMapLength / sizeof(MemoryMapRecord);
+            auto memoryMap = static_cast<MEMORY_NS MemoryMapRecord*>(reinterpret_cast<void*>(info->memoryMapAddress));
+            auto count = info->memoryMapLength / sizeof(MEMORY_NS MemoryMapRecord);
             auto kernelStartAddress = reinterpret_cast<uint32_t>(&__kernel_memory_start);
             auto kernelEndAddress = reinterpret_cast<uint32_t>(&__kernel_memory_end);
             kernelEndAddress -= 0xD000'0000;
@@ -68,7 +74,12 @@ namespace Memory {
         for (uint32_t i = 0; i < count; i++) {
             auto page = static_cast<Page*>(reinterpret_cast<void*>(pageAddress));
             nextFreeAddress = page->nextFreePage;
+            
+            #if TARGET_PREKERNEL
+            prekernel_memset(page, 0, PageSize);
+            #else
             memset(page, 0, PageSize);
+            #endif
         }
     }
 

@@ -36,6 +36,8 @@ start equ 0x100000
 global start
 
 section .setup
+extern MemoryManagerAddresses
+
 _start:
     mov esp, stack_top_ ; - 0xD0000000
 
@@ -45,8 +47,11 @@ _start:
     call setupKernel
     pop ebx
 
+    mov eax, MemoryManagerAddresses
+
     lea ecx, [higherHalf]
     jmp ecx
+
 
 section .text
 
@@ -56,6 +61,7 @@ higherHalf:
 
     call _init
 
+    push eax
     call kernel_main
 
     cli

@@ -3,7 +3,11 @@
 #include <stdint.h>
 #include <multiboot.h>
 
+#if TARGET_PREKERNEL
+namespace MemoryPrekernel {
+#else
 namespace Memory {
+#endif
 
     struct Page {
         uintptr_t nextFreePage;
