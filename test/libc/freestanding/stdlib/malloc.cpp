@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-const int NumberOfTests {1};
+const int NumberOfTests {2};
 
 bool canAllocateSequentialInts() {
 
@@ -23,6 +23,23 @@ bool canAllocateSequentialInts() {
     return true;
 }
 
+bool canAllocateMoreThanAPage() {
+    int* x = static_cast<int*>(malloc(sizeof(int)));
+    uint32_t startingAddress = reinterpret_cast<uint32_t>(x); 
+    auto size = sizeof(int) * 40;
+
+    for (int i = 1; i < 1000; i++) {
+        int* something = static_cast<int*>(malloc(size));
+        auto address = reinterpret_cast<uint32_t>(something);
+
+        if (address != startingAddress + i * size) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 int mallocTestRunner() {
     int tests = 0;
 
@@ -30,7 +47,15 @@ int mallocTestRunner() {
         tests++;    
     }
     else {
-        printf("Malloc test failed: canAllocateSequentialInts\n");
+        printf("    Malloc test failed: canAllocateSequentialInts\n");
+        return tests;
+    }
+
+    if (canAllocateMoreThanAPage()) {
+        tests++;    
+    }
+    else {
+        printf("    Malloc test failed: canAllocateMoreThanAPage\n");
         return tests;
     }
 
@@ -43,9 +68,9 @@ void runMallocTests() {
     auto passedTests = mallocTestRunner();
 
     if (passedTests == NumberOfTests) {
-        printf("All tests passed [%d/%d]\n", passedTests, NumberOfTests);
+        printf("\n    All tests passed [%d/%d]\n", passedTests, NumberOfTests);
     }
     else {
-        printf("%d of %d tests passed\n", passedTests, NumberOfTests);
+        printf("\n    %d of %d tests passed\n", passedTests, NumberOfTests);
     }
 }
