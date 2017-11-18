@@ -24,6 +24,7 @@ startProcess:
 
 ;changes from one ring0 process to another
 global changeProcess
+extern activateVMM
 changeProcess:
     ;c signature:
     ;void changeProcess(Task* current, Task* next)
@@ -47,6 +48,29 @@ changeProcess:
     ;to the next task's context.esp
     mov esp, [ecx]
 
+    push eax
+    push ecx
+
+    ;store the current kernel stack's esp to the TSS
+    mov eax, [HACK_TSS_ADDRESS]
+    mov ecx, [ecx + 4]
+    mov [eax + 4], ecx
+
+    pop ecx
+    pop eax
+
+    ;see if we need to change cr3
+    mov eax, [eax + 32]
+    cmp eax, [ecx + 32]
+    je no_change
+    
+    mov eax, [ecx + 32]
+    push eax
+    call activateVMM
+    pop eax
+
+    no_change:
+
     ;TODO: HACK: don't hardcode TSS address, and there might be multiple
     ;ie one per cpu
 
@@ -59,11 +83,6 @@ changeProcess:
     pop ebp
     pop ebx
 
-    ;store the current kernel stack's esp to the TSS
-    mov eax, [HACK_TSS_ADDRESS]
-    mov ecx, [ecx + 4]
-    mov [eax + 4], ecx
-
     ret
 
 extern taskA
@@ -73,8 +92,12 @@ global launchProcess
 launchProcess:
 
     ;when launchProcess is called, the stack contains
+    ; user vmm
     ; user esp
     ; user eip
+
+    call activateVMM
+    pop eax
 
     pop ecx
     pop ebx
