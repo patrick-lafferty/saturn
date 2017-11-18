@@ -15,6 +15,7 @@
 
 #include <test/libc/stdlib.h>
 #include <test/libc++/new.h>
+#include <ipc.h>
 
 using namespace Kernel;
 using namespace Memory;
@@ -66,8 +67,12 @@ struct MemManagerAddresses {
 };
 
 void taskA() {
+
+    IPC::Message message;
+
     while (true) {
         print(1, 0);
+        send(3, &message);
         sleep(1000);
     }
 }

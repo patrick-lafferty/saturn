@@ -5,3 +5,9 @@
 extern "C" void sleep(uint32_t milliseconds);
 
 extern "C" void print(int a, int b);
+
+namespace IPC {
+    struct Message;
+}
+
+void send(uint32_t taskId, struct IPC::Message*);

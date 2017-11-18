@@ -5,7 +5,7 @@
 
 namespace IPC {
 
-    struct MessageHeader {
+    struct Message {
         uint32_t length;
     };
 
@@ -57,7 +57,7 @@ namespace IPC {
                 //block
             }
             else {
-                auto messageLength = reinterpret_cast<MessageHeader*>(buffer + lastReadOffset)->length;
+                auto messageLength = reinterpret_cast<Message*>(buffer + lastReadOffset)->length;
                 T message;
                 auto ptr = buffer + lastReadOffset;
 
