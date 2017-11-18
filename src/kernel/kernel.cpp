@@ -72,6 +72,13 @@ void taskA() {
     }
 }
 
+void taskB() {
+    while (true) {
+        print(2, 0);
+        sleep(1000);
+    }
+}
+
 extern "C" int kernel_main(MemManagerAddresses* addresses) {
 
     /*
@@ -107,11 +114,9 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     asm volatile("sti");
 
     auto pageFlags = 
-        //static_cast<int>(PageTableFlags::Present)
         static_cast<int>(PageTableFlags::AllowWrite)
         | static_cast<int>(PageTableFlags::AllowUserModeAccess);
 
-    //auto afterKernel = virtualOffset + kernelStartAddress + (20 + (kernelEndAddress - kernelStartAddress) / 0x1000) * 0x1000;
     auto afterKernel = (kernelEndAddress & ~0xfff) + 0x1000;
     virtualMemManager.HACK_setNextAddress(afterKernel);
 
@@ -128,18 +133,17 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
 
     //also don't need APIC tables anymore
     //NOTE: if we actually do, copy them before this line to a new address space
-    //virtualMemManager.unmap(0x7fe0000, (0x8fe0000 - 0x7fe0000) / 0x1000);
+    virtualMemManager.unmap(0x7fe0000, (0x8fe0000 - 0x7fe0000) / 0x1000);
 
     Kernel::Scheduler scheduler;
-
 
     printf("Saturn OS v 0.1.0\n------------------\n\n");
 
     runMallocTests();
     runNewTests();
 
-    scheduler.scheduleTask(scheduler.createKernelTask(reinterpret_cast<uint32_t>(taskA)));
-
+    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(taskA)));
+    scheduler.scheduleTask(scheduler.createKernelTask(reinterpret_cast<uint32_t>(taskB)));
     scheduler.enterIdle();
 
     return 0;
