@@ -5,6 +5,14 @@
 
 extern "C" uint32_t HACK_TSS_ADDRESS;
 
+namespace Memory {
+    class VirtualMemoryManager;
+}
+
+namespace LibC_Implementation {
+    class Heap;
+}
+
 namespace Kernel {
 
     template<typename T> class LinkedList {
@@ -96,6 +104,8 @@ namespace Kernel {
         uint32_t id {0};
         TaskState state;
         uint64_t wakeTime {0};
+        Memory::VirtualMemoryManager* virtualMemoryManager;
+        LibC_Implementation::Heap* heap;
     };
 
     enum class EFlags {

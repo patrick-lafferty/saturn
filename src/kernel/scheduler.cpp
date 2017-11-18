@@ -3,6 +3,7 @@
 #include <memory/physical_memory_manager.h>
 #include <memory/virtual_memory_manager.h>
 #include <cpu/apic.h>
+#include <heap.h>
 
 extern "C" void startProcess(Kernel::Task* task);
 extern "C" void changeProcess(Kernel::Task* current, Kernel::Task* next);
@@ -96,11 +97,13 @@ namespace Kernel {
 
     void Scheduler::runNextTask() {
         if (state == State::StartCurrent) {
+            LibC_Implementation::KernelHeap = currentTask->heap;
             changeProcess(startTask, currentTask);
         }
         else if (state == State::ChangeToStart) {
             auto current = currentTask;
             currentTask = nullptr;
+            LibC_Implementation::KernelHeap = startTask->heap;
             changeProcess(current, startTask);
             
         }
@@ -109,6 +112,7 @@ namespace Kernel {
             currentTask = nextTask;
 
             if (current != nextTask) {
+                LibC_Implementation::KernelHeap = nextTask->heap;
                 changeProcess(current, nextTask);
             }
         }
@@ -137,6 +141,8 @@ namespace Kernel {
         Task* task = taskBuffer;
         task->context.esp = reinterpret_cast<uint32_t>(stackPointer);
         task->context.kernelESP = task->context.esp;
+        task->virtualMemoryManager = Memory::currentVMM;
+        task->heap = LibC_Implementation::KernelHeap;
 
         taskBuffer++;
 
@@ -162,7 +168,7 @@ namespace Kernel {
             *stackPointer = 0;
         }
 
-        stackPointer -= 8;
+        stackPointer -= 12;
         stack = reinterpret_cast<TaskStack volatile*>(stackPointer);
 
         stack->eflags = eflags;
@@ -175,7 +181,16 @@ namespace Kernel {
 
     Task* Scheduler::createUserTask(uintptr_t functionAddress) {
         auto task = createKernelTask(reinterpret_cast<uintptr_t>(launchProcess));
+        auto oldVMM = Memory::currentVMM;
+        auto vmm = Memory::currentVMM->cloneForUsermode();
+        task->virtualMemoryManager = vmm;
+        vmm->HACK_setNextAddress(0xd000'0000 - 0x2000);
+        auto backupHeap = LibC_Implementation::KernelHeap;
+        LibC_Implementation::KernelHeap = nullptr;
+        vmm->activate();
         auto userStackAddress = createStack(true);
+        vmm->HACK_setNextAddress(0xa000'0000);
+        task->heap = LibC_Implementation::KernelHeap;
 
         /*
         Need to adjust the kernel stack because we want to add
@@ -200,8 +215,12 @@ namespace Kernel {
         here
         */
         auto stackExtras = reinterpret_cast<uint32_t volatile*>(kernelStackPointer);
+        *stackExtras++ = reinterpret_cast<uint32_t>(vmm);
         *stackExtras++ = reinterpret_cast<uint32_t>(userStackPointer);
         *stackExtras++ = functionAddress;
+
+        oldVMM->activate();
+        LibC_Implementation::KernelHeap = backupHeap;
 
         return task;
     }
