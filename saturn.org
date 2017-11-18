@@ -90,9 +90,9 @@ System calls: 0xFF (Final Fantasy)
 - [X] implement unblock_thread(reason)
 
 * Intermission
-- [ ] malloc
-- [ ] libc++
-  - [ ] new
+- [X] malloc
+- [X] libc++
+  - [X] new
 
 * Step 7: Usermode VGA Driver
 - [ ] IPC

@@ -9,7 +9,7 @@ AS = yasm
 ASFLAGS = -msyntax=intel -mmnemonic=intel -mnaked-reg -g
 ASFLAGS = -felf32
 
-CXX = clang++
+CXX = clang++-5.0
 MARCH = "--target=i686-pc-none-elf -march=i686"
 WARNINGS = -Wall -Wextra 
 CXXPATHS = -isysroot sysroot/ -iwithsysroot /system/include -I src -I src/libc/include -I src/libc++/include -I src/kernel -I src/kernel/arch/i386 -I .

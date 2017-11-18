@@ -148,7 +148,6 @@ namespace Kernel {
         void unblockWakeableTasks();
 
         Task idleTask;
-        //TODO: HACK: need to make a proper kernel allocator for this
         Task* taskBuffer;
         Task* currentTask {nullptr};
         Task* nextTask {nullptr};

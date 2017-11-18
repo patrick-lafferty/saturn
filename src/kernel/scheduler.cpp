@@ -20,8 +20,12 @@ namespace Kernel {
         }
     }
 
+    struct alignas(0x1000) Stack {
+
+    };
+
     uint32_t createStack(bool allowUserMode) {
-        auto flags = static_cast<int>(Memory::PageTableFlags::Present)
+        /*auto flags = static_cast<int>(Memory::PageTableFlags::Present)
             | static_cast<int>(Memory::PageTableFlags::AllowWrite);
 
         if (allowUserMode) {
@@ -33,15 +37,15 @@ namespace Kernel {
         Memory::currentVMM->map(processStack, physicalPage);
         Memory::currentPMM->finishAllocation(processStack, 1);
 
-        return processStack;
+        return processStack;*/
+        auto address = new Stack;
+        return reinterpret_cast<uint32_t>(address);
     }
 
     Scheduler::Scheduler() {
         currentScheduler = this;
 
-        auto taskBufferAddress = createStack(false);
-        
-        taskBuffer = static_cast<Task*>(reinterpret_cast<void*>(taskBufferAddress));
+        taskBuffer = new Task[10];
         startTask = createKernelTask(reinterpret_cast<uint32_t>(idleLoop));
 
         elapsedTime_milliseconds = 0;
