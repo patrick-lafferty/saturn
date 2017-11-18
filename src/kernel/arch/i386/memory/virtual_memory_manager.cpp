@@ -33,7 +33,7 @@ namespace Memory {
         auto page = physical->allocatePage(1);
         physical->finishAllocation(page, 1);
         directory = static_cast<PageDirectory*>(reinterpret_cast<void*>(page));
-        directory->pageTableAddresses[1023] = reinterpret_cast<uintptr_t>(static_cast<void*>(directory)) | 7;//3;
+        directory->pageTableAddresses[1023] = reinterpret_cast<uintptr_t>(static_cast<void*>(directory)) | 3; //| 7;//3;
     }
 
     void updateCR3Address(PageDirectory* directory) {
@@ -48,11 +48,20 @@ namespace Memory {
     uintptr_t VirtualMemoryManager::allocatePageTable(uintptr_t virtualAddress, int index) {
         auto physicalPage = physicalManager->allocatePage(1);
 
-        directory->pageTableAddresses[index] = physicalPage | 7;//3;
+        auto flags = 3;
+
+        if (virtualAddress < KernelVirtualStartingAddress) {
+            //usermode addresses are 0 to KernelVirtualStartingAddress, and should be
+            //modifiable by user processes
+            flags |= static_cast<uint32_t>(PageTableFlags::AllowUserModeAccess);
+        }
+
+        directory->pageTableAddresses[index] = physicalPage | flags;
 
         updateCR3Address(directory);
 
         if (pagingActive) {
+        printf("[VMM] Allocate Page Table: %x\n", virtualAddress);
             physicalManager->finishAllocation(virtualAddress, 1);
         }
         else {
@@ -97,6 +106,13 @@ namespace Memory {
                 auto pageTable = static_cast<PageTable*>(reinterpret_cast<void*>(pageTableAddress));
 
                 auto tableIndex = extractTableIndex(virtualAddress);
+
+                if (virtualAddress < KernelVirtualStartingAddress) {
+                    //usermode addresses are 0 to KernelVirtualStartingAddress, and should be
+                    //modifiable by user processes
+                    flags |= static_cast<uint32_t>(PageTableFlags::AllowUserModeAccess);
+                }
+
                 pageTable->pageAddresses[tableIndex] = flags; 
             }
 

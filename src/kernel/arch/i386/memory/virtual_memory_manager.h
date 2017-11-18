@@ -15,6 +15,8 @@ namespace MemoryPrekernel {
 namespace Memory {
 #endif
 
+    const uint32_t KernelVirtualStartingAddress = 0xD000'0000;
+
     class PhysicalMemoryManager;
 
     struct PageDirectory {
