@@ -193,6 +193,10 @@ void handleSystemCall(CPU::InterruptStackFrame* frame) {
             printf("%d\n", frame->ecx);
             break;
         }
+        default: {
+            printf("[IDT] Unhandled system call: %d (ebx: %x)\n", frame->eax, frame->ebx);
+            break;
+        }
     }
 }
 
