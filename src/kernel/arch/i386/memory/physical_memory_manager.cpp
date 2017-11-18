@@ -74,7 +74,7 @@ namespace Memory {
         //NOTE: can't do loop because page->nextFreePage isn't mapped
         //for demand paging, pageAddress should come from page fault
         for (uint32_t i = 0; i < count; i++) {
-            auto page = static_cast<Page*>(reinterpret_cast<void*>(pageAddress & ~0x3ff));
+            auto page = static_cast<Page*>(reinterpret_cast<void*>(pageAddress & ~0xfff));
             nextFreeAddress = page->nextFreePage;
             
             #if TARGET_PREKERNEL
@@ -99,7 +99,7 @@ namespace Memory {
         }
 
         for (uint32_t i = 0; i < count; i++) {
-            auto page = static_cast<Page volatile*>(reinterpret_cast<void*>(pageAddress));
+            auto page = static_cast<Page volatile*>(reinterpret_cast<void*>(pageAddress & ~0xfff));
 
             page->nextFreePage = nextFreeAddress;
             nextFreeAddress = pageAddress;
