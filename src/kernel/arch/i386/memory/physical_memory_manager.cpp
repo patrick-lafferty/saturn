@@ -42,8 +42,8 @@ namespace Memory {
                     }
 
                     auto pages = record.lowerLength / PageSize;
-                    freePage(address, pages);
                     totalPages += pages;
+                    freePage(address, pages);
                 }
             }
         }
@@ -74,7 +74,7 @@ namespace Memory {
         //NOTE: can't do loop because page->nextFreePage isn't mapped
         //for demand paging, pageAddress should come from page fault
         for (uint32_t i = 0; i < count; i++) {
-            auto page = static_cast<Page*>(reinterpret_cast<void*>(pageAddress));
+            auto page = static_cast<Page*>(reinterpret_cast<void*>(pageAddress & ~0x3ff));
             nextFreeAddress = page->nextFreePage;
             
             #if TARGET_PREKERNEL
@@ -94,11 +94,12 @@ namespace Memory {
     void PhysicalMemoryManager::freePage(uintptr_t pageAddress, uint32_t count) {
 
         if (freePages == totalPages) {
+            printf("[PMM] Tried to free an extra page: %x\n", pageAddress);
             return;
         }
 
         for (uint32_t i = 0; i < count; i++) {
-            auto page = static_cast<Page*>(reinterpret_cast<void*>(pageAddress));
+            auto page = static_cast<Page volatile*>(reinterpret_cast<void*>(pageAddress));
 
             page->nextFreePage = nextFreeAddress;
             nextFreeAddress = pageAddress;
