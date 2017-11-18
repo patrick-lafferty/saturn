@@ -43,7 +43,7 @@ namespace CPUID {
             asm("cpuid"
                 : "=a" (eax), "=b" (ebx), "=c" (ecx), "=d" (edx)
                 : "a" (0x80000002 + i)
-                : "eax", "ebx", "ecx", "edx"
+                //: "eax", "ebx", "ecx", "edx"
             );
 
             extractCharacters(buffer, i * 16, eax, ebx, ecx, edx);
@@ -56,7 +56,7 @@ namespace CPUID {
         asm("cpuid"
             : "=a" (eax), "=b" (ebx), "=c" (ecx), "=d" (edx)
             : "a" (1)
-            : "eax", "ebx", "ecx", "edx"
+            //: "eax", "ebx", "ecx", "edx"
         );
 
         /*
