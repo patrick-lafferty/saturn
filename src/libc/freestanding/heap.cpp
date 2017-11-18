@@ -36,18 +36,23 @@ namespace LibC_Implementation {
         auto startingAddress = currentPage + (PageSize - remainingPageSpace);
 
         if (size >= remainingPageSpace) {
-            size -= remainingPageSpace;
             auto numberOfPages = size / PageSize + 1;
-
+            
             while(size > PageSize) {
                 size -= PageSize;
             }
+            
+            auto nextAddress = currentVMM->allocatePages(numberOfPages, kernelPageFlags);
+            if (nextAddress != startingAddress + PageSize) {
+                printf("[Heap] Skipped address from %x to %x\n", startingAddress, nextAddress);
+            }
+            else {
+                size -= remainingPageSpace;
+            }
 
             remainingPageSpace = PageSize - size;
-            
-            currentVMM->allocatePages(numberOfPages, kernelPageFlags);
 
-            currentPage += numberOfPages * PageSize;
+            currentPage = nextAddress + (numberOfPages - 1) * PageSize;
         }
         else {
             remainingPageSpace -= size;
