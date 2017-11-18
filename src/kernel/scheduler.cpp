@@ -25,20 +25,7 @@ namespace Kernel {
 
     };
 
-    uint32_t createStack(bool allowUserMode) {
-        /*auto flags = static_cast<int>(Memory::PageTableFlags::Present)
-            | static_cast<int>(Memory::PageTableFlags::AllowWrite);
-
-        if (allowUserMode) {
-            flags |= static_cast<int>(Memory::PageTableFlags::AllowUserModeAccess);
-        }
-
-        auto processStack = Memory::currentVMM->allocatePages(1, flags);
-        auto physicalPage = Memory::currentPMM->allocatePage(1);
-        Memory::currentVMM->map(processStack, physicalPage);
-        Memory::currentPMM->finishAllocation(processStack, 1);
-
-        return processStack;*/
+    uint32_t createStack(bool) {
         auto address = new Stack;
         return reinterpret_cast<uint32_t>(address);
     }
