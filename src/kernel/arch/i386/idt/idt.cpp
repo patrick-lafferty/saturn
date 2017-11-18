@@ -112,24 +112,45 @@ namespace IDT {
     }
 }
 
-void handlePageFault(uintptr_t virtualAddress) {
-    auto pageStatus = Memory::currentVMM->getPageStatus(virtualAddress);
-    
-    if (pageStatus == Memory::PageStatus::Allocated) {
-        //we need to map a physical page
-        printf("[IDT] Page Fault: allocated page not mapped\n");
-        auto physicalPage = Memory::currentPMM->allocatePage(1);
-        Memory::currentVMM->map(virtualAddress, physicalPage);
-        Memory::currentPMM->finishAllocation(virtualAddress, 1);
-    }
-    else if (pageStatus == Memory::PageStatus::Mapped) {
-        //this shouldn't happen?
-        printf("[IDT] Page Fault: mapped address?\n");
+enum class PageFaultError {
+    ProtectionViolation = 1 << 0,
+    WriteAccess = 1 << 1,
+    UserMode = 1 << 2
+};
+
+void handlePageFault(uintptr_t virtualAddress, uint32_t errorCode) {
+
+    if (errorCode & static_cast<uint32_t>(PageFaultError::ProtectionViolation)) {
+        printf("[IDT] Page fault: protection violation [%x]\n", virtualAddress);
+        
+        if (errorCode & static_cast<uint32_t>(PageFaultError::UserMode)) {
+            printf("[IDT] Attempted %s in usermode\n",
+                errorCode & static_cast<uint32_t>(PageFaultError::WriteAccess)
+                    ? "write" : "read");
+        }
+
         asm volatile("hlt");
     }
     else {
-        printf("[IDT] Illegal Memory Access: %x\n", virtualAddress);     
-        asm volatile("hlt");
+
+        auto pageStatus = Memory::currentVMM->getPageStatus(virtualAddress);
+        
+        if (pageStatus == Memory::PageStatus::Allocated) {
+            //we need to map a physical page
+            //printf("[IDT] Page Fault: allocated page not mapped\n");
+            auto physicalPage = Memory::currentPMM->allocatePage(1);
+            Memory::currentVMM->map(virtualAddress, physicalPage);
+            Memory::currentPMM->finishAllocation(virtualAddress, 1);
+        }
+        else if (pageStatus == Memory::PageStatus::Mapped) {
+            //this shouldn't happen?
+            printf("[IDT] Page Fault: mapped address?\n");
+            asm volatile("hlt");
+        }
+        else {
+            printf("[IDT] Illegal Memory Access: %x\n", virtualAddress);     
+            asm volatile("hlt");
+        }
     }
 }
 
@@ -227,7 +248,7 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
             uintptr_t virtualAddress;
             asm("movl %%CR2, %%eax" : "=a"(virtualAddress));
 
-            handlePageFault(virtualAddress); 
+            handlePageFault(virtualAddress, frame->errorCode); 
             break;
         }
         case 48:
