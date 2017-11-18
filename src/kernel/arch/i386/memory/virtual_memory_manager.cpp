@@ -3,6 +3,12 @@
 #include <string.h>
 #include <stdio.h>
 
+#ifndef TARGET_PREKERNEL
+void activateVMM(Memory::VirtualMemoryManager* vmm) {
+    vmm->activate();
+}
+#endif
+
 #if TARGET_PREKERNEL
 namespace MemoryPrekernel {
 #else
@@ -33,7 +39,8 @@ namespace Memory {
         auto page = physical->allocatePage(1);
         physical->finishAllocation(page, 1);
         directory = static_cast<PageDirectory*>(reinterpret_cast<void*>(page));
-        directory->pageTableAddresses[1023] = reinterpret_cast<uintptr_t>(static_cast<void*>(directory)) | 3; //| 7;//3;
+        directoryPhysicalAddress = page;
+        directory->pageTableAddresses[1023] = reinterpret_cast<uintptr_t>(static_cast<void*>(directory)) | 3; //| 3; //| 7;//3;
     }
 
     void updateCR3Address(PageDirectory* directory) {
@@ -50,7 +57,7 @@ namespace Memory {
 
         auto flags = 3;
 
-        if (virtualAddress < KernelVirtualStartingAddress) {
+        if (index < 0x340 || virtualAddress < KernelVirtualStartingAddress) {
             //usermode addresses are 0 to KernelVirtualStartingAddress, and should be
             //modifiable by user processes
             flags |= static_cast<uint32_t>(PageTableFlags::AllowUserModeAccess);
@@ -61,7 +68,6 @@ namespace Memory {
         updateCR3Address(directory);
 
         if (pagingActive) {
-        printf("[VMM] Allocate Page Table: %x\n", virtualAddress);
             physicalManager->finishAllocation(virtualAddress, 1);
         }
         else {
@@ -203,7 +209,7 @@ namespace Memory {
     }
 
     void VirtualMemoryManager::activate() {
-        auto directoryAddress = reinterpret_cast<uintptr_t>(static_cast<void*>(directory));
+        auto directoryAddress = directoryPhysicalAddress;
 
         asm("movl %%eax, %%CR3 \n"
             "movl %%CR0, %%eax \n"
@@ -217,6 +223,25 @@ namespace Memory {
         directory = static_cast<PageDirectory*>(reinterpret_cast<void*>(directoryAddress));
         pagingActive = true;
         currentVMM = this;
+    }
+
+    VirtualMemoryManager* VirtualMemoryManager::cloneForUsermode() {
+        auto virtualMemoryManager = new VirtualMemoryManager;
+        auto newDirectoryAddress = physicalManager->allocatePage(1);
+        auto virtualAddress = allocatePages(1, 0x2);
+        map(virtualAddress, newDirectoryAddress);
+        physicalManager->finishAllocation(virtualAddress, 1);
+        auto newDirectory = reinterpret_cast<PageDirectory*>(virtualAddress);
+        *newDirectory = *directory;
+        newDirectory->pageTableAddresses[1023] = newDirectoryAddress | 3; 
+        unmap(virtualAddress, 1);
+
+        virtualMemoryManager->physicalManager = physicalManager;
+        virtualMemoryManager->directoryPhysicalAddress = newDirectoryAddress;
+        virtualMemoryManager->nextAddress = 0xa000'0000;
+        virtualMemoryManager->pagingActive = true;
+
+        return virtualMemoryManager;
     }
 
 }

@@ -9,6 +9,13 @@ and one to be used by the real kernel after paging is setup. So there isn't
 any duplicate symbols, have different namespaces for each obj.
 */
 
+namespace Memory {
+    class VirtualMemoryManager;
+}
+
+extern "C" void activateVMM(Memory::VirtualMemoryManager*);
+
+
 #if TARGET_PREKERNEL
 namespace MemoryPrekernel {
 #else
@@ -110,12 +117,15 @@ namespace Memory {
 
         void HACK_setNextAddress(uint32_t address);
 
+        VirtualMemoryManager* cloneForUsermode();
+
     private:
 
         uintptr_t allocatePageTable(uintptr_t virtualAddress, int index);
 
         PhysicalMemoryManager* physicalManager;
         PageDirectory* directory;
+        uint32_t directoryPhysicalAddress;
         uintptr_t nextAddress {0};
         bool pagingActive {false};
     };
