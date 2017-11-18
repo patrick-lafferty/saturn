@@ -4,6 +4,8 @@
 #include <memory/virtual_memory_manager.h>
 #include <cpu/apic.h>
 #include <heap.h>
+#include "ipc.h"
+#include <new.h>
 
 extern "C" void startProcess(Kernel::Task* task);
 extern "C" void changeProcess(Kernel::Task* current, Kernel::Task* next);
@@ -125,11 +127,23 @@ namespace Kernel {
             static_cast<uint32_t>(EFlags::Reserved);
         stack->eip = functionAddress;
 
+        static uint32_t nextTaskId {0};
         Task* task = taskBuffer;
+        task->id = nextTaskId++;
         task->context.esp = reinterpret_cast<uint32_t>(stackPointer);
         task->context.kernelESP = task->context.esp;
         task->virtualMemoryManager = Memory::currentVMM;
         task->heap = LibC_Implementation::KernelHeap;
+
+        const uint32_t mailboxSize = Memory::PageSize;
+        //auto mailboxAddress = Memory::currentVMM->allocatePages(1, static_cast<uint32_t>(Memory::PageTableFlags::AllowWrite));
+        auto mailboxMemory = task->heap->allocate(mailboxSize);
+
+        task->mailbox = new (mailboxMemory) 
+            IPC::Mailbox(reinterpret_cast<uint32_t>(mailboxMemory) + sizeof(IPC::Mailbox), 
+            //IPC::Mailbox(mailboxAddress + sizeof(IPC::Mailbox), 
+            mailboxSize - sizeof(IPC::Mailbox));
+
 
         taskBuffer++;
 

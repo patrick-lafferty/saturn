@@ -13,6 +13,10 @@ namespace LibC_Implementation {
     class Heap;
 }
 
+namespace IPC {
+    class Mailbox;
+}
+
 namespace Kernel {
 
     template<typename T> class LinkedList {
@@ -106,6 +110,7 @@ namespace Kernel {
         uint64_t wakeTime {0};
         Memory::VirtualMemoryManager* virtualMemoryManager;
         LibC_Implementation::Heap* heap;
+        IPC::Mailbox* mailbox;
     };
 
     enum class EFlags {
