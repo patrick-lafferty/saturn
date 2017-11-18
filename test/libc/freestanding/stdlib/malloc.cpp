@@ -24,15 +24,22 @@ bool canAllocateSequentialInts() {
 }
 
 bool canAllocateMoreThanAPage() {
-    int* x = static_cast<int*>(malloc(sizeof(int)));
-    uint32_t startingAddress = reinterpret_cast<uint32_t>(x); 
+    uint32_t startingAddress = 0;
     auto size = sizeof(int) * 40;
 
-    for (int i = 1; i < 1000; i++) {
+    for (int i = 0; i < 1000; i++) {
         int* something = static_cast<int*>(malloc(size));
-        auto address = reinterpret_cast<uint32_t>(something);
 
-        if (address != startingAddress + i * size) {
+        if (startingAddress == 0) {
+            startingAddress = reinterpret_cast<uint32_t>(something);
+            continue;
+        }
+
+        auto address = reinterpret_cast<uint32_t>(something);
+        auto expected = startingAddress + i * size;
+
+        if (address != expected) {
+            printf("    Expected address: %x, actual: %x, i: %d\n", expected, address, i);
             return false;
         }
     }
