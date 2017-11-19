@@ -193,6 +193,14 @@ void handleSystemCall(CPU::InterruptStackFrame* frame) {
             printf("%d\n", frame->ecx);
             break;
         }
+        case 3: {
+            Kernel::currentScheduler->sendMessage(frame->ebx, reinterpret_cast<IPC::Message*>(frame->ecx));
+            break;
+        }
+        case 4: {
+            Kernel::currentScheduler->receiveMessage(reinterpret_cast<IPC::Message*>(frame->ebx));
+            break;
+        }
         default: {
             printf("[IDT] Unhandled system call: %d (ebx: %x)\n", frame->eax, frame->ebx);
             break;

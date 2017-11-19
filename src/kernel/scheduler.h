@@ -15,6 +15,7 @@ namespace LibC_Implementation {
 
 namespace IPC {
     class Mailbox;
+    struct Message;
 }
 
 namespace Kernel {
@@ -48,14 +49,22 @@ namespace Kernel {
             }
 
             void append(T* item) {
-                auto current = head;
+                if (head == nullptr) {
+                    head = item;
+                    item->previousTask = nullptr;
+                }
+                else {
+                    auto current = head;
 
-                while (current->nextTask != nullptr) {
-                    current = current->nextTask;
+                    while (current->nextTask != nullptr) {
+                        current = current->nextTask;
+                    }
+
+                    current->nextTask = item;
+                    item->previousTask = current;
                 }
 
-                current->nextTask = item;
-                item->previousTask = current;
+                item->nextTask = nullptr;
             }
 
             void remove(T* item) {
@@ -98,7 +107,8 @@ namespace Kernel {
 
     enum class BlockReason {
         Sleep,
-        WaitingOnResource
+        WaitingOnResource,
+        WaitingForMessage
     };
 
     struct Task {
@@ -127,6 +137,7 @@ namespace Kernel {
         uint32_t eip {0};
     };
 
+    //TODO: HACK: really have to find a way to store the schedulers
     extern class Scheduler* currentScheduler;
 
     enum class State {
@@ -152,6 +163,9 @@ namespace Kernel {
 
         void enterIdle();
         void setupTimeslice();
+
+        void sendMessage(uint32_t taskId, IPC::Message* message);
+        void receiveMessage(IPC::Message* buffer);
 
     private:
 

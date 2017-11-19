@@ -76,7 +76,7 @@ namespace Kernel {
         else {
             auto next = currentTask->nextTask;
 
-            if (next == nullptr && readyQueue.getHead()->state != TaskState::Sleeping) {
+            if (next == nullptr && readyQueue.getHead()->state == TaskState::Running) {
                 next = readyQueue.getHead(); 
             }
 
@@ -231,12 +231,9 @@ namespace Kernel {
 
             auto current = currentTask;
             current->state = TaskState::Sleeping;
-
-            currentTask->state = TaskState::Sleeping;
             currentTask->wakeTime = elapsedTime_milliseconds + arg;
 
             scheduleNextTask();
-
             readyQueue.remove(current);
 
             if (blockedQueue.isEmpty()) {
@@ -263,8 +260,16 @@ namespace Kernel {
                 
             }
 
-            runNextTask();
         }
+        else if (reason == BlockReason::WaitingForMessage) {
+            auto current = currentTask;
+            current->state = TaskState::Blocked;
+            scheduleNextTask();
+            readyQueue.remove(current);
+            blockedQueue.append(currentTask);
+        }
+
+        runNextTask();
     }
 
     void Scheduler::unblockTask(uint32_t taskId) {
@@ -291,7 +296,12 @@ namespace Kernel {
         while(blocked != nullptr) {
             auto next = blocked->nextTask;
 
-            if (blocked->wakeTime <= elapsedTime_milliseconds) {
+            if (blocked->state == TaskState::Sleeping 
+                && blocked->wakeTime <= elapsedTime_milliseconds) {
+                unblockTask(blocked);
+            }
+            else if (blocked->state == TaskState::Blocked
+                && blocked->mailbox->hasUnreadMessages()) {
                 unblockTask(blocked);
             }
 
@@ -312,6 +322,53 @@ namespace Kernel {
 
     void Scheduler::setupTimeslice() {
         APIC::setAPICTimer(APIC::LVT_TimerMode::Periodic, timeslice_milliseconds);
+    }
+
+    void Scheduler::sendMessage(uint32_t taskId, IPC::Message* message) {
+        //check blocked tasks first
+        if (!blockedQueue.isEmpty()) {
+            auto task = blockedQueue.getHead();
+
+            while (task != nullptr) {
+
+                if (task->id == taskId) {
+                    //TODO: check if mailbox is full, if so block current task
+                    //maybe wake up recipient if its waiting on message?
+                    task->mailbox->send(message);
+                    
+                    if (task->state == TaskState::Blocked) {
+                        unblockTask(task);
+                    }
+
+                    return;
+                }
+
+                task = task->nextTask;
+            }
+        }
+        else {
+            auto task = readyQueue.getHead();
+
+            while (task != nullptr) {
+                if (task->id == taskId) {
+                    //TODO: check if mailbox is full, if so block current task
+                    task->mailbox->send(message);
+                    return;
+                }
+
+                task = task->nextTask;
+            }
+        }
+    }
+
+    void Scheduler::receiveMessage(IPC::Message* buffer) {
+        if (currentTask != nullptr) {
+            //if (!currentTask->mailbox->receive(buffer)) {
+            if (!currentTask->mailbox->hasUnreadMessages()) {
+                blockTask(BlockReason::WaitingForMessage, 0);
+                currentTask->mailbox->receive(buffer);
+            }
+        }
     }
 
     void Scheduler::enterIdle() {

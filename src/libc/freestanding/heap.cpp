@@ -44,7 +44,7 @@ namespace LibC_Implementation {
             
             auto nextAddress = currentVMM->allocatePages(numberOfPages, kernelPageFlags);
             if (nextAddress - startingAddress > PageSize) {
-                printf("[Heap] Skipped address from %x to %x\n", startingAddress, nextAddress);
+                //printf("[Heap] Skipped address from %x to %x\n", startingAddress, nextAddress);
             }
             else {
                 size -= remainingPageSpace;
