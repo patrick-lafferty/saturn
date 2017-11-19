@@ -160,12 +160,13 @@ namespace Kernel {
         void blockTask(BlockReason reason, uint32_t arg);
         void unblockTask(uint32_t taskId);
 
-
         void enterIdle();
         void setupTimeslice();
 
         void sendMessage(uint32_t taskId, IPC::Message* message);
         void receiveMessage(IPC::Message* buffer);
+
+        Task* getTask(uint32_t taskId);
 
     private:
 

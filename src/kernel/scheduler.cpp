@@ -6,6 +6,7 @@
 #include <heap.h>
 #include "ipc.h"
 #include <new.h>
+#include <services.h>
 
 extern "C" void startProcess(Kernel::Task* task);
 extern "C" void changeProcess(Kernel::Task* current, Kernel::Task* next);
@@ -192,6 +193,7 @@ namespace Kernel {
         auto userStackAddress = createStack(true);
         vmm->HACK_setNextAddress(0xa000'0000);
         task->heap = LibC_Implementation::KernelHeap;
+        task->heap->HACK_syncPageWithVMM();
 
         /*
         Need to adjust the kernel stack because we want to add
@@ -325,8 +327,11 @@ namespace Kernel {
     }
 
     void Scheduler::sendMessage(uint32_t taskId, IPC::Message* message) {
+        if (taskId == ServiceRegistryMailbox) {
+            ServiceRegistryInstance->receiveMessage(message);
+        }
         //check blocked tasks first
-        if (!blockedQueue.isEmpty()) {
+        else if (!blockedQueue.isEmpty()) {
             auto task = blockedQueue.getHead();
 
             while (task != nullptr) {
@@ -368,6 +373,34 @@ namespace Kernel {
 
             currentTask->mailbox->receive(buffer);
         }
+    }
+
+    Task* Scheduler::getTask(uint32_t taskId) {
+        if (!readyQueue.isEmpty()) {
+            auto task = readyQueue.getHead();
+
+            while (task != nullptr) {
+                if (task->id == taskId) {
+                    return task;
+                }
+
+                task = task->nextTask;
+            }
+        }
+
+        if (!blockedQueue.isEmpty()) {
+            auto task = blockedQueue.getHead();
+
+            while (task != nullptr) {
+                if (task->id == taskId) {
+                    return task;
+                }
+
+                task = task->nextTask;
+            }
+        }
+
+        return nullptr;
     }
 
     void Scheduler::enterIdle() {
