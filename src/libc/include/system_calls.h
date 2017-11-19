@@ -10,4 +10,5 @@ namespace IPC {
     struct Message;
 }
 
-void send(uint32_t taskId, struct IPC::Message*);
+void send(uint32_t taskId, IPC::Message* message);
+void receive(IPC::Message* buffer);
