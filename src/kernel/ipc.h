@@ -98,6 +98,7 @@ namespace IPC {
         bool receive(Message* message) {
             if (unreadMessages == 0) {
                 //block
+                //printf("[IPC] Read blocked\n");
                 return false;
             }
             else {
@@ -108,8 +109,9 @@ namespace IPC {
                 if (lastReadOffset > lastWriteOffset) {
                     auto spaceUntilEnd = bufferSize - lastWriteOffset;
 
-                    if (messageLength> spaceUntilEnd) {
+                    if (messageLength > spaceUntilEnd) {
                         //its cutoff
+                        printf("[IPC] Message cutoff?\n");
                         memcpy(message, ptr, spaceUntilEnd);
                         lastReadOffset = 0;
                         ptr = buffer;
@@ -127,8 +129,9 @@ namespace IPC {
                     lastReadOffset += messageLength;
                 }
 
+                //printf("[IPC] Read() unread: %d, lastRead: %d, lastWrite: %d\n", unreadMessages, lastReadOffset, lastWriteOffset);
+
                 unreadMessages--;
-                //printf("[IPC] Read() lastRead: %d, lastWrite: %d\n", lastReadOffset, lastWriteOffset);
                 return true;
             }
         }

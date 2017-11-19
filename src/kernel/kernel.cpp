@@ -48,6 +48,20 @@ void testVGADriver() {
     }
 }
 
+void testVGADriver2() {
+
+    VGA::PrintMessage message {};
+    message.serviceType = ServiceType::VGA;
+    
+    auto s = "Hello, galaxy\n";
+    memcpy(message.buffer, s, 14);
+
+    while(true) {
+        send(IPC::RecipientType::ServiceName, &message);
+        sleep(1000);
+    }
+}
+
 extern "C" int kernel_main(MemManagerAddresses* addresses) {
 
     /*
@@ -116,6 +130,7 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
 
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(VGA::service)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(testVGADriver)));
+    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(testVGADriver2)));
 
     scheduler.enterIdle();
 

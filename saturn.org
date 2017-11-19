@@ -104,7 +104,7 @@ System calls: 0xFF (Final Fantasy)
    task A allocates a mailbox and sends the address to b, b maps that as readonly,
    b then creates its own
 
-- [ ] Driver framework, driver identification (eg load as VGA_DRIVER grants 0xb000 user-mode memory mapped to the driver)
+- [X] Driver framework, driver identification (eg load as VGA_DRIVER grants 0xb000 user-mode memory mapped to the driver)
   
 * Step 8: Usermode Terminal Emulator
 - [ ] handle common ansi escape sequences (colour, moving the cursor)

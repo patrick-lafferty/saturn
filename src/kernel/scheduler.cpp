@@ -362,7 +362,8 @@ namespace Kernel {
                     task = task->nextTask;
                 }
             }
-            else {
+
+            if (!readyQueue.isEmpty()) {
                 auto task = readyQueue.getHead();
 
                 while (task != nullptr) {

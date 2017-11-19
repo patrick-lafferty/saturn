@@ -28,6 +28,8 @@ namespace VGA {
                     terminal->writeCharacter(*iterator++);
                 }
             }
+
+            memset(&buffer, 0, sizeof(buffer));
         }
     }
 
