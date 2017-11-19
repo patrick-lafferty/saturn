@@ -5,7 +5,6 @@
 #include <cpu/cpuid.h>
 #include <cpu/acpi.h>
 #include <cpu/sse.h>
-#include <cpu/apic.h>
 #include <cpu/tss.h>
 #include <string.h>
 #include <memory/physical_memory_manager.h>
@@ -22,39 +21,6 @@ using namespace Memory;
 
 extern uint32_t __kernel_memory_start;
 extern uint32_t __kernel_memory_end;
-
-bool parseACPITables() {
-    auto rsdp = CPU::findRSDP();
-
-    if (!verifyRSDPChecksum(rsdp)) {
-        printf("\n[ACPI] RSDP Checksum invalid\n");
-        return false;
-    }
-
-    auto rootSystemHeader = CPU::getRootSystemHeader(rsdp.rsdtAddress);
-
-    if (CPU::verifySystemHeaderChecksum(rootSystemHeader)) {
-        auto apicHeader = CPU::getAPICHeader(rootSystemHeader, (rootSystemHeader->length - sizeof(CPU::SystemDescriptionTableHeader)) / 4);
-
-        if (CPU::verifySystemHeaderChecksum(apicHeader)) {
-            auto apicStartingAddress = reinterpret_cast<uintptr_t>(apicHeader);
-            apicStartingAddress += sizeof(CPU::SystemDescriptionTableHeader);
-            
-            APIC::initialize();
-            APIC::loadAPICStructures(apicStartingAddress, apicHeader->length - sizeof(CPU::SystemDescriptionTableHeader));
-        }
-        else {
-            printf("\n[ACPI] APIC Header Checksum invalid\n");
-            return false;
-        }
-    }
-    else {
-        printf("\n[ACPI] Root Checksum invalid\n");
-        return false;
-    }
-
-    return true;
-}
 
 /*
 We get a pointer to this struct passed in from boot.s to kernel_main.
@@ -136,7 +102,7 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     GDT::addTSSEntry(tssAddress, 0x1000 * 3);
     CPU::setupTSS(tssAddress);
 
-    if (!parseACPITables()) {
+    if (!CPU::parseACPITables()) {
 
         printf("[Kernel] Parsing ACPI Tables failed, halting\n");
         asm volatile("hlt");

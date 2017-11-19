@@ -1,8 +1,43 @@
 #include "acpi.h"
 #include <string.h>
 #include <stdio.h>
+#include <cpu/apic.h>
 
 namespace CPU {
+
+    bool parseACPITables() {
+        auto rsdp = findRSDP();
+
+        if (!verifyRSDPChecksum(rsdp)) {
+            printf("\n[ACPI] RSDP Checksum invalid\n");
+            return false;
+        }
+
+        auto rootSystemHeader = getRootSystemHeader(rsdp.rsdtAddress);
+
+        if (verifySystemHeaderChecksum(rootSystemHeader)) {
+            auto apicHeader = getAPICHeader(rootSystemHeader, (rootSystemHeader->length - sizeof(SystemDescriptionTableHeader)) / 4);
+
+            if (verifySystemHeaderChecksum(apicHeader)) {
+                auto apicStartingAddress = reinterpret_cast<uintptr_t>(apicHeader);
+                apicStartingAddress += sizeof(SystemDescriptionTableHeader);
+                
+                APIC::initialize();
+                APIC::loadAPICStructures(apicStartingAddress, apicHeader->length - sizeof(SystemDescriptionTableHeader));
+            }
+            else {
+                printf("\n[ACPI] APIC Header Checksum invalid\n");
+                return false;
+            }
+        }
+        else {
+            printf("\n[ACPI] Root Checksum invalid\n");
+            return false;
+        }
+
+        return true;
+    }
+
     /*
     Root System Description Pointer
     */

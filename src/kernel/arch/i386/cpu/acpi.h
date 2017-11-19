@@ -4,6 +4,8 @@
 
 namespace CPU {
 
+    bool parseACPITables();
+
     struct RootSystemDescriptionPointer {
         uint8_t signature[8];
         uint8_t checksum {1};
