@@ -11,6 +11,7 @@ namespace LibC_Implementation {
         void initialize();
         void* allocate(size_t size);
         void* aligned_allocate(size_t alignment, size_t size);
+        void HACK_syncPageWithVMM();
 
     private:
         

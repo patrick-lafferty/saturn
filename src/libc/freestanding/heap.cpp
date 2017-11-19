@@ -61,6 +61,11 @@ namespace LibC_Implementation {
         return reinterpret_cast<void*>(startingAddress);
     }
 
+    void Heap::HACK_syncPageWithVMM() {
+        currentPage = currentVMM->allocatePages(1, kernelPageFlags);
+        remainingPageSpace = PageSize;
+    }
+
     void createHeap() {
         auto virtualAddress = currentVMM->allocatePages(1, kernelPageFlags);
         auto physicalPage = Memory::currentPMM->allocatePage(1);
@@ -70,5 +75,4 @@ namespace LibC_Implementation {
         KernelHeap = reinterpret_cast<Heap*>(virtualAddress);
         KernelHeap->initialize();
     }
-
 }
