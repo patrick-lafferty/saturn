@@ -11,11 +11,17 @@ namespace Kernel {
     };
 
     struct RegisterService : IPC::Message {
+        RegisterService() {
+            messageId = MessageId;
+            length = sizeof(RegisterService);
+        }
+
         static uint32_t MessageId;
         ServiceType type;
     };
 
     struct RegisterServiceDenied : IPC::Message {
+
         static uint32_t MessageId;
         bool success {false};
     };
@@ -24,6 +30,11 @@ namespace Kernel {
     };
 
     struct VGAServiceMeta : ServiceMeta {
+        VGAServiceMeta() { 
+            messageId = MessageId; 
+            length = sizeof(VGAServiceMeta);
+        }
+
         static uint32_t MessageId;
         uint32_t vgaAddress {0};
     };

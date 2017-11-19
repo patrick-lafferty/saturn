@@ -327,6 +327,8 @@ namespace Kernel {
     }
 
     void Scheduler::sendMessage(uint32_t taskId, IPC::Message* message) {
+        message->senderTaskId = currentTask->id;
+
         if (taskId == ServiceRegistryMailbox) {
             ServiceRegistryInstance->receiveMessage(message);
         }

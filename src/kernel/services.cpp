@@ -75,8 +75,6 @@ namespace Kernel {
                 auto vgaMeta = new VGAServiceMeta;
                 vgaMeta->vgaAddress = vgaPage;
                 meta[static_cast<uint32_t>(type)] = vgaMeta;
-                vgaMeta->length = sizeof(VGAServiceMeta);
-                vgaMeta->messageId = VGAServiceMeta::MessageId;
                 task->mailbox->send(vgaMeta);
 
                 break;

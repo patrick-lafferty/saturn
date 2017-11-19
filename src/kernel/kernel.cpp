@@ -60,12 +60,10 @@ void taskB() {
 
 void vgaService() {
     RegisterService registerRequest {};
-    registerRequest.senderTaskId = 1;
     registerRequest.type = ServiceType::VGA;
-    registerRequest.messageId = RegisterService::MessageId;
 
     IPC::MaximumMessageBuffer buffer;
-    Terminal* terminal;
+    Terminal* terminal {nullptr};
 
     send(ServiceRegistryMailbox, &registerRequest);
     receive(&buffer);
