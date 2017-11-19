@@ -48,6 +48,7 @@ ARCH_OBJS = \
 
 KERNEL_OBJS = \
 	$(ARCH_OBJS) \
+	src/kernel/ipc.o \
 	src/kernel/scheduler.o \
 	src/kernel/services.o \
 	src/kernel/pre_kernel.o \

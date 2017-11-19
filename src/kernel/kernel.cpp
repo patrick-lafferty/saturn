@@ -15,6 +15,8 @@
 #include <test/libc/stdlib.h>
 #include <test/libc++/new.h>
 #include <ipc.h>
+#include <services.h>
+#include <services/terminal/terminal.h>
 
 using namespace Kernel;
 using namespace Memory;
@@ -32,7 +34,7 @@ struct MemManagerAddresses {
     uint32_t virtualManager;
 };
 
-void taskA() {
+/*void taskA() {
 
     IPC::Message message;
     message.length = 0;
@@ -53,6 +55,39 @@ void taskB() {
         print(2, message.length);
         message = IPC::Message {};
         sleep(1000);
+    }
+}*/
+
+void vgaService() {
+    RegisterService registerRequest {};
+    registerRequest.senderTaskId = 1;
+    registerRequest.type = ServiceType::VGA;
+    registerRequest.messageId = RegisterService::MessageId;
+
+    IPC::MaximumMessageBuffer buffer;
+    Terminal* terminal;
+
+    send(ServiceRegistryMailbox, &registerRequest);
+    receive(&buffer);
+
+    if (buffer.messageId == RegisterServiceDenied::MessageId) {
+        //can't print to screen, how to notify?
+        print(99, 0);   
+    }
+    else if (buffer.messageId == VGAServiceMeta::MessageId) {
+        auto vgaMeta = IPC::extractMessage<VGAServiceMeta>(buffer);
+        terminal = new Terminal(reinterpret_cast<uint16_t*>(vgaMeta.vgaAddress));
+        
+        char msg[] = "VGA Service online\n";
+        char* p = msg;
+        while(*p) {
+            terminal->writeCharacter(*p++);
+        }
+    }
+
+    while (true) {
+        sleep(1000);
+        terminal->writeCharacter('p');
     }
 }
 
@@ -116,11 +151,15 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
 
     printf("Saturn OS v 0.1.0\n------------------\n\n");
 
+    ServiceRegistry registry;
+    ServiceRegistryInstance = &registry;
+
     /*runMallocTests();
     runNewTests();*/
 
-    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(taskA)));
-    scheduler.scheduleTask(scheduler.createKernelTask(reinterpret_cast<uint32_t>(taskB)));
+    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(vgaService)));
+    //scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(taskA)));
+    //scheduler.scheduleTask(scheduler.createKernelTask(reinterpret_cast<uint32_t>(taskB)));
     scheduler.enterIdle();
 
     return 0;
