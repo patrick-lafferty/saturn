@@ -9,7 +9,31 @@ namespace IPC {
 
     struct Message {
         uint32_t length;
+        uint32_t senderTaskId;
+        uint32_t messageId;
     };
+
+    inline constexpr uint32_t MaximumMessageSize {32};
+    struct MaximumMessageBuffer : Message {
+        uint8_t buffer[MaximumMessageSize];
+    };
+
+    uint32_t getId(); 
+
+    template<typename T>
+    void registerMessage() {
+
+        T::MessageId = getId();
+    }
+
+    template<typename T>
+    T extractMessage(const MaximumMessageBuffer& buffer) {
+        T result;
+
+        memcpy(&result, &buffer, sizeof(T));
+
+        return result;
+    }
 
     class Mailbox {
     public:
