@@ -36,8 +36,7 @@ extern "C" void setupKernel(MultibootInformation* info) {
 
     auto pageFlags = 
         static_cast<int>(PageTableFlags::Present)
-        | static_cast<int>(PageTableFlags::AllowWrite)
-        | static_cast<int>(PageTableFlags::AllowUserModeAccess);
+        | static_cast<int>(PageTableFlags::AllowWrite);
 
     //VGA video memory
     _virtualMemManager.map_unpaged(0xB8000 + virtualOffset, 0xB8000, 1, pageFlags);
@@ -47,6 +46,10 @@ extern "C" void setupKernel(MultibootInformation* info) {
 
     auto kernelStartAddress = reinterpret_cast<uint32_t>(&__kernel_memory_start);
     auto kernelEndAddress = reinterpret_cast<uint32_t>(&__kernel_memory_end);
+
+    //TODO: until we get an elf loader, kernel code needs to have usermode access
+    pageFlags |= static_cast<int>(PageTableFlags::AllowUserModeAccess); 
+
     //the higher-half kernel address
     _virtualMemManager.map_unpaged(kernelStartAddress + virtualOffset, kernelStartAddress, 1 + (kernelEndAddress - virtualOffset - kernelStartAddress) / 0x1000, pageFlags);
     
@@ -55,6 +58,9 @@ extern "C" void setupKernel(MultibootInformation* info) {
     is always valid
     */
     _virtualMemManager.map_unpaged(kernelStartAddress, kernelStartAddress , 1 + (kernelEndAddress - virtualOffset - kernelStartAddress) / 0x1000, pageFlags);
+
+    //TODO: until we get an elf loader, kernel code needs to have usermode access
+    pageFlags &= ~static_cast<int>(PageTableFlags::AllowUserModeAccess); 
 
     //ACPI tables
     _virtualMemManager.map_unpaged(0x7fe0000, 0x7fe0000, (0x8fe0000 - 0x7fe0000) / 0x1000, pageFlags);
