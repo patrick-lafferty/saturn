@@ -56,11 +56,11 @@ namespace Kernel {
         ServiceRegistry();
         
         void receiveMessage(IPC::Message* message);
+        uint32_t getServiceTaskId(ServiceType type);
 
     private:
         
         bool registerService(uint32_t taskId, ServiceType type);
-        uint32_t getServiceTaskId(ServiceType type);
 
         void setupService(uint32_t taskId, ServiceType type);
 

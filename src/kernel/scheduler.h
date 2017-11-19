@@ -16,6 +16,7 @@ namespace LibC_Implementation {
 namespace IPC {
     class Mailbox;
     struct Message;
+    enum class RecipientType;
 }
 
 namespace Kernel {
@@ -163,7 +164,7 @@ namespace Kernel {
         void enterIdle();
         void setupTimeslice();
 
-        void sendMessage(uint32_t taskId, IPC::Message* message);
+        void sendMessage(IPC::RecipientType recipient, IPC::Message* message);
         void receiveMessage(IPC::Message* buffer);
 
         Task* getTask(uint32_t taskId);

@@ -8,7 +8,8 @@ extern "C" void print(int a, int b);
 
 namespace IPC {
     struct Message;
+    enum class RecipientType;
 }
 
-void send(uint32_t taskId, IPC::Message* message);
+void send(IPC::RecipientType recipient, IPC::Message* message);
 void receive(IPC::Message* buffer);

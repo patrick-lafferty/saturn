@@ -194,7 +194,7 @@ void handleSystemCall(CPU::InterruptStackFrame* frame) {
             break;
         }
         case 3: {
-            Kernel::currentScheduler->sendMessage(frame->ebx, reinterpret_cast<IPC::Message*>(frame->ecx));
+            Kernel::currentScheduler->sendMessage(static_cast<IPC::RecipientType>(frame->ebx), reinterpret_cast<IPC::Message*>(frame->ecx));
             break;
         }
         case 4: {

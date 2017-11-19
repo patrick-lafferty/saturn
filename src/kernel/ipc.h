@@ -5,17 +5,31 @@
 #include <string.h>
 #include <stdio.h>
 
+namespace Kernel {
+    enum class ServiceType;
+}
+
 namespace IPC {
 
     struct Message {
         uint32_t length;
         uint32_t senderTaskId;
+        union {
+            uint32_t recipientId;
+            Kernel::ServiceType serviceType;
+        };
         uint32_t messageId;
     };
 
-    inline constexpr uint32_t MaximumMessageSize {32};
+    inline constexpr uint32_t MaximumMessageSize {256};
     struct MaximumMessageBuffer : Message {
         uint8_t buffer[MaximumMessageSize];
+    };
+
+    enum class RecipientType {
+        ServiceRegistryMailbox,
+        ServiceName,
+        TaskId
     };
 
     uint32_t getId(); 

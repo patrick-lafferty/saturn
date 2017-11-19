@@ -326,43 +326,54 @@ namespace Kernel {
         APIC::setAPICTimer(APIC::LVT_TimerMode::Periodic, timeslice_milliseconds);
     }
 
-    void Scheduler::sendMessage(uint32_t taskId, IPC::Message* message) {
+    void Scheduler::sendMessage(IPC::RecipientType recipient, IPC::Message* message) {
         message->senderTaskId = currentTask->id;
 
-        if (taskId == ServiceRegistryMailbox) {
+        if (recipient == IPC::RecipientType::ServiceRegistryMailbox) {
             ServiceRegistryInstance->receiveMessage(message);
         }
-        //check blocked tasks first
-        else if (!blockedQueue.isEmpty()) {
-            auto task = blockedQueue.getHead();
+        else {
+            uint32_t taskId {0};
 
-            while (task != nullptr) {
+            if (recipient == IPC::RecipientType::ServiceName) {
+                taskId = ServiceRegistryInstance->getServiceTaskId(message->serviceType);
+            }
+            else {
+                taskId = message->recipientId;
+            }
+            //check blocked tasks first
 
-                if (task->id == taskId) {
-                    //TODO: check if mailbox is full, if so block current task
-                    task->mailbox->send(message);
-                    
-                    if (task->state == TaskState::Blocked) {
-                        unblockTask(task);
+            if (!blockedQueue.isEmpty()) {
+                auto task = blockedQueue.getHead();
+
+                while (task != nullptr) {
+
+                    if (task->id == taskId) {
+                        //TODO: check if mailbox is full, if so block current task
+                        task->mailbox->send(message);
+                        
+                        if (task->state == TaskState::Blocked) {
+                            unblockTask(task);
+                        }
+
+                        return;
                     }
 
-                    return;
+                    task = task->nextTask;
                 }
-
-                task = task->nextTask;
             }
-        }
-        else {
-            auto task = readyQueue.getHead();
+            else {
+                auto task = readyQueue.getHead();
 
-            while (task != nullptr) {
-                if (task->id == taskId) {
-                    //TODO: check if mailbox is full, if so block current task
-                    task->mailbox->send(message);
-                    return;
+                while (task != nullptr) {
+                    if (task->id == taskId) {
+                        //TODO: check if mailbox is full, if so block current task
+                        task->mailbox->send(message);
+                        return;
+                    }
+
+                    task = task->nextTask;
                 }
-
-                task = task->nextTask;
             }
         }
     }
