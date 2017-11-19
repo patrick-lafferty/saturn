@@ -16,7 +16,7 @@
 #include <test/libc++/new.h>
 #include <ipc.h>
 #include <services.h>
-#include <services/terminal/terminal.h>
+#include <services/terminal/vga.h>
 
 using namespace Kernel;
 using namespace Memory;
@@ -34,58 +34,17 @@ struct MemManagerAddresses {
     uint32_t virtualManager;
 };
 
-/*void taskA() {
+void testVGADriver() {
 
-    IPC::Message message;
-    message.length = 0;
+    VGA::PrintMessage message {};
+    message.serviceType = ServiceType::VGA;
+    
+    auto s = "Hello, world\n";
+    memcpy(message.buffer, s, 13);
 
-    while (true) {
-        print(1, 0);
+    while(true) {
+        send(IPC::RecipientType::ServiceName, &message);
         sleep(1000);
-        send(2, &message);
-        message.length++;
-    }
-}
-
-void taskB() {
-    IPC::Message message {};
-
-    while (true) {
-        receive(&message);
-        print(2, message.length);
-        message = IPC::Message {};
-        sleep(1000);
-    }
-}*/
-
-void vgaService() {
-    RegisterService registerRequest {};
-    registerRequest.type = ServiceType::VGA;
-
-    IPC::MaximumMessageBuffer buffer;
-    Terminal* terminal {nullptr};
-
-    send(ServiceRegistryMailbox, &registerRequest);
-    receive(&buffer);
-
-    if (buffer.messageId == RegisterServiceDenied::MessageId) {
-        //can't print to screen, how to notify?
-        print(99, 0);   
-    }
-    else if (buffer.messageId == VGAServiceMeta::MessageId) {
-        auto vgaMeta = IPC::extractMessage<VGAServiceMeta>(buffer);
-        terminal = new Terminal(reinterpret_cast<uint16_t*>(vgaMeta.vgaAddress));
-        
-        char msg[] = "VGA Service online\n";
-        char* p = msg;
-        while(*p) {
-            terminal->writeCharacter(*p++);
-        }
-    }
-
-    while (true) {
-        sleep(1000);
-        terminal->writeCharacter('p');
     }
 }
 
@@ -155,9 +114,9 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     /*runMallocTests();
     runNewTests();*/
 
-    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(vgaService)));
-    //scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(taskA)));
-    //scheduler.scheduleTask(scheduler.createKernelTask(reinterpret_cast<uint32_t>(taskB)));
+    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(VGA::service)));
+    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(testVGADriver)));
+
     scheduler.enterIdle();
 
     return 0;

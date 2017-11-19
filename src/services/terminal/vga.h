@@ -1,8 +1,21 @@
 #pragma once
 
 #include <stdint.h>
+#include <ipc.h>
 
 namespace VGA {
+
+    void service();
+
+    struct PrintMessage : IPC::Message {
+        PrintMessage() {
+            messageId = MessageId;
+            length = sizeof(PrintMessage);
+        }
+
+        static uint32_t MessageId;
+        char buffer[128];
+    };
 
     enum class Colours {
         Black = 0,
