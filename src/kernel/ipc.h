@@ -19,8 +19,6 @@ namespace IPC {
             bufferSize = size;
         }
 
-        //template<typename T>
-        //void send(T& message) {
         void send(Message* message) {
             uint32_t availableSpace {0};
 
@@ -56,11 +54,9 @@ namespace IPC {
                 unreadMessages++;
             }
 
-            printf("[IPC] Send() lastRead: %d, lastWrite: %d\n", lastReadOffset, lastWriteOffset);
+            //printf("[IPC] Send() lastRead: %d, lastWrite: %d\n", lastReadOffset, lastWriteOffset);
         }
 
-        //template<typename T>
-        //T receive() {
         bool receive(Message* message) {
             if (unreadMessages == 0) {
                 //block
@@ -68,8 +64,7 @@ namespace IPC {
             }
             else {
                 auto messageLength = reinterpret_cast<Message*>(buffer + lastReadOffset)->length;
-                printf("[IPC] Receive() messageLength: %d\n", messageLength);
-                //T message;
+                //printf("[IPC] Receive() messageLength: %d\n", messageLength);
                 auto ptr = buffer + lastReadOffset;
 
                 if (lastReadOffset > lastWriteOffset) {
@@ -95,8 +90,7 @@ namespace IPC {
                 }
 
                 unreadMessages--;
-                printf("[IPC] Read() lastRead: %d, lastWrite: %d\n", lastReadOffset, lastWriteOffset);
-                //return message;
+                //printf("[IPC] Read() lastRead: %d, lastWrite: %d\n", lastReadOffset, lastWriteOffset);
                 return true;
             }
         }

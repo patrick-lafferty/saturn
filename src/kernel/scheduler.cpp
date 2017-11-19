@@ -333,7 +333,6 @@ namespace Kernel {
 
                 if (task->id == taskId) {
                     //TODO: check if mailbox is full, if so block current task
-                    //maybe wake up recipient if its waiting on message?
                     task->mailbox->send(message);
                     
                     if (task->state == TaskState::Blocked) {
@@ -363,11 +362,10 @@ namespace Kernel {
 
     void Scheduler::receiveMessage(IPC::Message* buffer) {
         if (currentTask != nullptr) {
-            //if (!currentTask->mailbox->receive(buffer)) {
             if (!currentTask->mailbox->hasUnreadMessages()) {
                 blockTask(BlockReason::WaitingForMessage, 0);
             }
-            
+
             currentTask->mailbox->receive(buffer);
         }
     }

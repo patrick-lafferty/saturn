@@ -95,7 +95,15 @@ System calls: 0xFF (Final Fantasy)
   - [X] new
 
 * Step 7: Usermode VGA Driver
-- [ ] IPC
+- [X] IPC
+** IPC Design
+   -each task will have a dedicated block of memory for storing messages, allocated after the kernel stack
+   -asynchronous send, unless target's mailbox is full then blocks
+   
+   possible to have a shared mailbox? for tasks A and B that want to communicate without interrupts,
+   task A allocates a mailbox and sends the address to b, b maps that as readonly,
+   b then creates its own
+
 - [ ] Driver framework, driver identification (eg load as VGA_DRIVER grants 0xb000 user-mode memory mapped to the driver)
   
 * Step 8: Usermode Terminal Emulator
