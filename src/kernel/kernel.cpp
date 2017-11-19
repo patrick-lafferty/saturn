@@ -69,17 +69,23 @@ struct MemManagerAddresses {
 void taskA() {
 
     IPC::Message message;
+    message.length = 0;
 
     while (true) {
         print(1, 0);
-        send(3, &message);
         sleep(1000);
+        send(2, &message);
+        message.length++;
     }
 }
 
 void taskB() {
+    IPC::Message message {};
+
     while (true) {
-        print(2, 0);
+        receive(&message);
+        print(2, message.length);
+        message = IPC::Message {};
         sleep(1000);
     }
 }
@@ -144,8 +150,8 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
 
     printf("Saturn OS v 0.1.0\n------------------\n\n");
 
-    runMallocTests();
-    runNewTests();
+    /*runMallocTests();
+    runNewTests();*/
 
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(taskA)));
     scheduler.scheduleTask(scheduler.createKernelTask(reinterpret_cast<uint32_t>(taskB)));

@@ -366,8 +366,9 @@ namespace Kernel {
             //if (!currentTask->mailbox->receive(buffer)) {
             if (!currentTask->mailbox->hasUnreadMessages()) {
                 blockTask(BlockReason::WaitingForMessage, 0);
-                currentTask->mailbox->receive(buffer);
             }
+            
+            currentTask->mailbox->receive(buffer);
         }
     }
 
