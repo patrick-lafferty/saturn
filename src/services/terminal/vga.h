@@ -7,14 +7,16 @@ namespace VGA {
 
     void service();
 
-    struct PrintMessage : IPC::Message {
-        PrintMessage() {
+    struct BlitMessage : IPC::Message {
+        BlitMessage() {
             messageId = MessageId;
-            length = sizeof(PrintMessage);
+            length = sizeof(BlitMessage);
         }
 
         static uint32_t MessageId;
-        char buffer[128];
+        uint16_t buffer[64];
+        uint32_t index {0};
+        uint32_t count {0};
     };
 
     enum class Colours {

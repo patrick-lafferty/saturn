@@ -7,29 +7,24 @@ using namespace Kernel;
 
 namespace VGA {
 
-    uint32_t PrintMessage::MessageId;
+    uint32_t BlitMessage::MessageId;
 
     void registerMessages() {
-        IPC::registerMessage<PrintMessage>();
+        IPC::registerMessage<BlitMessage>();
     }
 
-    void messageLoop(Terminal* terminal) {
-        IPC::MaximumMessageBuffer buffer;
+    void messageLoop(uint32_t address) {
+        uint16_t* vgaBuffer = reinterpret_cast<uint16_t*>(address);
+        memset(vgaBuffer, 0, 4000);
 
         while (true) {
+            IPC::MaximumMessageBuffer buffer;
             receive(&buffer);
 
-            if (buffer.messageId == PrintMessage::MessageId) {
-                auto message = IPC::extractMessage<PrintMessage>(buffer);
-
-                auto iterator = message.buffer;
-
-                while (*iterator) {
-                    terminal->writeCharacter(*iterator++);
-                }
+            if (buffer.messageId == BlitMessage::MessageId) {
+                auto message = IPC::extractMessage<BlitMessage>(buffer);
+                memcpy(vgaBuffer + message.index, message.buffer, sizeof(uint16_t) * message.count);
             }
-
-            memset(&buffer, 0, sizeof(buffer));
         }
     }
 
@@ -38,22 +33,21 @@ namespace VGA {
         registerRequest.type = ServiceType::VGA;
 
         IPC::MaximumMessageBuffer buffer;
-        Terminal* terminal {nullptr};
 
         send(IPC::RecipientType::ServiceRegistryMailbox, &registerRequest);
         receive(&buffer);
 
         if (buffer.messageId == RegisterServiceDenied::MessageId) {
             //can't print to screen, how to notify?
-            print(99, 0);   
+            //print(100, static_cast<int>(ServiceType::VGA));
         }
         else if (buffer.messageId == VGAServiceMeta::MessageId) {
+
+            //print(101, static_cast<int>(ServiceType::VGA));
             registerMessages();
 
             auto vgaMeta = IPC::extractMessage<VGAServiceMeta>(buffer);
-            terminal = new Terminal(reinterpret_cast<uint16_t*>(vgaMeta.vgaAddress));
-            
-            messageLoop(terminal);
+            messageLoop(vgaMeta.vgaAddress);
         }
     }
 
