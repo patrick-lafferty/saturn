@@ -7,6 +7,7 @@ namespace Kernel {
 
     enum class ServiceType {
         VGA,
+        Terminal,
         ServiceTypeEnd
     };
 
@@ -37,6 +38,15 @@ namespace Kernel {
 
         static uint32_t MessageId;
         uint32_t vgaAddress {0};
+    };
+
+    struct TerminalServiceMeta : ServiceMeta {
+        TerminalServiceMeta() {
+            messageId = MessageId;
+            length = sizeof(TerminalServiceMeta);
+        }
+
+        static uint32_t MessageId;
     };
 
     inline uint32_t ServiceRegistryMailbox {0};
