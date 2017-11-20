@@ -137,12 +137,11 @@ namespace Kernel {
         task->heap = LibC_Implementation::KernelHeap;
 
         const uint32_t mailboxSize = Memory::PageSize;
-        //auto mailboxAddress = Memory::currentVMM->allocatePages(1, static_cast<uint32_t>(Memory::PageTableFlags::AllowWrite));
         auto mailboxMemory = task->heap->allocate(mailboxSize);
+        //printf("[Scheduler] Mailbox address: %x\n", mailboxMemory);
 
         task->mailbox = new (mailboxMemory) 
             IPC::Mailbox(reinterpret_cast<uint32_t>(mailboxMemory) + sizeof(IPC::Mailbox), 
-            //IPC::Mailbox(mailboxAddress + sizeof(IPC::Mailbox), 
             mailboxSize - sizeof(IPC::Mailbox));
 
 
@@ -328,15 +327,23 @@ namespace Kernel {
 
     void Scheduler::sendMessage(IPC::RecipientType recipient, IPC::Message* message) {
         message->senderTaskId = currentTask->id;
+        //printf("[Scheduler] sendMessage from: %d to: %d\n", currentTask->id, message->recipientId);
+        //TODO: implement return value for recipient not found?
+        uint32_t taskId {0};
 
         if (recipient == IPC::RecipientType::ServiceRegistryMailbox) {
             ServiceRegistryInstance->receiveMessage(message);
+            return;
         }
         else {
-            uint32_t taskId {0};
 
             if (recipient == IPC::RecipientType::ServiceName) {
                 taskId = ServiceRegistryInstance->getServiceTaskId(message->serviceType);
+
+                if (taskId == 0) {
+                    printf("[Scheduler] Unknown Service Name\n");
+                    return;
+                }
             }
             else {
                 taskId = message->recipientId;
@@ -377,6 +384,8 @@ namespace Kernel {
                 }
             }
         }
+
+        printf("[Scheduler] Unsent message from: %d to: %d\n", message->senderTaskId, taskId);
     }
 
     void Scheduler::receiveMessage(IPC::Message* buffer) {
