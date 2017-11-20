@@ -11,12 +11,12 @@
 #include <memory/virtual_memory_manager.h>
 #include <scheduler.h>
 #include <system_calls.h>
-
 #include <test/libc/stdlib.h>
 #include <test/libc++/new.h>
 #include <ipc.h>
 #include <services.h>
 #include <services/terminal/vga.h>
+#include <services/terminal/terminal.h>
 
 using namespace Kernel;
 using namespace Memory;
@@ -36,13 +36,11 @@ struct MemManagerAddresses {
 
 void testVGADriver() {
 
-    VGA::PrintMessage message {};
-    message.serviceType = ServiceType::VGA;
-    
-    auto s = "Hello, world\n";
-    memcpy(message.buffer, s, 13);
-
     while(true) {
+        Terminal::PrintMessage message {};
+        message.serviceType = ServiceType::Terminal;
+        auto s = "Hello, world\n";
+        memcpy(message.buffer, s, 13);
         send(IPC::RecipientType::ServiceName, &message);
         sleep(1000);
     }
@@ -50,13 +48,11 @@ void testVGADriver() {
 
 void testVGADriver2() {
 
-    VGA::PrintMessage message {};
-    message.serviceType = ServiceType::VGA;
-    
-    auto s = "Hello, galaxy\n";
-    memcpy(message.buffer, s, 14);
-
     while(true) {
+        Terminal::PrintMessage message {};
+        message.serviceType = ServiceType::Terminal;
+        auto s = "Hello, galaxy\n";
+        memcpy(message.buffer, s, 14);
         send(IPC::RecipientType::ServiceName, &message);
         sleep(1000);
     }
@@ -129,6 +125,7 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     runNewTests();*/
 
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(VGA::service)));
+    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(Terminal::service)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(testVGADriver)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(testVGADriver2)));
 

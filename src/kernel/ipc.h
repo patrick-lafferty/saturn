@@ -60,6 +60,8 @@ namespace IPC {
         void send(Message* message) {
             uint32_t availableSpace {0};
 
+            //printf("[Mailbox] lastWrite: %d\n", lastWriteOffset);
+
             if (lastReadOffset > lastWriteOffset) {
                 availableSpace = lastReadOffset - lastWriteOffset;
             }
@@ -92,16 +94,21 @@ namespace IPC {
                 unreadMessages++;
             }
 
+             if (lastWriteOffset >= bufferSize) {
+                    printf("[Mailbox] lastWriteOffset is invalid\n");
+                }
+
             //printf("[IPC] Send() lastRead: %d, lastWrite: %d\n", lastReadOffset, lastWriteOffset);
         }
 
         bool receive(Message* message) {
             if (unreadMessages == 0) {
                 //block
-                //printf("[IPC] Read blocked\n");
+                printf("[IPC] Read blocked\n");
                 return false;
             }
             else {
+                //printf("[Mailbox] lastRead: %d\n", lastReadOffset);
                 auto messageLength = reinterpret_cast<Message*>(buffer + lastReadOffset)->length;
                 //printf("[IPC] Receive() messageLength: %d\n", messageLength);
                 auto ptr = buffer + lastReadOffset;
@@ -125,8 +132,24 @@ namespace IPC {
                     }
                 }
                 else {
-                    memcpy(message, ptr, messageLength);
-                    lastReadOffset += messageLength;
+                    auto spaceUntilEnd = bufferSize - lastWriteOffset;
+
+                    if (messageLength > spaceUntilEnd) {
+                        memcpy(message, ptr, spaceUntilEnd);
+                        lastReadOffset = 0;
+                        ptr = buffer;
+                        auto remainingMessageLength = messageLength - spaceUntilEnd;
+                        memcpy(message + spaceUntilEnd, ptr, remainingMessageLength);
+                        lastReadOffset = remainingMessageLength;
+                    }
+                    else {
+                        memcpy(message, ptr, messageLength);
+                        lastReadOffset += messageLength;
+                    }
+                }
+
+                if (lastReadOffset >= bufferSize) {
+                    printf("[Mailbox] lastReadOffset is invalid\n");
                 }
 
                 //printf("[IPC] Read() unread: %d, lastRead: %d, lastWrite: %d\n", unreadMessages, lastReadOffset, lastWriteOffset);
