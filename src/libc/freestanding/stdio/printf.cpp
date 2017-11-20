@@ -6,7 +6,7 @@
 #include <services/terminal/vga.h>
 #include <services/terminal/terminal.h>
 
-int printInteger(uint32_t i, Terminal& terminal, bool isNegative, int base = 10, bool upper = false) {
+int printInteger(uint32_t i, Terminal::Terminal& terminal, bool isNegative, int base = 10, bool upper = false) {
     char buffer[CHAR_BIT * sizeof(int) - 1];
     char hexDigits[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
         'a', 'b', 'c', 'd', 'e', 'f'};
@@ -44,7 +44,7 @@ int printInteger(uint32_t i, Terminal& terminal, bool isNegative, int base = 10,
     return charactersWritten;
 }
 
-int printInteger(int32_t i, Terminal& terminal, int base = 10, bool upper = false) {
+int printInteger(int32_t i, Terminal::Terminal& terminal, int base = 10, bool upper = false) {
     if (i < 0) {
         return printInteger(i * -1, terminal, true, base, upper);
     }
@@ -63,7 +63,7 @@ int printf(const char* format, ...) {
 
     int charactersWritten = 0;
 
-    auto& terminal = Terminal::getInstance();
+    auto& terminal = Terminal::Terminal::getInstance();
     //auto colour = getColour(VGA::Colours::LightBlue, VGA::Colours::DarkGray);
     auto write = [&](auto c) {
         terminal.writeCharacter(c);//, colour);

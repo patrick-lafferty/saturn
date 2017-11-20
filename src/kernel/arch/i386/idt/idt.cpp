@@ -163,34 +163,12 @@ void handleSystemCall(CPU::InterruptStackFrame* frame) {
         }
 
         case 2: {
-            switch(frame->ebx) {
-                case 1: {
-                    printf("[TaskA] ");
-                    break;
-                }
-                case 2: {
-                    printf("[TaskB] ");
-                    break;
-                }
-                case 3: {
-                    printf("[TaskC] ");
-                    break;
-                }
-                case 4: {
-                    printf("[TaskD] ");
-                    break;
-                }
-                case 5: {
-                    printf("[TaskE] ");
-                    break;
-                }
-                case 6: {
-                    printf("[TaskF] ");
-                    break;
-                }
+            if (frame->ebx == 100) {
+                printf("[IDT] Registering service %d failed\n", frame->ecx);
             }
-
-            printf("%d\n", frame->ecx);
+            else if (frame->ebx == 101) {
+                printf("[IDT] Registering service %d succeded\n", frame->ecx);
+            }
             break;
         }
         case 3: {

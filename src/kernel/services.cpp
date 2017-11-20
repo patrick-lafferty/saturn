@@ -2,12 +2,14 @@
 #include <string.h>
 #include <scheduler.h>
 #include <memory/virtual_memory_manager.h>
+#include <stdio.h>
 
 namespace Kernel {
 
     uint32_t RegisterService::MessageId;
     uint32_t RegisterServiceDenied::MessageId;
     uint32_t VGAServiceMeta::MessageId;
+    uint32_t TerminalServiceMeta::MessageId;
 
     ServiceRegistry::ServiceRegistry() {
         auto count = static_cast<uint32_t>(ServiceType::ServiceTypeEnd) + 1;
@@ -19,6 +21,7 @@ namespace Kernel {
         IPC::registerMessage<RegisterService>();
         IPC::registerMessage<RegisterServiceDenied>();
         IPC::registerMessage<VGAServiceMeta>();
+        IPC::registerMessage<TerminalServiceMeta>();
     }
 
     void ServiceRegistry::receiveMessage(IPC::Message* message) {
@@ -31,12 +34,14 @@ namespace Kernel {
 
     bool ServiceRegistry::registerService(uint32_t taskId, ServiceType type) {
         if (type == ServiceType::ServiceTypeEnd) {
+            printf("[ServiceRegistry] Tried to register ServiceTypeEnd\n");
             return false;
         }
 
         auto index = static_cast<uint32_t>(type);
 
         if (taskIds[index] != 0) {
+            printf("[ServiceRegistry] Tried to register a service that's taken\n");
             return false;
         }
 
@@ -48,6 +53,7 @@ namespace Kernel {
 
     uint32_t ServiceRegistry::getServiceTaskId(ServiceType type) {
         if (type == ServiceType::ServiceTypeEnd) {
+            printf("[ServiceRegistry] Tried to get ServiceTypeEnd taskId\n");
             return 0;
         }
 
@@ -62,8 +68,11 @@ namespace Kernel {
                 auto task = currentScheduler->getTask(taskId);
 
                 if (task == nullptr) {
+                    printf("[ServiceRegistry] Tried to setupService a null task\n");
                     return;
                 }
+
+                //printf("[ServiceRegistry] Registering VGA Service to task: %d\n", taskId);
 
                 auto vgaPage = task->virtualMemoryManager->allocatePages(1);
                 auto pageFlags = 
@@ -79,7 +88,25 @@ namespace Kernel {
 
                 break;
             }
+            case ServiceType::Terminal: {
+
+                auto task = currentScheduler->getTask(taskId);
+
+                if (task == nullptr) {
+                    printf("[ServiceRegistry] Tried to setupService a null task\n");
+                    return;
+                }
+
+                //printf("[ServiceRegistry] Registering Terminal Service to task: %d\n", taskId);
+
+                auto terminalMeta = new TerminalServiceMeta;
+                meta[static_cast<uint32_t>(type)] = terminalMeta;
+                task->mailbox->send(terminalMeta);
+
+                break;
+            }
             case ServiceType::ServiceTypeEnd: {
+                printf("[ServiceRegistry] Tried to setupService a ServiceTypeEnd\n");
                 break;
             }
         }
