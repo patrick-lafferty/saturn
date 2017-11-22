@@ -1,10 +1,7 @@
 #include <ctype.h>
 #include <stdint.h>
 #include <limits.h>
-
-long strtol(const char* str, char** str_end, int base) {
-    return isspace(0);
-}
+#include <string.h>
 
 /*
 isalnum = isxdigit | isalpha
@@ -32,6 +29,63 @@ enum class LookupBits {
     Uppercase = 1 << 6,
     HexDigit = 1 << 7
 };
+
+void loadLookupTable() {
+    memset(&lookupTable, 0, sizeof(lookupTable));
+
+    for (uint8_t i = 0; i < 0x7F; i++) {
+        if (i <= 0x8) {
+            lookupTable[i] = static_cast<uint8_t>(LookupBits::Control);
+        }
+        else if (i >= 0x9 && i <= 0xD) {
+            lookupTable[i] = static_cast<uint8_t>(LookupBits::Control)
+                | static_cast<uint8_t>(LookupBits::Space);
+        }
+        else if (i >= 0xE && i <= 0x1F) {
+            lookupTable[i] = static_cast<uint8_t>(LookupBits::Control);
+        }
+        else if (i == 0x20) {
+            lookupTable[i] = static_cast<uint8_t>(LookupBits::Space);
+        }
+        else if (i >= 0x21 && i <= 0x2F) {
+            lookupTable[i] = static_cast<uint8_t>(LookupBits::Punctuation)
+                | static_cast<uint8_t>(LookupBits::Graph);
+        }
+        else if (i >= 0x30 && i <= 0x39) {
+            lookupTable[i] = static_cast<uint8_t>(LookupBits::Digit)
+                | static_cast<uint8_t>(LookupBits::HexDigit)
+                | static_cast<uint8_t>(LookupBits::Graph);
+        }
+        else if (i >= 0x3A && i <= 0x40) {
+            lookupTable[i] = static_cast<uint8_t>(LookupBits::Punctuation)
+                | static_cast<uint8_t>(LookupBits::Graph);
+        }
+        else if (i >= 0x47 && i <= 0x5A) {
+            lookupTable[i] = static_cast<uint8_t>(LookupBits::Uppercase)
+                | static_cast<uint8_t>(LookupBits::Graph);
+        }
+        else if (i >= 0x5B && i <= 0x60) {
+            lookupTable[i] = static_cast<uint8_t>(LookupBits::Punctuation)
+                | static_cast<uint8_t>(LookupBits::Graph);
+        }
+        else if (i >= 0x61 && i <= 0x66) {
+            lookupTable[i] = static_cast<uint8_t>(LookupBits::Lowercase)
+                | static_cast<uint8_t>(LookupBits::HexDigit)
+                | static_cast<uint8_t>(LookupBits::Graph);
+        }
+        else if (i >= 0x67 && i <= 0x7A) {
+            lookupTable[i] = static_cast<uint8_t>(LookupBits::Lowercase)
+                | static_cast<uint8_t>(LookupBits::Graph);
+        }
+        else if (i >= 0x7B && i <= 0x7E) {
+            lookupTable[i] = static_cast<uint8_t>(LookupBits::Punctuation)
+                | static_cast<uint8_t>(LookupBits::Graph);
+        }
+        else if (i == 0x7F) {
+            lookupTable[i] = static_cast<uint8_t>(LookupBits::Control);
+        }
+    }
+}
 
 int isalnum(int ch) {
     if (ch >= 0 && ch <= UCHAR_MAX) {

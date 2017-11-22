@@ -1,5 +1,7 @@
 #pragma once
 
+void loadLookupTable();
+
 extern "C" int isalnum(int ch);
 extern "C" int isalpha(int ch);
 extern "C" int islower(int ch);
