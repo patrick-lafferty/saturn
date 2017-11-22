@@ -66,7 +66,9 @@
                 "__INTPTR_WIDTH__=32",
                 "__INTMAX_TYPE__=long int",
                 "__UINTMAX_TYPE__=long int",
-                "__SIZE_TYPE__=long unsigned int"
+                "__SIZE_TYPE__=long unsigned int",
+                "__SCHAR_MAX__=127",
+                "__WCHAR_MAX__=2147483647"
             ],
             "intelliSenseMode": "clang-x64",
             "browse": {
