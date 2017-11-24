@@ -22,6 +22,7 @@ namespace Terminal {
     };
 
     enum class CSIFinalByte {
+        CursorPosition = 'H',
         SelectGraphicRendition = 'm'
     };
 
@@ -44,11 +45,13 @@ namespace Terminal {
     private:
 
         uint32_t handleEscapeSequence(char* buffer, uint32_t count); 
+        uint32_t handleCursorPosition(char* buffer, uint32_t length);
         uint32_t handleSelectGraphicRendition(char* buffer, uint32_t length);
 
         uint16_t* buffer;
         uint32_t row {0}, column{0};
         uint8_t currentColour;
+        DirtyRect dirty;
     };
 }
 

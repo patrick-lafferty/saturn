@@ -29,7 +29,7 @@ namespace Terminal {
                 auto iterator = message.buffer;
                 auto index = emulator.getIndex();
                 auto dirty = emulator.interpret(iterator, message.length);
-
+                index = dirty.startIndex;
                 uint32_t count{dirty.endIndex};
                 BlitMessage blit;
                 blit.index = index;
@@ -113,6 +113,49 @@ namespace Terminal {
             }
         }
     }
+    
+    uint32_t Terminal::handleCursorPosition(char* buffer, uint32_t length) {
+        auto start = buffer;
+        char* end;
+
+        if (*buffer == ';') {
+            //row was omitted
+        }
+        else {
+            uint32_t newRow = strtol(start, &end, 10);
+            uint32_t newColumn {1};
+            buffer = end;
+
+            if (*buffer == ';') {
+                buffer++;
+
+                if (*buffer == 'H') {
+                    //column omitted
+                }
+                else {
+                    newColumn = strtol(buffer, &end, 10);
+
+                    if (end == buffer + 1) {
+                        //TODO: parse failure
+                    }
+                    else {
+
+                        row = newRow - 1;
+                        column = newColumn - 1;
+
+                        //if (newRow * Width + newColumn != dirty.startIndex) {
+                            dirty.startIndex = getIndex();                            
+                        //}
+                    }
+                }
+            }
+            else {
+                //TODO: error
+            }
+        }
+
+        return end - start + 1;
+    }
 
     uint32_t Terminal::handleSelectGraphicRendition(char* buffer, uint32_t length) {
         auto start = buffer;
@@ -121,6 +164,7 @@ namespace Terminal {
 
         switch (code) {
             case 0: {
+                //TODO: stub
                 break;
             }
             case 38:
@@ -137,7 +181,7 @@ namespace Terminal {
                             auto arg2 = strtol(buffer + 1, &end, 10);
 
                             if (end == buffer + 1) {
-                                //parse failure
+                                //TODO: parse failure
                             }
                             else {
                                 if (code == 38) {
@@ -153,7 +197,7 @@ namespace Terminal {
 
                     }
                     else {
-                        //error
+                        //TODO: error
                     }
                 }
                 break;
@@ -202,6 +246,9 @@ namespace Terminal {
                 }
 
                 switch(*buffer) {
+                    case static_cast<char>(CSIFinalByte::CursorPosition): {
+                        return 1 + handleCursorPosition(sequenceStart, buffer - sequenceStart);
+                    }
                     case static_cast<char>(CSIFinalByte::SelectGraphicRendition): {
                         return 1 + handleSelectGraphicRendition(sequenceStart, buffer - sequenceStart);
                     }
@@ -215,8 +262,9 @@ namespace Terminal {
     }
 
     DirtyRect Terminal::interpret(char* buffer, uint32_t count) {
-        DirtyRect dirty {};
+        //DirtyRect dirty {};
         dirty.startIndex = getIndex();
+        dirty.endIndex = 0;
 
         while (count > 0 && *buffer != 0) {
             count--;
@@ -230,6 +278,14 @@ namespace Terminal {
                     auto consumedChars = 1 + handleEscapeSequence(buffer + 1, count);
                     buffer += consumedChars;
                     count -= consumedChars;
+
+                    //TODO: better way of tracking dirty areas
+                    /*auto index = getIndex();
+
+                    if (index != dirty.startIndex) {
+                        dirty.startIndex = index;
+                    }*/
+
                     break;
                 }
                 default: {
