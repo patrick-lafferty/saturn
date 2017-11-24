@@ -110,15 +110,18 @@ namespace IPC {
             else {
                 //printf("[Mailbox] lastRead: %d\n", lastReadOffset);
                 auto messageLength = reinterpret_cast<Message*>(buffer + lastReadOffset)->length;
+                if (messageLength > 10000) {
+                    printf("stop here");
+                }
                 //printf("[IPC] Receive() messageLength: %d\n", messageLength);
                 auto ptr = buffer + lastReadOffset;
 
                 if (lastReadOffset > lastWriteOffset) {
-                    auto spaceUntilEnd = bufferSize - lastWriteOffset;
+                    auto spaceUntilEnd = bufferSize - lastReadOffset;//lastWriteOffset;
 
                     if (messageLength > spaceUntilEnd) {
                         //its cutoff
-                        printf("[IPC] Message cutoff?\n");
+                        //printf("[IPC] Message cutoff?\n");
                         memcpy(message, ptr, spaceUntilEnd);
                         lastReadOffset = 0;
                         ptr = buffer;
@@ -132,7 +135,8 @@ namespace IPC {
                     }
                 }
                 else {
-                    auto spaceUntilEnd = bufferSize - lastWriteOffset;
+                    //auto spaceUntilEnd = bufferSize - lastWriteOffset;
+                    auto spaceUntilEnd = lastWriteOffset - lastReadOffset;
 
                     if (messageLength > spaceUntilEnd) {
                         memcpy(message, ptr, spaceUntilEnd);
