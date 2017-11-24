@@ -110,3 +110,5 @@ System calls: 0xFF (Final Fantasy)
 - [ ] handle common ansi escape sequences (colour, moving the cursor)
 
 * Step 9: Usermode Keyboard Driver
+
+aside: use scheme as the shell scripting language

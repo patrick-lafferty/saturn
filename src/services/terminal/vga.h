@@ -42,5 +42,6 @@ namespace VGA {
     const int32_t Height = 25;
 
     uint8_t getColour(Colours foreground, Colours background);
+    void setForegroundColour(uint8_t& colour, uint8_t foregroundColour);
     uint16_t prepareCharacter(uint8_t character, uint8_t colour);
 }

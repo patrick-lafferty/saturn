@@ -47,6 +47,7 @@
             "includePath": [
                 "${localappdata}/lxss/rootfs/usr/lib/llvm-3.8/lib/clang/3.8.0/include",
                 "${workspaceRoot}",
+                "${workspaceRoot}/src",
                 "${workspaceRoot}/src/kernel",
                 "${workspaceRoot}/src/libc/include",
                 "${workspaceRoot}/src/libc++/include",
@@ -75,6 +76,7 @@
                 "path": [
                     "${localappdata}/lxss/rootfs/usr/lib/llvm-3.8/lib/clang/3.8.0/include",
                     "${workspaceRoot}",
+                    "${workspaceRoot}/src",
                     "${workspaceRoot}/src/kernel",
                     "${workspaceRoot}/src/libc/include",
                     "${workspaceRoot}/src/libc++/include",

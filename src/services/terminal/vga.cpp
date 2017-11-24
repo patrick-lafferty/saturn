@@ -55,6 +55,10 @@ namespace VGA {
         return static_cast<uint8_t>(foreground) | static_cast<uint8_t>(background) << 4;
     }
 
+    void setForegroundColour(uint8_t& colour, uint8_t foregroundColour) {
+        colour = foregroundColour | (colour & 0xFF00);
+    }
+
     uint16_t prepareCharacter(uint8_t character, uint8_t colour) {
         return static_cast<uint16_t>(character) | static_cast<uint16_t>(colour) << 8;
     }

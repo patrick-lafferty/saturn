@@ -11,12 +11,13 @@
 #include <memory/virtual_memory_manager.h>
 #include <scheduler.h>
 #include <system_calls.h>
-#include <test/libc/stdlib.h>
+#include <test/libc/runner.h>
 #include <test/libc++/new.h>
 #include <ipc.h>
 #include <services.h>
 #include <services/terminal/vga.h>
 #include <services/terminal/terminal.h>
+#include <initialize_libc.h>
 
 using namespace Kernel;
 using namespace Memory;
@@ -34,32 +35,19 @@ struct MemManagerAddresses {
     uint32_t virtualManager;
 };
 
-void testVGADriver() {
-
-    while(true) {
+void testTerminalEmulator() {
+    while (true) {
         Terminal::PrintMessage message {};
         message.serviceType = ServiceType::Terminal;
-        auto s = "Hello, world\n";
-        memcpy(message.buffer, s, 13);
-        send(IPC::RecipientType::ServiceName, &message);
-        sleep(1000);
-    }
-}
-
-void testVGADriver2() {
-
-    while(true) {
-        Terminal::PrintMessage message {};
-        message.serviceType = ServiceType::Terminal;
-        auto s = "Hello, galaxy\n";
-        memcpy(message.buffer, s, 14);
+        auto s = "\e[38;5;5mHello \e[38;5;2mworld\n";
+        memcpy(message.buffer, s, 31);
         send(IPC::RecipientType::ServiceName, &message);
         sleep(1000);
     }
 }
 
 extern "C" int kernel_main(MemManagerAddresses* addresses) {
-
+    initializeLibC();
     /*
     The prekernel creates its own PMM and VMM in lower addresses.
     We want the higher-half kernel to have its own proper versions
@@ -121,13 +109,12 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     ServiceRegistry registry;
     ServiceRegistryInstance = &registry;
 
-    /*runMallocTests();
-    runNewTests();*/
+    /*runNewTests();*/
+    runAllLibCTests();
 
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(VGA::service)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(Terminal::service)));
-    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(testVGADriver)));
-    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(testVGADriver2)));
+    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(testTerminalEmulator)));
 
     scheduler.enterIdle();
 

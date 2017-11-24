@@ -16,12 +16,22 @@ namespace Terminal {
         char buffer[128];
     };
 
+    struct DirtyRect {
+        uint32_t startIndex {0};
+        uint32_t endIndex {0};
+    };
+
+    enum class CSIFinalByte {
+        SelectGraphicRendition = 'm'
+    };
+
     class Terminal {
     public:
 
         Terminal(uint16_t* buffer);
         void writeCharacter(uint8_t character);
         void writeCharacter(uint8_t character, uint8_t colour);
+        DirtyRect interpret(char* buffer, uint32_t count);
 
         static Terminal& getInstance() {
             static Terminal instance{reinterpret_cast<uint16_t*>(0xD00B8000)};
@@ -33,9 +43,12 @@ namespace Terminal {
 
     private:
 
+        uint32_t handleEscapeSequence(char* buffer, uint32_t count); 
+        uint32_t handleSelectGraphicRendition(char* buffer, uint32_t length);
+
         uint16_t* buffer;
         uint32_t row {0}, column{0};
-        uint8_t defaultColour;
+        uint8_t currentColour;
     };
 }
 
