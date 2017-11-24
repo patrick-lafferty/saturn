@@ -57,6 +57,7 @@ KERNEL_OBJS = \
 SERVICES_OBJS = \
 	$(SERVICESDIR)/terminal/vga.o \
 	$(SERVICESDIR)/terminal/terminal.o \
+	$(SERVICESDIR)/splash/splash.o \
 
 OBJS = \
 	$(ARCHDIR)/crti.o \

@@ -17,6 +17,7 @@
 #include <services.h>
 #include <services/terminal/vga.h>
 #include <services/terminal/terminal.h>
+#include <services/splash/splash.h>
 #include <initialize_libc.h>
 
 using namespace Kernel;
@@ -114,7 +115,7 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
 
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(VGA::service)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(Terminal::service)));
-    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(testTerminalEmulator)));
+    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(Splash::service)));
 
     scheduler.enterIdle();
 
