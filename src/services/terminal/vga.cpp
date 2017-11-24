@@ -56,7 +56,11 @@ namespace VGA {
     }
 
     void setForegroundColour(uint8_t& colour, uint8_t foregroundColour) {
-        colour = foregroundColour | (colour & 0xFF00);
+        colour = foregroundColour | (colour & 0xF0);
+    }
+
+    void setBackgroundColour(uint8_t& colour, uint8_t backgroundColour) {
+        colour = (backgroundColour << 4) | (colour & 0x0F);
     }
 
     uint16_t prepareCharacter(uint8_t character, uint8_t colour) {

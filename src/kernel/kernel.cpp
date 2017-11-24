@@ -39,8 +39,8 @@ void testTerminalEmulator() {
     while (true) {
         Terminal::PrintMessage message {};
         message.serviceType = ServiceType::Terminal;
-        auto s = "\e[38;5;5mHello \e[38;5;2mworld\n";
-        memcpy(message.buffer, s, 31);
+        auto s = "\e[48;5;4m\e[38;5;5mHello \e[38;5;2mworld\n";
+        memcpy(message.buffer, s, 41);
         send(IPC::RecipientType::ServiceName, &message);
         sleep(1000);
     }

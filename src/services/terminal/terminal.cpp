@@ -28,15 +28,9 @@ namespace Terminal {
                 auto message = IPC::extractMessage<PrintMessage>(buffer);
                 auto iterator = message.buffer;
                 auto index = emulator.getIndex();
-
-                /*while (*iterator) {
-                    emulator.writeCharacter(*iterator++);
-                    count++;
-                }*/
                 auto dirty = emulator.interpret(iterator, message.length);
-                //uint32_t count {dirty.endIndex - dirty.startIndex};
+
                 uint32_t count{dirty.endIndex};
-                //count /= sizeof(uint16_t);
                 BlitMessage blit;
                 blit.index = index;
                 blit.count = count;
@@ -120,8 +114,6 @@ namespace Terminal {
         }
     }
 
-    //enum class
-
     uint32_t Terminal::handleSelectGraphicRendition(char* buffer, uint32_t length) {
         auto start = buffer;
         char* end;
@@ -131,7 +123,8 @@ namespace Terminal {
             case 0: {
                 break;
             }
-            case 38: {
+            case 38:
+            case 48: {
                 buffer = end;
 
                 if (*buffer == ';') {
@@ -147,7 +140,12 @@ namespace Terminal {
                                 //parse failure
                             }
                             else {
-                                setForegroundColour(currentColour, arg2);
+                                if (code == 38) {
+                                    setForegroundColour(currentColour, arg2);
+                                }
+                                else {
+                                    setBackgroundColour(currentColour, arg2);
+                                }
                             }
                         }
                     }
