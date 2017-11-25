@@ -114,7 +114,7 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     ServiceRegistryInstance = &registry;
 
     /*runNewTests();*/
-    runAllLibCTests();
+    //runAllLibCTests();
 
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(VGA::service)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(Terminal::service)));

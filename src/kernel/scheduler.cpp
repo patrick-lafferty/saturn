@@ -61,8 +61,8 @@ namespace Kernel {
             while (task != nullptr) {
                 auto kernelStackAddress = (task->context.kernelESP & ~0xFFF);
                 delete reinterpret_cast<Stack*>(kernelStackAddress);
-                printf("[Scheduler] Cleaned up task\n");
-                Memory::currentPMM->report();
+                //printf("[Scheduler] Cleaned up task\n");
+                //Memory::currentPMM->report();
                 auto next = task->nextTask;
                 deleteQueue.remove(task);
                 task = next;
@@ -208,7 +208,7 @@ namespace Kernel {
     }
 
     Task* Scheduler::createUserTask(uintptr_t functionAddress) {
-        Memory::currentPMM->report();
+        //Memory::currentPMM->report();
 
         auto task = createKernelTask(reinterpret_cast<uintptr_t>(launchProcess));
         auto oldVMM = Memory::currentVMM;
@@ -255,7 +255,7 @@ namespace Kernel {
         oldVMM->activate();
         LibC_Implementation::KernelHeap = backupHeap;
 
-        Memory::currentPMM->report();
+        //Memory::currentPMM->report();
 
         return task;
     }
@@ -473,7 +473,7 @@ namespace Kernel {
 
         user stack is at kernelStack - 8
         */
-        Memory::currentPMM->report();
+        //Memory::currentPMM->report();
         
         auto kernelStackAddress = (currentTask->context.esp & ~0xFFF) + Memory::PageSize;
         auto kernelStack = reinterpret_cast<uint32_t volatile*>(kernelStackAddress);
@@ -496,7 +496,7 @@ namespace Kernel {
         deleteQueue.append(currentTask);
         unblockTask(cleanupTask);
         
-        Memory::currentPMM->report();
+        //Memory::currentPMM->report();
 
         runNextTask();
     }

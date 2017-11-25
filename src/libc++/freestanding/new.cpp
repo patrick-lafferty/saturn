@@ -39,11 +39,9 @@ void* operator new (std::size_t count, void* ptr) {
 }
 
 void operator delete(void* ptr) {
-    printf("(1) Delete called\n");
     free(ptr);
 }
 
 void operator delete(void* ptr, std::align_val_t alignment) {
-    printf("(3) Aligned Delete called\n");
     free(ptr);
 }

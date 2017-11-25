@@ -280,7 +280,7 @@ namespace Memory {
                 auto status = getPageStatus(start);
 
                 if (status == PageStatus::Mapped) {
-                    printf("[VMM] Unfreed page %x\n", start);
+                    freePages(start, 1);
                 }
             }
         }
@@ -301,18 +301,19 @@ namespace Memory {
             auto clonePhysicalAddress = cloneDirectory.pageTableAddresses[i];
             if ((clonePhysicalAddress & 0xFF) && (clonePhysicalAddress & ~0xFF) && physicalAddress != clonePhysicalAddress) {
                 auto address = 0xFFC00000 + PageSize * i;
-                printf("[VMM] Wants to cleanup %x pg %x, kernel: %x\n", 
+                /*printf("[VMM] Wants to cleanup %x pg %x, kernel: %x\n", 
                     address,
                     clonePhysicalAddress,
-                    directory->pageTableAddresses[i]);
+                    directory->pageTableAddresses[i]);*/
+                bool needsMap = !(physicalAddress & ~0xFF);
 
-                if (!(physicalAddress & ~0xFF)) {
+                if (needsMap) {
                     map(address, clonePhysicalAddress);
                 }
 
                 physicalManager->freePage(address, clonePhysicalAddress);
 
-                if (!(physicalAddress & ~0xFF)) {
+                if (needsMap) {
                     unmap(address, 1);
                 }
             }

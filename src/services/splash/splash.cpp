@@ -12,7 +12,6 @@ namespace Splash {
     }
 
     void service() {
-        sleep(2000);
         Terminal::PrintMessage message {};
         message.serviceType = Kernel::ServiceType::Terminal;
         auto s = "\e[1;40H\e[48;5;4m\e[38;5;9mSaturn OS\n";
