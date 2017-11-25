@@ -55,7 +55,7 @@ namespace Terminal {
             //TODO: how show error if print service can't print
             //print(100, static_cast<int>(ServiceType::Terminal));
         }
-        else if (buffer.messageId == TerminalServiceMeta::MessageId) {
+        else if (buffer.messageId == GenericServiceMeta::MessageId) {
             //print(101, static_cast<int>(ServiceType::Terminal));
             registerMessages();
             messageLoop();

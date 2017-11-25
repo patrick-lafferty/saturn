@@ -6,6 +6,8 @@
 #include <cpu/apic.h>
 #include <scheduler.h>
 #include <system_calls.h>
+#include <services/ps2/ps2.h>
+#include <services.h>
 
 IDT::Entry idt[256];
 IDT::EntryPointer idtPointer;
@@ -265,23 +267,21 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
                 uint16_t statusRegister {0x64};
                 uint16_t dataPort {0x60};
 
-                printf("[IDT] Keyboard ");
-
                 while (full & 0x1) {
                     uint8_t c;
                     asm("inb %1, %0"
                         : "=a" (c)
                         : "Nd" (dataPort));
 
-                    printf("%d ", c);
-
                     asm("inb %1, %0"
                         : "=a" (full)
                         : "Nd" (statusRegister));
 
+                    PS2::KeyboardInput input {};
+                    input.data = c;
+                    input.serviceType = Kernel::ServiceType::PS2;
+                    Kernel::currentScheduler->sendMessage(IPC::RecipientType::ServiceName, &input);
                 }
-
-                printf("\n");
             }
             else if (frame->interruptNumber == 51) {
                 if (APIC::calibrateAPICTimer()) {

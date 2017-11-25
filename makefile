@@ -57,6 +57,8 @@ KERNEL_OBJS = \
 SERVICES_OBJS = \
 	$(SERVICESDIR)/terminal/vga.o \
 	$(SERVICESDIR)/terminal/terminal.o \
+	$(SERVICESDIR)/ps2/ps2.o \
+	$(SERVICESDIR)/keyboard/keyboard.o \
 	$(SERVICESDIR)/splash/splash.o \
 
 OBJS = \

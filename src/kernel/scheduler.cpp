@@ -359,8 +359,10 @@ namespace Kernel {
     }
 
     void Scheduler::sendMessage(IPC::RecipientType recipient, IPC::Message* message) {
-        message->senderTaskId = currentTask->id;
-        //printf("[Scheduler] sendMessage from: %d to: %d\n", currentTask->id, message->recipientId);
+        if (currentTask != nullptr) {
+            //printf("[Scheduler] sendMessage from: %d to: %d\n", currentTask->id, message->recipientId);
+            message->senderTaskId = currentTask->id;
+        }
         //TODO: implement return value for recipient not found?
         uint32_t taskId {0};
 

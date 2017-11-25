@@ -9,7 +9,7 @@ namespace Kernel {
     uint32_t RegisterService::MessageId;
     uint32_t RegisterServiceDenied::MessageId;
     uint32_t VGAServiceMeta::MessageId;
-    uint32_t TerminalServiceMeta::MessageId;
+    uint32_t GenericServiceMeta::MessageId;
 
     ServiceRegistry::ServiceRegistry() {
         auto count = static_cast<uint32_t>(ServiceType::ServiceTypeEnd) + 1;
@@ -21,7 +21,7 @@ namespace Kernel {
         IPC::registerMessage<RegisterService>();
         IPC::registerMessage<RegisterServiceDenied>();
         IPC::registerMessage<VGAServiceMeta>();
-        IPC::registerMessage<TerminalServiceMeta>();
+        IPC::registerMessage<GenericServiceMeta>();
     }
 
     void ServiceRegistry::receiveMessage(IPC::Message* message) {
@@ -72,8 +72,6 @@ namespace Kernel {
                     return;
                 }
 
-                //printf("[ServiceRegistry] Registering VGA Service to task: %d\n", taskId);
-
                 auto vgaPage = task->virtualMemoryManager->allocatePages(1);
                 auto pageFlags = 
                     static_cast<int>(Memory::PageTableFlags::Present)
@@ -88,7 +86,10 @@ namespace Kernel {
 
                 break;
             }
-            case ServiceType::Terminal: {
+            case ServiceType::Terminal:
+            case ServiceType::PS2:
+            case ServiceType::Keyboard:
+            case ServiceType::Mouse: {
 
                 auto task = currentScheduler->getTask(taskId);
 
@@ -97,11 +98,9 @@ namespace Kernel {
                     return;
                 }
 
-                //printf("[ServiceRegistry] Registering Terminal Service to task: %d\n", taskId);
-
-                auto terminalMeta = new TerminalServiceMeta;
-                meta[static_cast<uint32_t>(type)] = terminalMeta;
-                task->mailbox->send(terminalMeta);
+                auto genericMeta = new GenericServiceMeta;
+                meta[static_cast<uint32_t>(type)] = genericMeta;
+                task->mailbox->send(genericMeta);
 
                 break;
             }
