@@ -19,6 +19,7 @@
 #include <services/terminal/terminal.h>
 #include <services/splash/splash.h>
 #include <initialize_libc.h>
+#include <heap.h>
 
 using namespace Kernel;
 using namespace Memory;
@@ -102,6 +103,8 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     //also don't need APIC tables anymore
     //NOTE: if we actually do, copy them before this line to a new address space
     virtualMemManager.unmap(0x7fe0000, (0x8fe0000 - 0x7fe0000) / 0x1000);
+
+    LibC_Implementation::createHeap(PageSize * PageSize);
 
     Kernel::Scheduler scheduler;
 

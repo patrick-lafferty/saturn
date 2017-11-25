@@ -11,6 +11,7 @@
 extern "C" void startProcess(Kernel::Task* task);
 extern "C" void changeProcess(Kernel::Task* current, Kernel::Task* next);
 extern "C" void launchProcess();
+extern "C" void usermodeStub();
 
 uint32_t HACK_TSS_ADDRESS;
 
@@ -185,14 +186,15 @@ namespace Kernel {
         auto oldVMM = Memory::currentVMM;
         auto vmm = Memory::currentVMM->cloneForUsermode();
         task->virtualMemoryManager = vmm;
-        vmm->HACK_setNextAddress(0xd000'0000 - 0x2000);
+        //vmm->HACK_setNextAddress(0xd000'0000 - 0x2000);
         auto backupHeap = LibC_Implementation::KernelHeap;
-        LibC_Implementation::KernelHeap = nullptr;
+        //LibC_Implementation::KernelHeap = nullptr;
         vmm->activate();
-        auto userStackAddress = createStack(true);
         vmm->HACK_setNextAddress(0xa000'0000);
+        LibC_Implementation::createHeap(Memory::PageSize * Memory::PageSize);
+        auto userStackAddress = createStack(true);
         task->heap = LibC_Implementation::KernelHeap;
-        task->heap->HACK_syncPageWithVMM();
+        //task->heap->HACK_syncPageWithVMM();
 
         /*
         Need to adjust the kernel stack because we want to add
@@ -209,6 +211,7 @@ namespace Kernel {
         userStack->eflags = reinterpret_cast<TaskStack volatile*>
             (kernelStackPointer - sizeof(TaskStack))->eflags;
         userStack->eip = functionAddress;
+        //userStackPointer += sizeof(TaskStack);
         
         /*
         createUserTask creates a task that starts inside launchProcess,
@@ -219,7 +222,7 @@ namespace Kernel {
         auto stackExtras = reinterpret_cast<uint32_t volatile*>(kernelStackPointer);
         *stackExtras++ = reinterpret_cast<uint32_t>(vmm);
         *stackExtras++ = reinterpret_cast<uint32_t>(userStackPointer);
-        *stackExtras++ = functionAddress;
+        *stackExtras++ = reinterpret_cast<uint32_t>(usermodeStub);//functionAddress;
 
         oldVMM->activate();
         LibC_Implementation::KernelHeap = backupHeap;
@@ -424,6 +427,31 @@ namespace Kernel {
         }
 
         return nullptr;
+    }
+
+    void Scheduler::exitTask() {
+        /*
+        for usermode tasks, the things we need to cleanup:
+
+        -kernel stack
+        -free the PID
+        -mailbox
+        -free the space in the taskBuffer
+        -vmm
+        -libc heap
+        -user stack
+
+        user stack is at kernelStack - 8
+        */
+        
+        auto kernelStack = reinterpret_cast<uint32_t volatile*>(currentTask->context.esp);
+        auto userStack = reinterpret_cast<Stack*>(*(kernelStack - 8));
+
+        //delete userStack;
+        scheduleNextTask();
+        readyQueue.remove(currentTask);
+        runNextTask();
+
     }
 
     void Scheduler::enterIdle() {

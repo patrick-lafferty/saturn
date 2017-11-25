@@ -17,6 +17,5 @@ namespace Splash {
         auto s = "\e[1;40H\e[48;5;4m\e[38;5;9mSaturn OS\n";
         memcpy(message.buffer, s, 48);
         send(IPC::RecipientType::ServiceName, &message);
-        while(true);
     }
 }

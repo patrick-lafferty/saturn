@@ -5,6 +5,7 @@
 #include <memory/virtual_memory_manager.h>
 #include <cpu/apic.h>
 #include <scheduler.h>
+#include <system_calls.h>
 
 IDT::Entry idt[256];
 IDT::EntryPointer idtPointer;
@@ -157,12 +158,16 @@ void handlePageFault(uintptr_t virtualAddress, uint32_t errorCode) {
 void handleSystemCall(CPU::InterruptStackFrame* frame) {
 
     switch(frame->eax) {
-        case 1: {
+        case static_cast<uint32_t>(SystemCall::Exit): {
+            Kernel::currentScheduler->exitTask();
+            break;
+        }
+        case static_cast<uint32_t>(SystemCall::Sleep): {
             Kernel::currentScheduler->blockTask(Kernel::BlockReason::Sleep, frame->ebx);
             break;
         }
 
-        case 2: {
+        /*case 2: {
             if (frame->ebx == 100) {
                 printf("[IDT] Registering service %d failed\n", frame->ecx);
             }
@@ -170,7 +175,7 @@ void handleSystemCall(CPU::InterruptStackFrame* frame) {
                 printf("[IDT] Registering service %d succeded\n", frame->ecx);
             }
             break;
-        }
+        }*/
         case 3: {
             Kernel::currentScheduler->sendMessage(static_cast<IPC::RecipientType>(frame->ebx), reinterpret_cast<IPC::Message*>(frame->ecx));
             break;

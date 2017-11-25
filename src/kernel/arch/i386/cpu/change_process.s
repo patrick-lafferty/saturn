@@ -109,6 +109,7 @@ launchProcess:
     mov fs, ax
     mov gs, ax
 
+
     push 0x23 ; usermode data segment
     push ecx ; user esp
     pushfd ; eflags
@@ -116,6 +117,22 @@ launchProcess:
     push ebx ; user eip
 
     iret
+
+endTask:
+    mov eax, 1
+    int 0xFF
+
+global usermodeStub
+usermodeStub:
+
+    add esp, 20
+    pop ebx
+
+    call ebx
+
+    call endTask
+    ret
+
 
 global fillTSS
 fillTSS:

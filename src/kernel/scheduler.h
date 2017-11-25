@@ -168,6 +168,7 @@ namespace Kernel {
         void receiveMessage(IPC::Message* buffer);
 
         Task* getTask(uint32_t taskId);
+        void exitTask();
 
     private:
 
