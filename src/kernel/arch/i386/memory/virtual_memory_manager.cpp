@@ -270,4 +270,56 @@ namespace Memory {
         return virtualMemoryManager;
     }
 
+    void VirtualMemoryManager::cleanup() {
+
+        for(auto start = 0xa000'0000; start < 0xd000'0000; start += 0x1000) {
+            auto directoryIndex = extractDirectoryIndex(start);
+
+            //if the pageTable for this address wasn't even allocated, don't bother doing anything
+            if (directory->pageTableAddresses[directoryIndex] != 0) {
+                auto status = getPageStatus(start);
+
+                if (status == PageStatus::Mapped) {
+                    printf("[VMM] Unfreed page %x\n", start);
+                }
+            }
+        }
+
+        physicalManager->freePage(0xFFFFF000, directoryPhysicalAddress);
+    }
+
+    void VirtualMemoryManager::cleanupClonePageTables(PageDirectory& cloneDirectory, uint32_t kernelStackAddress) {
+
+        auto kernelPageTable = extractDirectoryIndex(kernelStackAddress);
+
+        for (auto i = 0; i < 0x3FF; i++) {
+            if (i == kernelPageTable) {
+                continue;
+            }
+
+            auto physicalAddress = directory->pageTableAddresses[i];
+            auto clonePhysicalAddress = cloneDirectory.pageTableAddresses[i];
+            if ((clonePhysicalAddress & 0xFF) && (clonePhysicalAddress & ~0xFF) && physicalAddress != clonePhysicalAddress) {
+                auto address = 0xFFC00000 + PageSize * i;
+                printf("[VMM] Wants to cleanup %x pg %x, kernel: %x\n", 
+                    address,
+                    clonePhysicalAddress,
+                    directory->pageTableAddresses[i]);
+
+                if (!(physicalAddress & ~0xFF)) {
+                    map(address, clonePhysicalAddress);
+                }
+
+                physicalManager->freePage(address, clonePhysicalAddress);
+
+                if (!(physicalAddress & ~0xFF)) {
+                    unmap(address, 1);
+                }
+            }
+        }
+    }
+
+    PageDirectory VirtualMemoryManager::getPageDirectory() {
+        return *directory;
+    }
 }

@@ -56,6 +56,10 @@ namespace Memory {
     class VirtualMemoryManager {
     public:
 
+        void cleanup();
+        void cleanupClonePageTables(PageDirectory& cloneDirectory, uint32_t kernelStackAddress);
+        PageDirectory getPageDirectory();
+
         /*
         Only called once, when kernel_main starts. The pre-kernel setup
         creates a PhysicalMemoryManager at a low address, and once

@@ -26,6 +26,10 @@ namespace Kernel {
         }
     }
 
+    void cleanupTasksService() {
+        currentScheduler->cleanupTasks();
+    }
+
     struct alignas(0x1000) Stack {
 
     };
@@ -40,9 +44,32 @@ namespace Kernel {
 
         taskBuffer = new Task[10];
         startTask = createKernelTask(reinterpret_cast<uint32_t>(idleLoop));
+        cleanupTask = createKernelTask(reinterpret_cast<uint32_t>(cleanupTasksService));
+        cleanupTask->state = TaskState::Blocked;
+        blockedQueue.append(cleanupTask);
 
         elapsedTime_milliseconds = 0;
         timeslice_milliseconds = 10;
+        kernelHeap = LibC_Implementation::KernelHeap;
+        kernelVMM = Memory::currentVMM;
+    }
+
+    void Scheduler::cleanupTasks() {
+        while (true) {
+            auto task = deleteQueue.getHead();
+
+            while (task != nullptr) {
+                auto kernelStackAddress = (task->context.kernelESP & ~0xFFF);
+                delete reinterpret_cast<Stack*>(kernelStackAddress);
+                printf("[Scheduler] Cleaned up task\n");
+                Memory::currentPMM->report();
+                auto next = task->nextTask;
+                deleteQueue.remove(task);
+                task = next;
+            }
+
+            blockTask(BlockReason::WaitingForMessage, 0);
+        }
     }
 
     void Scheduler::scheduleNextTask() {
@@ -140,12 +167,10 @@ namespace Kernel {
 
         const uint32_t mailboxSize = Memory::PageSize;
         auto mailboxMemory = task->heap->allocate(mailboxSize);
-        //printf("[Scheduler] Mailbox address: %x\n", mailboxMemory);
 
         task->mailbox = new (mailboxMemory) 
             IPC::Mailbox(reinterpret_cast<uint32_t>(mailboxMemory) + sizeof(IPC::Mailbox), 
             mailboxSize - sizeof(IPC::Mailbox));
-
 
         taskBuffer++;
 
@@ -157,7 +182,7 @@ namespace Kernel {
     that launchProcess uses to run the actual user code. So we need to move
     the kernel stack up a bit to fit those arguments at the bottom of the stack.
     */
-    uint8_t volatile* adjustStack(Task* task) {
+    uint8_t volatile* adjustStack(Task* task, uint32_t offset) {
         auto address = task->context.esp;
         uint8_t volatile* stackPointer = static_cast<uint8_t volatile*>
             (reinterpret_cast<void volatile*>(address));
@@ -171,7 +196,7 @@ namespace Kernel {
             *stackPointer = 0;
         }
 
-        stackPointer -= 12;
+        stackPointer -= offset;
         stack = reinterpret_cast<TaskStack volatile*>(stackPointer);
 
         stack->eflags = eflags;
@@ -183,6 +208,8 @@ namespace Kernel {
     }
 
     Task* Scheduler::createUserTask(uintptr_t functionAddress) {
+        Memory::currentPMM->report();
+
         auto task = createKernelTask(reinterpret_cast<uintptr_t>(launchProcess));
         auto oldVMM = Memory::currentVMM;
         auto vmm = Memory::currentVMM->cloneForUsermode();
@@ -201,7 +228,7 @@ namespace Kernel {
         Need to adjust the kernel stack because we want to add
         userESP and userEIP to the top
         */
-        auto kernelStackPointer = adjustStack(task);
+        auto kernelStackPointer = adjustStack(task, 12);
 
         uint8_t volatile* userStackPointer = static_cast<uint8_t volatile*>
             (reinterpret_cast<void volatile*>(userStackAddress + 4096));
@@ -227,6 +254,8 @@ namespace Kernel {
 
         oldVMM->activate();
         LibC_Implementation::KernelHeap = backupHeap;
+
+        Memory::currentPMM->report();
 
         return task;
     }
@@ -444,18 +473,32 @@ namespace Kernel {
 
         user stack is at kernelStack - 8
         */
+        Memory::currentPMM->report();
         
-        auto kernelStack = reinterpret_cast<uint32_t volatile*>((currentTask->context.esp & ~0xFFF) + Memory::PageSize);
+        auto kernelStackAddress = (currentTask->context.esp & ~0xFFF) + Memory::PageSize;
+        auto kernelStack = reinterpret_cast<uint32_t volatile*>(kernelStackAddress);
         auto userStackAddress = *(kernelStack - 2) & ~0xFFF;
         auto userStack = reinterpret_cast<Stack*>(userStackAddress);
 
-        //free(userStack);
         delete userStack;
-        Memory::currentPMM->report();
+        //currentTask->virtualMemoryManager->freePages(reinterpret_cast<uint32_t>(currentTask->heap), 1);
+        auto pageDirectory = currentTask->virtualMemoryManager->getPageDirectory();
+        currentTask->virtualMemoryManager->cleanup();
+        kernelVMM->activate();
+        LibC_Implementation::KernelHeap = kernelHeap;
+        kernelVMM->cleanupClonePageTables(pageDirectory, kernelStackAddress - Memory::PageSize);
+        delete currentTask->virtualMemoryManager;
+        kernelHeap->free(currentTask->mailbox);
+        //TODO: free task pid
+
         scheduleNextTask();
         readyQueue.remove(currentTask);
-        runNextTask();
+        deleteQueue.append(currentTask);
+        unblockTask(cleanupTask);
+        
+        Memory::currentPMM->report();
 
+        runNextTask();
     }
 
     void Scheduler::enterIdle() {

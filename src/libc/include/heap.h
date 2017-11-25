@@ -6,6 +6,8 @@
 namespace LibC_Implementation {
 
     struct ChunkHeader {
+        uint32_t magic {0xabababab};
+        uint32_t magic2 {0xcdcdcdcd};
         uint32_t size : 31;
         bool free : 1;
         ChunkHeader* next;

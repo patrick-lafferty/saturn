@@ -46,20 +46,22 @@ namespace LibC_Implementation {
             auto chunkEndAddress = startingAddress + chunk->size;
 
             if ((alignedAddress + size) < chunkEndAddress) {
-                if (alignedAddress - startingAddress < sizeof(ChunkHeader)) {
+                //TODO: this should never be true
+                if ((alignedAddress - startingAddress) < sizeof(ChunkHeader)) {
                     //TODO: not enough space to split chunk, wat do
                     printf("[HEAP] aligned_allocate not enough space in this chunk??\n");
                 }
                 else {
                     auto alignedChunk = reinterpret_cast<ChunkHeader*>(alignedAddress - sizeof(ChunkHeader));
-                    alignedChunk->size = chunkEndAddress - alignedAddress;
+                    alignedChunk->size = chunkEndAddress - alignedAddress;// - sizeof(ChunkHeader);
                     alignedChunk->free = true;
                     alignedChunk->previous = chunk;
                     
                     if (chunk->next != nullptr) {
                         alignedChunk->next = chunk->next;
                     }
-
+                    
+                    chunk->size = alignedAddress - startingAddress - sizeof(ChunkHeader);
                     chunk->next = alignedChunk;
 
                     return allocate(alignedChunk, size);
@@ -86,6 +88,8 @@ namespace LibC_Implementation {
                 if (chunk->free && chunk->size >= size) {
                     return chunk;
                 }                
+
+                chunk = chunk->next;
             }
         }
 
@@ -99,7 +103,7 @@ namespace LibC_Implementation {
         //pages are already allocated
         auto currentAddress = reinterpret_cast<uint32_t>(chunk);
         currentAddress += sizeof(ChunkHeader);
-        uint32_t allocatedAddress = allocatedAddress = currentAddress;
+        uint32_t allocatedAddress = currentAddress;
         currentAddress += size;
 
         if (chunk->size > size + sizeof(ChunkHeader)) {
@@ -109,14 +113,11 @@ namespace LibC_Implementation {
             nextChunk->free = true;
             nextChunk->previous = chunk;
 
-            if (chunk->next == nullptr) {
-                chunk->next = nextChunk;
-            }
-            else {
+            if (chunk->next != nullptr) {
                 nextChunk->next = chunk->next;
-                chunk->next = nextChunk;
             }
 
+            chunk->next = nextChunk;
             chunk->size = size;
 
             nextFreeChunk = nextChunk;
@@ -171,7 +172,7 @@ namespace LibC_Implementation {
             chunk = combineChunkWithNext(chunk->previous);
         }
 
-        if (chunk->next->free) {
+        if (chunk->next != nullptr && chunk->next->free) {
             chunk = combineChunkWithNext(chunk);
         }
 
@@ -182,7 +183,10 @@ namespace LibC_Implementation {
 
         if (alignedAddress < chunkEndAddress) {
             auto pagesToFree = (chunkEndAddress - alignedAddress) / PageSize;
-            Memory::currentVMM->freePages(alignedAddress, pagesToFree);
+
+            if (pagesToFree > 0) {
+                Memory::currentVMM->freePages(alignedAddress, pagesToFree);
+            }
         }
     }
 
