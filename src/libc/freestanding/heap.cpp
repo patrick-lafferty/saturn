@@ -48,22 +48,26 @@ namespace LibC_Implementation {
             if ((alignedAddress + size) < chunkEndAddress) {
                 if (alignedAddress - startingAddress < sizeof(ChunkHeader)) {
                     //TODO: not enough space to split chunk, wat do
+                    printf("[HEAP] aligned_allocate not enough space in this chunk??\n");
                 }
                 else {
                     auto alignedChunk = reinterpret_cast<ChunkHeader*>(alignedAddress - sizeof(ChunkHeader));
                     alignedChunk->size = chunkEndAddress - alignedAddress;
                     alignedChunk->free = true;
+                    alignedChunk->previous = chunk;
                     
                     if (chunk->next != nullptr) {
                         alignedChunk->next = chunk->next;
-                        chunk->next = alignedChunk;
                     }
+
+                    chunk->next = alignedChunk;
 
                     return allocate(alignedChunk, size);
                 }
             }
             else {
                 //TODO: need to find another chunk
+                    printf("[HEAP] aligned_allocate need to find another chunk??\n");
             }
         }
         else {
@@ -103,6 +107,7 @@ namespace LibC_Implementation {
             ChunkHeader* nextChunk = reinterpret_cast<ChunkHeader*>(currentAddress);
             nextChunk->size = chunk->size - size - sizeof(ChunkHeader);
             nextChunk->free = true;
+            nextChunk->previous = chunk;
 
             if (chunk->next == nullptr) {
                 chunk->next = nextChunk;
@@ -162,7 +167,7 @@ namespace LibC_Implementation {
         auto chunk = reinterpret_cast<ChunkHeader*>(reinterpret_cast<uint32_t>(ptr) - sizeof(ChunkHeader));
         chunk->free = true;
 
-        if (chunk->previous->free) {
+        if (chunk->previous != nullptr && chunk->previous->free) {
             chunk = combineChunkWithNext(chunk->previous);
         }
 
@@ -184,6 +189,7 @@ namespace LibC_Implementation {
     ChunkHeader* Heap::combineChunkWithNext(ChunkHeader* chunk) {
         chunk->size += chunk->next->size + sizeof(ChunkHeader);
         chunk->next = chunk->next->next;
+        return chunk;
     }
 
     void Heap::HACK_syncPageWithVMM() {

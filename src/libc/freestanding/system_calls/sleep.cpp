@@ -1,7 +1,7 @@
 #include <system_calls.h>
 
 void sleep(uint32_t milliseconds) {
-    uint32_t systemCall = 1;
+    uint32_t systemCall = static_cast<uint32_t>(SystemCall::Sleep);
 
     asm volatile("int $0xFF"
         : //no outputs

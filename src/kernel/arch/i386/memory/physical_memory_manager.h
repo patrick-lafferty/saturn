@@ -52,7 +52,13 @@ namespace Memory {
         page and get the physical address of the next page
         */
         void finishAllocation(uintptr_t pageAddress, uint32_t count);
+        
+        #if TARGET_PREKERNEL
         void freePage(uintptr_t pageAddress, uint32_t count);
+        #else
+        void freePage(uintptr_t virtualAddress, uintptr_t physicalAddress);
+        #endif
+
         void report();
 
     private:

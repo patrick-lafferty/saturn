@@ -107,6 +107,8 @@ namespace Memory {
         */
         void unmap(uintptr_t virtualAddress, uint32_t count);
 
+        void freePages(uintptr_t virtualAddress, uint32_t count);
+
         /*
         enables paging and sets this VMM's directory as the current one
         reassigns directory to use the virtual address instead of physical

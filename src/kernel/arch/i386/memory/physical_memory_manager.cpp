@@ -52,8 +52,6 @@ namespace Memory {
             freePage(0x8000, 1);
             totalPages++;
         }
-
-        //printf("[PMM] Created %d pages, total physical memory: %dKB\n", totalPages, totalPages * PageSize / 1024);
     }
     #endif
     
@@ -91,6 +89,7 @@ namespace Memory {
             freePages, freePages * PageSize / 1024);
     }
 
+    #if TARGET_PREKERNEL
     void PhysicalMemoryManager::freePage(uintptr_t pageAddress, uint32_t count) {
 
         if (freePages == totalPages) {
@@ -109,4 +108,16 @@ namespace Memory {
         allocatedPages -= count;
         freePages += count;
     }
+
+    #else
+
+    void PhysicalMemoryManager::freePage(uintptr_t virtualAddress, uintptr_t physicalAddress) {
+        auto page = static_cast<Page volatile*>(reinterpret_cast<void*>(virtualAddress & ~0xfff));
+        page->nextFreePage = nextFreeAddress;
+        nextFreeAddress = physicalAddress;
+        allocatedPages--;
+        freePages++;
+    }
+
+    #endif
 }

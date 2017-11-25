@@ -17,4 +17,5 @@ void* operator new(std::size_t count, std::align_val_t alignment);
 void* operator new (std::size_t count, void* ptr);
 
 //replaceable usual deallocation functions
+void operator delete(void* ptr);
 void operator delete(void* ptr, std::align_val_t alignment);

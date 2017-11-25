@@ -183,6 +183,32 @@ namespace Memory {
         updateCR3Address(directory);
     }
 
+    void VirtualMemoryManager::freePages(uintptr_t virtualAddress, uint32_t count) {
+        auto end = virtualAddress + count * 0x1000;
+        for(auto address = virtualAddress; address < end; address += 0x1000) {
+
+            auto directoryIndex = extractDirectoryIndex(address);
+
+            //if the pageTable for this address wasn't even allocated, don't bother doing anything
+            if (directory->pageTableAddresses[directoryIndex] != 0) {
+                auto pageTableAddress = calculatePageTableAddress(address);
+                auto pageTable = static_cast<PageTable*>(reinterpret_cast<void*>(pageTableAddress));
+                auto tableIndex = extractTableIndex(address);
+
+                if (getPageStatus(address) == PageStatus::Mapped) {
+                    auto physicalAddress = pageTable->pageAddresses[tableIndex]; 
+                    physicalManager->freePage(address, physicalAddress);
+                } 
+
+                pageTable->pageAddresses[tableIndex] &= 0xFF;  
+            }
+
+            
+        }
+
+        updateCR3Address(directory);
+    }
+
     PageStatus VirtualMemoryManager::getPageStatus(uintptr_t virtualAddress) {
         
         auto pageTableAddress = calculatePageTableAddress(virtualAddress);

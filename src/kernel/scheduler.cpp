@@ -7,6 +7,7 @@
 #include "ipc.h"
 #include <new.h>
 #include <services.h>
+#include <stdlib.h>
 
 extern "C" void startProcess(Kernel::Task* task);
 extern "C" void changeProcess(Kernel::Task* current, Kernel::Task* next);
@@ -444,10 +445,13 @@ namespace Kernel {
         user stack is at kernelStack - 8
         */
         
-        auto kernelStack = reinterpret_cast<uint32_t volatile*>(currentTask->context.esp);
-        auto userStack = reinterpret_cast<Stack*>(*(kernelStack - 8));
+        auto kernelStack = reinterpret_cast<uint32_t volatile*>((currentTask->context.esp & ~0xFFF) + Memory::PageSize);
+        auto userStackAddress = *(kernelStack - 2) & ~0xFFF;
+        auto userStack = reinterpret_cast<Stack*>(userStackAddress);
 
-        //delete userStack;
+        //free(userStack);
+        delete userStack;
+        Memory::currentPMM->report();
         scheduleNextTask();
         readyQueue.remove(currentTask);
         runNextTask();
