@@ -20,7 +20,8 @@ namespace PS2 {
     void printDebugString(char* s) {
         Terminal::PrintMessage message {};
         message.serviceType = Kernel::ServiceType::Terminal;
-        memcpy(message.buffer, s, strlen(s));
+        message.stringLength = strlen(s);
+        memcpy(message.buffer, s, message.stringLength);
         send(IPC::RecipientType::ServiceName, &message);
     }
 
@@ -31,17 +32,22 @@ namespace PS2 {
         F0,
     };
 
+    void sendToKeyboard(PhysicalKey key, KeyStatus status) {
+        Keyboard::KeyEvent event {};
+        event.serviceType = ServiceType::Keyboard;
+        event.key = key;
+        event.status = status;
+               
+        send(IPC::RecipientType::ServiceName, &event);
+    }
+
     KeyboardStates transitionKeyboardState(KeyboardStates initial, uint8_t data) {
         switch(initial) {
             case KeyboardStates::Start: {
 
                 if (data < 0x7E) {
                     auto key = static_cast<PhysicalKey>(data);
-                    Keyboard::KeyEvent event {};
-                    event.serviceType = ServiceType::Keyboard;
-                    event.key = key;
-                    event.status = KeyStatus::Pressed;
-                    //send(IPC::RecipientType::ServiceName, &event);
+                    sendToKeyboard(key, KeyStatus::Pressed);
 
                     return KeyboardStates::Start;
                 }
@@ -52,8 +58,10 @@ namespace PS2 {
                 break;
             }
             case KeyboardStates::F0: {
+                auto key = static_cast<PhysicalKey>(data);
+                sendToKeyboard(key, KeyStatus::Released);
+
                 return KeyboardStates::Start;
-                break;
             }
         }
 
@@ -70,13 +78,6 @@ namespace PS2 {
 
             if (buffer.messageId == KeyboardInput::MessageId) {
                 auto input = IPC::extractMessage<KeyboardInput>(buffer);
-                char s[5];
-                s[0] = '0' + (char)((input.data / 100) % 10);
-                s[1] = '0' + (char)((input.data / 10) % 10);
-                s[2] = '0' + (char)(input.data % 10);
-                s[3] = ' ';
-                s[4] = '\0';
-                printDebugString(s);
                 keyboardState = transitionKeyboardState(keyboardState, input.data);
             }
             else if (buffer.messageId == MouseInput::MessageId) {
