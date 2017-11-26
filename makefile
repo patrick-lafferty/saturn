@@ -61,11 +61,14 @@ SERVICES_OBJS = \
 	$(SERVICESDIR)/keyboard/keyboard.o \
 	$(SERVICESDIR)/splash/splash.o \
 
+include src/userland/make.config
+
 OBJS = \
 	$(ARCHDIR)/crti.o \
 	$(shell $(CC) $(CFLAGS) -m32 -print-file-name=crtbegin.o) \
 	$(KERNEL_OBJS) \
 	$(SERVICES_OBJS) \
+	$(USERLAND_OBJS) \
 	$(shell $(CC) $(CFLAGS) -m32 -print-file-name=crtend.o) \
 	$(ARCHDIR)/crtn.o
 
@@ -80,7 +83,8 @@ DEPS = \
 	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(LIBC_FREE_OBJS))) \
 	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(TEST_LIBC_FREE_OBJS))) \
 	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(LIBC++_FREE_OBJS))) \
-	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(TEST_LIBC++_FREE_OBJS)))
+	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(TEST_LIBC++_FREE_OBJS))) \
+	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(USERLAND_OBJS)))
 
 include src/libc/make.config
 include test/libc/make.config
@@ -90,7 +94,7 @@ include test/libc++/make.config
 
 $(shell mkdir -p $(dir $(DEPS)) >/dev/null)
 
-LIBS = -lc_test_freestanding -lc++_test_freestanding -lc++_freestanding -lc_freestanding 
+LIBS = -lc_test_freestanding -lc++_test_freestanding -lc++_freestanding -lc_freestanding -luserland 
 
 LINK_LIST = \
 	$(LDFLAGS) \
@@ -114,7 +118,7 @@ sysroot:
 	$(MKDIR) sysroot/system/lib
 	$(MKDIR) sysroot/system/include
 
-saturn.bin: libc test_libc libc++ test_libc++ $(OBJS) $(ARCHDIR)/linker.ld
+saturn.bin: libc test_libc libc++ test_libc++ userland $(OBJS) $(ARCHDIR)/linker.ld
 	$(LD) -T $(ARCHDIR)/linker.ld -o sysroot/system/boot/$@ $(LINK_LIST) $(LDFLAGS) 
 
 libc: $(LIBC_FREE_OBJS)
@@ -138,6 +142,11 @@ test_libc++: $(TEST_LIBC++_FREE_OBJS)
 	$(AR) rcs test/libc++/libc++_test_freestanding.a $(TEST_LIBC++_FREE_OBJS)
 	ranlib test/libc++/libc++_test_freestanding.a
 	cp test/libc++/libc++_test_freestanding.a sysroot/system/lib
+
+userland: $(USERLAND_OBJS)
+	$(AR) rcs src/userland/libuserland.a $(USERLAND_OBJS)
+	ranlib src/userland/libuserland.a
+	cp src/userland/libuserland.a sysroot/system/lib
 
 %.o: %.s
 	$(AS) $< -o $@ $(ASFLAGS)
