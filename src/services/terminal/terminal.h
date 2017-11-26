@@ -49,6 +49,7 @@ namespace Terminal {
     struct DirtyRect {
         uint32_t startIndex {0};
         uint32_t endIndex {0};
+        bool overflowed {false};
     };
 
     enum class CSIFinalByte {

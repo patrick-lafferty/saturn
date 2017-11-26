@@ -79,6 +79,13 @@ namespace Terminal {
                 auto iterator = message.buffer;
                 auto index = emulator.getIndex();
                 auto dirty = emulator.interpret(iterator, message.stringLength);
+
+                if (dirty.overflowed) {
+                    ScrollScreen scroll {};
+                    scroll.serviceType = ServiceType::VGA;
+                    send(IPC::RecipientType::ServiceName, &scroll);
+                }
+
                 index = dirty.startIndex;
                 uint32_t count{dirty.endIndex};
                 BlitMessage blit;
@@ -175,6 +182,7 @@ namespace Terminal {
         }
 
         if (row >= Height) {
+            dirty.overflowed = true;
             auto byteCount = sizeof(uint16_t) * Width * (Height - 1);
             memcpy(buffer, buffer + Width, byteCount);
 
@@ -359,6 +367,7 @@ namespace Terminal {
         //DirtyRect dirty {};
         dirty.startIndex = getIndex();
         dirty.endIndex = 0;
+        dirty.overflowed = false;
 
         while (count >= 0 && *buffer != 0) {
             count--;

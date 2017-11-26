@@ -19,6 +19,15 @@ namespace VGA {
         uint32_t count {0};
     };
 
+    struct ScrollScreen : IPC::Message {
+        ScrollScreen() {
+            messageId = MessageId;
+            length = sizeof(ScrollScreen);
+        }
+
+        static uint32_t MessageId;
+    };
+
     enum class Colours {
         Black = 0,
         DarkBlue,

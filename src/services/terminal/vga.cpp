@@ -8,9 +8,11 @@ using namespace Kernel;
 namespace VGA {
 
     uint32_t BlitMessage::MessageId;
+    uint32_t ScrollScreen::MessageId;
 
     void registerMessages() {
         IPC::registerMessage<BlitMessage>();
+        IPC::registerMessage<ScrollScreen>();
     }
 
     void messageLoop(uint32_t address) {
@@ -24,6 +26,17 @@ namespace VGA {
             if (buffer.messageId == BlitMessage::MessageId) {
                 auto message = IPC::extractMessage<BlitMessage>(buffer);
                 memcpy(vgaBuffer + message.index, message.buffer, sizeof(uint16_t) * message.count);
+            }
+            else if (buffer.messageId == ScrollScreen::MessageId) {
+                auto byteCount = sizeof(uint16_t) * Width * (Height - 1);
+                memcpy(vgaBuffer, vgaBuffer + Width, byteCount);
+
+                auto row = Height - 1;
+
+                for (uint32_t x = 0; x < Width; x++) {
+                    auto index = row * Width + x;
+                    vgaBuffer[index] = 0;
+                }
             }
         }
     }
@@ -39,11 +52,9 @@ namespace VGA {
 
         if (buffer.messageId == RegisterServiceDenied::MessageId) {
             //can't print to screen, how to notify?
-            //print(100, static_cast<int>(ServiceType::VGA));
         }
         else if (buffer.messageId == VGAServiceMeta::MessageId) {
 
-            //print(101, static_cast<int>(ServiceType::VGA));
             registerMessages();
 
             auto vgaMeta = IPC::extractMessage<VGAServiceMeta>(buffer);
