@@ -14,6 +14,7 @@ namespace Terminal {
 
         static uint32_t MessageId;
         char buffer[128];
+        uint32_t stringLength {0};
     };
 
     struct DirtyRect {

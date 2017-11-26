@@ -28,7 +28,7 @@ namespace Terminal {
                 auto message = IPC::extractMessage<PrintMessage>(buffer);
                 auto iterator = message.buffer;
                 auto index = emulator.getIndex();
-                auto dirty = emulator.interpret(iterator, message.length);
+                auto dirty = emulator.interpret(iterator, message.stringLength);
                 index = dirty.startIndex;
                 uint32_t count{dirty.endIndex};
                 BlitMessage blit;
