@@ -263,26 +263,29 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
             //io apic irq
 
             if (frame->interruptNumber == 49) {
-                uint8_t full {1};
+                uint8_t full {0};
                 uint16_t statusRegister {0x64};
                 uint16_t dataPort {0x60};
 
                 //TODO: if this is slow, put this in the ps2 service. can't right now since IOPB isn't supported
-                while (full & 0x1) {
-                    uint8_t c;
-                    asm("inb %1, %0"
-                        : "=a" (c)
-                        : "Nd" (dataPort));
-
-                    asm("inb %1, %0"
+                do {
+                     asm("inb %1, %0"
                         : "=a" (full)
                         : "Nd" (statusRegister));
 
-                    PS2::KeyboardInput input {};
-                    input.data = c;
-                    input.serviceType = Kernel::ServiceType::PS2;
-                    Kernel::currentScheduler->sendMessage(IPC::RecipientType::ServiceName, &input);
-                }
+                    if (full & 0x1) {
+                        uint8_t c;
+                        asm("inb %1, %0"
+                            : "=a" (c)
+                            : "Nd" (dataPort));
+
+                        PS2::KeyboardInput input {};
+                        input.data = c;
+                        input.serviceType = Kernel::ServiceType::PS2;
+                        Kernel::currentScheduler->sendMessage(IPC::RecipientType::ServiceName, &input);
+                    }
+
+                } while (full & 0x1);
             }
             else if (frame->interruptNumber == 51) {
                 if (APIC::calibrateAPICTimer()) {
