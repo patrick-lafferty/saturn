@@ -90,6 +90,7 @@ namespace Shell {
                 c = getChar();
 
                 clearCursor(index + promptLength + 1);
+                print("\e[38;5;15m");
 
                 switch(c) {
                     case 8: {
@@ -107,16 +108,19 @@ namespace Shell {
                     case 13: {
                         print("\n");
 
-                        if (strcmp(inputBuffer, "help") == 0) {
-                            print("Available commands:\n");
-                            print("help\n");
-                            print("version\n");
-                        }
-                        else if (strcmp(inputBuffer, "version") == 0) {
-                            print("Saturn 0.1.0\n");
-                        }
-                        else {
-                            print("Unknown command\n");
+                        if (index > 0) {
+                        
+                            if (strcmp(inputBuffer, "help") == 0) {
+                                print("Available commands:\n");
+                                print("help\n");
+                                print("version\n");
+                            }
+                            else if (strcmp(inputBuffer, "version") == 0) {
+                                print("Saturn 0.1.0\n");
+                            }
+                            else {
+                                print("Unknown command\n");
+                            }
                         }
                         
                         print("\n");
