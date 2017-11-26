@@ -10,6 +10,7 @@ namespace Shell {
         Terminal::PrintMessage message {};
         message.serviceType = Kernel::ServiceType::Terminal;
         message.stringLength = strlen(s);
+        memset(message.buffer, 0, sizeof(message.buffer));
         memcpy(message.buffer, s, message.stringLength);
         send(IPC::RecipientType::ServiceName, &message);
     }
@@ -36,13 +37,38 @@ namespace Shell {
         return 0;
     }
 
+    void moveCursor(int column) {
+        if (column >= 10) {
+            char s[] = {
+                '\e',
+                '[',
+                (char)('0' + column / 10 % 10),
+                (char)('0' + column % 10),
+                'G',
+                '\0'
+            };
+            print(s);
+        }
+        else {
+            char s[] = {
+                '\e',
+                '[',
+                (char)('0' + column % 10),
+                'G',
+                '\0'
+            };
+            print(s);
+        }
+    }
+
     int main() {
 
         char inputBuffer[1000];
         uint32_t index {0};
+        auto prompt = "\e[38;5;9mshell> \e[38;5;15m";
 
         while (true) {
-            print("\e[38;5;9mshell> \e[38;5;15m");
+            print(prompt);
 
             uint8_t c {0};
 
@@ -52,8 +78,12 @@ namespace Shell {
                 switch(c) {
                     case 8: {
                         if (index > 0) {
+                            int a = index + 7;
+                            moveCursor(a);
+                            print(" ");
+                            moveCursor(a);
+
                             index--;
-                            //print("\e[1;");
                         }
                         break;
                     }
@@ -67,6 +97,9 @@ namespace Shell {
                         }
                         else if (strcmp(inputBuffer, "version") == 0) {
                             print("Saturn 0.1.0\n");
+                        }
+                        else {
+                            print("Unknown command\n");
                         }
                         
                         print("\n");

@@ -115,7 +115,7 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(Terminal::service)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(PS2::service)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(Keyboard::service)));
-    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(Splash::service)));
+    //scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(Splash::service)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(Shell::main)));
 
     scheduler.enterIdle();

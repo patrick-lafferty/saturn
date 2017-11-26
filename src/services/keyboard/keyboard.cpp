@@ -92,6 +92,7 @@ namespace Keyboard {
         en_US[0x5D] = {'\\', '|'};
 
         en_US[0x5A] = {13, 13};
+        en_US[0x66] = {8, 8};
     }
 
     struct ModifierStatus {
