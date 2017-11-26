@@ -39,17 +39,6 @@ struct MemManagerAddresses {
     uint32_t virtualManager;
 };
 
-void testTerminalEmulator() {
-    while (true) {
-        Terminal::PrintMessage message {};
-        message.serviceType = ServiceType::Terminal;
-        auto s = "\e[1;10H\e[48;5;4m\e[38;5;5mHello \e[38;5;2mworld\n";
-        memcpy(message.buffer, s, 48);
-        send(IPC::RecipientType::ServiceName, &message);
-        sleep(1000);
-    }
-}
-
 extern "C" int kernel_main(MemManagerAddresses* addresses) {
     initializeLibC();
     /*
