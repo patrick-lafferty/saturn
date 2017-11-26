@@ -11,14 +11,64 @@ using namespace Kernel;
 namespace Terminal {
 
     uint32_t PrintMessage::MessageId;
+    uint32_t KeyPress::MessageId;
+    uint32_t GetCharacter::MessageId;
+    uint32_t CharacterInput::MessageId;
 
     void registerMessages() {
         IPC::registerMessage<PrintMessage>();
+        IPC::registerMessage<KeyPress>();
+        IPC::registerMessage<GetCharacter>();
+        IPC::registerMessage<CharacterInput>();
     }
+    
+    class InputQueue {
+    public:
+        
+        void add(char c) {
+            buffer[lastWrite] = c;
+            lastWrite++;
+
+            if (lastWrite >= maxLength) {
+                lastWrite = 0;
+            }
+
+            size++;
+
+            if (size >= maxLength) {
+                size = maxLength;
+            }
+        }
+
+        bool inputIsAvailable() {
+            return size > 0;
+        }
+
+        char get() {
+            auto c = buffer[lastRead];
+            lastRead++;
+            size--;
+
+            if (lastRead >= maxLength) {
+                lastRead = 0;
+            }
+
+            return c;
+        }
+
+    private:
+        char buffer[128];
+        const uint32_t maxLength {128};
+        uint32_t lastRead {0};
+        uint32_t lastWrite {0};
+        uint32_t size {0};
+    };
 
     void messageLoop() {
 
         Terminal emulator{new uint16_t[2000]};
+        InputQueue queue;
+        uint32_t taskIdWaitingForInput {0};
         
         while (true) {
             IPC::MaximumMessageBuffer buffer;
@@ -38,6 +88,29 @@ namespace Terminal {
                 memcpy(blit.buffer, emulator.getBuffer() + index, sizeof(uint16_t) * count);
 
                 send(IPC::RecipientType::ServiceName, &blit);
+            }
+            else if (buffer.messageId == KeyPress::MessageId) {
+                auto message = IPC::extractMessage<KeyPress>(buffer);
+                queue.add(message.key);
+
+                if (taskIdWaitingForInput != 0) {
+                    CharacterInput input {};
+                    input.character = queue.get();
+                    input.recipientId = taskIdWaitingForInput;
+                    send(IPC::RecipientType::TaskId, &input);
+                    taskIdWaitingForInput = 0;    
+                }
+            }
+            else if (buffer.messageId == GetCharacter::MessageId) {
+                if (queue.inputIsAvailable()) {
+                    CharacterInput input {};
+                    input.character = queue.get();
+                    input.recipientId = buffer.senderTaskId;
+                    send(IPC::RecipientType::TaskId, &input);
+                }
+                else {
+                    taskIdWaitingForInput = buffer.senderTaskId;
+                }
             }
         }
     }

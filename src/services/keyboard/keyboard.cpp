@@ -90,6 +90,8 @@ namespace Keyboard {
         en_US[0x5B] = {']', '}'};
         en_US[0x55] = {'=', '+'};
         en_US[0x5D] = {'\\', '|'};
+
+        en_US[0x5A] = {13, 13};
     }
 
     struct ModifierStatus {
@@ -119,6 +121,13 @@ namespace Keyboard {
         char s[] = {(char)key, '\0'};
         message.stringLength = strlen(s);
         memcpy(message.buffer, s, message.stringLength);
+        send(IPC::RecipientType::ServiceName, &message);
+    }
+
+    void sendKeyToTerminal(uint8_t key) {
+        Terminal::KeyPress message {};
+        message.serviceType = Kernel::ServiceType::Terminal;
+        message.key = key;
         send(IPC::RecipientType::ServiceName, &message);
     }
     
@@ -152,7 +161,8 @@ namespace Keyboard {
                         
                         if (event.status == KeyStatus::Pressed) {
                             auto key = translateKeyEvent(event.key, modifiers);
-                            echo(key);
+                            sendKeyToTerminal(key);
+                            //echo(key);
                         }
                         break;
                     }

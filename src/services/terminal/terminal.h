@@ -17,6 +17,35 @@ namespace Terminal {
         uint32_t stringLength {0};
     };
 
+    struct KeyPress : IPC::Message {
+        KeyPress() {
+            messageId = MessageId;
+            length = sizeof(KeyPress);
+        }
+
+        static uint32_t MessageId;
+        uint8_t key;
+    };
+
+    struct GetCharacter : IPC::Message {
+        GetCharacter() {
+            messageId = MessageId;
+            length = sizeof(GetCharacter);
+        }
+
+        static uint32_t MessageId;
+    };
+
+    struct CharacterInput : IPC::Message {
+        CharacterInput() {
+            messageId = MessageId;
+            length = sizeof(CharacterInput);
+        }
+
+        static uint32_t MessageId;
+        uint8_t character;
+    };
+
     struct DirtyRect {
         uint32_t startIndex {0};
         uint32_t endIndex {0};
