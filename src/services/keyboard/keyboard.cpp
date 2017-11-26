@@ -95,6 +95,7 @@ namespace Keyboard {
     struct ModifierStatus {
         bool leftShiftPressed {false};
         bool rightShiftPressed {false};
+        bool capsLockPressed {false};
     };
 
     uint8_t translateKeyEvent(PhysicalKey key, ModifierStatus& status) {
@@ -104,7 +105,7 @@ namespace Keyboard {
         */
         auto& entry = en_US[static_cast<uint32_t>(key)];
 
-        if (status.leftShiftPressed || status.rightShiftPressed) {
+        if (status.leftShiftPressed || status.rightShiftPressed || status.capsLockPressed) {
             return entry.shift;
         }
         else {
@@ -139,6 +140,12 @@ namespace Keyboard {
                     }
                     case PhysicalKey::RightShift: {
                         modifiers.rightShiftPressed = event.status == KeyStatus::Pressed;
+                        break;
+                    }
+                    case PhysicalKey::CapsLock: {
+                        if (event.status == KeyStatus::Pressed) {
+                            modifiers.capsLockPressed = !modifiers.capsLockPressed;
+                        }
                         break;
                     }
                     default: {
