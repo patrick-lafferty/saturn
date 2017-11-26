@@ -94,7 +94,7 @@ include test/libc++/make.config
 
 $(shell mkdir -p $(dir $(DEPS)) >/dev/null)
 
-LIBS = -lc_test_freestanding -lc++_test_freestanding -lc++_freestanding -lc_freestanding -luserland 
+LIBS = -luserland -lc_test_freestanding -lc++_test_freestanding -lc++_freestanding -lc_freestanding 
 
 LINK_LIST = \
 	$(LDFLAGS) \
