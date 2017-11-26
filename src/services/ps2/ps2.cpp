@@ -4,6 +4,7 @@
 #include <services/terminal/terminal.h>
 #include <string.h>
 #include <stdio.h>
+#include <services/keyboard/keyboard.h>
 
 using namespace Kernel;
 
@@ -30,23 +31,34 @@ namespace PS2 {
         F0,
     };
 
-    
-
     KeyboardStates transitionKeyboardState(KeyboardStates initial, uint8_t data) {
         switch(initial) {
             case KeyboardStates::Start: {
 
                 if (data < 0x7E) {
                     auto key = static_cast<PhysicalKey>(data);
-                    char s[] = {(char)data, '\0'};
-                    printDebugString(s); 
+                    Keyboard::KeyEvent event {};
+                    event.serviceType = ServiceType::Keyboard;
+                    event.key = key;
+                    event.status = KeyStatus::Pressed;
+                    //send(IPC::RecipientType::ServiceName, &event);
 
-                    return initial;
+                    return KeyboardStates::Start;
+                }
+                else if (data == 0xF0) {
+                    return KeyboardStates::F0;
                 }
 
                 break;
             }
+            case KeyboardStates::F0: {
+                return KeyboardStates::Start;
+                break;
+            }
         }
+
+        //should never get here
+        return initial;
     }
 
     void messageLoop() {
@@ -58,9 +70,14 @@ namespace PS2 {
 
             if (buffer.messageId == KeyboardInput::MessageId) {
                 auto input = IPC::extractMessage<KeyboardInput>(buffer);
-                char s[] = {'a', '\0'};
-                    printDebugString(s); 
-                //keyboardState = transitionKeyboardState(keyboardState, input.data);
+                char s[5];
+                s[0] = '0' + (char)((input.data / 100) % 10);
+                s[1] = '0' + (char)((input.data / 10) % 10);
+                s[2] = '0' + (char)(input.data % 10);
+                s[3] = ' ';
+                s[4] = '\0';
+                printDebugString(s);
+                keyboardState = transitionKeyboardState(keyboardState, input.data);
             }
             else if (buffer.messageId == MouseInput::MessageId) {
 

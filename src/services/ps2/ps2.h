@@ -4,7 +4,7 @@
 #include <ipc.h>
 
 namespace PS2 {
-    
+
     void service();
     
     enum class ControllerCommand {
@@ -123,6 +123,11 @@ namespace PS2 {
         NumberLock = 0x77,
         ScrollLock = 0x7E,
 
+    };
+
+    enum class KeyStatus {
+        Pressed,
+        Released
     };
 
     void initializeController();
