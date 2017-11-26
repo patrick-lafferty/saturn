@@ -23,16 +23,44 @@ namespace PS2 {
         send(IPC::RecipientType::ServiceName, &message);
     }
 
+    enum class KeyboardStates {
+        Start,
+        E0,
+        E0F0,
+        F0,
+    };
+
+    
+
+    KeyboardStates transitionKeyboardState(KeyboardStates initial, uint8_t data) {
+        switch(initial) {
+            case KeyboardStates::Start: {
+
+                if (data < 0x7E) {
+                    auto key = static_cast<PhysicalKey>(data);
+                    char s[] = {(char)data, '\0'};
+                    printDebugString(s); 
+
+                    return initial;
+                }
+
+                break;
+            }
+        }
+    }
+
     void messageLoop() {
+        KeyboardStates keyboardState {KeyboardStates::Start};
+
         while (true) {
             IPC::MaximumMessageBuffer buffer;
             receive(&buffer);
 
             if (buffer.messageId == KeyboardInput::MessageId) {
                 auto input = IPC::extractMessage<KeyboardInput>(buffer);
-                char s[] = {(char)input.data, '\0'};
-                printDebugString(s);
-
+                char s[] = {'a', '\0'};
+                    printDebugString(s); 
+                //keyboardState = transitionKeyboardState(keyboardState, input.data);
             }
             else if (buffer.messageId == MouseInput::MessageId) {
 
