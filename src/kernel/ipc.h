@@ -110,7 +110,26 @@ namespace IPC {
             }
             else {
                 //printf("[Mailbox] lastRead: %d\n", lastReadOffset);
-                auto messageLength = reinterpret_cast<Message*>(buffer + lastReadOffset)->length;
+                uint32_t messageLength {0};
+
+                if ((bufferSize - lastReadOffset) < sizeof(Message)) {
+                    auto spaceUntilEnd = bufferSize - lastReadOffset;
+                    Message temp;
+
+                    if (spaceUntilEnd > 0) {
+                        memcpy(&temp, buffer + lastReadOffset, spaceUntilEnd);
+                        memcpy(reinterpret_cast<uint8_t*>(&temp) + spaceUntilEnd, buffer, sizeof(Message) - spaceUntilEnd);
+                    }
+                    else {
+                        memcpy(&temp, buffer, sizeof(Message));
+                    }
+
+                    messageLength = temp.length;
+                }
+                else {
+                    messageLength = reinterpret_cast<Message*>(buffer + lastReadOffset)->length;
+                }
+
                 if (messageLength > 10000) {
                     printf("stop here");
                 }
@@ -118,11 +137,10 @@ namespace IPC {
                 auto ptr = buffer + lastReadOffset;
 
                 if (lastReadOffset > lastWriteOffset) {
-                    auto spaceUntilEnd = bufferSize - lastReadOffset;//lastWriteOffset;
+                    auto spaceUntilEnd = bufferSize - lastReadOffset;
 
                     if (messageLength > spaceUntilEnd) {
                         //its cutoff
-                        //printf("[IPC] Message cutoff?\n");
                         memcpy(message, ptr, spaceUntilEnd);
                         lastReadOffset = 0;
                         ptr = buffer;
@@ -136,7 +154,6 @@ namespace IPC {
                     }
                 }
                 else {
-                    //auto spaceUntilEnd = bufferSize - lastWriteOffset;
                     auto spaceUntilEnd = lastWriteOffset - lastReadOffset;
 
                     if (messageLength > spaceUntilEnd) {
