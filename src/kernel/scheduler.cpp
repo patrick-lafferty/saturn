@@ -166,7 +166,7 @@ namespace Kernel {
         task->heap = LibC_Implementation::KernelHeap;
 
         const uint32_t mailboxSize = Memory::PageSize;
-        auto mailboxMemory = task->heap->allocate(mailboxSize);
+        auto mailboxMemory = task->heap->aligned_allocate(mailboxSize, Memory::PageSize);
 
         task->mailbox = new (mailboxMemory) 
             IPC::Mailbox(reinterpret_cast<uint32_t>(mailboxMemory) + sizeof(IPC::Mailbox), 

@@ -55,6 +55,7 @@ namespace IPC {
         Mailbox(uint32_t bufferAddress, uint32_t size) {
             buffer = reinterpret_cast<uint8_t*>(bufferAddress);
             bufferSize = size;
+            printf("[IPC] Mailbox size: %d\n", size);
         }
 
         void send(Message* message) {
@@ -83,7 +84,7 @@ namespace IPC {
                     lastWriteOffset = 0;
                     ptr = buffer;
                     auto remainingMessageLength = message->length - spaceUntilEnd;
-                    memcpy(ptr, message + spaceUntilEnd, remainingMessageLength);
+                    memcpy(ptr, reinterpret_cast<uint8_t*>(message) + spaceUntilEnd, remainingMessageLength);
                     lastWriteOffset = remainingMessageLength;
                 }
                 else {
@@ -94,7 +95,7 @@ namespace IPC {
                 unreadMessages++;
             }
 
-             if (lastWriteOffset >= bufferSize) {
+             if (lastWriteOffset > bufferSize) {
                     printf("[Mailbox] lastWriteOffset is invalid\n");
                 }
 
@@ -126,7 +127,7 @@ namespace IPC {
                         lastReadOffset = 0;
                         ptr = buffer;
                         auto remainingMessageLength = messageLength - spaceUntilEnd;
-                        memcpy(message + spaceUntilEnd, ptr, remainingMessageLength);
+                        memcpy(reinterpret_cast<uint8_t*>(message) + spaceUntilEnd, ptr, remainingMessageLength);
                         lastReadOffset = remainingMessageLength;   
                     }
                     else {
@@ -143,7 +144,7 @@ namespace IPC {
                         lastReadOffset = 0;
                         ptr = buffer;
                         auto remainingMessageLength = messageLength - spaceUntilEnd;
-                        memcpy(message + spaceUntilEnd, ptr, remainingMessageLength);
+                        memcpy(reinterpret_cast<uint8_t*>(message) + spaceUntilEnd, ptr, remainingMessageLength);
                         lastReadOffset = remainingMessageLength;
                     }
                     else {
@@ -152,7 +153,7 @@ namespace IPC {
                     }
                 }
 
-                if (lastReadOffset >= bufferSize) {
+                if (lastReadOffset > bufferSize) {
                     printf("[Mailbox] lastReadOffset is invalid\n");
                 }
 
