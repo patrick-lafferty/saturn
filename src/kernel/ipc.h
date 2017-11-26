@@ -55,7 +55,6 @@ namespace IPC {
         Mailbox(uint32_t bufferAddress, uint32_t size) {
             buffer = reinterpret_cast<uint8_t*>(bufferAddress);
             bufferSize = size;
-            printf("[IPC] Mailbox size: %d\n", size);
         }
 
         void send(Message* message) {
