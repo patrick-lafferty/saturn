@@ -81,6 +81,9 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     initializeSSE();
     PIC::disable();
 
+    PS2::initializeController();
+    PS2::identifyDevices();
+
     asm volatile("sti");
 
     auto pageFlags = 

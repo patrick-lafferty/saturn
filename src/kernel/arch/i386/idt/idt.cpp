@@ -267,6 +267,7 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
                 uint16_t statusRegister {0x64};
                 uint16_t dataPort {0x60};
 
+                //TODO: if this is slow, put this in the ps2 service. can't right now since IOPB isn't supported
                 while (full & 0x1) {
                     uint8_t c;
                     asm("inb %1, %0"
