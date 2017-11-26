@@ -54,4 +54,5 @@ namespace VGA {
     void setForegroundColour(uint8_t& colour, uint8_t foregroundColour);
     void setBackgroundColour(uint8_t& colour, uint8_t backgroundColour);
     uint16_t prepareCharacter(uint8_t character, uint8_t colour);
+    void disableCursor();
 }

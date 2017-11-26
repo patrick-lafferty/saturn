@@ -77,4 +77,20 @@ namespace VGA {
     uint16_t prepareCharacter(uint8_t character, uint8_t colour) {
         return static_cast<uint16_t>(character) | static_cast<uint16_t>(colour) << 8;
     }
+
+    void disableCursor() {
+        uint8_t cursorStartRegister {0x0A};
+        uint8_t disableCursor {1 << 5};
+
+        uint16_t commandPort {0x3D4};
+        uint16_t dataPort {0x3D5};
+
+        asm("outb %0, %1"
+            : //no output
+            : "a" (cursorStartRegister), "Nd" (commandPort));
+
+        asm("outb %0, %1"
+            : //no output
+            : "a" (disableCursor), "Nd" (dataPort));
+    }
 }

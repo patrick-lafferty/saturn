@@ -74,6 +74,7 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
 
     PS2::initializeController();
     PS2::identifyDevices();
+    VGA::disableCursor();
 
     asm volatile("sti");
 

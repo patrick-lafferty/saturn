@@ -88,6 +88,11 @@ namespace Terminal {
 
                 index = dirty.startIndex;
                 uint32_t count{dirty.endIndex};
+
+                if (count >= sizeof(BlitMessage::buffer)) {
+                    int pause = 0;
+                }
+
                 BlitMessage blit;
                 blit.index = index;
                 blit.count = count;
@@ -186,12 +191,15 @@ namespace Terminal {
             auto byteCount = sizeof(uint16_t) * Width * (Height - 1);
             memcpy(buffer, buffer + Width, byteCount);
 
+            row = Height - 2;
+            dirty.startIndex = getIndex();
             row = Height - 1;
 
             for (uint32_t x = 0; x < Width; x++) {
                 auto index = row * Width + x;
                 buffer[index] = prepareCharacter(' ', currentColour);
             }
+
         }
     }
     
