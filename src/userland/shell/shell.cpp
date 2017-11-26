@@ -61,13 +61,27 @@ namespace Shell {
         }
     }
 
+    void printCursor(int column) {
+        moveCursor(column);
+        print("\e[48;5;15m \e[48;5;0");
+        moveCursor(column);
+    }
+
+    void clearCursor(int column) {
+        moveCursor(column);
+        print("\e[48;5;0m ");
+        moveCursor(column);
+    }
+
     int main() {
 
         char inputBuffer[1000];
         uint32_t index {0};
         auto prompt = "\e[38;5;9mshell> \e[38;5;15m";
+        uint32_t promptLength = 7;
 
         while (true) {
+            moveCursor(1);
             print(prompt);
 
             uint8_t c {0};
@@ -75,15 +89,18 @@ namespace Shell {
             while (c != 13) {
                 c = getChar();
 
+                clearCursor(index + promptLength + 1);
+
                 switch(c) {
                     case 8: {
                         if (index > 0) {
-                            int a = index + 7;
+                            int a = index + promptLength;
                             moveCursor(a);
                             print(" ");
                             moveCursor(a);
 
                             index--;
+                            printCursor(index + promptLength + 1);
                         }
                         break;
                     }
@@ -103,6 +120,7 @@ namespace Shell {
                         }
                         
                         print("\n");
+                        clearCursor(index + promptLength + 1);
 
                         memset(inputBuffer, '\0', index);
                         index = 0;
@@ -114,8 +132,10 @@ namespace Shell {
                         inputBuffer[index] = c;
                         index++;
                         print(s);
+                        printCursor(index + promptLength + 1);
                     }
                 }
+
             }
         }
     }
