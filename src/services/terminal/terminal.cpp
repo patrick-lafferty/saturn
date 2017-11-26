@@ -230,6 +230,24 @@ namespace Terminal {
         return end - start + 1;
     }
 
+    uint32_t Terminal::handleCursorHorizontalAbsolute(char* buffer, uint32_t length) {
+        auto start = buffer;
+        char* end;
+
+        if (*buffer == 'G') {
+            //column was omitted
+            column = 0;
+        }
+        else {
+            uint32_t newColumn = strtol(start, &end, 10);
+            column = newColumn - 1;
+        }
+
+        dirty.startIndex = getIndex();
+
+        return end - start + 1;
+    }
+
     uint32_t Terminal::handleSelectGraphicRendition(char* buffer, uint32_t length) {
         auto start = buffer;
         char* end;
@@ -322,6 +340,9 @@ namespace Terminal {
                     case static_cast<char>(CSIFinalByte::CursorPosition): {
                         return 1 + handleCursorPosition(sequenceStart, buffer - sequenceStart);
                     }
+                    case static_cast<char>(CSIFinalByte::CursorHorizontalAbsolute): {
+                        return 1 + handleCursorHorizontalAbsolute(sequenceStart, buffer - sequenceStart);
+                    }
                     case static_cast<char>(CSIFinalByte::SelectGraphicRendition): {
                         return 1 + handleSelectGraphicRendition(sequenceStart, buffer - sequenceStart);
                     }
@@ -339,7 +360,7 @@ namespace Terminal {
         dirty.startIndex = getIndex();
         dirty.endIndex = 0;
 
-        while (count > 0 && *buffer != 0) {
+        while (count >= 0 && *buffer != 0) {
             count--;
 
             switch(*buffer) {
