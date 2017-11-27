@@ -6,18 +6,13 @@
 #include <services/terminal/vga.h>
 #include <services/terminal/terminal.h>
 
-int printInteger(uint32_t i, Terminal::Terminal& terminal, bool isNegative, int base = 10, bool upper = false) {
+template<typename T>
+void printInteger(uint32_t i, T& write, bool isNegative, int base = 10, bool upper = false) {
     char buffer[CHAR_BIT * sizeof(int) - 1];
     char hexDigits[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
         'a', 'b', 'c', 'd', 'e', 'f'};
     int digits {0};
 
-    /*bool isNegative {i < 0};
-    
-    if (isNegative) {
-        i *= -1;
-    }*/
-    
     do {
         buffer[digits] = hexDigits[i % base];
 
@@ -34,41 +29,25 @@ int printInteger(uint32_t i, Terminal::Terminal& terminal, bool isNegative, int 
     }
 
     digits--;
-    int charactersWritten = digits;
 
     while (digits >= 0) {
-        terminal.writeCharacter(buffer[digits]);
+        write(buffer[digits]);
         digits--;
     }
-
-    return charactersWritten;
 }
 
-int printInteger(int32_t i, Terminal::Terminal& terminal, int base = 10, bool upper = false) {
+template<typename T>
+void printInteger(int32_t i, T& write, int base = 10, bool upper = false) {
     if (i < 0) {
-        return printInteger(i * -1, terminal, true, base, upper);
+        printInteger(i * -1, write, true, base, upper);
     }
     else {
-        return printInteger(i, terminal, false, base, upper); 
+        printInteger(i, write, false, base, upper); 
     }
 }
 
-int printf(const char* format, ...) {
-    if (format == nullptr) {
-        return -1;
-    }
-
-    va_list args;
-    va_start(args, format);
-
-    int charactersWritten = 0;
-
-    auto& terminal = Terminal::Terminal::getInstance();
-    //auto colour = getColour(VGA::Colours::LightBlue, VGA::Colours::DarkGray);
-    auto write = [&](auto c) {
-        terminal.writeCharacter(c);//, colour);
-        charactersWritten++;
-    };
+template<typename T>
+int printf_impl(const char* format, va_list args, T write, int& charactersWritten) {
 
     while(*format != '\0') {
 
@@ -102,7 +81,7 @@ int printf(const char* format, ...) {
                         }
                         case 'd': {
                             auto i = va_arg(args, int);
-                            charactersWritten += printInteger(i, terminal);                            
+                            printInteger(i, write);                            
 
                             done = true;
 
@@ -110,28 +89,28 @@ int printf(const char* format, ...) {
                         }
                         case 'o': {
                             auto i = va_arg(args, int);
-                            charactersWritten += printInteger(i, terminal, 8);   
+                            printInteger(i, write, 8);   
 
                             done = true;
                             break;
                         }
                         case 'x': {
                             auto i = va_arg(args, int);
-                            charactersWritten += printInteger(static_cast<uint32_t>(i), terminal, false, 16);   
+                            printInteger(static_cast<uint32_t>(i), write, false, 16);   
 
                             done = true;
                             break;
                         }
                         case 'X': {
                             auto i = va_arg(args, int);
-                            charactersWritten += printInteger(i, terminal, false, 16, true);
+                            printInteger(i, write, false, 16, true);
 
                             done = true;
                             break;
                         }
                         case 'u': {
                             auto i = va_arg(args, int);
-                            charactersWritten += printInteger(static_cast<uint32_t>(i), terminal, false);
+                            printInteger(static_cast<uint32_t>(i), write, false);
 
                             done = true;
                             break;
@@ -149,6 +128,49 @@ int printf(const char* format, ...) {
             format++;
         }
     }
+
+    return charactersWritten;
+}
+
+int printf(const char* format, ...) {
+    if (format == nullptr) {
+        return -1;
+    }
+
+    va_list args;
+    va_start(args, format);
+
+    int charactersWritten = 0;
+
+    auto& terminal = Terminal::Terminal::getInstance();
+    auto write = [&](auto c) {
+        terminal.writeCharacter(c);
+        charactersWritten++;
+    };
+
+    printf_impl(format, args, write, charactersWritten);
+
+    va_end(args);
+
+    return charactersWritten;
+}
+
+int sprintf(char* buffer, const char* format, ...) {
+    if (format == nullptr) {
+        return -1;
+    }
+
+    va_list args;
+    va_start(args, format);
+
+    int charactersWritten = 0;
+
+    auto write = [&](auto c) {
+        buffer[charactersWritten] = c;
+        charactersWritten++;
+    };
+
+    printf_impl(format, args, write, charactersWritten);
 
     va_end(args);
 
