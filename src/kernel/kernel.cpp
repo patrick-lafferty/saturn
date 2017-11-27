@@ -22,6 +22,7 @@
 #include <heap.h>
 #include <services/ps2/ps2.h>
 #include <services/keyboard/keyboard.h>
+#include <services/memory/memory.h>
 #include <userland/shell/shell.h>
 
 using namespace Kernel;
@@ -112,6 +113,10 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     /*runNewTests();*/
     //runAllLibCTests();
 
+    //pseudo services
+    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(Memory::service)));
+
+    //normal services
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(VGA::service)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(Terminal::service)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(PS2::service)));

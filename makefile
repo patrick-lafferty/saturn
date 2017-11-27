@@ -60,6 +60,7 @@ SERVICES_OBJS = \
 	$(SERVICESDIR)/ps2/ps2.o \
 	$(SERVICESDIR)/keyboard/keyboard.o \
 	$(SERVICESDIR)/splash/splash.o \
+	$(SERVICESDIR)/memory/memory.o \
 
 include src/userland/make.config
 

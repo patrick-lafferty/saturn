@@ -89,6 +89,14 @@ namespace Memory {
             freePages, freePages * PageSize / 1024);
     }
 
+    uint32_t PhysicalMemoryManager::getFreePages() {
+        return freePages;
+    }
+
+    uint32_t PhysicalMemoryManager::getTotalPages() {
+        return totalPages;
+    }
+
     #if TARGET_PREKERNEL
     void PhysicalMemoryManager::freePage(uintptr_t pageAddress, uint32_t count) {
 

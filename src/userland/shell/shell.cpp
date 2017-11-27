@@ -3,6 +3,9 @@
 #include <services.h>
 #include <system_calls.h>
 #include <string.h>
+#include <services/memory/memory.h>
+#include <memory/physical_memory_manager.h>
+#include <stdio.h>
 
 namespace Shell {
 
@@ -87,13 +90,16 @@ namespace Shell {
             uint8_t c {0};
 
             while (c != 13) {
+                printCursor(index + promptLength + 1);
+
                 c = getChar();
 
-                clearCursor(index + promptLength + 1);
                 print("\e[38;5;15m");
 
                 switch(c) {
                     case 8: {
+                        clearCursor(index + promptLength + 1);
+
                         if (index > 0) {
                             int a = index + promptLength;
                             moveCursor(a);
@@ -106,6 +112,7 @@ namespace Shell {
                         break;
                     }
                     case 13: {
+                        clearCursor(index + promptLength + 1);
                         print("\n");
 
                         if (index > 0) {
@@ -118,13 +125,31 @@ namespace Shell {
                             else if (strcmp(inputBuffer, "version") == 0) {
                                 print("Saturn 0.1.0\n");
                             }
+                            else if (strcmp(inputBuffer, "ask") == 0) {
+                                Memory::GetPhysicalReport report{};
+                                report.serviceType = Kernel::ServiceType::Memory;
+                                send(IPC::RecipientType::ServiceName, &report);
+
+                                IPC::MaximumMessageBuffer buffer;
+                                receive(&buffer);
+
+                                if (buffer.messageId == Memory::PhysicalReport::MessageId) {
+                                    auto message = IPC::extractMessage<Memory::PhysicalReport>(buffer);
+                                    char s[20];
+                                    memset(s, '\0', sizeof(s));
+                                    sprintf(s, "Free: %dKB\n", message.freeMemory * Memory::PageSize / 1024);
+                                    print(s);
+                                    memset(s, '\0', sizeof(s));
+                                    sprintf(s, "Total: %dKB\n", message.totalMemory * Memory::PageSize / 1024);
+                                    print(s);
+                                }
+                            }
                             else {
                                 print("Unknown command\n");
                             }
                         }
                         
                         print("\n");
-                        clearCursor(index + promptLength + 1);
 
                         memset(inputBuffer, '\0', index);
                         index = 0;
@@ -132,6 +157,7 @@ namespace Shell {
                         break;
                     }
                     default: {
+                        clearCursor(index + promptLength + 1);
                         char s[] = {(char)c, '\0'};
                         inputBuffer[index] = c;
                         index++;

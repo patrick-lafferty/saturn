@@ -60,6 +60,8 @@ namespace Memory {
         #endif
 
         void report();
+        uint32_t getFreePages();
+        uint32_t getTotalPages();
 
     private:
 
