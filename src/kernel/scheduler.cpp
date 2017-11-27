@@ -376,8 +376,14 @@ namespace Kernel {
                 taskId = ServiceRegistryInstance->getServiceTaskId(message->serviceType);
 
                 if (taskId == 0) {
-                    printf("[Scheduler] Unknown Service Name\n");
-                    return;
+                    if (ServiceRegistryInstance->isPseudoService(message->serviceType)) {
+                        ServiceRegistryInstance->receivePseudoMessage(message->serviceType, message);
+                        return;
+                    }
+                    else {
+                        printf("[Scheduler] Unknown Service Name\n");
+                        return;
+                    }
                 }
             }
             else {

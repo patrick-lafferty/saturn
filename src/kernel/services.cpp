@@ -7,6 +7,7 @@
 namespace Kernel {
 
     uint32_t RegisterService::MessageId;
+    uint32_t RegisterPseudoService::MessageId;
     uint32_t RegisterServiceDenied::MessageId;
     uint32_t VGAServiceMeta::MessageId;
     uint32_t GenericServiceMeta::MessageId;
@@ -18,7 +19,10 @@ namespace Kernel {
 
         meta = new ServiceMeta*[count];
 
+        pseudoMessageHandlers = new PseudoMessageHandler[count];
+
         IPC::registerMessage<RegisterService>();
+        IPC::registerMessage<RegisterPseudoService>();
         IPC::registerMessage<RegisterServiceDenied>();
         IPC::registerMessage<VGAServiceMeta>();
         IPC::registerMessage<GenericServiceMeta>();
@@ -27,8 +31,21 @@ namespace Kernel {
     void ServiceRegistry::receiveMessage(IPC::Message* message) {
         if (message->messageId == RegisterService::MessageId) {
             auto request = IPC::extractMessage<RegisterService>(
-                    *static_cast<IPC::MaximumMessageBuffer*>(message));
+                *static_cast<IPC::MaximumMessageBuffer*>(message));
             registerService(request.senderTaskId, request.type);
+        }
+        else if (message->messageId == RegisterPseudoService::MessageId) {
+            auto request = IPC::extractMessage<RegisterPseudoService>(
+                *static_cast<IPC::MaximumMessageBuffer*>(message));
+            registerPseudoService(request.type, request.handler);
+        }
+    }
+
+    void ServiceRegistry::receivePseudoMessage(ServiceType type, IPC::Message* message) {
+        auto index = static_cast<uint32_t>(type);
+
+        if (pseudoMessageHandlers[index] != nullptr) {
+            pseudoMessageHandlers[index](message);
         }
     }
 
@@ -51,6 +68,23 @@ namespace Kernel {
         return true;
     }
 
+    bool ServiceRegistry::registerPseudoService(ServiceType type, PseudoMessageHandler handler) {
+        if (type == ServiceType::ServiceTypeEnd) {
+            printf("[ServiceRegistry] Tried to register PseudoServiceTypeEnd\n");
+            return false;
+        }
+
+        auto index = static_cast<uint32_t>(type);
+
+        if (pseudoMessageHandlers[index] != nullptr) {
+            printf("[ServiceRegistry] Tried to register a pseudo service that's taken\n");
+            return false;
+        }
+
+        pseudoMessageHandlers[index] = handler;
+        return true;
+    }
+
     uint32_t ServiceRegistry::getServiceTaskId(ServiceType type) {
         if (type == ServiceType::ServiceTypeEnd) {
             printf("[ServiceRegistry] Tried to get ServiceTypeEnd taskId\n");
@@ -58,6 +92,12 @@ namespace Kernel {
         }
 
         return taskIds[static_cast<uint32_t>(type)];
+    }
+
+    bool ServiceRegistry::isPseudoService(ServiceType type) {
+        auto index = static_cast<uint32_t>(type);
+
+        return pseudoMessageHandlers[index] != nullptr;
     }
 
     void ServiceRegistry::setupService(uint32_t taskId, ServiceType type) {

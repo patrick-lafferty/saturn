@@ -11,6 +11,7 @@ namespace Kernel {
         PS2,
         Keyboard,
         Mouse,
+        Memory,
         ServiceTypeEnd
     };
 
@@ -22,6 +23,19 @@ namespace Kernel {
 
         static uint32_t MessageId;
         ServiceType type;
+    };
+
+    typedef void (*PseudoMessageHandler)(IPC::Message*);
+
+    struct RegisterPseudoService : IPC::Message {
+        RegisterPseudoService() {
+            messageId = MessageId;
+            length = sizeof(RegisterPseudoService);
+        }
+
+        static uint32_t MessageId;
+        ServiceType type;
+        PseudoMessageHandler handler;
     };
 
     struct RegisterServiceDenied : IPC::Message {
@@ -69,15 +83,19 @@ namespace Kernel {
         ServiceRegistry();
         
         void receiveMessage(IPC::Message* message);
+        void receivePseudoMessage(ServiceType type, IPC::Message* message);
         uint32_t getServiceTaskId(ServiceType type);
+        bool isPseudoService(ServiceType type);
 
     private:
         
         bool registerService(uint32_t taskId, ServiceType type);
+        bool registerPseudoService(ServiceType type, PseudoMessageHandler handler);
 
         void setupService(uint32_t taskId, ServiceType type);
 
         uint32_t* taskIds;
         ServiceMeta** meta;
+        PseudoMessageHandler* pseudoMessageHandlers;
     };
 }
