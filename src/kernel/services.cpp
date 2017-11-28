@@ -11,6 +11,8 @@ namespace Kernel {
     uint32_t RegisterServiceDenied::MessageId;
     uint32_t VGAServiceMeta::MessageId;
     uint32_t GenericServiceMeta::MessageId;
+    uint32_t SubscribeServiceRegistered::MessageId;
+    uint32_t NotifyServiceRegistered::MessageId;
 
     ServiceRegistry::ServiceRegistry() {
         auto count = static_cast<uint32_t>(ServiceType::ServiceTypeEnd) + 1;
@@ -20,12 +22,14 @@ namespace Kernel {
         meta = new ServiceMeta*[count];
 
         pseudoMessageHandlers = new PseudoMessageHandler[count];
+        subscribers = new Array<uint32_t>[count];
 
         IPC::registerMessage<RegisterService>();
         IPC::registerMessage<RegisterPseudoService>();
         IPC::registerMessage<RegisterServiceDenied>();
         IPC::registerMessage<VGAServiceMeta>();
         IPC::registerMessage<GenericServiceMeta>();
+        IPC::registerMessage<NotifyServiceRegistered>();
     }
 
     void ServiceRegistry::receiveMessage(IPC::Message* message) {
@@ -38,6 +42,23 @@ namespace Kernel {
             auto request = IPC::extractMessage<RegisterPseudoService>(
                 *static_cast<IPC::MaximumMessageBuffer*>(message));
             registerPseudoService(request.type, request.handler);
+        }
+        else if (message->messageId == SubscribeServiceRegistered::MessageId) {
+            auto request = IPC::extractMessage<SubscribeServiceRegistered>(
+                *static_cast<IPC::MaximumMessageBuffer*>(message));
+            
+            auto index = static_cast<uint32_t>(request.type);
+            if (taskIds[index] != 0) {
+                NotifyServiceRegistered notify;
+                notify.type = request.type;
+                notify.recipientId = request.senderTaskId;
+
+                auto task = currentScheduler->getTask(notify.recipientId);
+                task->mailbox->send(&notify);
+            }
+            else {
+                subscribers[index].add(request.senderTaskId);
+            }
         }
     }
 
@@ -63,6 +84,15 @@ namespace Kernel {
         }
 
         setupService(taskId, type);
+
+        for (auto taskId : subscribers[index]) {
+            NotifyServiceRegistered notify;
+            notify.type = type;
+            notify.recipientId = taskId;
+
+            auto task = currentScheduler->getTask(notify.recipientId);
+            task->mailbox->send(&notify);
+        }
 
         taskIds[index] = taskId;
         return true;

@@ -339,3 +339,87 @@ descriptor.write(senderId, ptr)
 descriptor::write(senderId, ptr) {
 instance->write(functionId, senderId, ptr);
 }
+
+
+vostok: virtual object system something something something
+reading a function returns the interface descriptor language (IDL)
+for that func, which is then used to create a VostokBuffer,
+a byte stream where each entry is prefixed with a uint8_t identifying
+the type
+
+enum class VostokTypes {
+    uint32_t,
+    char*,
+    EndArg
+};
+
+read("/process/1/getExecutable");
+VostokBuffer buf {readMsg.buffer};
+
+VostokBuffer::write<T>(T t, VostokType type) {
+    /*
+    end of the buffer contains the types
+
+    assuming data[256]
+
+    data[255] = VostokType arg 0
+    data[254] = VostokType arg 1
+    ...
+    data[n] = VostokType::EndArg
+
+    nextTypeIndex = 255;
+    remainingSize = scan for VostokType::EndArg
+    nextWriteIndex = 0;
+    */
+    if (data[nextTypeIndex] == EndArg || 
+        type != data[nextTypeIndex]) {
+        //error
+    }
+    else {
+        nextTypeIndex--;
+        memcpy(data + nextWriteIndex, t, length?);
+    }
+}
+
+vostok create /process/1 lang=c++
+
+outputs process.h
+class Process {
+public:
+
+Process(char* path);
+
+char* getExecutable();
+bool testA(int x);
+
+private:
+
+uint32_t descriptor;
+}
+
+process.cpp:
+
+Process::Process(char* path) {
+open(path);
+read(buffer);
+descriptor = buffer.descriptor or error;
+}
+
+char* Process::getExecutable() {
+
+write(descriptor, nullptr);
+read(buffer);
+
+VostokBuffer buf {buffer};
+
+return buf.read<char*>();
+}
+
+bool Process::testA(int x) {
+VostokBuffer buf{writeMsg.buffer};
+buf.write<int>(x);
+write(descriptor, buf.data, buf.length);
+read(buffer);
+buf = {buffer};
+return buf.read<bool>(); or error
+}
