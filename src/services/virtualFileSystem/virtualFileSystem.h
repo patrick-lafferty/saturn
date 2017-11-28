@@ -61,7 +61,7 @@ namespace VFS {
 
         static uint32_t MessageId;
         uint32_t fileDescriptor;
-        uint32_t length;
+        uint32_t readLength;
     };
 
     struct ReadResult : IPC::Message {

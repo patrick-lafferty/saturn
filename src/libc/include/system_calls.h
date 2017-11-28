@@ -21,4 +21,5 @@ enum class SystemCall {
 void send(IPC::RecipientType recipient, IPC::Message* message);
 void receive(IPC::Message* buffer);
 
+void open(char* path);
 void read(uint32_t fileDescriptor, uint32_t length);

@@ -6,6 +6,7 @@
 #include <services/memory/memory.h>
 #include <memory/physical_memory_manager.h>
 #include <stdio.h>
+#include <services/virtualFileSystem/virtualFileSystem.h>
 
 namespace Shell {
 
@@ -90,6 +91,26 @@ namespace Shell {
         return input;
     }
 
+    void doOpen() {
+        open("/process/1/testA");
+        IPC::MaximumMessageBuffer buffer;
+        receive(&buffer);
+    }
+
+    void doRead() {
+        read(0, 0);
+        IPC::MaximumMessageBuffer buffer;
+        receive(&buffer);
+
+        if (buffer.messageId == VFS::ReadResult::MessageId) {
+            auto r = IPC::extractMessage<VFS::ReadResult>(buffer);
+            char s[20];
+            memset(s, '\0', 20);
+            memcpy(s, r.buffer, 5);
+            print(s);
+        }
+    }
+
     bool parse(char* input) {
         auto start = input;
         auto word = markWord(input);
@@ -106,6 +127,10 @@ namespace Shell {
         }
         else if (strcmp(start, "version") == 0) {
             print("Saturn 0.1.0\n");
+        }
+        else if (strcmp(start, "read") == 0) {
+            doOpen();
+            doRead();            
         }
         else if (strcmp(start, "ask") == 0) {
             start = word + 1;

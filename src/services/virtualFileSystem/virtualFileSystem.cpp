@@ -46,7 +46,7 @@ namespace VFS {
                 auto request = IPC::extractMessage<MountRequest>(buffer);
                 mount.path = new char[strlen(request.path) + 1];
                 memcpy(mount.path, request.path, strlen(request.path) + 1);
-                mount.serviceId = request.serviceId; 
+                mount.serviceId = request.senderTaskId; 
             }
             else if (buffer.messageId == OpenRequest::MessageId) {
                 //TODO: search the trie for the appropriate mount point
@@ -89,8 +89,9 @@ namespace VFS {
                 send(IPC::RecipientType::TaskId, &request);
             }
             else if (buffer.messageId == ReadResult::MessageId) {
-                buffer.recipientId = outstandingRequestSenderId;
-                send(IPC::RecipientType::TaskId, &buffer);
+                auto result = IPC::extractMessage<ReadResult>(buffer);
+                result.recipientId = outstandingRequestSenderId;
+                send(IPC::RecipientType::TaskId, &result);
             }
 
         }

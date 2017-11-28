@@ -27,6 +27,7 @@ namespace PFS {
         FileDescriptor openDescriptors[2];
         ProcessObject p;
         openDescriptors[0].instance = &p;
+        openDescriptors[0].functionId = 0;
 
         while (true) {
             IPC::MaximumMessageBuffer buffer;
@@ -49,12 +50,12 @@ namespace PFS {
     }
 
     void service() {
+        sleep(1000);
         MountRequest request{};
         char* path = "/process";
         request.path = new char[strlen(path) + 1];
         memcpy(request.path, path, strlen(request.path) + 1);
         request.serviceType = ServiceType::VFS;
-        sleep(1000);
 
         send(IPC::RecipientType::ServiceName, &request);
 
