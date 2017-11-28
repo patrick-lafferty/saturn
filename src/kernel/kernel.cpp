@@ -15,17 +15,14 @@
 #include <test/libc++/new.h>
 #include <ipc.h>
 #include <services.h>
-#include <services/terminal/vga.h>
-#include <services/terminal/terminal.h>
-#include <services/splash/splash.h>
 #include <initialize_libc.h>
 #include <heap.h>
-#include <services/ps2/ps2.h>
-#include <services/keyboard/keyboard.h>
 #include <services/memory/memory.h>
-#include <userland/shell/shell.h>
+#include <services/ps2/ps2.h>
+#include <services/terminal/vga.h>
 #include <services/virtualFileSystem/virtualFileSystem.h>
 #include <services/processFileSystem/processFileSystem.h>
+#include <services/fakeFileSystem/fakeFileSystem.h>
 #include <services/startup/startup.h>
 
 using namespace Kernel;
@@ -122,6 +119,7 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     //normal services
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(VFS::service)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(PFS::service)));
+    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(FakeFileSystem::service)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(Startup::service)));
     
 

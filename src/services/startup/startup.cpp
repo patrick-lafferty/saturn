@@ -46,12 +46,10 @@ namespace Startup {
         */
         auto descriptor = openProgram(path);
 
-        if (descriptor > 0) {
-            auto entryPoint = getEntryPoint(descriptor);
+        auto entryPoint = getEntryPoint(descriptor);
 
-            if (entryPoint > 0) {
-                run(entryPoint);
-            }
+        if (entryPoint > 0) {
+            run(entryPoint);
         }
     }
 
