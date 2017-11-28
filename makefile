@@ -62,6 +62,7 @@ SERVICES_OBJS = \
 	$(SERVICESDIR)/splash/splash.o \
 	$(SERVICESDIR)/memory/memory.o \
 	$(SERVICESDIR)/virtualFileSystem/virtualFileSystem.o \
+	$(SERVICESDIR)/processFileSystem/processFileSystem.o \
 
 include src/userland/make.config
 

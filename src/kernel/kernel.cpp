@@ -25,6 +25,7 @@
 #include <services/memory/memory.h>
 #include <userland/shell/shell.h>
 #include <services/virtualFileSystem/virtualFileSystem.h>
+#include <services/processFileSystem/processFileSystem.h>
 
 using namespace Kernel;
 using namespace Memory;
@@ -119,6 +120,7 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
 
     //normal services
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(VFS::service)));
+    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(PFS::service)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(VGA::service)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(Terminal::service)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(PS2::service)));

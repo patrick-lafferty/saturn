@@ -11,6 +11,11 @@ namespace VFS {
 
     };
 
+    class Object {
+    public:
+        virtual void read(uint32_t requesterTaskId, uint32_t functionId) {}
+    };
+
     struct MountRequest : IPC::Message {
         MountRequest() {
             messageId = MessageId;
@@ -21,6 +26,9 @@ namespace VFS {
         char* path;
         uint32_t serviceId;
     };
+
+    //TODO: result or response?
+    //mountresult
 
     struct OpenRequest : IPC::Message {
         OpenRequest() {
