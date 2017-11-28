@@ -23,7 +23,7 @@ namespace VFS {
         }
 
         static uint32_t MessageId;
-        char* path;
+        char path[64];
         uint32_t serviceId;
     };
 
@@ -37,7 +37,7 @@ namespace VFS {
         }
 
         static uint32_t MessageId;
-        char* path;
+        char path[64];
 
         //TODO: read/write, permissions
     };

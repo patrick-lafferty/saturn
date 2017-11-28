@@ -23,19 +23,26 @@ namespace VFS {
 
     struct Mount {
         char* path;
+        uint32_t pathLength;
         uint32_t serviceId;
+    };
+
+    struct FileDescriptor {
+        uint32_t descriptor;
+        uint32_t mount;
     };
 
     void messageLoop() {
         /*
         TODO: Replace with a trie where the leaf node values are services 
         */
-        Mount mount;
+        Mount mounts[2];
 
         //TODO: design a proper data structure for holding outstanding requests
         uint32_t outstandingRequestSenderId {0};
-        uint32_t openFileDescriptors[2];
+        FileDescriptor openFileDescriptors[10];
         uint32_t nextFileDescriptor = 0;
+        uint32_t nextMount {0};
 
         while (true) {
             IPC::MaximumMessageBuffer buffer;
@@ -44,34 +51,52 @@ namespace VFS {
             if (buffer.messageId == MountRequest::MessageId) {
                 //TODO: for now only support top level mounts to /
                 auto request = IPC::extractMessage<MountRequest>(buffer);
-                mount.path = new char[strlen(request.path) + 1];
-                memcpy(mount.path, request.path, strlen(request.path) + 1);
-                mount.serviceId = request.senderTaskId; 
+                auto pathLength = strlen(request.path) + 1;
+                mounts[nextMount].path = new char[pathLength];
+                memcpy(mounts[nextMount].path, request.path, pathLength);
+                mounts[nextMount].serviceId = request.senderTaskId; 
+                mounts[nextMount].pathLength = pathLength;
+                nextMount++;
             }
             else if (buffer.messageId == OpenRequest::MessageId) {
                 //TODO: search the trie for the appropriate mount point
                 //since this is just an experiment to see if this design works, hardcode mount
                 auto request = IPC::extractMessage<OpenRequest>(buffer);
-                request.recipientId = mount.serviceId;
+
+                for (auto& mount : mounts) {
+
+                    if (strncmp(request.path, mount.path, mount.pathLength) == 0) {
+                        request.recipientId = mount.serviceId;
+                        break;
+                    }
+                }
+
                 send(IPC::RecipientType::TaskId, &request);   
                 outstandingRequestSenderId = buffer.senderTaskId;
             }
             else if (buffer.messageId == OpenResult::MessageId) {
-                if (buffer.senderTaskId == mount.serviceId) {
-                    auto result = IPC::extractMessage<OpenResult>(buffer);
+                for (auto& mount : mounts) {
 
-                    if (result.success) {
-                        /*
-                        mount services have their own local file descriptors,
-                        VFS has its own that encompases all mounts
-                        */
-                        auto processFileDescriptor = nextFileDescriptor++;
-                        openFileDescriptors[processFileDescriptor] = result.fileDescriptor;//mount.serviceId;
-                        result.fileDescriptor = processFileDescriptor;
-                        result.recipientId = outstandingRequestSenderId;
-                        send(IPC::RecipientType::TaskId, &result);
+                    if (buffer.senderTaskId == mount.serviceId) {
+                        auto result = IPC::extractMessage<OpenResult>(buffer);
+
+                        if (result.success) {
+                            /*
+                            mount services have their own local file descriptors,
+                            VFS has its own that encompases all mounts
+                            */
+                            auto processFileDescriptor = nextFileDescriptor++;
+                            openFileDescriptors[processFileDescriptor] = {
+                                result.fileDescriptor,
+                                mount.serviceId
+                            };
+
+                            result.fileDescriptor = processFileDescriptor;
+                            result.recipientId = outstandingRequestSenderId;
+                            send(IPC::RecipientType::TaskId, &result);
+                        }
+
                     }
-
                 }
             }
             else if (buffer.messageId == ReadRequest::MessageId) {
@@ -83,9 +108,10 @@ namespace VFS {
                 1) message forwarding (could be insecure)
                 2) a separate ReadRequestForwarded message
                 */
+                auto descriptor = openFileDescriptors[request.fileDescriptor];
 
-                request.recipientId = mount.serviceId;
-                request.fileDescriptor = openFileDescriptors[request.fileDescriptor];
+                request.recipientId = descriptor.mount;//mount.serviceId;
+                request.fileDescriptor = descriptor.descriptor;//openFileDescriptors[request.fileDescriptor];
                 send(IPC::RecipientType::TaskId, &request);
             }
             else if (buffer.messageId == ReadResult::MessageId) {
@@ -97,7 +123,7 @@ namespace VFS {
         }
     }
 
-    void service() {
+    void registerService() {
         RegisterService registerRequest {};
         registerRequest.type = ServiceType::VFS;
 
@@ -108,7 +134,11 @@ namespace VFS {
 
         if (buffer.messageId == GenericServiceMeta::MessageId) {
             registerMessages();
-            messageLoop();
         }
+    }
+
+    void service() {
+        registerService(); 
+        messageLoop();
     }
 }
