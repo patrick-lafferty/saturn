@@ -11,6 +11,10 @@ namespace IPC {
     enum class RecipientType;
 }
 
+namespace Kernel {
+    enum class ServiceType;
+}
+
 enum class SystemCall {
     Exit = 1,
     Sleep,
@@ -23,3 +27,5 @@ void receive(IPC::Message* buffer);
 
 void open(char* path);
 void read(uint32_t fileDescriptor, uint32_t length);
+
+void waitForServiceRegistered(Kernel::ServiceType type);
