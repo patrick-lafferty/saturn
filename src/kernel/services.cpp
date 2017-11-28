@@ -13,6 +13,7 @@ namespace Kernel {
     uint32_t GenericServiceMeta::MessageId;
     uint32_t SubscribeServiceRegistered::MessageId;
     uint32_t NotifyServiceRegistered::MessageId;
+    uint32_t RunProgram::MessageId;
 
     ServiceRegistry::ServiceRegistry() {
         auto count = static_cast<uint32_t>(ServiceType::ServiceTypeEnd) + 1;
@@ -31,6 +32,7 @@ namespace Kernel {
         IPC::registerMessage<GenericServiceMeta>();
         IPC::registerMessage<SubscribeServiceRegistered>();
         IPC::registerMessage<NotifyServiceRegistered>();
+        IPC::registerMessage<RunProgram>();
     }
 
     void ServiceRegistry::receiveMessage(IPC::Message* message) {
@@ -60,6 +62,13 @@ namespace Kernel {
             else {
                 subscribers[index].add(request.senderTaskId);
             }
+        }
+        else if (message->messageId == RunProgram::MessageId) {
+            auto run = IPC::extractMessage<RunProgram>(
+                *static_cast<IPC::MaximumMessageBuffer*>(message));
+            
+            auto task = currentScheduler->createUserTask(run.entryPoint);
+            currentScheduler->scheduleTask(task);
         }
     }
 

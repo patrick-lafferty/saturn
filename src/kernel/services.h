@@ -87,6 +87,17 @@ namespace Kernel {
         ServiceType type;
     };
 
+    struct RunProgram : IPC::Message {
+        RunProgram() {
+            messageId = MessageId;
+            length = sizeof(RunProgram);
+        }
+
+        static uint32_t MessageId;
+        uintptr_t entryPoint;
+        //char path[64];
+    };
+
     template<typename T>
     class Array {
     public:

@@ -29,3 +29,5 @@ void open(char* path);
 void read(uint32_t fileDescriptor, uint32_t length);
 
 void waitForServiceRegistered(Kernel::ServiceType type);
+
+void run(uintptr_t entryPoint);

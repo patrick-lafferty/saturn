@@ -26,6 +26,7 @@
 #include <userland/shell/shell.h>
 #include <services/virtualFileSystem/virtualFileSystem.h>
 #include <services/processFileSystem/processFileSystem.h>
+#include <services/startup/startup.h>
 
 using namespace Kernel;
 using namespace Memory;
@@ -116,17 +117,13 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     //runAllLibCTests();
 
     //pseudo services
-    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(Memory::service)));
+    //scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(Memory::service)));
 
     //normal services
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(VFS::service)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(PFS::service)));
-    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(VGA::service)));
-    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(Terminal::service)));
-    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(PS2::service)));
-    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(Keyboard::service)));
-    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(Splash::service)));
-    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(Shell::main)));
+    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(Startup::service)));
+    
 
     scheduler.enterIdle();
 
