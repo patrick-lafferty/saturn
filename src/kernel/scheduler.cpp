@@ -209,13 +209,17 @@ namespace Kernel {
 
     Task* Scheduler::createUserTask(uintptr_t functionAddress) {
         //Memory::currentPMM->report();
+        auto oldHeap = LibC_Implementation::KernelHeap;
+        LibC_Implementation::KernelHeap = kernelHeap;
+        auto oldVMM = Memory::currentVMM;
+        kernelVMM->activate();
 
         auto task = createKernelTask(reinterpret_cast<uintptr_t>(launchProcess));
-        auto oldVMM = Memory::currentVMM;
+        //auto oldVMM = Memory::currentVMM;
         auto vmm = Memory::currentVMM->cloneForUsermode();
         task->virtualMemoryManager = vmm;
         //vmm->HACK_setNextAddress(0xd000'0000 - 0x2000);
-        auto backupHeap = LibC_Implementation::KernelHeap;
+        //auto backupHeap = LibC_Implementation::KernelHeap;
         //LibC_Implementation::KernelHeap = nullptr;
         vmm->activate();
         vmm->HACK_setNextAddress(0xa000'0000);
@@ -252,10 +256,13 @@ namespace Kernel {
         *stackExtras++ = reinterpret_cast<uint32_t>(userStackPointer);
         *stackExtras++ = reinterpret_cast<uint32_t>(usermodeStub);//functionAddress;
 
-        oldVMM->activate();
-        LibC_Implementation::KernelHeap = backupHeap;
+        //oldVMM->activate();
+        //LibC_Implementation::KernelHeap = backupHeap;
 
         //Memory::currentPMM->report();
+
+        oldVMM->activate();
+        LibC_Implementation::KernelHeap = oldHeap;
 
         return task;
     }
