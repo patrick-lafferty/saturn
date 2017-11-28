@@ -5,6 +5,7 @@
 void open(char* path) {
     VFS::OpenRequest open;
     open.serviceType = Kernel::ServiceType::VFS;
+    memcpy(open.path, path, strlen(path));
     send(IPC::RecipientType::ServiceName, &open);
 }
 

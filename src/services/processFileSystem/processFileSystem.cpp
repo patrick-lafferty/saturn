@@ -55,8 +55,7 @@ namespace PFS {
 
         MountRequest request{};
         char* path = "/process";
-        request.path = new char[strlen(path) + 1];
-        memcpy(request.path, path, strlen(request.path) + 1);
+        memcpy(request.path, path, strlen(path) + 1);
         request.serviceType = ServiceType::VFS;
 
         send(IPC::RecipientType::ServiceName, &request);
