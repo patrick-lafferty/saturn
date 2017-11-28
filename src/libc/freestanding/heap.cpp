@@ -16,9 +16,12 @@ namespace LibC_Implementation {
         currentPage = currentVMM->allocatePages(heapSize / PageSize, kernelPageFlags);
 
         nextFreeChunk = reinterpret_cast<ChunkHeader*>(currentPage);
-        nextFreeChunk->next = nullptr;
-        nextFreeChunk->size = heapSize;
+        nextFreeChunk->magic = 0xabababab;
+        nextFreeChunk->magic2 = 0xcdcdcdcd;
+        nextFreeChunk->size = heapSize - sizeof(ChunkHeader);
         nextFreeChunk->free = true;
+        nextFreeChunk->next = nullptr;
+        nextFreeChunk->previous = nullptr;
         heapStart = nextFreeChunk;
 
         remainingPageSpace = PageSize - sizeof(ChunkHeader);
@@ -37,7 +40,11 @@ namespace LibC_Implementation {
 
         return allocate(size);*/
 
-        auto chunk = findFreeChunk(size);
+        auto chunk = findFreeAlignedChunk(size, alignment);
+        if (chunk == nullptr) {
+            return nullptr;
+        }
+
         auto startingAddress = reinterpret_cast<uint32_t>(chunk) + sizeof(ChunkHeader);
         auto alignedAddress = (startingAddress + alignment - 1) & -alignment;
 
@@ -45,31 +52,24 @@ namespace LibC_Implementation {
             //can we fit it inside the chunk?
             auto chunkEndAddress = startingAddress + chunk->size;
 
-            if ((alignedAddress + size) < chunkEndAddress) {
-                //TODO: this should never be true
-                if ((alignedAddress - startingAddress) < sizeof(ChunkHeader)) {
-                    //TODO: not enough space to split chunk, wat do
-                    printf("[HEAP] aligned_allocate not enough space in this chunk??\n");
-                }
-                else {
-                    auto alignedChunk = reinterpret_cast<ChunkHeader*>(alignedAddress - sizeof(ChunkHeader));
-                    alignedChunk->size = chunkEndAddress - alignedAddress;// - sizeof(ChunkHeader);
-                    alignedChunk->free = true;
-                    alignedChunk->previous = chunk;
-                    
-                    if (chunk->next != nullptr) {
-                        alignedChunk->next = chunk->next;
-                    }
-                    
-                    chunk->size = alignedAddress - startingAddress - sizeof(ChunkHeader);
-                    chunk->next = alignedChunk;
-
-                    return allocate(alignedChunk, size);
-                }
+            //TODO: this should never be true
+            if ((alignedAddress - startingAddress) < sizeof(ChunkHeader)) {
+                //TODO: not enough space to split chunk, wat do
+                printf("[HEAP] aligned_allocate not enough space in this chunk??\n");
             }
             else {
-                //TODO: need to find another chunk
-                    printf("[HEAP] aligned_allocate need to find another chunk??\n");
+                auto alignedChunk = reinterpret_cast<ChunkHeader*>(alignedAddress - sizeof(ChunkHeader));
+                alignedChunk->magic = 0xabababab;
+                alignedChunk->magic2 = 0xcdcdcdcd;
+                alignedChunk->size = chunkEndAddress - alignedAddress;// - sizeof(ChunkHeader);
+                alignedChunk->free = true;
+                alignedChunk->next = chunk->next;
+                alignedChunk->previous = chunk;
+                
+                chunk->size = alignedAddress - startingAddress - sizeof(ChunkHeader);
+                chunk->next = alignedChunk;
+
+                return allocate(alignedChunk, size);
             }
         }
         else {
@@ -78,7 +78,7 @@ namespace LibC_Implementation {
     }
 
     ChunkHeader* Heap::findFreeChunk(size_t size) {
-        if (nextFreeChunk->size >= size) {
+        if (nextFreeChunk->size >= size && nextFreeChunk->free) {
             return nextFreeChunk;
         }
         else {
@@ -96,6 +96,48 @@ namespace LibC_Implementation {
         return nullptr;
     }
 
+    ChunkHeader* Heap::findFreeAlignedChunk(size_t size, size_t alignment) {
+        auto chunk = findFreeChunk(size);
+        auto startingAddress = reinterpret_cast<uint32_t>(chunk) + sizeof(ChunkHeader);
+        auto alignedAddress = (startingAddress + alignment - 1) & -alignment;
+
+        if (startingAddress != alignedAddress) {
+            //can we fit it inside the chunk?
+            auto chunkEndAddress = startingAddress + chunk->size;
+
+            if ((alignedAddress + size) < chunkEndAddress) {
+                return chunk;
+            }
+            else {
+                auto chunk = heapStart;
+
+                while (chunk != nullptr) {
+                    if (chunk != nextFreeChunk && chunk->size >= size) {
+                        startingAddress = reinterpret_cast<uint32_t>(chunk) + sizeof(ChunkHeader); 
+                        alignedAddress = (startingAddress + alignment - 1) & -alignment;
+
+                        if (startingAddress != alignedAddress) {
+                            //can we fit it inside the chunk?
+                            auto chunkEndAddress = startingAddress + chunk->size;
+
+                            if ((alignedAddress + size) < chunkEndAddress) {
+                                return chunk;
+                            }
+                        }
+                        else {
+                            return chunk;
+                        }
+                    }
+
+                    chunk = chunk->next;
+                }
+            }
+        }
+
+        printf("[HEAP] couldn't find free aligned chunk\n");
+        return nullptr;
+    }
+
     void* Heap::allocate(ChunkHeader* chunk, size_t size) {
         chunk->free = false;
         
@@ -106,21 +148,24 @@ namespace LibC_Implementation {
         uint32_t allocatedAddress = currentAddress;
         currentAddress += size;
 
-        if (chunk->size > size + sizeof(ChunkHeader)) {
+        if (chunk->size > (size + sizeof(ChunkHeader))) {
             //theres space left over, create a new chunk with that space
             ChunkHeader* nextChunk = reinterpret_cast<ChunkHeader*>(currentAddress);
+            nextChunk->magic = 0xabababab;
+            nextChunk->magic2 = 0xcdcdcdcd;
             nextChunk->size = chunk->size - size - sizeof(ChunkHeader);
             nextChunk->free = true;
+            nextChunk->next = chunk->next;
             nextChunk->previous = chunk;
-
-            if (chunk->next != nullptr) {
-                nextChunk->next = chunk->next;
-            }
 
             chunk->next = nextChunk;
             chunk->size = size;
 
             nextFreeChunk = nextChunk;
+            /*printf("[Heap] nfc m: %x m2: %x s: %x n: %x p: %x\n", 
+                nextFreeChunk->magic, nextFreeChunk->magic2,
+                nextFreeChunk->size,
+                nextFreeChunk->next, nextFreeChunk->previous);*/
         }
 
         return reinterpret_cast<void*>(allocatedAddress);
@@ -168,13 +213,15 @@ namespace LibC_Implementation {
         auto chunk = reinterpret_cast<ChunkHeader*>(reinterpret_cast<uint32_t>(ptr) - sizeof(ChunkHeader));
         chunk->free = true;
 
+        /*
+        TODO: rethink this
         if (chunk->previous != nullptr && chunk->previous->free) {
             chunk = combineChunkWithNext(chunk->previous);
         }
 
         if (chunk->next != nullptr && chunk->next->free) {
             chunk = combineChunkWithNext(chunk);
-        }
+        }*/
 
         //check if there are any allocated physical pages we can free
         auto startingAddress = reinterpret_cast<uint32_t>(chunk) + sizeof(ChunkHeader);
