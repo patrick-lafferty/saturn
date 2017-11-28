@@ -20,3 +20,5 @@ enum class SystemCall {
 //ie check if messageId = 0, means service wasn't setup yet
 void send(IPC::RecipientType recipient, IPC::Message* message);
 void receive(IPC::Message* buffer);
+
+void read(uint32_t fileDescriptor, uint32_t length);

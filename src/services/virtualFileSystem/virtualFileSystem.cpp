@@ -48,7 +48,7 @@ namespace VFS {
                 memcpy(mount.path, request.path, strlen(request.path) + 1);
                 mount.serviceId = request.serviceId; 
             }
-            else if (buffer.messageId = OpenRequest::MessageId) {
+            else if (buffer.messageId == OpenRequest::MessageId) {
                 //TODO: search the trie for the appropriate mount point
                 //since this is just an experiment to see if this design works, hardcode mount
                 auto request = IPC::extractMessage<OpenRequest>(buffer);
@@ -56,7 +56,7 @@ namespace VFS {
                 send(IPC::RecipientType::TaskId, &request);   
                 outstandingRequestSenderId = buffer.senderTaskId;
             }
-            else if (buffer.messageId = OpenResult::MessageId) {
+            else if (buffer.messageId == OpenResult::MessageId) {
                 if (buffer.senderTaskId == mount.serviceId) {
                     auto result = IPC::extractMessage<OpenResult>(buffer);
 
