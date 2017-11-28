@@ -12,6 +12,7 @@ namespace Kernel {
         Keyboard,
         Mouse,
         Memory,
+        VFS,
         ServiceTypeEnd
     };
 

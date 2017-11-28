@@ -129,7 +129,8 @@ namespace Kernel {
             case ServiceType::Terminal:
             case ServiceType::PS2:
             case ServiceType::Keyboard:
-            case ServiceType::Mouse: {
+            case ServiceType::Mouse: 
+            case ServiceType::VFS: {
 
                 auto task = currentScheduler->getTask(taskId);
 

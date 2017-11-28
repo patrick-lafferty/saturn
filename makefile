@@ -61,6 +61,7 @@ SERVICES_OBJS = \
 	$(SERVICESDIR)/keyboard/keyboard.o \
 	$(SERVICESDIR)/splash/splash.o \
 	$(SERVICESDIR)/memory/memory.o \
+	$(SERVICESDIR)/virtualFileSystem/virtualFileSystem.o \
 
 include src/userland/make.config
 
