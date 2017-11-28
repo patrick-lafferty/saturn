@@ -127,7 +127,9 @@ namespace Terminal {
         }
     }
 
-    void service() {
+    void registerService() {
+        waitForServiceRegistered(ServiceType::VGA);
+
         RegisterService registerRequest {};
         registerRequest.type = ServiceType::Terminal;
 
@@ -143,8 +145,12 @@ namespace Terminal {
         else if (buffer.messageId == GenericServiceMeta::MessageId) {
             //print(101, static_cast<int>(ServiceType::Terminal));
             registerMessages();
-            messageLoop();
         }
+    }
+
+    void service() {
+        registerService();
+        messageLoop();
     }
 
     Terminal::Terminal(uint16_t* buffer) {

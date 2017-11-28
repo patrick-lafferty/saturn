@@ -50,7 +50,9 @@ namespace PFS {
     }
 
     void service() {
-        sleep(1000);
+
+        waitForServiceRegistered(ServiceType::VFS);
+
         MountRequest request{};
         char* path = "/process";
         request.path = new char[strlen(path) + 1];

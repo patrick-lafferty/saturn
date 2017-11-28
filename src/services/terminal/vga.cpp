@@ -41,7 +41,7 @@ namespace VGA {
         }
     }
 
-    void service() {
+    uint32_t registerService() {
         RegisterService registerRequest {};
         registerRequest.type = ServiceType::VGA;
 
@@ -54,12 +54,18 @@ namespace VGA {
             //can't print to screen, how to notify?
         }
         else if (buffer.messageId == VGAServiceMeta::MessageId) {
-
             registerMessages();
-
             auto vgaMeta = IPC::extractMessage<VGAServiceMeta>(buffer);
-            messageLoop(vgaMeta.vgaAddress);
+
+            return vgaMeta.vgaAddress;
         }
+
+        return 0;
+    }
+
+    void service() {
+        auto vgaAddress = registerService();
+        messageLoop(vgaAddress);
     }
 
     uint8_t getColour(Colours foreground, Colours background) {
