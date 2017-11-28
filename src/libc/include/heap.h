@@ -27,6 +27,7 @@ namespace LibC_Implementation {
 
         void* allocate(ChunkHeader* chunk, size_t size);
         ChunkHeader* findFreeChunk(size_t size);
+        ChunkHeader* findFreeAlignedChunk(size_t size, size_t alignment);
         ChunkHeader* combineChunkWithNext(ChunkHeader* chunk);
         
         uint32_t currentPage {0};
