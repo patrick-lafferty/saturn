@@ -29,6 +29,7 @@ namespace Kernel {
         IPC::registerMessage<RegisterServiceDenied>();
         IPC::registerMessage<VGAServiceMeta>();
         IPC::registerMessage<GenericServiceMeta>();
+        IPC::registerMessage<SubscribeServiceRegistered>();
         IPC::registerMessage<NotifyServiceRegistered>();
     }
 
@@ -79,7 +80,7 @@ namespace Kernel {
         auto index = static_cast<uint32_t>(type);
 
         if (taskIds[index] != 0) {
-            printf("[ServiceRegistry] Tried to register a service that's taken\n");
+            printf("[ServiceRegistry] Tried to register a service[%d] that's taken\n", index);
             return false;
         }
 

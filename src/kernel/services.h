@@ -115,7 +115,7 @@ namespace Kernel {
         }
 
         T* end() {
-            return data + maxItems;
+            return data + length;
         }
 
     private:
