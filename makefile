@@ -63,6 +63,7 @@ SERVICES_OBJS = \
 	$(SERVICESDIR)/memory/memory.o \
 	$(SERVICESDIR)/virtualFileSystem/virtualFileSystem.o \
 	$(SERVICESDIR)/processFileSystem/processFileSystem.o \
+	$(SERVICESDIR)/fakeFileSystem/fakeFileSystem.o \
 	$(SERVICESDIR)/startup/startup.o \
 
 include src/userland/make.config
