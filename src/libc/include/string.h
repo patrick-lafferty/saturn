@@ -12,3 +12,4 @@ extern "C" size_t strlen(const char* str);
 extern "C" size_t strlen_s(const char* str, size_t strsz);
 
 extern "C" int strcmp(const char* lhs, const char* rhs);
+extern "C" int strncmp(const char* lhs, const char* rhs, size_t count);
