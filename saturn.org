@@ -107,8 +107,235 @@ System calls: 0xFF (Final Fantasy)
 - [X] Driver framework, driver identification (eg load as VGA_DRIVER grants 0xb000 user-mode memory mapped to the driver)
   
 * Step 8: Usermode Terminal Emulator
-- [ ] handle common ansi escape sequences (colour, moving the cursor)
+- [X] handle common ansi escape sequences (colour, moving the cursor)
 
 * Step 9: Usermode Keyboard Driver
 
 aside: use scheme as the shell scripting language
+
+* Step 10: Shell
+
+(send <servicename> <message>)
+sends the message to the service
+
+(ask <servicename> <message>)
+sends the message to the service, and waits for a response
+
+* Step 11: VFS
+-instead of Plan9's "everything is a file system", everything is a COM-like object
+-use the same per-process namespaces, union binds
+
+/process/1 is an IProcess*
+
+instead of ps enumerating /process and reading each exec file for the filename,
+it enumerates a list of IProcess* and returns process->filename
+
+IUnknown supports reflection with a method GetFunctionNames
+
+/process/1->GetFunctionNames()
+/process/1->DescribeFunction(name)
+
+so from a console to interact with an object:
+
+shell> /process/1->GetFunctionNames()
+GetExecutable
+GetArguments
+GetStartTime
+Receive
+
+shell> /process/1->DescribeFunction(Receive)
+Receive(IPC::Message* message)
+
+imitating Rio:
+
+/window/1 is an IWindow*
+
+perhaps a mechanism for IUnknowns to have subdirectories, mark some
+internal collection property as a subdirectory, for instance:
+
+class IWindow {
+[SubdirectoryAttribute]
+vector<IWindow> children;
+}
+
+/window/1/children
+
+similarly for the above example, GetFunctionNames could be a file:
+
+/process/1/functionNames
+
+cat /process/1/functionNames
+GetExecutable
+...
+
+maybe its not a com object, but a mailbox
+send /process/1 GetSupportedMessages
+...
+
+send /process/1 GetExecutable
+send /window/1/mainTxtBox GetText
+send /window/1 paste <text>
+
+-----------------
+
+reading/writing to properties works as expected
+reading a function returns its signature, and maybe documentation/examples
+writing a function executes it with optional arguments, and returns a result
+via a message to the original sender
+
+shell> echo "test" > /window/1/pasteText
+success/fail message
+
+shell> cat /window/1/pasteText
+pasteText(char* text)
+If the focused control accepts text input (ie a textbox),
+inserts the text in the control starting where the cursor is
+
+If not, returns a failure message
+
+reading/writing a function sends a message and then calls receive
+
+from c++, it could look like:
+
+void demo() {
+    write("/window/1/pasteText", "some text here");
+    IPC::MaximumMessageBuffer buffer;
+    receive(&buffer);
+}
+
+abstracted:
+
+IPC::MaximumMessageBuffer call(char* path, char* arg0) {
+    write(path, arg0);
+    IPC::MaximumMessageBuffer buffer;
+    receive(&buffer);
+    return buffer;
+}
+
+void demo2() {
+    auto msg = call("/window/1/pasteText", "some text");
+}
+
+do functions need to be open()'d before reading/writing?
+
+-what open does is walk up the tree to find the first VFSObject instance
+-if valid, it asks the instance for a function id matching the path
+-if valid, creates a file descriptor storing the instance and function id
+
+auto func = open("/window/1/pasteText");
+write(func, "some text");
+
+text vs binary interface:
+
+in either case the send message just has a uint8_t[] buffer
+
+for some definition like :
+
+void f(char* s, int x, bool b);
+
+buffer[] = {s[0]...s[strlen], '\0',
+x[0], x[1], x[2], x[3], b[0]};
+
+auto fd = open("/example/f");
+write(fd, buffer);
+
+struct ArgV {
+template<typename T>
+void append(T arg) {
+if (position < bufferSize) {
+memcpy(buffer + position, &arg, sizeof(T));
+position += sizeof(T);
+}
+}
+
+uint8_t buffer[256];
+uint32_t position {0};
+};
+
+ArgV args {};
+args.append("hello, world");
+args.append(1234);
+args.append(true);
+
+write(fd, args.buffer, args.position);
+
+on the receiving end:
+
+example::write(int fd, argv) {
+    if (fd == f) {
+        auto& str = argv.read<char*>();
+        auto& x = argv.read<int>();
+        auto& b = argv.read<bool>();
+
+        f(str, x, b);
+    }
+
+}
+
+how to actually handle the call?
+-need an instance of the object containing the method
+-need to record what method we want
+-have only one file descriptor
+
+file descriptor backing instances could be a hierarchy,
+method calls could be a subclass of regular fds
+
+struct MethodFileDescriptor {
+?? instance;
+?? method;
+}; 
+
+can't convert ptr to member func to void*
+well, method could be an enum
+instance could be a pointer to something that handles write(enum, argv)
+
+class VFSObject {
+public: 
+
+virtual void write(int functionId, void* data) = 0;
+}
+
+class Window : VFSObject {
+public:
+
+virtual void write(int functionId, void* data) {
+
+ArgV args{data};
+
+switch(functionId) {
+case static_cast<int>(ExportedFunctions::PasteText): {
+auto& text = args.read<char*>();
+..other reads..
+
+if (args.handledAllReads()) {
+    pasteText(text);
+    auto msg = constructReplyMessage();
+!! needs original sender id?
+    send(msg);
+}
+
+}
+}
+}
+
+private:
+
+enum class ExportedFunctions {
+  ...
+  PasteText = x,
+  ...
+}
+
+}
+
+
+sender calls write, which creates a WriteMessage, and sends it to
+the mount point. mount point extracts sender id, file descriptor id,
+buffer ptr, then 
+
+auto& desciptor = openDescriptors[id];
+descriptor.write(senderId, ptr)
+
+descriptor::write(senderId, ptr) {
+instance->write(functionId, senderId, ptr);
+}

@@ -76,6 +76,91 @@ namespace Shell {
         moveCursor(column);
     }
 
+    char* markWord(char* input) {
+
+        if (*input == '\0') {
+            return nullptr;
+        }
+
+        while (*input != '\0' && *input != ' ') {
+            input++;
+        }
+
+        *input = '\0';
+        return input;
+    }
+
+    bool parse(char* input) {
+        auto start = input;
+        auto word = markWord(input);
+
+        if (word == nullptr) {
+            return false;
+        }
+
+        if (strcmp(start, "help") == 0) {
+            print("Available commands:\n");
+            print("help\n");
+            print("version\n");
+            print("ask <service name> <request name>\n");
+        }
+        else if (strcmp(start, "version") == 0) {
+            print("Saturn 0.1.0\n");
+        }
+        else if (strcmp(start, "ask") == 0) {
+            start = word + 1;
+            word = markWord(start);
+
+            if (word == nullptr) {
+                print("available services:\n");
+                print("memory\n");
+                return true;
+            }
+
+            if (strcmp(start, "memory") == 0) {
+                start = word + 1;
+                word = markWord(start);
+
+                if (word == nullptr) {
+                    print("available requests:\n");
+                    print("report\n");
+                    return true;
+                }
+
+                if (strcmp(start, "report") == 0) {
+                    Memory::GetPhysicalReport report{};
+                    report.serviceType = Kernel::ServiceType::Memory;
+                    send(IPC::RecipientType::ServiceName, &report);
+
+                    IPC::MaximumMessageBuffer buffer;
+                    receive(&buffer);
+
+                    if (buffer.messageId == Memory::PhysicalReport::MessageId) {
+                        auto message = IPC::extractMessage<Memory::PhysicalReport>(buffer);
+                        char s[20];
+                        memset(s, '\0', sizeof(s));
+                        sprintf(s, "Free: %dKB\n", message.freeMemory * Memory::PageSize / 1024);
+                        print(s);
+                        memset(s, '\0', sizeof(s));
+                        sprintf(s, "Total: %dKB\n", message.totalMemory * Memory::PageSize / 1024);
+                        print(s);
+                    }
+                }
+                else {
+                    return false;
+                }
+            }
+            else {
+                return false;
+            }
+        }
+        else {
+            return false;
+        }
+
+        return true;
+    }
+
     int main() {
 
         char inputBuffer[1000];
@@ -117,34 +202,7 @@ namespace Shell {
 
                         if (index > 0) {
                         
-                            if (strcmp(inputBuffer, "help") == 0) {
-                                print("Available commands:\n");
-                                print("help\n");
-                                print("version\n");
-                            }
-                            else if (strcmp(inputBuffer, "version") == 0) {
-                                print("Saturn 0.1.0\n");
-                            }
-                            else if (strcmp(inputBuffer, "ask") == 0) {
-                                Memory::GetPhysicalReport report{};
-                                report.serviceType = Kernel::ServiceType::Memory;
-                                send(IPC::RecipientType::ServiceName, &report);
-
-                                IPC::MaximumMessageBuffer buffer;
-                                receive(&buffer);
-
-                                if (buffer.messageId == Memory::PhysicalReport::MessageId) {
-                                    auto message = IPC::extractMessage<Memory::PhysicalReport>(buffer);
-                                    char s[20];
-                                    memset(s, '\0', sizeof(s));
-                                    sprintf(s, "Free: %dKB\n", message.freeMemory * Memory::PageSize / 1024);
-                                    print(s);
-                                    memset(s, '\0', sizeof(s));
-                                    sprintf(s, "Total: %dKB\n", message.totalMemory * Memory::PageSize / 1024);
-                                    print(s);
-                                }
-                            }
-                            else {
+                            if (!parse(inputBuffer)) {
                                 print("Unknown command\n");
                             }
                         }
