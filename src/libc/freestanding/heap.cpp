@@ -105,7 +105,7 @@ namespace LibC_Implementation {
             //can we fit it inside the chunk?
             auto chunkEndAddress = startingAddress + chunk->size;
 
-            if ((alignedAddress + size) < chunkEndAddress) {
+            if ((alignedAddress + size) <= chunkEndAddress) {
                 return chunk;
             }
             else {

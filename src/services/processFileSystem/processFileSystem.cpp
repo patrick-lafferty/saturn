@@ -34,11 +34,32 @@ namespace PFS {
             receive(&buffer);
 
             if (buffer.messageId == OpenRequest::MessageId) {
-                //TODO: actual implementation
+                auto request = IPC::extractMessage<OpenRequest>(buffer);
+                auto functionName = strrchr(request.path, '/');
+                bool failed {false};
                 OpenResult result{};
-                result.success = true;
                 result.serviceType = ServiceType::VFS;
-                result.fileDescriptor = nextFileDescriptor++;
+
+                if (functionName != nullptr) {
+                    //TODO: still hardcoded to one instance
+                    auto functionId = p.getFunction(functionName + 1);
+
+                    if (functionId >= 0) {
+                        openDescriptors[0].functionId = functionId;
+                        result.success = true;
+                        result.fileDescriptor = nextFileDescriptor++;
+                    }
+                    else {
+                        failed = true;
+                    }
+                }
+                else {
+                    failed = true;
+                }
+
+                if (failed) {
+                    result.success = false;
+                }
 
                 send(IPC::RecipientType::ServiceName, &result);
             }
@@ -69,13 +90,43 @@ namespace PFS {
                 testA(requesterTaskId);
                 break;
             }
+            case static_cast<uint32_t>(FunctionId::TestB): {
+                testB(requesterTaskId);
+                break;
+            }
+            default: {
+                ReadResult result {};
+                result.success = false;
+                result.recipientId = requesterTaskId;
+                send(IPC::RecipientType::TaskId, &result);
+            }
         }
+    }
+
+    int ProcessObject::getFunction(char* name) {
+        if (strcmp(name, "testA") == 0) {
+            return static_cast<int>(FunctionId::TestA);
+        }
+        else if (strcmp(name, "testB") == 0) {
+            return static_cast<int>(FunctionId::TestB);
+        }
+
+        return -1;
     }
 
     void ProcessObject::testA(uint32_t requesterTaskId) {
         ReadResult result {};
         result.success = true;
         char* s = "testA";
+        memcpy(result.buffer, s, strlen(s));
+        result.recipientId = requesterTaskId;
+        send(IPC::RecipientType::TaskId, &result);
+    }
+
+    void ProcessObject::testB(uint32_t requesterTaskId) {
+        ReadResult result {};
+        result.success = true;
+        char* s = "testB";
         memcpy(result.buffer, s, strlen(s));
         result.recipientId = requesterTaskId;
         send(IPC::RecipientType::TaskId, &result);

@@ -10,6 +10,7 @@ namespace VFS {
     class Object {
     public:
         virtual void read(uint32_t requesterTaskId, uint32_t functionId) {}
+        virtual int getFunction(char* name) {return -1;}
     };
 
     struct MountRequest : IPC::Message {

@@ -91,8 +91,8 @@ namespace Shell {
         return input;
     }
 
-    void doOpen() {
-        open("/process/1/testA");
+    void doOpen(char* path) {
+        open(path);
         IPC::MaximumMessageBuffer buffer;
         receive(&buffer);
     }
@@ -104,6 +104,7 @@ namespace Shell {
 
         if (buffer.messageId == VFS::ReadResult::MessageId) {
             auto r = IPC::extractMessage<VFS::ReadResult>(buffer);
+            if (!r.success) return;
             char s[20];
             memset(s, '\0', 20);
             memcpy(s, r.buffer, 5);
@@ -129,8 +130,13 @@ namespace Shell {
             print("Saturn 0.1.0\n");
         }
         else if (strcmp(start, "read") == 0) {
-            doOpen();
-            doRead();            
+            start = word + 1;
+            word = markWord(start);
+
+            if (word != nullptr) {
+                doOpen(start);
+                doRead();            
+            }
         }
         else if (strcmp(start, "ask") == 0) {
             start = word + 1;
