@@ -33,4 +33,4 @@ void close(uint32_t fileDescriptor);
 
 void waitForServiceRegistered(Kernel::ServiceType type);
 
-void run(uintptr_t entryPoint);
+uint32_t run(uintptr_t entryPoint);

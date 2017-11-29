@@ -14,6 +14,7 @@ namespace Kernel {
     uint32_t SubscribeServiceRegistered::MessageId;
     uint32_t NotifyServiceRegistered::MessageId;
     uint32_t RunProgram::MessageId;
+    uint32_t RunResult::MessageId;
 
     ServiceRegistry::ServiceRegistry() {
         auto count = static_cast<uint32_t>(ServiceType::ServiceTypeEnd) + 1;
@@ -33,6 +34,7 @@ namespace Kernel {
         IPC::registerMessage<SubscribeServiceRegistered>();
         IPC::registerMessage<NotifyServiceRegistered>();
         IPC::registerMessage<RunProgram>();
+        IPC::registerMessage<RunResult>();
     }
 
     void ServiceRegistry::receiveMessage(IPC::Message* message) {
@@ -69,6 +71,13 @@ namespace Kernel {
             
             auto task = currentScheduler->createUserTask(run.entryPoint);
             currentScheduler->scheduleTask(task);
+
+            RunResult result;
+            result.recipientId = message->senderTaskId;
+            result.success = task != nullptr;
+            result.pid = task->id;
+            auto currentTask = currentScheduler->getTask(message->senderTaskId);
+            currentTask->mailbox->send(&result);
         }
     }
 

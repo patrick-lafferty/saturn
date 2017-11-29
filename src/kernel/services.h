@@ -98,6 +98,17 @@ namespace Kernel {
         uintptr_t entryPoint;
     };
 
+    struct RunResult : IPC::Message {
+        RunResult() {
+            messageId = MessageId;
+            length = sizeof(RunResult);
+        }
+
+        static uint32_t MessageId;
+        bool success;
+        uint32_t pid;
+    };
+
     inline uint32_t ServiceRegistryMailbox {0};
 
     /*
