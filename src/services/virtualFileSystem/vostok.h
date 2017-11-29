@@ -17,10 +17,11 @@ namespace Vostok {
         virtual int getProperty(char* name) = 0;
         virtual void readProperty(uint32_t requesterTaskId, uint32_t propertyId) = 0;
         virtual void writeProperty(uint32_t requesterTaskId, uint32_t propertyId, ArgBuffer& args) = 0;
-        virtual void describeProperty(uint32_t requesterTaskId, uint32_t propertyId) = 0;
     };
 
     enum class ArgTypes : uint8_t {
+        Function,
+        Property,
         Void,
         Uint32,
         Cstring,
@@ -70,6 +71,13 @@ namespace Vostok {
         }
 
         template<typename T>
+        void writeValueWithType(T arg, ArgTypes type) {
+            writeType(type);
+            nextTypeIndex++;
+            write(arg, type);
+        }
+
+        template<typename T>
         T read(ArgTypes type) {
             if (peekType() != type) {
                 readFailed = true;
@@ -95,4 +103,13 @@ namespace Vostok {
 
     template<>
     void ArgBuffer::write(char* arg, ArgTypes type);
+
+    template<>
+    void ArgBuffer::writeValueWithType(char* arg, ArgTypes type);
+
+    template<>
+    char* ArgBuffer::read(ArgTypes type);
+
+    template<>
+    const char* ArgBuffer::read(ArgTypes type);
 }
