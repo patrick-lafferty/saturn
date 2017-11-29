@@ -7,6 +7,7 @@
 #include <memory/physical_memory_manager.h>
 #include <stdio.h>
 #include <services/virtualFileSystem/virtualFileSystem.h>
+#include <services/virtualFileSystem/vostok.h>
 
 namespace Shell {
 
@@ -14,7 +15,7 @@ namespace Shell {
         Terminal::PrintMessage message {};
         message.serviceType = Kernel::ServiceType::Terminal;
         message.stringLength = strlen(s);
-        memset(message.buffer, 0, sizeof(message.buffer));
+        memset(message.buffer, '\0', sizeof(message.buffer));
         memcpy(message.buffer, s, message.stringLength);
         send(IPC::RecipientType::ServiceName, &message);
     }
@@ -91,24 +92,70 @@ namespace Shell {
         return input;
     }
 
-    void doOpen(char* path) {
+    bool doOpen(char* path, uint32_t& descriptor) {
         open(path);
         IPC::MaximumMessageBuffer buffer;
         receive(&buffer);
+
+        if (buffer.messageId == VFS::OpenResult::MessageId) {
+            auto msg = IPC::extractMessage<VFS::OpenResult>(buffer);
+            descriptor = msg.fileDescriptor;
+            return msg.success;
+        }
+
+        return false;
     }
 
-    void doRead() {
-        read(0, 0);
+    void doRead(uint32_t descriptor) {
+        read(descriptor, 0);
         IPC::MaximumMessageBuffer buffer;
         receive(&buffer);
 
         if (buffer.messageId == VFS::ReadResult::MessageId) {
             auto r = IPC::extractMessage<VFS::ReadResult>(buffer);
             if (!r.success) return;
-            char s[20];
+            /*char s[20];
             memset(s, '\0', 20);
             memcpy(s, r.buffer, 5);
-            print(s);
+            print(s);*/
+            Vostok::ArgBuffer args{r.buffer, sizeof(r.buffer)};
+            print("Signature: (");
+
+            auto type = args.readType();
+
+            while (type != Vostok::ArgTypes::EndArg) {
+                auto nextType = args.readType();
+
+                if (nextType == Vostok::ArgTypes::EndArg) {
+                    print(") -> ");
+                }
+
+                switch(type) {
+                    case Vostok::ArgTypes::Void: {
+                        print("void");
+                        break;
+                    }
+                    case Vostok::ArgTypes::Uint32: {
+                        print("uint32");
+                        break;
+                    }
+                    case Vostok::ArgTypes::Cstring: {
+                        print("char*");
+                        break;
+                    }
+                }
+
+                if (nextType != Vostok::ArgTypes::EndArg) {
+                    if (args.peekType() != Vostok::ArgTypes::EndArg) {
+                        print(", ");
+                    }
+                }
+                else {
+                    print("\n");
+                }
+
+                type = nextType;                
+            }
         }
     }
 
@@ -134,8 +181,13 @@ namespace Shell {
             word = markWord(start);
 
             if (word != nullptr) {
-                doOpen(start);
-                doRead();            
+                uint32_t descriptor {0};
+                if (doOpen(start, descriptor)) {
+                    doRead(descriptor); 
+                }
+                else {
+                    print("open failed\n");
+                }
             }
         }
         else if (strcmp(start, "ask") == 0) {
