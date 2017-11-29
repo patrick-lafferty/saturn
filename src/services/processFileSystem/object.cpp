@@ -8,7 +8,8 @@ using namespace Vostok;
 
 namespace PFS {
 
-    ProcessObject::ProcessObject() {
+    ProcessObject::ProcessObject(uint32_t pid)
+        : pid{pid} {
         memset(foo, '\0', sizeof(foo));
         memcpy(foo, "Hello", 5);
         bar = 55;

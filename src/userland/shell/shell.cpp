@@ -79,20 +79,6 @@ namespace Shell {
         moveCursor(column);
     }
 
-    char* markWord(char* input) {
-
-        if (*input == '\0') {
-            return nullptr;
-        }
-
-        while (*input != '\0' && *input != ' ') {
-            input++;
-        }
-
-        *input = '\0';
-        return input;
-    }
-
     bool doOpen(char* path, uint32_t& descriptor) {
         open(path);
         IPC::MaximumMessageBuffer buffer;
@@ -101,6 +87,7 @@ namespace Shell {
         if (buffer.messageId == VFS::OpenResult::MessageId) {
             auto msg = IPC::extractMessage<VFS::OpenResult>(buffer);
             descriptor = msg.fileDescriptor;
+
             return msg.success;
         }
 

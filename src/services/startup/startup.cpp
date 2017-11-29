@@ -41,6 +41,24 @@ namespace Startup {
         return 0;
     }
 
+    bool createProcessObject(uint32_t pid) {
+        char path[20];
+        memset(path, '\0', sizeof(path));
+        sprintf(path, "/process/%d", pid);
+
+        create(path);
+
+        IPC::MaximumMessageBuffer buffer;
+        receive(&buffer);
+
+        if (buffer.messageId == VFS::CreateResult::MessageId) {
+            auto result = IPC::extractMessage<VFS::CreateResult>(buffer);
+            return result.success;
+        }
+
+        return false;
+    }
+
     void runProgram(char* path) {
         /*
         until we get an elf loader and an actual filesystem,
@@ -58,7 +76,11 @@ namespace Startup {
         auto entryPoint = getEntryPoint(descriptor);
 
         if (entryPoint > 0) {
-            run(entryPoint);
+            auto pid = run(entryPoint);
+
+            while (!createProcessObject(pid)) {
+                sleep(100);
+            }
         }
 
         close(descriptor);

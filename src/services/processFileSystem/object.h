@@ -8,7 +8,8 @@ namespace PFS {
     class ProcessObject : public Vostok::Object {
     public:
 
-        ProcessObject();
+        ProcessObject(uint32_t pid = 0);
+        virtual ~ProcessObject() {}
 
         int getFunction(char* name) override;
         void readFunction(uint32_t requesterTaskId, uint32_t functionId) override;
@@ -18,6 +19,8 @@ namespace PFS {
         int getProperty(char* name) override;
         void readProperty(uint32_t requesterTaskId, uint32_t propertyId) override;
         void writeProperty(uint32_t requesterTaskId, uint32_t propertyId, Vostok::ArgBuffer& args) override;
+
+        uint32_t pid;
 
     private:
 

@@ -10,8 +10,11 @@ void open(char* path) {
 }
 
 void create(char* path) {
-    
-}
+    VFS::CreateRequest request;
+    request.serviceType = Kernel::ServiceType::VFS;
+    memcpy(request.path, path, strlen(path));
+    send(IPC::RecipientType::ServiceName, &request);
+}   
 
 void read(uint32_t fileDescriptor, uint32_t length) {
     VFS::ReadRequest request;

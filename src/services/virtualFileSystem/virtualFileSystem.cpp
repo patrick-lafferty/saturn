@@ -84,6 +84,7 @@ namespace VFS {
             }
 
             if (strncmp(path, mount.path, mount.pathLength) == 0) {
+                matchingMount = mount;
                 return true;
             }
         }
@@ -119,8 +120,9 @@ namespace VFS {
                 mounts[nextMount].serviceId = request.senderTaskId; 
                 mounts[nextMount].pathLength = pathLength;
                 nextMount++;*/
-                mounts.add({nullptr, request.senderTaskId, pathLength});
+                mounts.add({nullptr, pathLength, request.senderTaskId});
                 auto& mount = mounts[mounts.size() - 1];
+                mount.path = new char[pathLength];
                 memcpy(mount.path, request.path, pathLength);
 
             }
