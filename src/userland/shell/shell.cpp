@@ -106,6 +106,41 @@ namespace Shell {
         return false;
     }
 
+    void doWrite(uint32_t descriptor) {
+        write(descriptor, nullptr, 0);
+
+        /*
+        writes to a function yield 1 or 2 messages,
+        if the write failed then only a WriteResult,
+        otherwise a WriteResult followed by a ReadResult
+        */
+        {
+            IPC::MaximumMessageBuffer buffer;
+            receive(&buffer);
+
+            if (buffer.messageId == VFS::WriteResult::MessageId) {
+                auto msg = IPC::extractMessage<VFS::WriteResult>(buffer);
+
+                if (!msg.success) {
+                    return;
+                }
+            }
+        }
+
+        IPC::MaximumMessageBuffer buffer;
+        receive(&buffer);
+
+        if (buffer.messageId = VFS::ReadResult::MessageId) {
+            auto msg = IPC::extractMessage<VFS::ReadResult>(buffer);
+
+            char s[20];
+            memset(s, '\0', sizeof(s));
+            memcpy(s, msg.buffer, 5);
+            print(s);
+        }
+
+    }
+
     void doRead(uint32_t descriptor) {
         read(descriptor, 0);
         IPC::MaximumMessageBuffer buffer;
@@ -114,10 +149,6 @@ namespace Shell {
         if (buffer.messageId == VFS::ReadResult::MessageId) {
             auto r = IPC::extractMessage<VFS::ReadResult>(buffer);
             if (!r.success) return;
-            /*char s[20];
-            memset(s, '\0', 20);
-            memcpy(s, r.buffer, 5);
-            print(s);*/
             Vostok::ArgBuffer args{r.buffer, sizeof(r.buffer)};
             print("Signature: (");
 
@@ -184,6 +215,20 @@ namespace Shell {
                 uint32_t descriptor {0};
                 if (doOpen(start, descriptor)) {
                     doRead(descriptor); 
+                }
+                else {
+                    print("open failed\n");
+                }
+            }
+        }
+        else if (strcmp(start, "write") == 0) {
+            start = word + 1;
+            word = markWord(start);
+
+            if (word != nullptr) {
+                uint32_t descriptor {0};
+                if (doOpen(start, descriptor)) {
+                    doWrite(descriptor); 
                 }
                 else {
                     print("open failed\n");

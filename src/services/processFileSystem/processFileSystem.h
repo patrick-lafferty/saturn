@@ -12,6 +12,7 @@ namespace PFS {
     public:
 
         void read(uint32_t requesterTaskId, uint32_t functionId) override;
+        void write(uint32_t requesterTaskId, uint32_t functionId) override;
         int getFunction(char* name) override;
         void describe(uint32_t requesterTaskId, uint32_t functionId) override;
 

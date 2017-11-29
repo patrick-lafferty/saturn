@@ -8,6 +8,7 @@ namespace Vostok {
     public:
 
         virtual void read(uint32_t requesterTaskId, uint32_t functionId) {}
+        virtual void write(uint32_t requesterTaskId, uint32_t functionId) {}
         virtual int getFunction(char* name) {return -1;}
         virtual void describe(uint32_t requesterTaskId, uint32_t functionId) {}
     };

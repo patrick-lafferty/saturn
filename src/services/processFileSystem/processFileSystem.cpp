@@ -21,6 +21,10 @@ namespace PFS {
         void read(uint32_t requesterTaskId) {
             instance->read(requesterTaskId, functionId);
         }
+
+        void write(uint32_t requesterTaskId) {
+            instance->write(requesterTaskId, functionId);
+        }
     };
 
     void messageLoop() {
@@ -69,6 +73,10 @@ namespace PFS {
                 auto request = IPC::extractMessage<ReadRequest>(buffer);
                 openDescriptors[0].read(request.senderTaskId);
             }
+            else if (buffer.messageId == WriteRequest::MessageId) {
+                auto request = IPC::extractMessage<WriteRequest>(buffer);
+                openDescriptors[0].write(request.senderTaskId);
+            }
         }
     }
 
@@ -87,7 +95,11 @@ namespace PFS {
     }
 
     void ProcessObject::read(uint32_t requesterTaskId, uint32_t functionId) {
-        /*switch(functionId) {
+        describe(requesterTaskId, functionId);
+    }
+
+    void ProcessObject::write(uint32_t requesterTaskId, uint32_t functionId) {
+        switch(functionId) {
             case static_cast<uint32_t>(FunctionId::TestA): {
                 testA(requesterTaskId);
                 break;
@@ -97,13 +109,12 @@ namespace PFS {
                 break;
             }
             default: {
-                ReadResult result {};
+                WriteResult result {};
                 result.success = false;
                 result.recipientId = requesterTaskId;
                 send(IPC::RecipientType::TaskId, &result);
             }
-        }*/
-        describe(requesterTaskId, functionId);
+        }
     }
 
     int ProcessObject::getFunction(char* name) {
@@ -144,8 +155,16 @@ namespace PFS {
         send(IPC::RecipientType::TaskId, &result);
     }
 
+    void acknowledgeWrite(uint32_t requesterTaskId) {
+        WriteResult result;
+        result.success = true;
+        result.recipientId = requesterTaskId;
+        send(IPC::RecipientType::TaskId, &result);
+    }
+
     void ProcessObject::testA(uint32_t requesterTaskId) {
-        ReadResult result {};
+        acknowledgeWrite(requesterTaskId);
+        ReadResult result;
         result.success = true;
         char* s = "testA";
         memcpy(result.buffer, s, strlen(s));
@@ -154,7 +173,8 @@ namespace PFS {
     }
 
     void ProcessObject::testB(uint32_t requesterTaskId) {
-        ReadResult result {};
+        acknowledgeWrite(requesterTaskId);
+        ReadResult result;
         result.success = true;
         char* s = "testB";
         memcpy(result.buffer, s, strlen(s));
