@@ -30,6 +30,10 @@ namespace VFS {
         char* path;
         uint32_t pathLength;
         uint32_t serviceId;
+
+        bool exists() {
+            return path != nullptr;
+        }
     };
 
     struct FileDescriptor {
@@ -68,7 +72,10 @@ namespace VFS {
         /*
         TODO: Replace with a trie where the leaf node values are services 
         */
-        Mount mounts[2];
+        Mount mounts[2] = {
+            {nullptr, 0, 0},
+            {nullptr, 0, 0}
+        };
 
         //TODO: design a proper data structure for holding outstanding requests
         uint32_t outstandingRequestSenderId {0};
@@ -93,20 +100,40 @@ namespace VFS {
                 //TODO: search the trie for the appropriate mount point
                 //since this is just an experiment to see if this design works, hardcode mount
                 auto request = IPC::extractMessage<OpenRequest>(buffer);
+                bool foundMount {false};
 
                 for (auto& mount : mounts) {
 
+                    if (!mount.exists()) {
+                        continue;
+                    }
+
                     if (strncmp(request.path, mount.path, mount.pathLength) == 0) {
                         request.recipientId = mount.serviceId;
+                        foundMount = true;
                         break;
                     }
                 }
 
-                send(IPC::RecipientType::TaskId, &request);   
-                outstandingRequestSenderId = buffer.senderTaskId;
+                if (foundMount) {
+                    send(IPC::RecipientType::TaskId, &request);   
+                    outstandingRequestSenderId = buffer.senderTaskId;
+                }
+                else {
+                    OpenResult result;
+                    result.recipientId = buffer.senderTaskId;
+                    result.success = false;
+                    send(IPC::RecipientType::TaskId, &result); 
+                }
+
             }
             else if (buffer.messageId == OpenResult::MessageId) {
+
                 for (auto& mount : mounts) {
+
+                    if (!mount.exists()) {
+                        continue;
+                    }
 
                     if (buffer.senderTaskId == mount.serviceId) {
                         auto result = IPC::extractMessage<OpenResult>(buffer);
@@ -132,6 +159,10 @@ namespace VFS {
                             }
 
                             result.fileDescriptor = processFileDescriptor;
+                            result.recipientId = outstandingRequestSenderId;
+                            send(IPC::RecipientType::TaskId, &result);
+                        }
+                        else {
                             result.recipientId = outstandingRequestSenderId;
                             send(IPC::RecipientType::TaskId, &result);
                         }
