@@ -434,6 +434,7 @@ namespace Kernel {
         }
 
         printf("[Scheduler] Unsent message from: %d to: %d\n", message->senderTaskId, taskId);
+        asm("hlt");
     }
 
     void Scheduler::receiveMessage(IPC::Message* buffer) {

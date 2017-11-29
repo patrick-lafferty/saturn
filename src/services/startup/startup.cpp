@@ -7,17 +7,22 @@ using namespace VFS;
 
 namespace Startup {
 
-    uint32_t openProgram(char* path) {
+    bool openProgram(char* path, uint32_t& descriptor) {
         open(path);
         IPC::MaximumMessageBuffer buffer;
         receive(&buffer);
 
         if (buffer.messageId == OpenResult::MessageId) {
             auto message = IPC::extractMessage<OpenResult>(buffer);
-            return message.fileDescriptor;
+            
+            if (message.success) {
+                descriptor = message.fileDescriptor;
+            }
+
+            return message.success;
         }
 
-        return 0;
+        return false;
     }
 
     uintptr_t getEntryPoint(uint32_t fileDescriptor) {
@@ -44,7 +49,11 @@ namespace Startup {
         read(descriptor) just returns the uintptr_t address
         to the function
         */
-        auto descriptor = openProgram(path);
+        uint32_t descriptor {0};
+
+        while (!openProgram(path, descriptor)) {
+            sleep(100);
+        }
 
         auto entryPoint = getEntryPoint(descriptor);
 
