@@ -17,3 +17,10 @@ void read(uint32_t fileDescriptor, uint32_t length) {
 
     send(IPC::RecipientType::ServiceName, &request);
 }
+
+void close(uint32_t fileDescriptor) {
+    VFS::CloseRequest request;
+    request.fileDescriptor = fileDescriptor;
+    request.serviceType = Kernel::ServiceType::VFS;
+    send(IPC::RecipientType::ServiceName, &request);
+}

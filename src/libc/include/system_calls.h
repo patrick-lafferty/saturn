@@ -27,6 +27,7 @@ void receive(IPC::Message* buffer);
 
 void open(char* path);
 void read(uint32_t fileDescriptor, uint32_t length);
+void close(uint32_t fileDescriptor);
 
 void waitForServiceRegistered(Kernel::ServiceType type);
 

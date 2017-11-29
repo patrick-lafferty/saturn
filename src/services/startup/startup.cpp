@@ -51,6 +51,8 @@ namespace Startup {
         if (entryPoint > 0) {
             run(entryPoint);
         }
+
+        close(descriptor);
     }
 
     void service() {
