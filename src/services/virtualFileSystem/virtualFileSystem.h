@@ -75,6 +75,7 @@ namespace VFS {
         static uint32_t MessageId;
         uint32_t fileDescriptor;
         uint32_t writeLength;
+        uint8_t buffer[256];
     };
 
     struct WriteResult : IPC::Message {

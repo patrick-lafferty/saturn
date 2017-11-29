@@ -3,6 +3,7 @@
 #include <system_calls.h>
 #include <string.h>
 #include <services/virtualFileSystem/virtualFileSystem.h>
+#include <stdio.h>
 
 using namespace Kernel;
 using namespace VFS;
@@ -22,8 +23,8 @@ namespace PFS {
             instance->read(requesterTaskId, functionId);
         }
 
-        void write(uint32_t requesterTaskId) {
-            instance->write(requesterTaskId, functionId);
+        void write(uint32_t requesterTaskId, ArgBuffer& args) {
+            instance->write(requesterTaskId, functionId, args);
         }
     };
 
@@ -75,7 +76,8 @@ namespace PFS {
             }
             else if (buffer.messageId == WriteRequest::MessageId) {
                 auto request = IPC::extractMessage<WriteRequest>(buffer);
-                openDescriptors[0].write(request.senderTaskId);
+                ArgBuffer args{request.buffer, sizeof(request.buffer)};
+                openDescriptors[0].write(request.senderTaskId, args);
             }
         }
     }
@@ -98,21 +100,43 @@ namespace PFS {
         describe(requesterTaskId, functionId);
     }
 
-    void ProcessObject::write(uint32_t requesterTaskId, uint32_t functionId) {
+    void replyWriteFailed(uint32_t requesterTaskId) {
+        WriteResult result;
+        result.success = false;
+        result.recipientId = requesterTaskId;
+        send(IPC::RecipientType::TaskId, &result);
+    }
+
+    void ProcessObject::write(uint32_t requesterTaskId, uint32_t functionId, ArgBuffer& args) {
         switch(functionId) {
             case static_cast<uint32_t>(FunctionId::TestA): {
-                testA(requesterTaskId);
+
+                auto x = args.read<uint32_t>(ArgTypes::Uint32);
+
+                if (!args.readFailed) {
+                    testA(requesterTaskId, x);
+                }
+                else {
+                    replyWriteFailed(requesterTaskId);
+                }
+
                 break;
             }
             case static_cast<uint32_t>(FunctionId::TestB): {
-                testB(requesterTaskId);
+
+                auto b = args.read<bool>(ArgTypes::Bool);
+
+                if (!args.readFailed) {
+                    testB(requesterTaskId, b);
+                }
+                else {
+                    replyWriteFailed(requesterTaskId);
+                }
+
                 break;
             }
             default: {
-                WriteResult result {};
-                result.success = false;
-                result.recipientId = requesterTaskId;
-                send(IPC::RecipientType::TaskId, &result);
+                replyWriteFailed(requesterTaskId);
             }
         }
     }
@@ -135,13 +159,13 @@ namespace PFS {
         
         switch(functionId) {
             case static_cast<uint32_t>(FunctionId::TestA): {
-                args.writeType(ArgTypes::Void);
+                args.writeType(ArgTypes::Uint32);
                 args.writeType(ArgTypes::Void);
                 args.writeType(ArgTypes::EndArg);
                 break;
             }
             case static_cast<uint32_t>(FunctionId::TestB): {
-                args.writeType(ArgTypes::Void);
+                args.writeType(ArgTypes::Bool);
                 args.writeType(ArgTypes::Void);
                 args.writeType(ArgTypes::EndArg);
                 break;
@@ -162,21 +186,25 @@ namespace PFS {
         send(IPC::RecipientType::TaskId, &result);
     }
 
-    void ProcessObject::testA(uint32_t requesterTaskId) {
+    void ProcessObject::testA(uint32_t requesterTaskId, int x) {
         acknowledgeWrite(requesterTaskId);
         ReadResult result;
         result.success = true;
-        char* s = "testA";
+        char s[10];
+        memset(s, '\0', sizeof(s));
+        sprintf(s, "testA: %d", x);
         memcpy(result.buffer, s, strlen(s));
         result.recipientId = requesterTaskId;
         send(IPC::RecipientType::TaskId, &result);
     }
 
-    void ProcessObject::testB(uint32_t requesterTaskId) {
+    void ProcessObject::testB(uint32_t requesterTaskId, bool b) {
         acknowledgeWrite(requesterTaskId);
         ReadResult result;
         result.success = true;
-        char* s = "testB";
+        char s[10];
+        memset(s, '\0', sizeof(s));
+        sprintf(s, "testB: %d", b);
         memcpy(result.buffer, s, strlen(s));
         result.recipientId = requesterTaskId;
         send(IPC::RecipientType::TaskId, &result);

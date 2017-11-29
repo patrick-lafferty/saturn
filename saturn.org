@@ -423,3 +423,11 @@ read(buffer);
 buf = {buffer};
 return buf.read<bool>(); or error
 }
+
+Next steps:
+
+- [ ] supporting vostok properties
+- [ ] write vostok functions with args
+- [ ] create syscall wrapper
+- [ ] create a new process object per process
+- [ ] only allow kernel to write to process object

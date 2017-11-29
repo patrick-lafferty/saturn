@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <services/virtualFileSystem/virtualFileSystem.h>
 #include <services/virtualFileSystem/vostok.h>
+#include <stdlib.h>
 
 namespace Shell {
 
@@ -106,8 +107,83 @@ namespace Shell {
         return false;
     }
 
-    void doWrite(uint32_t descriptor) {
-        write(descriptor, nullptr, 0);
+    VFS::ReadResult readSignature(uint32_t descriptor, bool& success) {
+        read(descriptor, 0);
+        IPC::MaximumMessageBuffer buffer;
+        receive(&buffer);
+
+        if (buffer.messageId == VFS::ReadResult::MessageId) {
+            auto r = IPC::extractMessage<VFS::ReadResult>(buffer);
+            success = r.success;
+            return r;
+        }
+        else {
+            return {};
+        }
+    }
+
+    void doRead(uint32_t descriptor) {
+        bool success {false};
+        auto r = readSignature(descriptor, success); 
+        Vostok::ArgBuffer args{r.buffer, sizeof(r.buffer)};
+        print("Signature: (");
+
+        auto type = args.readType();
+
+        while (type != Vostok::ArgTypes::EndArg) {
+            auto nextType = args.readType();
+
+            if (nextType == Vostok::ArgTypes::EndArg) {
+                print(") -> ");
+            }
+
+            switch(type) {
+                case Vostok::ArgTypes::Void: {
+                    print("void");
+                    break;
+                }
+                case Vostok::ArgTypes::Uint32: {
+                    print("uint32");
+                    break;
+                }
+                case Vostok::ArgTypes::Cstring: {
+                    print("char*");
+                    break;
+                }
+            }
+
+            if (nextType != Vostok::ArgTypes::EndArg) {
+                if (args.peekType() != Vostok::ArgTypes::EndArg) {
+                    print(", ");
+                }
+            }
+            else {
+                print("\n");
+            }
+
+            type = nextType;                
+        }
+    }
+
+    void doWrite(uint32_t descriptor, char* arg) {
+        bool success {false};
+        auto sig = readSignature(descriptor, success);
+        Vostok::ArgBuffer args{sig.buffer, sizeof(sig.buffer)};
+
+        auto expectedType = args.peekType();
+
+        if (expectedType == Vostok::ArgTypes::Uint32) {
+            args.write(strtol(arg, nullptr, 10), expectedType);
+        }
+        else if (expectedType == Vostok::ArgTypes::Bool) {
+            bool b {false};
+            if (strcmp(arg, "true") == 0) {
+                b = true;
+            }
+            args.write(b, expectedType);
+        }
+
+        write(descriptor, sig.buffer, sizeof(sig.buffer));
 
         /*
         writes to a function yield 1 or 2 messages,
@@ -122,6 +198,7 @@ namespace Shell {
                 auto msg = IPC::extractMessage<VFS::WriteResult>(buffer);
 
                 if (!msg.success) {
+                    print("write failed\n");
                     return;
                 }
             }
@@ -130,64 +207,15 @@ namespace Shell {
         IPC::MaximumMessageBuffer buffer;
         receive(&buffer);
 
-        if (buffer.messageId = VFS::ReadResult::MessageId) {
+        if (buffer.messageId == VFS::ReadResult::MessageId) {
             auto msg = IPC::extractMessage<VFS::ReadResult>(buffer);
 
             char s[20];
             memset(s, '\0', sizeof(s));
-            memcpy(s, msg.buffer, 5);
+            memcpy(s, msg.buffer, 10);
             print(s);
         }
 
-    }
-
-    void doRead(uint32_t descriptor) {
-        read(descriptor, 0);
-        IPC::MaximumMessageBuffer buffer;
-        receive(&buffer);
-
-        if (buffer.messageId == VFS::ReadResult::MessageId) {
-            auto r = IPC::extractMessage<VFS::ReadResult>(buffer);
-            if (!r.success) return;
-            Vostok::ArgBuffer args{r.buffer, sizeof(r.buffer)};
-            print("Signature: (");
-
-            auto type = args.readType();
-
-            while (type != Vostok::ArgTypes::EndArg) {
-                auto nextType = args.readType();
-
-                if (nextType == Vostok::ArgTypes::EndArg) {
-                    print(") -> ");
-                }
-
-                switch(type) {
-                    case Vostok::ArgTypes::Void: {
-                        print("void");
-                        break;
-                    }
-                    case Vostok::ArgTypes::Uint32: {
-                        print("uint32");
-                        break;
-                    }
-                    case Vostok::ArgTypes::Cstring: {
-                        print("char*");
-                        break;
-                    }
-                }
-
-                if (nextType != Vostok::ArgTypes::EndArg) {
-                    if (args.peekType() != Vostok::ArgTypes::EndArg) {
-                        print(", ");
-                    }
-                }
-                else {
-                    print("\n");
-                }
-
-                type = nextType;                
-            }
-        }
     }
 
     bool parse(char* input) {
@@ -226,9 +254,12 @@ namespace Shell {
             word = markWord(start);
 
             if (word != nullptr) {
+                auto object = start;
+                start = word + 1;
+
                 uint32_t descriptor {0};
-                if (doOpen(start, descriptor)) {
-                    doWrite(descriptor); 
+                if (doOpen(object, descriptor)) {
+                    doWrite(descriptor, start); 
                 }
                 else {
                     print("open failed\n");

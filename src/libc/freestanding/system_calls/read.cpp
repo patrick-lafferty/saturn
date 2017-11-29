@@ -22,8 +22,8 @@ void write(uint32_t fileDescriptor, const void* data, uint32_t length) {
     VFS::WriteRequest request;
     request.fileDescriptor = fileDescriptor;
     request.writeLength = length;
-    //TODO: copy buffer
     request.serviceType = Kernel::ServiceType::VFS;
+    memcpy(request.buffer, data, length);
     send(IPC::RecipientType::ServiceName, &request);
 }
 
