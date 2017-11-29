@@ -64,6 +64,7 @@ SERVICES_OBJS = \
 	$(SERVICESDIR)/virtualFileSystem/virtualFileSystem.o \
 	$(SERVICESDIR)/virtualFileSystem/vostok.o \
 	$(SERVICESDIR)/processFileSystem/processFileSystem.o \
+	$(SERVICESDIR)/processFileSystem/object.o \
 	$(SERVICESDIR)/fakeFileSystem/fakeFileSystem.o \
 	$(SERVICESDIR)/startup/startup.o \
 
