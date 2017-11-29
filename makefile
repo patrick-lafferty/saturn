@@ -62,6 +62,7 @@ SERVICES_OBJS = \
 	$(SERVICESDIR)/splash/splash.o \
 	$(SERVICESDIR)/memory/memory.o \
 	$(SERVICESDIR)/virtualFileSystem/virtualFileSystem.o \
+	$(SERVICESDIR)/virtualFileSystem/vostok.o \
 	$(SERVICESDIR)/processFileSystem/processFileSystem.o \
 	$(SERVICESDIR)/fakeFileSystem/fakeFileSystem.o \
 	$(SERVICESDIR)/startup/startup.o \
