@@ -7,8 +7,21 @@ using namespace VFS;
 using namespace Vostok;
 
 namespace PFS {
-    void ProcessObject::read(uint32_t requesterTaskId, uint32_t functionId) {
-        describe(requesterTaskId, functionId);
+
+    //functions
+    int ProcessObject::getFunction(char* name) {
+        if (strcmp(name, "testA") == 0) {
+            return static_cast<int>(FunctionId::TestA);
+        }
+        else if (strcmp(name, "testB") == 0) {
+            return static_cast<int>(FunctionId::TestB);
+        }
+
+        return -1;
+    }
+
+    void ProcessObject::readFunction(uint32_t requesterTaskId, uint32_t functionId) {
+        describeFunction(requesterTaskId, functionId);
     }
 
     void replyWriteFailed(uint32_t requesterTaskId) {
@@ -18,7 +31,7 @@ namespace PFS {
         send(IPC::RecipientType::TaskId, &result);
     }
 
-    void ProcessObject::write(uint32_t requesterTaskId, uint32_t functionId, ArgBuffer& args) {
+    void ProcessObject::writeFunction(uint32_t requesterTaskId, uint32_t functionId, ArgBuffer& args) {
         switch(functionId) {
             case static_cast<uint32_t>(FunctionId::TestA): {
 
@@ -52,18 +65,7 @@ namespace PFS {
         }
     }
 
-    int ProcessObject::getFunction(char* name) {
-        if (strcmp(name, "testA") == 0) {
-            return static_cast<int>(FunctionId::TestA);
-        }
-        else if (strcmp(name, "testB") == 0) {
-            return static_cast<int>(FunctionId::TestB);
-        }
-
-        return -1;
-    }
-
-    void ProcessObject::describe(uint32_t requesterTaskId, uint32_t functionId) {
+    void ProcessObject::describeFunction(uint32_t requesterTaskId, uint32_t functionId) {
         ReadResult result {};
         result.success = true;
         ArgBuffer args{result.buffer, sizeof(result.buffer)};
@@ -89,6 +91,43 @@ namespace PFS {
         result.recipientId = requesterTaskId;
         send(IPC::RecipientType::TaskId, &result);
     }
+
+    //properties
+    int ProcessObject::getProperty(char* name) {
+        return -1;
+    }
+
+    void ProcessObject::readProperty(uint32_t requesterTaskId, uint32_t propertyId) {
+        describeProperty(requesterTaskId, propertyId);
+    }
+
+    void ProcessObject::writeProperty(uint32_t requesterTaskId, uint32_t propertyId, ArgBuffer& args) {
+        switch(propertyId) {
+            
+            default: {
+                replyWriteFailed(requesterTaskId);
+            }
+        }
+    }
+
+    void ProcessObject::describeProperty(uint32_t requesterTaskId, uint32_t propertyId) {
+        ReadResult result {};
+        result.success = true;
+        ArgBuffer args{result.buffer, sizeof(result.buffer)};
+        
+        switch(propertyId) {
+           
+            default: {
+                result.success = false;
+            }
+        }
+
+        result.recipientId = requesterTaskId;
+        send(IPC::RecipientType::TaskId, &result);
+    }
+
+
+    //process-specific implementation
 
     void acknowledgeWrite(uint32_t requesterTaskId) {
         WriteResult result;

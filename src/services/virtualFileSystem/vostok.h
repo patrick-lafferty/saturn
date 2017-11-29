@@ -9,10 +9,15 @@ namespace Vostok {
     class Object {
     public:
 
-        virtual void read(uint32_t requesterTaskId, uint32_t functionId) {}
-        virtual void write(uint32_t requesterTaskId, uint32_t functionId, ArgBuffer& args) {}
-        virtual int getFunction(char* name) {return -1;}
-        virtual void describe(uint32_t requesterTaskId, uint32_t functionId) {}
+        virtual int getFunction(char* name) = 0; 
+        virtual void readFunction(uint32_t requesterTaskId, uint32_t functionId) = 0;
+        virtual void writeFunction(uint32_t requesterTaskId, uint32_t functionId, ArgBuffer& args) = 0;
+        virtual void describeFunction(uint32_t requesterTaskId, uint32_t functionId) = 0;
+
+        virtual int getProperty(char* name) = 0;
+        virtual void readProperty(uint32_t requesterTaskId, uint32_t propertyId) = 0;
+        virtual void writeProperty(uint32_t requesterTaskId, uint32_t propertyId, ArgBuffer& args) = 0;
+        virtual void describeProperty(uint32_t requesterTaskId, uint32_t propertyId) = 0;
     };
 
     enum class ArgTypes : uint8_t {

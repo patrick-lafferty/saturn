@@ -2,6 +2,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+extern "C" void __cxa_pure_virtual() {
+
+}
+
 /*
 TODO: follow the c++ standard requirements for new, alignment etc
 

@@ -8,10 +8,15 @@ namespace PFS {
     class ProcessObject : public Vostok::Object {
     public:
 
-        void read(uint32_t requesterTaskId, uint32_t functionId) override;
-        void write(uint32_t requesterTaskId, uint32_t functionId, Vostok::ArgBuffer& args) override;
         int getFunction(char* name) override;
-        void describe(uint32_t requesterTaskId, uint32_t functionId) override;
+        void readFunction(uint32_t requesterTaskId, uint32_t functionId) override;
+        void writeFunction(uint32_t requesterTaskId, uint32_t functionId, Vostok::ArgBuffer& args) override;
+        void describeFunction(uint32_t requesterTaskId, uint32_t functionId) override;
+
+        int getProperty(char* name) override;
+        void readProperty(uint32_t requesterTaskId, uint32_t propertyId) override;
+        void writeProperty(uint32_t requesterTaskId, uint32_t propertyId, Vostok::ArgBuffer& args) override;
+        void describeProperty(uint32_t requesterTaskId, uint32_t propertyId) override;
 
     private:
 
@@ -21,6 +26,10 @@ namespace PFS {
         enum class FunctionId {
             TestA,
             TestB
+        };
+
+        enum class PropertyId {
+
         };
     };
 }

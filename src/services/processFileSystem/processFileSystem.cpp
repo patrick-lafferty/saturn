@@ -16,16 +16,44 @@ namespace PFS {
 
     }
 
+    enum class DescriptorType {
+        Object,
+        Function,
+        Property
+    };
+
     struct FileDescriptor {
         Object* instance;
-        uint32_t functionId;
+
+        union {
+            uint32_t functionId;
+            uint32_t propertyId;
+        };
+
+        DescriptorType type;
 
         void read(uint32_t requesterTaskId) {
-            instance->read(requesterTaskId, functionId);
+            if (type == DescriptorType::Object) {
+
+            }
+            else if (type == DescriptorType::Function) {
+                instance->readFunction(requesterTaskId, functionId);
+            }
+            else if (type == DescriptorType::Property) {
+                instance->readProperty(requesterTaskId, propertyId);
+            }
         }
 
         void write(uint32_t requesterTaskId, ArgBuffer& args) {
-            instance->write(requesterTaskId, functionId, args);
+            if (type == DescriptorType::Object) {
+
+            }
+            else if (type == DescriptorType::Function) {
+                instance->writeFunction(requesterTaskId, functionId, args);
+            }
+            else if (type == DescriptorType::Property) {
+                instance->writeProperty(requesterTaskId, propertyId, args);
+            }
         }
     };
 
@@ -43,26 +71,33 @@ namespace PFS {
 
             if (buffer.messageId == OpenRequest::MessageId) {
                 auto request = IPC::extractMessage<OpenRequest>(buffer);
-                auto functionName = strrchr(request.path, '/');
-                bool failed {false};
+                auto name = strrchr(request.path, '/');
+                bool failed {true};
                 OpenResult result{};
                 result.serviceType = ServiceType::VFS;
 
-                if (functionName != nullptr) {
+                if (name != nullptr) {
                     //TODO: still hardcoded to one instance
-                    auto functionId = p.getFunction(functionName + 1);
+                    auto functionId = p.getFunction(name + 1);
 
                     if (functionId >= 0) {
+                        failed = false;
                         openDescriptors[0].functionId = functionId;
+                        openDescriptors[0].type = DescriptorType::Function;
                         result.success = true;
                         result.fileDescriptor = nextFileDescriptor++;
                     }
                     else {
-                        failed = true;
+                        auto propertyId = p.getProperty(name + 1);
+
+                        if (propertyId >= 0) {
+                            failed = false;
+                            openDescriptors[0].propertyId = propertyId;
+                            openDescriptors[0].type = DescriptorType::Property;
+                            result.success = true;
+                            result.fileDescriptor = nextFileDescriptor++;
+                        }
                     }
-                }
-                else {
-                    failed = true;
                 }
 
                 if (failed) {
