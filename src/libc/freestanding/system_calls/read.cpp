@@ -12,9 +12,18 @@ void open(char* path) {
 void read(uint32_t fileDescriptor, uint32_t length) {
     VFS::ReadRequest request;
     request.fileDescriptor = fileDescriptor;
-    //request.length = length;
+    request.readLength = length;
     request.serviceType = Kernel::ServiceType::VFS;
 
+    send(IPC::RecipientType::ServiceName, &request);
+}
+
+void write(uint32_t fileDescriptor, const void* data, uint32_t length) {
+    VFS::WriteRequest request;
+    request.fileDescriptor = fileDescriptor;
+    request.writeLength = length;
+    //TODO: copy buffer
+    request.serviceType = Kernel::ServiceType::VFS;
     send(IPC::RecipientType::ServiceName, &request);
 }
 
