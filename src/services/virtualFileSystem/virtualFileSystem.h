@@ -44,6 +44,28 @@ namespace VFS {
         bool success;
     };
 
+    struct CreateRequest : IPC::Message {
+        CreateRequest() {
+            messageId = MessageId;
+            length = sizeof(CreateRequest);
+        }
+
+        static uint32_t MessageId;
+        char path[64];
+
+        //TODO: read/write, permissions
+    };
+
+    struct CreateResult : IPC::Message {
+        CreateResult() {
+            messageId = MessageId;
+            length = sizeof(CreateResult);
+        }
+
+        static uint32_t MessageId;
+        bool success;
+    };
+
     struct ReadRequest : IPC::Message {
         ReadRequest() {
             messageId = MessageId;

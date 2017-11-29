@@ -153,7 +153,7 @@ namespace Shell {
                         char* s = new char[8 + strlen(value)];
                         sprintf(s, "char* = \"%s\"\n", value);
                         print(s);
-                        delete s;
+                        delete[] s;
                     }
                     break;
                 }

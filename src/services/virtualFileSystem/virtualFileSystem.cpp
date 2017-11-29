@@ -11,6 +11,8 @@ namespace VFS {
     uint32_t MountRequest::MessageId;
     uint32_t OpenRequest::MessageId;
     uint32_t OpenResult::MessageId;
+    uint32_t CreateRequest::MessageId;
+    uint32_t CreateResult::MessageId;
     uint32_t ReadRequest::MessageId;
     uint32_t ReadResult::MessageId;
     uint32_t WriteRequest::MessageId;
@@ -22,6 +24,8 @@ namespace VFS {
         IPC::registerMessage<MountRequest>();
         IPC::registerMessage<OpenRequest>();
         IPC::registerMessage<OpenResult>();
+        IPC::registerMessage<CreateRequest>();
+        IPC::registerMessage<CreateResult>();
         IPC::registerMessage<ReadRequest>();
         IPC::registerMessage<ReadResult>();
         IPC::registerMessage<WriteRequest>();
@@ -72,19 +76,35 @@ namespace VFS {
         return -1;
     }
 
+    bool findMount(Array<Mount>& mounts, char* path, Mount& matchingMount) {
+        for (auto& mount : mounts) {
+
+            if (!mount.exists()) {
+                continue;
+            }
+
+            if (strncmp(path, mount.path, mount.pathLength) == 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     void messageLoop() {
         /*
         TODO: Replace with a trie where the leaf node values are services 
         */
-        Mount mounts[2] = {
+        /*Mount mounts[2] = {
             {nullptr, 0, 0},
             {nullptr, 0, 0}
-        };
+        };*/
+        Array<Mount> mounts;
 
         //TODO: design a proper data structure for holding outstanding requests
         uint32_t outstandingRequestSenderId {0};
         Array<FileDescriptor> openFileDescriptors;
-        uint32_t nextMount {0};
+        //uint32_t nextMount {0};
 
         while (true) {
             IPC::MaximumMessageBuffer buffer;
@@ -94,32 +114,25 @@ namespace VFS {
                 //TODO: for now only support top level mounts to /
                 auto request = IPC::extractMessage<MountRequest>(buffer);
                 auto pathLength = strlen(request.path) + 1;
-                mounts[nextMount].path = new char[pathLength];
+                /*mounts[nextMount].path = new char[pathLength];
                 memcpy(mounts[nextMount].path, request.path, pathLength);
                 mounts[nextMount].serviceId = request.senderTaskId; 
                 mounts[nextMount].pathLength = pathLength;
-                nextMount++;
+                nextMount++;*/
+                mounts.add({nullptr, request.senderTaskId, pathLength});
+                auto& mount = mounts[mounts.size() - 1];
+                memcpy(mount.path, request.path, pathLength);
+
             }
             else if (buffer.messageId == OpenRequest::MessageId) {
                 //TODO: search the trie for the appropriate mount point
                 //since this is just an experiment to see if this design works, hardcode mount
                 auto request = IPC::extractMessage<OpenRequest>(buffer);
-                bool foundMount {false};
-
-                for (auto& mount : mounts) {
-
-                    if (!mount.exists()) {
-                        continue;
-                    }
-
-                    if (strncmp(request.path, mount.path, mount.pathLength) == 0) {
-                        request.recipientId = mount.serviceId;
-                        foundMount = true;
-                        break;
-                    }
-                }
+                Mount mount;
+                auto foundMount = findMount(mounts, request.path, mount);
 
                 if (foundMount) {
+                    request.recipientId = mount.serviceId;
                     send(IPC::RecipientType::TaskId, &request);   
                     outstandingRequestSenderId = buffer.senderTaskId;
                 }
@@ -129,7 +142,6 @@ namespace VFS {
                     result.success = false;
                     send(IPC::RecipientType::TaskId, &result); 
                 }
-
             }
             else if (buffer.messageId == OpenResult::MessageId) {
 
@@ -171,8 +183,31 @@ namespace VFS {
                             send(IPC::RecipientType::TaskId, &result);
                         }
 
+                        break;
                     }
                 }
+            }
+            else if (buffer.messageId == CreateRequest::MessageId) {
+                auto request = IPC::extractMessage<CreateRequest>(buffer);
+                Mount mount;
+                auto foundMount = findMount(mounts, request.path, mount);
+
+                if (foundMount) {
+                    request.recipientId = mount.serviceId;
+                    send(IPC::RecipientType::TaskId, &request);
+                    outstandingRequestSenderId = buffer.senderTaskId;
+                }
+                else {
+                    CreateResult result;
+                    result.recipientId = request.senderTaskId;
+                    result.success = false;
+                    send(IPC::RecipientType::TaskId, &result);
+                }
+            }
+            else if (buffer.messageId == CreateResult::MessageId) {
+                auto result = IPC::extractMessage<CreateResult>(buffer);
+                result.recipientId = outstandingRequestSenderId;
+                send(IPC::RecipientType::TaskId, &result);
             }
             else if (buffer.messageId == ReadRequest::MessageId) {
                 auto request = IPC::extractMessage<ReadRequest>(buffer);

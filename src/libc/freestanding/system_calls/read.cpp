@@ -9,6 +9,10 @@ void open(char* path) {
     send(IPC::RecipientType::ServiceName, &open);
 }
 
+void create(char* path) {
+    
+}
+
 void read(uint32_t fileDescriptor, uint32_t length) {
     VFS::ReadRequest request;
     request.fileDescriptor = fileDescriptor;
