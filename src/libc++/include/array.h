@@ -48,6 +48,10 @@ public:
         return length;
     }
 
+    void clear() {
+        length = 0;
+    }
+
 private:
     uint32_t length {0};
     uint32_t maxItems {0};

@@ -21,7 +21,7 @@ namespace IPC {
         uint32_t messageId;
     };
 
-    inline constexpr uint32_t MaximumMessageSize {256};
+    inline constexpr uint32_t MaximumMessageSize {512};
     struct MaximumMessageBuffer : Message {
         uint8_t buffer[MaximumMessageSize];
     };
