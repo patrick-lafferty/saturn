@@ -36,6 +36,18 @@ public:
         return data + length;
     }
 
+    T& operator[](size_t pos) {
+        return data[pos];
+    }
+
+    bool empty() const {
+        return length == 0;
+    }
+
+    uint32_t size() const {
+        return length;
+    }
+
 private:
     uint32_t length {0};
     uint32_t maxItems {0};
