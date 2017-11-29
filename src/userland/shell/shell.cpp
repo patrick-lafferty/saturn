@@ -204,28 +204,72 @@ namespace Shell {
         bool success {false};
         auto sig = readSignature(descriptor, success);
         Vostok::ArgBuffer args{sig.buffer, sizeof(sig.buffer)};
+        //type starts with function or property
+        auto type = args.readType();
 
-        auto expectedType = args.peekType();
+        if (type == Vostok::ArgTypes::Function) {
+            auto expectedType = args.peekType();
 
-        if (expectedType == Vostok::ArgTypes::Uint32) {
-            args.write(strtol(arg, nullptr, 10), expectedType);
-        }
-        else if (expectedType == Vostok::ArgTypes::Bool) {
-            bool b {false};
-            if (strcmp(arg, "true") == 0) {
-                b = true;
+            if (expectedType == Vostok::ArgTypes::Uint32) {
+                args.write(strtol(arg, nullptr, 10), expectedType);
             }
-            args.write(b, expectedType);
+            else if (expectedType == Vostok::ArgTypes::Bool) {
+                bool b {false};
+                if (strcmp(arg, "true") == 0) {
+                    b = true;
+                }
+                args.write(b, expectedType);
+            }
+
+            write(descriptor, sig.buffer, sizeof(sig.buffer));
+
+            /*
+            writes to a function yield 1 or 2 messages,
+            if the write failed then only a WriteResult,
+            otherwise a WriteResult followed by a ReadResult
+            */
+            {
+                IPC::MaximumMessageBuffer buffer;
+                receive(&buffer);
+
+                if (buffer.messageId == VFS::WriteResult::MessageId) {
+                    auto msg = IPC::extractMessage<VFS::WriteResult>(buffer);
+
+                    if (!msg.success) {
+                        print("write failed\n");
+                        return;
+                    }
+                }
+            }
+
+            IPC::MaximumMessageBuffer buffer;
+            receive(&buffer);
+
+            if (buffer.messageId == VFS::ReadResult::MessageId) {
+                auto msg = IPC::extractMessage<VFS::ReadResult>(buffer);
+
+                char s[20];
+                memset(s, '\0', sizeof(s));
+                memcpy(s, msg.buffer, 10);
+                print(s);
+            }
         }
+        else if (type == Vostok::ArgTypes::Property) {
+            auto expectedType = args.peekType();
 
-        write(descriptor, sig.buffer, sizeof(sig.buffer));
+            if (expectedType == Vostok::ArgTypes::Uint32) {
+                args.write(strtol(arg, nullptr, 10), expectedType);
+            }
+            else if (expectedType == Vostok::ArgTypes::Bool) {
+                bool b {false};
+                if (strcmp(arg, "true") == 0) {
+                    b = true;
+                }
+                args.write(b, expectedType);
+            }
 
-        /*
-        writes to a function yield 1 or 2 messages,
-        if the write failed then only a WriteResult,
-        otherwise a WriteResult followed by a ReadResult
-        */
-        {
+            write(descriptor, sig.buffer, sizeof(sig.buffer));
+            
             IPC::MaximumMessageBuffer buffer;
             receive(&buffer);
 
@@ -237,18 +281,6 @@ namespace Shell {
                     return;
                 }
             }
-        }
-
-        IPC::MaximumMessageBuffer buffer;
-        receive(&buffer);
-
-        if (buffer.messageId == VFS::ReadResult::MessageId) {
-            auto msg = IPC::extractMessage<VFS::ReadResult>(buffer);
-
-            char s[20];
-            memset(s, '\0', sizeof(s));
-            memcpy(s, msg.buffer, 10);
-            print(s);
         }
 
     }

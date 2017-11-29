@@ -37,7 +37,21 @@ namespace PFS {
         send(IPC::RecipientType::TaskId, &result);
     }
 
+    void replyWriteSucceeded(uint32_t requesterTaskId) {
+        WriteResult result;
+        result.success = true;
+        result.recipientId = requesterTaskId;
+        send(IPC::RecipientType::TaskId, &result);
+    }
+
     void ProcessObject::writeFunction(uint32_t requesterTaskId, uint32_t functionId, ArgBuffer& args) {
+        auto type = args.readType();
+
+        if (type != ArgTypes::Function) {
+            replyWriteFailed(requesterTaskId);
+            return;
+        }
+
         switch(functionId) {
             case static_cast<uint32_t>(FunctionId::TestA): {
 
@@ -135,8 +149,40 @@ namespace PFS {
     }
 
     void ProcessObject::writeProperty(uint32_t requesterTaskId, uint32_t propertyId, ArgBuffer& args) {
-        switch(propertyId) {
-            
+        auto type = args.readType();
+
+        if (type != ArgTypes::Property) {
+            replyWriteFailed(requesterTaskId);
+            return;
+        }
+
+        switch(static_cast<PropertyId>(propertyId)) {
+            case PropertyId::Foo: {
+
+                auto x = args.read<char*>(ArgTypes::Cstring);
+
+                if (!args.readFailed) {
+                    memcpy(foo, x, sizeof(foo));
+                    replyWriteSucceeded(requesterTaskId);
+                }
+                else {
+                    replyWriteFailed(requesterTaskId);
+                }
+
+                break;
+            } 
+            case PropertyId::Bar: {
+                auto x = args.read<uint32_t>(ArgTypes::Uint32);
+
+                if (!args.readFailed) {
+                    bar = x;
+                    replyWriteSucceeded(requesterTaskId);
+                }
+                else {
+                    replyWriteFailed(requesterTaskId);
+                }
+                break;
+            }
             default: {
                 replyWriteFailed(requesterTaskId);
             }
@@ -145,15 +191,9 @@ namespace PFS {
 
     //process-specific implementation
 
-    void acknowledgeWrite(uint32_t requesterTaskId) {
-        WriteResult result;
-        result.success = true;
-        result.recipientId = requesterTaskId;
-        send(IPC::RecipientType::TaskId, &result);
-    }
-
+    
     void ProcessObject::testA(uint32_t requesterTaskId, int x) {
-        acknowledgeWrite(requesterTaskId);
+        replyWriteSucceeded(requesterTaskId);
         ReadResult result;
         result.success = true;
         char s[10];
@@ -165,7 +205,7 @@ namespace PFS {
     }
 
     void ProcessObject::testB(uint32_t requesterTaskId, bool b) {
-        acknowledgeWrite(requesterTaskId);
+        replyWriteSucceeded(requesterTaskId);
         ReadResult result;
         result.success = true;
         char s[10];
