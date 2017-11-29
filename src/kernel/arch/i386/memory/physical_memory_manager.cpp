@@ -36,12 +36,14 @@ namespace Memory {
 
                 if (record.type == 1 && record.lowerLength >= PageSize) {
                     auto address = record.lowerBaseAddress;
+                    auto pages = record.lowerLength / PageSize;
 
                     if (address >= kernelStartAddress && address <= kernelEndAddress) {
+                        pages -= (kernelEndAddress - kernelStartAddress) / PageSize;
                         address = (kernelEndAddress & 0xFFFFF000) + PageSize;
                     }
 
-                    auto pages = record.lowerLength / PageSize;
+                    allocatedPages += pages;
                     totalPages += pages;
                     freePage(address, pages);
                 }
