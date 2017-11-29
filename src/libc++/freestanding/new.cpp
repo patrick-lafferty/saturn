@@ -46,6 +46,10 @@ void operator delete(void* ptr) {
     free(ptr);
 }
 
+void operator delete[](void* ptr) {
+    free(ptr);
+}
+
 void operator delete(void* ptr, std::align_val_t alignment) {
     free(ptr);
 }
