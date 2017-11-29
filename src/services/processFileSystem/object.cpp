@@ -8,6 +8,12 @@ using namespace Vostok;
 
 namespace PFS {
 
+    ProcessObject::ProcessObject() {
+        memset(foo, '\0', sizeof(foo));
+        memcpy(foo, "Hello", 5);
+        bar = 55;
+    }
+
     //functions
     int ProcessObject::getFunction(char* name) {
         if (strcmp(name, "testA") == 0) {
@@ -69,6 +75,7 @@ namespace PFS {
         ReadResult result {};
         result.success = true;
         ArgBuffer args{result.buffer, sizeof(result.buffer)};
+        args.writeType(ArgTypes::Function);
         
         switch(functionId) {
             case static_cast<uint32_t>(FunctionId::TestA): {
@@ -94,11 +101,37 @@ namespace PFS {
 
     //properties
     int ProcessObject::getProperty(char* name) {
+        if (strcmp(name, "Foo") == 0) {
+            return static_cast<int>(PropertyId::Foo);
+        }
+        else if (strcmp(name, "Bar") == 0) {
+            return static_cast<int>(PropertyId::Bar);
+        }
+
         return -1;
     }
 
     void ProcessObject::readProperty(uint32_t requesterTaskId, uint32_t propertyId) {
-        describeProperty(requesterTaskId, propertyId);
+        ReadResult result;
+        result.success = true;
+        ArgBuffer args{result.buffer, sizeof(result.buffer)};
+        args.writeType(ArgTypes::Property);
+
+        switch(static_cast<PropertyId>(propertyId)) {
+            case PropertyId::Foo: {
+                args.writeValueWithType(foo, ArgTypes::Cstring);
+                break;
+            }
+            case PropertyId::Bar: {
+                args.writeValueWithType(bar, ArgTypes::Uint32);
+                break;
+            }
+        }
+
+        args.writeType(ArgTypes::EndArg);
+
+        result.recipientId = requesterTaskId;
+        send(IPC::RecipientType::TaskId, &result);
     }
 
     void ProcessObject::writeProperty(uint32_t requesterTaskId, uint32_t propertyId, ArgBuffer& args) {
@@ -109,23 +142,6 @@ namespace PFS {
             }
         }
     }
-
-    void ProcessObject::describeProperty(uint32_t requesterTaskId, uint32_t propertyId) {
-        ReadResult result {};
-        result.success = true;
-        ArgBuffer args{result.buffer, sizeof(result.buffer)};
-        
-        switch(propertyId) {
-           
-            default: {
-                result.success = false;
-            }
-        }
-
-        result.recipientId = requesterTaskId;
-        send(IPC::RecipientType::TaskId, &result);
-    }
-
 
     //process-specific implementation
 

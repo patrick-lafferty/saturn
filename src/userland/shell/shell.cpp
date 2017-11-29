@@ -126,42 +126,77 @@ namespace Shell {
         bool success {false};
         auto r = readSignature(descriptor, success); 
         Vostok::ArgBuffer args{r.buffer, sizeof(r.buffer)};
-        print("Signature: (");
 
         auto type = args.readType();
-
-        while (type != Vostok::ArgTypes::EndArg) {
-            auto nextType = args.readType();
-
-            if (nextType == Vostok::ArgTypes::EndArg) {
-                print(") -> ");
-            }
+        if (type == Vostok::ArgTypes::Property) {
+            print("Property ");
+            //its a property
+            type = args.peekType();
 
             switch(type) {
                 case Vostok::ArgTypes::Void: {
                     print("void");
-                    break;
+                    return;
                 }
                 case Vostok::ArgTypes::Uint32: {
-                    print("uint32");
+                    auto value = args.read<uint32_t>(type);
+                    if (!args.readFailed) {
+                        char s[15];
+                        sprintf(s, "uint32 = %d\n", value);
+                        print(s);
+                    }
                     break;
                 }
                 case Vostok::ArgTypes::Cstring: {
-                    print("char*");
+                    auto value = args.read<char*>(type);
+                    if (!args.readFailed) {
+                        char* s = new char[8 + strlen(value)];
+                        sprintf(s, "char* = \"%s\"\n", value);
+                        print(s);
+                        delete s;
+                    }
                     break;
                 }
             }
 
-            if (nextType != Vostok::ArgTypes::EndArg) {
-                if (args.peekType() != Vostok::ArgTypes::EndArg) {
-                    print(", ");
-                }
-            }
-            else {
-                print("\n");
-            }
+        }
+        else {
+            print("Function Signature: (");
+            type = args.readType();
 
-            type = nextType;                
+            while (type != Vostok::ArgTypes::EndArg) {
+                auto nextType = args.readType();
+
+                if (nextType == Vostok::ArgTypes::EndArg) {
+                    print(") -> ");
+                }
+
+                switch(type) {
+                    case Vostok::ArgTypes::Void: {
+                        print("void");
+                        break;
+                    }
+                    case Vostok::ArgTypes::Uint32: {
+                        print("uint32");
+                        break;
+                    }
+                    case Vostok::ArgTypes::Cstring: {
+                        print("char*");
+                        break;
+                    }
+                }
+
+                if (nextType != Vostok::ArgTypes::EndArg) {
+                    if (args.peekType() != Vostok::ArgTypes::EndArg) {
+                        print(", ");
+                    }
+                }
+                else {
+                    print("\n");
+                }
+
+                type = nextType;                
+            }
         }
     }
 
