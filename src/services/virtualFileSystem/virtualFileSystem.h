@@ -66,6 +66,27 @@ namespace VFS {
         uint8_t buffer[256];
     };
 
+    struct WriteRequest : IPC::Message {
+        WriteRequest() {
+            messageId = MessageId;
+            length = sizeof(WriteRequest);
+        }
+
+        static uint32_t MessageId;
+        uint32_t fileDescriptor;
+        uint32_t writeLength;
+    };
+
+    struct WriteResult : IPC::Message {
+        WriteResult() {
+            messageId = MessageId;
+            length = sizeof(WriteResult);
+        }
+
+        static uint32_t MessageId;
+        bool success;
+    };
+
     struct CloseRequest : IPC::Message {
         CloseRequest() {
             messageId = MessageId;

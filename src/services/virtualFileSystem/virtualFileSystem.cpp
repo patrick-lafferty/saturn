@@ -13,6 +13,8 @@ namespace VFS {
     uint32_t OpenResult::MessageId;
     uint32_t ReadRequest::MessageId;
     uint32_t ReadResult::MessageId;
+    uint32_t WriteRequest::MessageId;
+    uint32_t WriteResult::MessageId;
     uint32_t CloseRequest::MessageId;
     uint32_t CloseResult::MessageId;
 
@@ -22,6 +24,8 @@ namespace VFS {
         IPC::registerMessage<OpenResult>();
         IPC::registerMessage<ReadRequest>();
         IPC::registerMessage<ReadResult>();
+        IPC::registerMessage<WriteRequest>();
+        IPC::registerMessage<WriteResult>();
         IPC::registerMessage<CloseRequest>();
         IPC::registerMessage<CloseResult>();
     }
@@ -206,6 +210,40 @@ namespace VFS {
             }
             else if (buffer.messageId == ReadResult::MessageId) {
                 auto result = IPC::extractMessage<ReadResult>(buffer);
+                result.recipientId = outstandingRequestSenderId;
+                send(IPC::RecipientType::TaskId, &result);
+            }
+            else if (buffer.messageId == WriteRequest::MessageId) {
+                auto request = IPC::extractMessage<WriteRequest>(buffer);
+                outstandingRequestSenderId = request.senderTaskId;
+
+                bool failed {false};
+
+                if (request.fileDescriptor < openFileDescriptors.size()) {
+                    auto descriptor = openFileDescriptors[request.fileDescriptor];
+
+                    if (descriptor.isOpen()) {
+                        request.recipientId = descriptor.mountTaskId;
+                        request.fileDescriptor = descriptor.descriptor;
+                        send(IPC::RecipientType::TaskId, &request);
+                    }
+                    else {
+                        failed = true;
+                    }
+                }
+                else {
+                    failed = true;
+                }
+
+                if (failed) {
+                    WriteResult result;
+                    result.success = false;
+                    result.recipientId = request.senderTaskId;
+                    send(IPC::RecipientType::TaskId, &result);
+                }
+            }
+            else if (buffer.messageId == WriteResult::MessageId) {
+                auto result = IPC::extractMessage<WriteResult>(buffer);
                 result.recipientId = outstandingRequestSenderId;
                 send(IPC::RecipientType::TaskId, &result);
             }
