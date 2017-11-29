@@ -16,5 +16,7 @@ extern "C" {
     int strncmp(const char* lhs, const char* rhs, size_t count);
 
     char* strrchr(const char* str, int ch);
+
+    char* markWord(char* input, char separator = ' ');
 }
 
