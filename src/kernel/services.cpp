@@ -99,10 +99,14 @@ namespace Kernel {
             NotifyServiceRegistered notify;
             notify.type = type;
             notify.recipientId = taskId;
+            printf("[ServiceRegistry] notifying subscribers\n");
 
-            auto task = currentScheduler->getTask(notify.recipientId);
-            task->mailbox->send(&notify);
+            //auto task = currentScheduler->getTask(notify.recipientId);
+            //task->mailbox->send(&notify);
+            currentScheduler->sendMessage(IPC::RecipientType::TaskId, &notify);
         }
+
+        subscribers[index].clear();
 
         taskIds[index] = taskId;
         return true;

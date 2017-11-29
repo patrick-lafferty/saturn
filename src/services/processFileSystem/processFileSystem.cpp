@@ -2,9 +2,11 @@
 #include <services.h>
 #include <system_calls.h>
 #include <string.h>
+#include <services/virtualFileSystem/virtualFileSystem.h>
 
 using namespace Kernel;
 using namespace VFS;
+using namespace Vostok;
 
 namespace PFS {
 
@@ -85,7 +87,7 @@ namespace PFS {
     }
 
     void ProcessObject::read(uint32_t requesterTaskId, uint32_t functionId) {
-        switch(functionId) {
+        /*switch(functionId) {
             case static_cast<uint32_t>(FunctionId::TestA): {
                 testA(requesterTaskId);
                 break;
@@ -100,7 +102,8 @@ namespace PFS {
                 result.recipientId = requesterTaskId;
                 send(IPC::RecipientType::TaskId, &result);
             }
-        }
+        }*/
+        describe(requesterTaskId, functionId);
     }
 
     int ProcessObject::getFunction(char* name) {
@@ -112,6 +115,33 @@ namespace PFS {
         }
 
         return -1;
+    }
+
+    void ProcessObject::describe(uint32_t requesterTaskId, uint32_t functionId) {
+        ReadResult result {};
+        result.success = true;
+        ArgBuffer args{result.buffer, sizeof(result.buffer)};
+        
+        switch(functionId) {
+            case static_cast<uint32_t>(FunctionId::TestA): {
+                args.writeType(ArgTypes::Void);
+                args.writeType(ArgTypes::Void);
+                args.writeType(ArgTypes::EndArg);
+                break;
+            }
+            case static_cast<uint32_t>(FunctionId::TestB): {
+                args.writeType(ArgTypes::Void);
+                args.writeType(ArgTypes::Void);
+                args.writeType(ArgTypes::EndArg);
+                break;
+            }
+            default: {
+                result.success = false;
+            }
+        }
+
+        result.recipientId = requesterTaskId;
+        send(IPC::RecipientType::TaskId, &result);
     }
 
     void ProcessObject::testA(uint32_t requesterTaskId) {
