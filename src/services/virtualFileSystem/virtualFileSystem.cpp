@@ -2,6 +2,7 @@
 #include <services.h>
 #include <system_calls.h>
 #include <string.h>
+#include <array.h>
 
 using namespace Kernel;
 
@@ -12,6 +13,8 @@ namespace VFS {
     uint32_t OpenResult::MessageId;
     uint32_t ReadRequest::MessageId;
     uint32_t ReadResult::MessageId;
+    uint32_t CloseRequest::MessageId;
+    uint32_t CloseResult::MessageId;
 
     void registerMessages() {
         IPC::registerMessage<MountRequest>();
@@ -19,6 +22,8 @@ namespace VFS {
         IPC::registerMessage<OpenResult>();
         IPC::registerMessage<ReadRequest>();
         IPC::registerMessage<ReadResult>();
+        IPC::registerMessage<CloseRequest>();
+        IPC::registerMessage<CloseResult>();
     }
 
     struct Mount {
@@ -29,8 +34,35 @@ namespace VFS {
 
     struct FileDescriptor {
         uint32_t descriptor;
-        uint32_t mount;
+        uint32_t mountTaskId;
+
+        bool isOpen() const {
+            return mountTaskId != 0;
+        }
+
+        void close() {
+            descriptor = 0;
+            mountTaskId = 0;
+        }
     };
+
+    int findEmptyDescriptor(Array<FileDescriptor>& descriptors) {
+        if (descriptors.empty()) {
+            return -1;
+        }
+        else {
+            int i = 0;
+            for (auto& desc : descriptors) {
+                if (!desc.isOpen()) {
+                    return i;
+                }
+
+                i++;
+            }
+        }
+
+        return -1;
+    }
 
     void messageLoop() {
         /*
@@ -40,8 +72,7 @@ namespace VFS {
 
         //TODO: design a proper data structure for holding outstanding requests
         uint32_t outstandingRequestSenderId {0};
-        FileDescriptor openFileDescriptors[10];
-        uint32_t nextFileDescriptor = 0;
+        Array<FileDescriptor> openFileDescriptors;
         uint32_t nextMount {0};
 
         while (true) {
@@ -85,11 +116,20 @@ namespace VFS {
                             mount services have their own local file descriptors,
                             VFS has its own that encompases all mounts
                             */
-                            auto processFileDescriptor = nextFileDescriptor++;
-                            openFileDescriptors[processFileDescriptor] = {
-                                result.fileDescriptor,
-                                mount.serviceId
-                            };
+                            auto processFileDescriptor = findEmptyDescriptor(openFileDescriptors);
+                            if (processFileDescriptor >= 0) {                            
+                                openFileDescriptors[processFileDescriptor] = {
+                                    result.fileDescriptor,
+                                    mount.serviceId
+                                };
+                            }
+                            else {
+                                processFileDescriptor = openFileDescriptors.size();
+                                openFileDescriptors.add({
+                                    result.fileDescriptor,
+                                    mount.serviceId
+                                });
+                            }
 
                             result.fileDescriptor = processFileDescriptor;
                             result.recipientId = outstandingRequestSenderId;
@@ -108,16 +148,70 @@ namespace VFS {
                 1) message forwarding (could be insecure)
                 2) a separate ReadRequestForwarded message
                 */
-                auto descriptor = openFileDescriptors[request.fileDescriptor];
+                bool failed {false};
+                if (request.fileDescriptor < openFileDescriptors.size()) {
+                    auto descriptor = openFileDescriptors[request.fileDescriptor];
 
-                request.recipientId = descriptor.mount;//mount.serviceId;
-                request.fileDescriptor = descriptor.descriptor;//openFileDescriptors[request.fileDescriptor];
-                send(IPC::RecipientType::TaskId, &request);
+                    if (descriptor.isOpen()) {
+                        request.recipientId = descriptor.mountTaskId;
+                        request.fileDescriptor = descriptor.descriptor;
+                        send(IPC::RecipientType::TaskId, &request);
+                    }
+                    else {
+                        failed = true;
+                    }
+                }
+                else {
+                    failed = true;
+                }
+
+                if (failed) {
+                    ReadResult result;
+                    result.success = false;
+                    result.recipientId = request.senderTaskId;
+                    send(IPC::RecipientType::TaskId, &result);
+                }
+                
             }
             else if (buffer.messageId == ReadResult::MessageId) {
                 auto result = IPC::extractMessage<ReadResult>(buffer);
                 result.recipientId = outstandingRequestSenderId;
                 send(IPC::RecipientType::TaskId, &result);
+            }
+            else if (buffer.messageId == CloseRequest::MessageId) {
+                auto request = IPC::extractMessage<CloseRequest>(buffer);
+
+                bool failed {false};
+
+                if (request.fileDescriptor < openFileDescriptors.size()) {
+                    auto& descriptor = openFileDescriptors[request.fileDescriptor];
+
+                    if (descriptor.isOpen()) {
+                        request.fileDescriptor = descriptor.descriptor;
+                        request.recipientId = descriptor.mountTaskId;
+                        send(IPC::RecipientType::TaskId, &request);
+
+                        descriptor.close();
+
+                        OpenResult result;
+                        result.success = true;
+                        result.recipientId = request.senderTaskId;
+                        send(IPC::RecipientType::TaskId, &result);
+                    }
+                    else {
+                        failed = true;
+                    }
+                }
+                else {
+                    failed = true;
+                }
+
+                if (failed) {
+                    OpenResult result;
+                    result.success = false;
+                    result.recipientId = request.senderTaskId;
+                    send(IPC::RecipientType::TaskId, &result);
+                }
             }
 
         }

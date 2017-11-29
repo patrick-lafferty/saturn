@@ -7,10 +7,6 @@ namespace VFS {
 
     void service();
 
-    class MountService {
-
-    };
-
     class Object {
     public:
         virtual void read(uint32_t requesterTaskId, uint32_t functionId) {}
@@ -73,6 +69,26 @@ namespace VFS {
         static uint32_t MessageId;
         bool success;
         uint8_t buffer[256];
+    };
+
+    struct CloseRequest : IPC::Message {
+        CloseRequest() {
+            messageId = MessageId;
+            length = sizeof(CloseRequest);
+        }
+
+        static uint32_t MessageId;
+        uint32_t fileDescriptor;
+    };
+
+    struct CloseResult : IPC::Message {
+        CloseResult() {
+            messageId = MessageId;
+            length = sizeof(CloseResult);
+        }
+
+        static uint32_t MessageId;
+        bool success;
     };
 
 }
