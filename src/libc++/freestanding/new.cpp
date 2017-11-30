@@ -1,4 +1,4 @@
-#include <new.h>
+#include <new>
 #include <stdlib.h>
 #include <stdio.h>
 

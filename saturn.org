@@ -426,8 +426,8 @@ return buf.read<bool>(); or error
 
 Next steps:
 
-- [ ] supporting vostok properties
-- [ ] write vostok functions with args
-- [ ] create syscall wrapper
-- [ ] create a new process object per process
+- [X] supporting vostok properties
+- [X] write vostok functions with args
+- [X] create syscall wrapper
+- [X] create a new process object per process
 - [ ] only allow kernel to write to process object

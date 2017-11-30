@@ -5,7 +5,7 @@
 #include <cpu/apic.h>
 #include <heap.h>
 #include "ipc.h"
-#include <new.h>
+#include <new>
 #include <services.h>
 #include <stdlib.h>
 

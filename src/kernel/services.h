@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 #include <ipc.h>
-#include <array.h>
+#include <array>
 
 namespace Kernel {
 
