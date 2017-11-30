@@ -89,10 +89,6 @@ namespace Terminal {
                 index = dirty.startIndex;
                 uint32_t count{dirty.endIndex};
 
-                if (count >= sizeof(BlitMessage::buffer)) {
-                    int pause = 0;
-                }
-
                 BlitMessage blit;
                 blit.index = index;
                 blit.count = count;
@@ -140,10 +136,8 @@ namespace Terminal {
 
         if (buffer.messageId == RegisterServiceDenied::MessageId) {
             //TODO: how show error if print service can't print
-            //print(100, static_cast<int>(ServiceType::Terminal));
         }
         else if (buffer.messageId == GenericServiceMeta::MessageId) {
-            //print(101, static_cast<int>(ServiceType::Terminal));
             registerMessages();
         }
     }
@@ -209,9 +203,9 @@ namespace Terminal {
         }
     }
     
-    uint32_t Terminal::handleCursorPosition(char* buffer, uint32_t length) {
+    uint32_t Terminal::handleCursorPosition(char* buffer, [[maybe_unused]] uint32_t length) {
         auto start = buffer;
-        char* end;
+        char* end {nullptr};
 
         if (*buffer == ';') {
             //row was omitted
@@ -252,9 +246,9 @@ namespace Terminal {
         return end - start + 1;
     }
 
-    uint32_t Terminal::handleCursorHorizontalAbsolute(char* buffer, uint32_t length) {
+    uint32_t Terminal::handleCursorHorizontalAbsolute(char* buffer, [[maybe_unused]] uint32_t length) {
         auto start = buffer;
-        char* end;
+        char* end {nullptr};
 
         if (*buffer == 'G') {
             //column was omitted
@@ -270,9 +264,9 @@ namespace Terminal {
         return end - start + 1;
     }
 
-    uint32_t Terminal::handleSelectGraphicRendition(char* buffer, uint32_t length) {
+    uint32_t Terminal::handleSelectGraphicRendition(char* buffer, [[maybe_unused]] uint32_t length) {
         auto start = buffer;
-        char* end;
+        char* end {nullptr};
         auto code = strtol(start, &end, 10);
 
         switch (code) {
@@ -378,7 +372,6 @@ namespace Terminal {
     }
 
     DirtyRect Terminal::interpret(char* buffer, uint32_t count) {
-        //DirtyRect dirty {};
         dirty.startIndex = getIndex();
         dirty.endIndex = 0;
         dirty.overflowed = false;

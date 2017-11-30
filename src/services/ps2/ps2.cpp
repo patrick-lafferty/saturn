@@ -63,6 +63,11 @@ namespace PS2 {
 
                 return KeyboardStates::Start;
             }
+            case KeyboardStates::E0:
+            case KeyboardStates::E0F0: {
+                //TODO: not implemented yet, just blow up
+                asm("hlt");
+            }
         }
 
         //should never get here
