@@ -58,7 +58,7 @@ namespace PFS {
 
                 auto x = args.read<uint32_t>(ArgTypes::Uint32);
 
-                if (!args.readFailed) {
+                if (!args.hasErrors()) {
                     testA(requesterTaskId, x);
                 }
                 else {
@@ -71,7 +71,7 @@ namespace PFS {
 
                 auto b = args.read<bool>(ArgTypes::Bool);
 
-                if (!args.readFailed) {
+                if (!args.hasErrors()) {
                     testB(requesterTaskId, b);
                 }
                 else {
@@ -157,7 +157,7 @@ namespace PFS {
 
                 auto x = args.read<char*>(ArgTypes::Cstring);
 
-                if (!args.readFailed) {
+                if (!args.hasErrors()) {
                     memcpy(executable, x, sizeof(executable));
                     replyWriteSucceeded(requesterTaskId);
                 }

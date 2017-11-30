@@ -129,7 +129,7 @@ namespace Shell {
                     }
                     case Vostok::ArgTypes::Uint32: {
                         auto value = args.read<uint32_t>(type);
-                        if (!args.readFailed) {
+                        if (!args.hasErrors()) {
                             char s[15];
                             sprintf(s, "uint32 = %d\n", value);
                             print(s);
@@ -138,7 +138,7 @@ namespace Shell {
                     }
                     case Vostok::ArgTypes::Cstring: {
                         auto value = args.read<char*>(type);
-                        if (!args.readFailed) {
+                        if (!args.hasErrors()) {
                             char* s = new char[8 + strlen(value)];
                             sprintf(s, "char* = \"%s\"\n", value);
                             print(s);
