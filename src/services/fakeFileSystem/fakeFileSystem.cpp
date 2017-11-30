@@ -38,6 +38,10 @@ namespace FakeFileSystem {
             receive(&buffer);
 
             if (buffer.messageId == OpenRequest::MessageId) {
+                /*
+                All open requests are guaranteed to succeed so long as
+                the path matches one of the below
+                */
                 auto request = IPC::extractMessage<OpenRequest>(buffer);
                 OpenResult result;
                 result.success = true;
@@ -66,6 +70,9 @@ namespace FakeFileSystem {
                 else if (strcmp(request.path, "/bin/shell") == 0) {
                     entryPoint = reinterpret_cast<uintptr_t>(Shell::main);
                 }
+                else {
+                    result.success = false;
+                }
 
                 descriptors[descriptor].entryPoint = entryPoint;
 
@@ -77,7 +84,6 @@ namespace FakeFileSystem {
                 ReadResult result;
                 result.success = true;
                 memcpy(result.buffer, &descriptors[request.fileDescriptor].entryPoint, sizeof(uintptr_t));
-                //result.recipientId = request.senderTaskId;
                 result.serviceType = ServiceType::VFS;
                 send(IPC::RecipientType::ServiceName, &result);
             }
