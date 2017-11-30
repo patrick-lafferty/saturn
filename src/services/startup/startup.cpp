@@ -2,6 +2,7 @@
 #include <services.h>
 #include <system_calls.h>
 #include <services/virtualFileSystem/virtualFileSystem.h>
+#include <services/virtualFileSystem/vostok.h>
 
 using namespace VFS;
 
@@ -21,6 +22,9 @@ namespace Startup {
 
             return message.success;
         }
+        else {
+            asm ("hlt");
+        }
 
         return false;
     }
@@ -36,6 +40,9 @@ namespace Startup {
             memcpy(&result, msg.buffer, sizeof(uintptr_t));
 
             return result;
+        }
+        else {
+            asm ("hlt");
         }
 
         return 0;
@@ -55,8 +62,42 @@ namespace Startup {
             auto result = IPC::extractMessage<VFS::CreateResult>(buffer);
             return result.success;
         }
+        else {
+            asm ("hlt");
+        }
 
         return false;
+    }
+
+    void dummyReceive() {
+        IPC::MaximumMessageBuffer buffer;
+        receive(&buffer);
+    }
+
+    void setupProcessObject(char* path, uint32_t pid) {
+        char processPath[50];
+        memset(processPath, '\0', sizeof(processPath));
+        sprintf(processPath, "/process/%d/Executable", pid);
+        auto openResult = openSynchronous(processPath);
+
+        if (openResult.success) {
+            auto readResult = readSynchronous(openResult.fileDescriptor, 0);
+
+            if (readResult.success) {
+                Vostok::ArgBuffer args{readResult.buffer, sizeof(readResult.buffer)};
+                auto type = args.readType();
+
+                if (type == Vostok::ArgTypes::Property) {
+                    args.write(path, Vostok::ArgTypes::Cstring);
+                }
+
+                write(openResult.fileDescriptor, readResult.buffer, sizeof(readResult.buffer));
+                dummyReceive();
+                close(openResult.fileDescriptor);
+                dummyReceive();
+            }
+        }
+        
     }
 
     void runProgram(char* path) {
@@ -70,6 +111,7 @@ namespace Startup {
         uint32_t descriptor {0};
 
         while (!openProgram(path, descriptor)) {
+            asm("hlt");
             sleep(100);
         }
 
@@ -79,12 +121,20 @@ namespace Startup {
             auto pid = run(entryPoint);
 
             while (!createProcessObject(pid)) {
+                asm("hlt");
                 sleep(100);
             }
+
+            setupProcessObject(path, pid);
+        }
+        else {
+            asm("hlt");
         }
 
         close(descriptor);
+        dummyReceive();
     }
+
 
     void service() {
         waitForServiceRegistered(Kernel::ServiceType::VFS);

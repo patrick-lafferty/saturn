@@ -118,34 +118,39 @@ namespace Shell {
         if (type == Vostok::ArgTypes::Property) {
             print("Property ");
             //its a property
-            type = args.peekType();
+            while (type != Vostok::ArgTypes::EndArg) {
 
-            switch(type) {
-                case Vostok::ArgTypes::Void: {
-                    print("void");
-                    return;
-                }
-                case Vostok::ArgTypes::Uint32: {
-                    auto value = args.read<uint32_t>(type);
-                    if (!args.readFailed) {
-                        char s[15];
-                        sprintf(s, "uint32 = %d\n", value);
-                        print(s);
+                type = args.peekType();
+
+                switch(type) {
+                    case Vostok::ArgTypes::Void: {
+                        print("void");
+                        return;
                     }
-                    break;
-                }
-                case Vostok::ArgTypes::Cstring: {
-                    auto value = args.read<char*>(type);
-                    if (!args.readFailed) {
-                        char* s = new char[8 + strlen(value)];
-                        sprintf(s, "char* = \"%s\"\n", value);
-                        print(s);
-                        delete[] s;
+                    case Vostok::ArgTypes::Uint32: {
+                        auto value = args.read<uint32_t>(type);
+                        if (!args.readFailed) {
+                            char s[15];
+                            sprintf(s, "uint32 = %d\n", value);
+                            print(s);
+                        }
+                        break;
                     }
-                    break;
+                    case Vostok::ArgTypes::Cstring: {
+                        auto value = args.read<char*>(type);
+                        if (!args.readFailed) {
+                            char* s = new char[8 + strlen(value)];
+                            sprintf(s, "char* = \"%s\"\n", value);
+                            print(s);
+                            delete[] s;
+                        }
+                        break;
+                    }
+                    case Vostok::ArgTypes::EndArg: {
+                        return;
+                    }
                 }
             }
-
         }
         else {
             print("Function Signature: (");
