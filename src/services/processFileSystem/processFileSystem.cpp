@@ -97,10 +97,7 @@ namespace PFS {
 
                         if (functionId >= 0) {
                             failed = false;
-                            /*openDescriptors[0].functionId = functionId;
-                            openDescriptors[0].type = DescriptorType::Function;*/
                             result.success = true;
-                            //result.fileDescriptor = nextFileDescriptor++;
                             openDescriptors.push_back({process, static_cast<uint32_t>(functionId), DescriptorType::Function});
                             result.fileDescriptor = openDescriptors.size() - 1;
                         }
@@ -109,10 +106,7 @@ namespace PFS {
 
                             if (propertyId >= 0) {
                                 failed = false;
-                                /*openDescriptors[0].propertyId = propertyId;
-                                openDescriptors[0].type = DescriptorType::Property;*/
                                 result.success = true;
-                                //result.fileDescriptor = nextFileDescriptor++;
                                 openDescriptors.push_back({process, static_cast<uint32_t>(propertyId), DescriptorType::Property});
                                 result.fileDescriptor = openDescriptors.size() - 1;
                             }
@@ -201,11 +195,6 @@ namespace PFS {
 
     void messageLoop() {
 
-        /*uint32_t nextFileDescriptor {0};
-        FileDescriptor openDescriptors[2];
-        ProcessObject p;
-        openDescriptors[0].instance = &p;
-        openDescriptors[0].functionId = 0;*/
         std::vector<ProcessObject> processes;
         std::vector<FileDescriptor> openDescriptors;
 
@@ -224,14 +213,11 @@ namespace PFS {
             }
             else if (buffer.messageId == ReadRequest::MessageId) {
                 auto request = IPC::extractMessage<ReadRequest>(buffer);
-                //openDescriptors[0].read(request.senderTaskId);
                 handleReadRequest(request, processes, openDescriptors);
             }
             else if (buffer.messageId == WriteRequest::MessageId) {
                 auto request = IPC::extractMessage<WriteRequest>(buffer);
                 handleWriteRequest(request, processes, openDescriptors);
-                //ArgBuffer args{request.buffer, sizeof(request.buffer)};
-                //openDescriptors[0].write(request.senderTaskId, args);
             }
         }
     }

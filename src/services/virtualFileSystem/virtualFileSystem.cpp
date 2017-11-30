@@ -96,16 +96,11 @@ namespace VFS {
         /*
         TODO: Replace with a trie where the leaf node values are services 
         */
-        /*Mount mounts[2] = {
-            {nullptr, 0, 0},
-            {nullptr, 0, 0}
-        };*/
         std::vector<Mount> mounts;
 
         //TODO: design a proper data structure for holding outstanding requests
         uint32_t outstandingRequestSenderId {0};
         std::vector<FileDescriptor> openFileDescriptors;
-        //uint32_t nextMount {0};
 
         while (true) {
             IPC::MaximumMessageBuffer buffer;
@@ -115,11 +110,6 @@ namespace VFS {
                 //TODO: for now only support top level mounts to /
                 auto request = IPC::extractMessage<MountRequest>(buffer);
                 auto pathLength = strlen(request.path) + 1;
-                /*mounts[nextMount].path = new char[pathLength];
-                memcpy(mounts[nextMount].path, request.path, pathLength);
-                mounts[nextMount].serviceId = request.senderTaskId; 
-                mounts[nextMount].pathLength = pathLength;
-                nextMount++;*/
                 mounts.push_back({nullptr, pathLength, request.senderTaskId});
                 auto& mount = mounts[mounts.size() - 1];
                 mount.path = new char[pathLength];

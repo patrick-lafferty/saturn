@@ -78,7 +78,6 @@ namespace Kernel {
             result.pid = task->id;
             auto currentTask = currentScheduler->getTask(message->senderTaskId);
             currentTask->mailbox->send(&result);
-            //currentScheduler->sendMessage(IPC::RecipientType::TaskId, &result);
         }
     }
 
@@ -111,8 +110,6 @@ namespace Kernel {
             notify.recipientId = taskId;
             printf("[ServiceRegistry] notifying subscribers\n");
 
-            //auto task = currentScheduler->getTask(notify.recipientId);
-            //task->mailbox->send(&notify);
             currentScheduler->sendMessage(IPC::RecipientType::TaskId, &notify);
         }
 

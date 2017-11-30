@@ -1,10 +1,5 @@
 #pragma once
 
-/*
-Note: this should be std::vector, but since I don't have
-allocators and what-not, it doesn't feel right to have a
-half implemented vector, this is a temp replacement
-*/
 namespace std {
 
     template<typename T>
