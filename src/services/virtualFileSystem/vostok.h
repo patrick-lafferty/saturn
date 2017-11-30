@@ -107,7 +107,13 @@ namespace Vostok {
     void ArgBuffer::write(char* arg, ArgTypes type);
 
     template<>
+    void ArgBuffer::write(const char* arg, ArgTypes type);
+
+    template<>
     void ArgBuffer::writeValueWithType(char* arg, ArgTypes type);
+
+    template<>
+    void ArgBuffer::writeValueWithType(const char* arg, ArgTypes type);
 
     template<>
     char* ArgBuffer::read(ArgTypes type);

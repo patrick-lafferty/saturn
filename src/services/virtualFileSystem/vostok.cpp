@@ -15,10 +15,20 @@ namespace Vostok {
     }
 
     template<>
+    void ArgBuffer::write(const char* arg, ArgTypes type) {
+        write(const_cast<char*>(arg), type);
+    }
+
+    template<>
     void ArgBuffer::writeValueWithType(char* arg, ArgTypes type) {
         writeType(type);
         nextTypeIndex++;
         write(arg, type);
+    }
+
+    template<>
+    void ArgBuffer::writeValueWithType(const char* arg, ArgTypes type) {
+        writeValueWithType(const_cast<char*>(arg), type);
     }
 
     template<>

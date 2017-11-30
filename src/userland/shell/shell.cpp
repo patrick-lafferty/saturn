@@ -79,7 +79,7 @@ namespace Shell {
         moveCursor(column);
     }
 
-    bool doOpen(char* path, uint32_t& descriptor) {
+    bool doOpen(const char* path, uint32_t& descriptor) {
         open(path);
         IPC::MaximumMessageBuffer buffer;
         receive(&buffer);

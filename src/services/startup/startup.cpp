@@ -8,7 +8,7 @@ using namespace VFS;
 
 namespace Startup {
 
-    bool openProgram(char* path, uint32_t& descriptor) {
+    bool openProgram(const char* path, uint32_t& descriptor) {
         open(path);
         IPC::MaximumMessageBuffer buffer;
         receive(&buffer);
@@ -74,7 +74,7 @@ namespace Startup {
         receive(&buffer);
     }
 
-    void setupProcessObject(char* path, uint32_t pid) {
+    void setupProcessObject(const char* path, uint32_t pid) {
         char processPath[50];
         memset(processPath, '\0', sizeof(processPath));
         sprintf(processPath, "/process/%d/Executable", pid);
@@ -100,7 +100,7 @@ namespace Startup {
         
     }
 
-    void runProgram(char* path) {
+    void runProgram(const char* path) {
         /*
         until we get an elf loader and an actual filesystem,
         we'll just simulate one using FakeFileSystem  (FFS).

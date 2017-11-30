@@ -26,9 +26,9 @@ enum class SystemCall {
 void send(IPC::RecipientType recipient, IPC::Message* message);
 void receive(IPC::Message* buffer);
 
-void open(char* path);
-VFS::OpenResult openSynchronous(char* path);
-void create(char* path);
+void open(const char* path);
+VFS::OpenResult openSynchronous(const char* path);
+void create(const char* path);
 void read(uint32_t fileDescriptor, uint32_t length);
 VFS::ReadResult readSynchronous(uint32_t fileDescriptor, uint32_t length);
 

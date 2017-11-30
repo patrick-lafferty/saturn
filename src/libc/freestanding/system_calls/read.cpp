@@ -1,14 +1,14 @@
 #include <system_calls.h>
 #include <services.h>
 
-void open(char* path) {
+void open(const char* path) {
     VFS::OpenRequest open;
     open.serviceType = Kernel::ServiceType::VFS;
     memcpy(open.path, path, strlen(path));
     send(IPC::RecipientType::ServiceName, &open);
 }
 
-VFS::OpenResult openSynchronous(char* path) {
+VFS::OpenResult openSynchronous(const char* path) {
     open(path);
 
     IPC::MaximumMessageBuffer buffer;
@@ -23,7 +23,7 @@ VFS::OpenResult openSynchronous(char* path) {
     }
 }
 
-void create(char* path) {
+void create(const char* path) {
     VFS::CreateRequest request;
     request.serviceType = Kernel::ServiceType::VFS;
     memcpy(request.path, path, strlen(path));
