@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 #include <ipc.h>
-#include <array>
+#include <vector>
 
 namespace Kernel {
 
@@ -140,6 +140,6 @@ namespace Kernel {
         uint32_t* taskIds;
         ServiceMeta** meta;
         PseudoMessageHandler* pseudoMessageHandlers;
-        Array<uint32_t>* subscribers;
+        std::vector<uint32_t>* subscribers;
     };
 }

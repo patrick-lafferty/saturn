@@ -1,0 +1,75 @@
+#pragma once
+
+/*
+Note: this should be std::vector, but since I don't have
+allocators and what-not, it doesn't feel right to have a
+half implemented vector, this is a temp replacement
+*/
+namespace std {
+
+    template<typename T>
+    struct Allocator {};
+
+    template<typename T, class Allocator = std::Allocator<T>>
+    class vector {
+    public:
+
+        typedef size_t size_type; 
+        typedef T value_type;
+        typedef value_type& reference;
+        //TODO: this should be RandomAccessIterator, but iterators don't exist yet
+        typedef value_type* iterator;
+        
+        vector() {
+            maxItems = 10;
+            data = new T[maxItems];
+        }
+        
+        void push_back(const T& item) {
+            if (items >= maxItems) {
+                auto oldSize = maxItems;
+                maxItems *= 2;
+                auto newData = new T[maxItems];
+                for(int i = 0; i < oldSize; i++) { 
+                    newData[i] = data[i];
+                }
+                delete data;
+                data = newData;
+            }
+
+            data[items] = item;
+            items++;
+        }
+
+        iterator begin() noexcept {
+            return data;
+        }
+
+        iterator end() noexcept {
+            return data + items;
+        }
+
+        reference operator[](size_type pos) {
+            return data[pos];
+        }
+
+        [[nodiscard]]
+        bool empty() const noexcept {
+            return items == 0;
+        }
+
+        size_type size() const noexcept {
+            return items;
+        }
+
+        void clear() noexcept {
+            items = 0;
+        }
+
+    private:
+
+        size_type items {0};
+        size_type maxItems {0};
+        T* data {nullptr};
+    };
+}

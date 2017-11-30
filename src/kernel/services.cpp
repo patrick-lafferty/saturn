@@ -24,7 +24,7 @@ namespace Kernel {
         meta = new ServiceMeta*[count];
 
         pseudoMessageHandlers = new PseudoMessageHandler[count];
-        subscribers = new Array<uint32_t>[count];
+        subscribers = new std::vector<uint32_t>[count];
 
         IPC::registerMessage<RegisterService>();
         IPC::registerMessage<RegisterPseudoService>();
@@ -62,7 +62,7 @@ namespace Kernel {
                 task->mailbox->send(&notify);
             }
             else {
-                subscribers[index].add(request.senderTaskId);
+                subscribers[index].push_back(request.senderTaskId);
             }
         }
         else if (message->messageId == RunProgram::MessageId) {

@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include "object.h"
 #include <stdlib.h>
+#include <vector>
 
 using namespace Kernel;
 using namespace VFS;
@@ -58,7 +59,7 @@ namespace PFS {
         }
     };
 
-    bool findObject(Array<ProcessObject>& objects, uint32_t pid, ProcessObject** found) {
+    bool findObject(std::vector<ProcessObject>& objects, uint32_t pid, ProcessObject** found) {
         for (auto& object : objects) {
             if (object.pid == pid) {
                 *found = &object;
@@ -69,7 +70,7 @@ namespace PFS {
         return false;
     }
 
-    void handleOpenRequest(OpenRequest& request, Array<ProcessObject>& processes, Array<FileDescriptor>& openDescriptors) {
+    void handleOpenRequest(OpenRequest& request, std::vector<ProcessObject>& processes, std::vector<FileDescriptor>& openDescriptors) {
         bool failed {true};
         OpenResult result{};
         result.serviceType = ServiceType::VFS;
@@ -100,7 +101,7 @@ namespace PFS {
                             openDescriptors[0].type = DescriptorType::Function;*/
                             result.success = true;
                             //result.fileDescriptor = nextFileDescriptor++;
-                            openDescriptors.add({process, static_cast<uint32_t>(functionId), DescriptorType::Function});
+                            openDescriptors.push_back({process, static_cast<uint32_t>(functionId), DescriptorType::Function});
                             result.fileDescriptor = openDescriptors.size() - 1;
                         }
                         else {
@@ -112,7 +113,7 @@ namespace PFS {
                                 openDescriptors[0].type = DescriptorType::Property;*/
                                 result.success = true;
                                 //result.fileDescriptor = nextFileDescriptor++;
-                                openDescriptors.add({process, static_cast<uint32_t>(propertyId), DescriptorType::Property});
+                                openDescriptors.push_back({process, static_cast<uint32_t>(propertyId), DescriptorType::Property});
                                 result.fileDescriptor = openDescriptors.size() - 1;
                             }
                             
@@ -123,7 +124,7 @@ namespace PFS {
             else {
                 failed = false;
                 result.success = true;
-                openDescriptors.add({nullptr, 0, DescriptorType::Object});
+                openDescriptors.push_back({nullptr, 0, DescriptorType::Object});
                 result.fileDescriptor = openDescriptors.size() - 1;
             }
         }
@@ -135,7 +136,7 @@ namespace PFS {
         send(IPC::RecipientType::ServiceName, &result);
     }
 
-    void handleCreateRequest(CreateRequest& request, Array<ProcessObject>& processes, Array<FileDescriptor>& openDescriptors) {
+    void handleCreateRequest(CreateRequest& request, std::vector<ProcessObject>& processes, std::vector<FileDescriptor>& openDescriptors) {
         bool failed {true};
         CreateResult result{};
         result.serviceType = ServiceType::VFS;
@@ -155,7 +156,7 @@ namespace PFS {
 
                 if (!found) {
                     ProcessObject p {pid};
-                    processes.add(p);
+                    processes.push_back(p);
                     failed = false;
                     result.success = true;
                 }
@@ -169,7 +170,7 @@ namespace PFS {
         send(IPC::RecipientType::ServiceName, &result);
     } 
 
-    void handleReadRequest(ReadRequest& request, Array<ProcessObject>& processes, Array<FileDescriptor>& openDescriptors) {
+    void handleReadRequest(ReadRequest& request, std::vector<ProcessObject>& processes, std::vector<FileDescriptor>& openDescriptors) {
         auto& descriptor = openDescriptors[request.fileDescriptor];
 
         if (descriptor.type == DescriptorType::Object) {
@@ -193,7 +194,7 @@ namespace PFS {
         }
     }
 
-    void handleWriteRequest(WriteRequest& request, Array<ProcessObject>& processes, Array<FileDescriptor>& openDescriptors) {
+    void handleWriteRequest(WriteRequest& request, std::vector<ProcessObject>& processes, std::vector<FileDescriptor>& openDescriptors) {
         ArgBuffer args{request.buffer, sizeof(request.buffer)};
         openDescriptors[request.fileDescriptor].write(request.senderTaskId, args);
     }
@@ -205,8 +206,8 @@ namespace PFS {
         ProcessObject p;
         openDescriptors[0].instance = &p;
         openDescriptors[0].functionId = 0;*/
-        Array<ProcessObject> processes;
-        Array<FileDescriptor> openDescriptors;
+        std::vector<ProcessObject> processes;
+        std::vector<FileDescriptor> openDescriptors;
 
         while (true) {
             IPC::MaximumMessageBuffer buffer;

@@ -2,7 +2,7 @@
 #include <services.h>
 #include <system_calls.h>
 #include <string.h>
-#include <array>
+#include <vector>
 
 using namespace Kernel;
 
@@ -58,7 +58,7 @@ namespace VFS {
         }
     };
 
-    int findEmptyDescriptor(Array<FileDescriptor>& descriptors) {
+    int findEmptyDescriptor(std::vector<FileDescriptor>& descriptors) {
         if (descriptors.empty()) {
             return -1;
         }
@@ -76,7 +76,7 @@ namespace VFS {
         return -1;
     }
 
-    bool findMount(Array<Mount>& mounts, char* path, Mount& matchingMount) {
+    bool findMount(std::vector<Mount>& mounts, char* path, Mount& matchingMount) {
         for (auto& mount : mounts) {
 
             if (!mount.exists()) {
@@ -100,11 +100,11 @@ namespace VFS {
             {nullptr, 0, 0},
             {nullptr, 0, 0}
         };*/
-        Array<Mount> mounts;
+        std::vector<Mount> mounts;
 
         //TODO: design a proper data structure for holding outstanding requests
         uint32_t outstandingRequestSenderId {0};
-        Array<FileDescriptor> openFileDescriptors;
+        std::vector<FileDescriptor> openFileDescriptors;
         //uint32_t nextMount {0};
 
         while (true) {
@@ -120,7 +120,7 @@ namespace VFS {
                 mounts[nextMount].serviceId = request.senderTaskId; 
                 mounts[nextMount].pathLength = pathLength;
                 nextMount++;*/
-                mounts.add({nullptr, pathLength, request.senderTaskId});
+                mounts.push_back({nullptr, pathLength, request.senderTaskId});
                 auto& mount = mounts[mounts.size() - 1];
                 mount.path = new char[pathLength];
                 memcpy(mount.path, request.path, pathLength);
@@ -170,7 +170,7 @@ namespace VFS {
                             }
                             else {
                                 processFileDescriptor = openFileDescriptors.size();
-                                openFileDescriptors.add({
+                                openFileDescriptors.push_back({
                                     result.fileDescriptor,
                                     mount.serviceId
                                 });
