@@ -292,7 +292,7 @@ namespace Memory {
 
         auto kernelPageTable = extractDirectoryIndex(kernelStackAddress);
 
-        for (auto i = 0; i < 0x3FF; i++) {
+        for (auto i = 0u; i < 0x3FF; i++) {
             if (i == kernelPageTable) {
                 continue;
             }

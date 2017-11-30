@@ -29,17 +29,6 @@ namespace LibC_Implementation {
 
     void* Heap::aligned_allocate(size_t alignment, size_t size) {
 
-        /*auto startingAddress = currentPage + (PageSize - remainingPageSpace);
-        auto alignedAddress = (startingAddress + alignment - 1) & -alignment;
-
-        if (startingAddress != alignedAddress) {
-            auto padding = alignedAddress - startingAddress;
-
-            allocate(padding);
-        }
-
-        return allocate(size);*/
-
         auto chunk = findFreeAlignedChunk(size, alignment);
         if (chunk == nullptr) {
             return nullptr;
@@ -56,6 +45,7 @@ namespace LibC_Implementation {
             if ((alignedAddress - startingAddress) < sizeof(ChunkHeader)) {
                 //TODO: not enough space to split chunk, wat do
                 printf("[HEAP] aligned_allocate not enough space in this chunk??\n");
+                return nullptr;
             }
             else {
                 auto alignedChunk = reinterpret_cast<ChunkHeader*>(alignedAddress - sizeof(ChunkHeader));

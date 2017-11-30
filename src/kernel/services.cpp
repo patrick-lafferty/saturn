@@ -200,6 +200,9 @@ namespace Kernel {
                 printf("[ServiceRegistry] Tried to setupService a ServiceTypeEnd\n");
                 break;
             }
+            default: {
+                printf("[ServiceRegistry] Unsupported service type\n");   
+            }
         }
 
     }

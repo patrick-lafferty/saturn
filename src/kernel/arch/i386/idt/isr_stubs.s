@@ -79,7 +79,6 @@ InterruptServiceRoutine_Errorless 207; APIC spurious interrupt
 InterruptServiceRoutine_Errorless 255
 
 extern interruptHandler
-type interruptHandler, @function
 
 InterruptServiceRoutine_Common:
     pusha

@@ -1,7 +1,7 @@
 #include "cpuid.h"
 #include <stdio.h>
 
-void cpuid_vendor_impl(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx) {
+void cpuid_vendor_impl([[maybe_unused]] uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx) {
     char vendor[13];
 
     vendor[0] = ebx & 0xff; 

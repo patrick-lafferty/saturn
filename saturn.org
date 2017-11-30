@@ -431,3 +431,16 @@ Next steps:
 - [X] create syscall wrapper
 - [X] create a new process object per process
 - [ ] only allow kernel to write to process object
+- [ ] add a hardware filesystem mounted at /hardware to store read-only info
+       about the detected hardware (later mount to /system/hardware when mounts
+       support non-root mounting)
+- [ ] implement string_view
+- [ ] replace char* with string_view wherever possible
+- [ ] implement a split() func that returns a vector of string_views
+       to tidy up the shell
+
+** Interlude
+- [ ] cleanup all warnings
+- [ ] cleanup all commented-out code
+- [ ] start documenting some stuff
+
