@@ -31,7 +31,7 @@ namespace Vostok {
             auto result = reinterpret_cast<const char*>(typedBuffer) + nextReadIndex;
             auto length = strlen(result);
             nextReadIndex += length;
-            nextTypeIndex++;
+            nextTypeIndex--;
             return const_cast<char*>(result);
         }
     }

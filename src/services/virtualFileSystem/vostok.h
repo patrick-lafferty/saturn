@@ -66,7 +66,9 @@ namespace Vostok {
             }
             else {
                 nextTypeIndex--;
-                memcpy(typedBuffer + nextWriteIndex, &arg, sizeof(T));
+                auto size = sizeof(T);
+                memcpy(typedBuffer + nextWriteIndex, &arg, size);
+                nextWriteIndex += size;
             }
         }
 
