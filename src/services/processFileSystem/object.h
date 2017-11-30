@@ -33,11 +33,10 @@ namespace PFS {
         };
 
         enum class PropertyId {
-            Foo,
-            Bar
+            Executable
         };
 
-        char foo[10];
-        uint32_t bar;
+        char executable[256];
+
     };
 }

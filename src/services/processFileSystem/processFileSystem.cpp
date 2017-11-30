@@ -24,7 +24,7 @@ namespace PFS {
     };
 
     struct FileDescriptor {
-        Object* instance;
+        PFS::ProcessObject* instance;
 
         union {
             uint32_t functionId;
@@ -115,9 +115,16 @@ namespace PFS {
                                 openDescriptors.add({process, static_cast<uint32_t>(propertyId), DescriptorType::Property});
                                 result.fileDescriptor = openDescriptors.size() - 1;
                             }
+                            
                         }
                     }
                 }
+            }
+            else {
+                failed = false;
+                result.success = true;
+                openDescriptors.add({nullptr, 0, DescriptorType::Object});
+                result.fileDescriptor = openDescriptors.size() - 1;
             }
         }
 
@@ -162,6 +169,35 @@ namespace PFS {
         send(IPC::RecipientType::ServiceName, &result);
     } 
 
+    void handleReadRequest(ReadRequest& request, Array<ProcessObject>& processes, Array<FileDescriptor>& openDescriptors) {
+        auto& descriptor = openDescriptors[request.fileDescriptor];
+
+        if (descriptor.type == DescriptorType::Object) {
+            ReadResult result;
+            result.success = true;
+            ArgBuffer args{result.buffer, sizeof(result.buffer)};
+            args.writeType(ArgTypes::Property);
+
+            for (auto& desc : openDescriptors) {
+                if (desc.instance != nullptr) 
+                args.writeValueWithType(desc.instance->pid, ArgTypes::Uint32);
+            }
+
+            args.writeType(ArgTypes::EndArg);
+
+            result.recipientId = request.senderTaskId;
+            send(IPC::RecipientType::TaskId, &result);
+        }
+        else {
+            descriptor.read(request.senderTaskId);
+        }
+    }
+
+    void handleWriteRequest(WriteRequest& request, Array<ProcessObject>& processes, Array<FileDescriptor>& openDescriptors) {
+        ArgBuffer args{request.buffer, sizeof(request.buffer)};
+        openDescriptors[request.fileDescriptor].write(request.senderTaskId, args);
+    }
+
     void messageLoop() {
 
         /*uint32_t nextFileDescriptor {0};
@@ -187,12 +223,14 @@ namespace PFS {
             }
             else if (buffer.messageId == ReadRequest::MessageId) {
                 auto request = IPC::extractMessage<ReadRequest>(buffer);
-                openDescriptors[0].read(request.senderTaskId);
+                //openDescriptors[0].read(request.senderTaskId);
+                handleReadRequest(request, processes, openDescriptors);
             }
             else if (buffer.messageId == WriteRequest::MessageId) {
                 auto request = IPC::extractMessage<WriteRequest>(buffer);
-                ArgBuffer args{request.buffer, sizeof(request.buffer)};
-                openDescriptors[0].write(request.senderTaskId, args);
+                handleWriteRequest(request, processes, openDescriptors);
+                //ArgBuffer args{request.buffer, sizeof(request.buffer)};
+                //openDescriptors[0].write(request.senderTaskId, args);
             }
         }
     }

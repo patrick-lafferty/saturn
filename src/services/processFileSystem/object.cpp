@@ -10,9 +10,7 @@ namespace PFS {
 
     ProcessObject::ProcessObject(uint32_t pid)
         : pid{pid} {
-        memset(foo, '\0', sizeof(foo));
-        memcpy(foo, "Hello", 5);
-        bar = 55;
+        memset(executable, '\0', sizeof(executable));
     }
 
     //functions
@@ -116,11 +114,8 @@ namespace PFS {
 
     //properties
     int ProcessObject::getProperty(char* name) {
-        if (strcmp(name, "Foo") == 0) {
-            return static_cast<int>(PropertyId::Foo);
-        }
-        else if (strcmp(name, "Bar") == 0) {
-            return static_cast<int>(PropertyId::Bar);
+        if (strcmp(name, "Executable") == 0) {
+            return static_cast<int>(PropertyId::Executable);
         }
 
         return -1;
@@ -133,12 +128,8 @@ namespace PFS {
         args.writeType(ArgTypes::Property);
 
         switch(static_cast<PropertyId>(propertyId)) {
-            case PropertyId::Foo: {
-                args.writeValueWithType(foo, ArgTypes::Cstring);
-                break;
-            }
-            case PropertyId::Bar: {
-                args.writeValueWithType(bar, ArgTypes::Uint32);
+            case PropertyId::Executable: {
+                args.writeValueWithType(executable, ArgTypes::Cstring);
                 break;
             }
         }
@@ -158,12 +149,12 @@ namespace PFS {
         }
 
         switch(static_cast<PropertyId>(propertyId)) {
-            case PropertyId::Foo: {
+            case PropertyId::Executable: {
 
                 auto x = args.read<char*>(ArgTypes::Cstring);
 
                 if (!args.readFailed) {
-                    memcpy(foo, x, sizeof(foo));
+                    memcpy(executable, x, sizeof(executable));
                     replyWriteSucceeded(requesterTaskId);
                 }
                 else {
@@ -172,18 +163,6 @@ namespace PFS {
 
                 break;
             } 
-            case PropertyId::Bar: {
-                auto x = args.read<uint32_t>(ArgTypes::Uint32);
-
-                if (!args.readFailed) {
-                    bar = x;
-                    replyWriteSucceeded(requesterTaskId);
-                }
-                else {
-                    replyWriteFailed(requesterTaskId);
-                }
-                break;
-            }
             default: {
                 replyWriteFailed(requesterTaskId);
             }
