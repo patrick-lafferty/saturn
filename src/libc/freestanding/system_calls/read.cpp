@@ -1,5 +1,4 @@
 #include <system_calls.h>
-#include <services/virtualFileSystem/virtualFileSystem.h>
 #include <services.h>
 
 void open(char* path) {
@@ -7,6 +6,21 @@ void open(char* path) {
     open.serviceType = Kernel::ServiceType::VFS;
     memcpy(open.path, path, strlen(path));
     send(IPC::RecipientType::ServiceName, &open);
+}
+
+VFS::OpenResult openSynchronous(char* path) {
+    open(path);
+
+    IPC::MaximumMessageBuffer buffer;
+    receive(&buffer);
+
+    if (buffer.messageId == VFS::OpenResult::MessageId) {
+        return IPC::extractMessage<VFS::OpenResult>(buffer);
+    }
+    else {
+        asm ("hlt");
+        return {};
+    }
 }
 
 void create(char* path) {
@@ -23,6 +37,21 @@ void read(uint32_t fileDescriptor, uint32_t length) {
     request.serviceType = Kernel::ServiceType::VFS;
 
     send(IPC::RecipientType::ServiceName, &request);
+}
+
+VFS::ReadResult readSynchronous(uint32_t fileDescriptor, uint32_t length) {
+    read(fileDescriptor, length);
+
+    IPC::MaximumMessageBuffer buffer;
+    receive(&buffer);
+
+    if (buffer.messageId == VFS::ReadResult::MessageId) {
+        return IPC::extractMessage<VFS::ReadResult>(buffer);
+    }
+    else {
+        asm ("hlt");
+        return {};
+    }
 }
 
 void write(uint32_t fileDescriptor, const void* data, uint32_t length) {
