@@ -17,7 +17,7 @@ namespace FakeFileSystem {
 
     void registerService() {
         MountRequest request;
-        char* path = "/bin";
+        const char* path = "/bin";
         auto pathLength = strlen(path) + 1;
         memcpy(request.path, path, pathLength);
         request.serviceType = ServiceType::VFS;

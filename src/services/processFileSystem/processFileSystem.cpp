@@ -98,7 +98,7 @@ namespace PFS {
                         if (functionId >= 0) {
                             failed = false;
                             result.success = true;
-                            openDescriptors.push_back({process, static_cast<uint32_t>(functionId), DescriptorType::Function});
+                            openDescriptors.push_back({process, {static_cast<uint32_t>(functionId)}, DescriptorType::Function});
                             result.fileDescriptor = openDescriptors.size() - 1;
                         }
                         else {
@@ -107,7 +107,7 @@ namespace PFS {
                             if (propertyId >= 0) {
                                 failed = false;
                                 result.success = true;
-                                openDescriptors.push_back({process, static_cast<uint32_t>(propertyId), DescriptorType::Property});
+                                openDescriptors.push_back({process, {static_cast<uint32_t>(propertyId)}, DescriptorType::Property});
                                 result.fileDescriptor = openDescriptors.size() - 1;
                             }
                             
@@ -118,7 +118,7 @@ namespace PFS {
             else {
                 failed = false;
                 result.success = true;
-                openDescriptors.push_back({nullptr, 0, DescriptorType::Object});
+                openDescriptors.push_back({nullptr, {}, DescriptorType::Object});
                 result.fileDescriptor = openDescriptors.size() - 1;
             }
         }
@@ -130,7 +130,7 @@ namespace PFS {
         send(IPC::RecipientType::ServiceName, &result);
     }
 
-    void handleCreateRequest(CreateRequest& request, std::vector<ProcessObject>& processes, std::vector<FileDescriptor>& openDescriptors) {
+    void handleCreateRequest(CreateRequest& request, std::vector<ProcessObject>& processes) {
         bool failed {true};
         CreateResult result{};
         result.serviceType = ServiceType::VFS;
@@ -164,7 +164,7 @@ namespace PFS {
         send(IPC::RecipientType::ServiceName, &result);
     } 
 
-    void handleReadRequest(ReadRequest& request, std::vector<ProcessObject>& processes, std::vector<FileDescriptor>& openDescriptors) {
+    void handleReadRequest(ReadRequest& request, std::vector<FileDescriptor>& openDescriptors) {
         auto& descriptor = openDescriptors[request.fileDescriptor];
 
         if (descriptor.type == DescriptorType::Object) {
@@ -188,7 +188,7 @@ namespace PFS {
         }
     }
 
-    void handleWriteRequest(WriteRequest& request, std::vector<ProcessObject>& processes, std::vector<FileDescriptor>& openDescriptors) {
+    void handleWriteRequest(WriteRequest& request, std::vector<FileDescriptor>& openDescriptors) {
         ArgBuffer args{request.buffer, sizeof(request.buffer)};
         openDescriptors[request.fileDescriptor].write(request.senderTaskId, args);
     }
@@ -209,15 +209,15 @@ namespace PFS {
             }
             else if (buffer.messageId == CreateRequest::MessageId) {
                 auto request = IPC::extractMessage<CreateRequest>(buffer);
-                handleCreateRequest(request, processes, openDescriptors);
+                handleCreateRequest(request, processes);
             }
             else if (buffer.messageId == ReadRequest::MessageId) {
                 auto request = IPC::extractMessage<ReadRequest>(buffer);
-                handleReadRequest(request, processes, openDescriptors);
+                handleReadRequest(request, openDescriptors);
             }
             else if (buffer.messageId == WriteRequest::MessageId) {
                 auto request = IPC::extractMessage<WriteRequest>(buffer);
-                handleWriteRequest(request, processes, openDescriptors);
+                handleWriteRequest(request, openDescriptors);
             }
         }
     }
@@ -227,7 +227,7 @@ namespace PFS {
         waitForServiceRegistered(ServiceType::VFS);
 
         MountRequest request{};
-        char* path = "/process";
+        const char* path = "/process";
         memcpy(request.path, path, strlen(path) + 1);
         request.serviceType = ServiceType::VFS;
 

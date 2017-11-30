@@ -25,9 +25,11 @@ namespace std {
                 auto oldSize = maxItems;
                 maxItems *= 2;
                 auto newData = new T[maxItems];
-                for(int i = 0; i < oldSize; i++) { 
+
+                for(size_type i = 0; i < oldSize; i++) { 
                     newData[i] = data[i];
                 }
+
                 delete data;
                 data = newData;
             }
