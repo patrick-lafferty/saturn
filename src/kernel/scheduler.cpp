@@ -42,7 +42,7 @@ namespace Kernel {
     Scheduler::Scheduler() {
         currentScheduler = this;
 
-        taskBuffer = new Task[10];
+        taskBuffer = new Task[20];
         startTask = createKernelTask(reinterpret_cast<uint32_t>(idleLoop));
         cleanupTask = createKernelTask(reinterpret_cast<uint32_t>(cleanupTasksService));
         cleanupTask->state = TaskState::Blocked;
@@ -433,17 +433,22 @@ namespace Kernel {
             }
         }
 
-        printf("[Scheduler] Unsent message from: %d to: %d\n", message->senderTaskId, taskId);
-        asm("hlt");
+        printf("[Scheduler] Unsent message from: %d to: %d type: %d\n", message->senderTaskId, taskId, recipient);
+        //asm("hlt");
     }
 
     void Scheduler::receiveMessage(IPC::Message* buffer) {
+        //printf("[Scheduler] %d waiting on message\n", currentTask->id);
         if (currentTask != nullptr) {
+            auto task = currentTask;
+
             if (!currentTask->mailbox->hasUnreadMessages()) {
+                //printf("blocking %d\n", task->id);
                 blockTask(BlockReason::WaitingForMessage, 0);
             }
 
-            currentTask->mailbox->receive(buffer);
+            //printf("receive %d\n", task->id);
+            task->mailbox->receive(buffer);
         }
     }
 
@@ -507,6 +512,7 @@ namespace Kernel {
         kernelHeap->free(currentTask->mailbox);
         //TODO: free task pid
 
+        currentTask->state = TaskState::Blocked;
         scheduleNextTask();
         readyQueue.remove(currentTask);
         deleteQueue.append(currentTask);
