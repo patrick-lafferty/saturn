@@ -23,7 +23,6 @@ LDFLAGS = -L=system/lib --sysroot=sysroot/ -g
 MKDIR = mkdir -p
 
 ARCHDIR = src/kernel/arch/i386
-SERVICESDIR = src/services
 
 ARCH_OBJS = \
 	$(ARCHDIR)/boot.o \
@@ -54,20 +53,7 @@ KERNEL_OBJS = \
 	src/kernel/pre_kernel.o \
 	src/kernel/kernel.o
 
-SERVICES_OBJS = \
-	$(SERVICESDIR)/terminal/vga.o \
-	$(SERVICESDIR)/terminal/terminal.o \
-	$(SERVICESDIR)/ps2/ps2.o \
-	$(SERVICESDIR)/keyboard/keyboard.o \
-	$(SERVICESDIR)/splash/splash.o \
-	$(SERVICESDIR)/memory/memory.o \
-	$(SERVICESDIR)/virtualFileSystem/virtualFileSystem.o \
-	$(SERVICESDIR)/virtualFileSystem/vostok.o \
-	$(SERVICESDIR)/processFileSystem/processFileSystem.o \
-	$(SERVICESDIR)/processFileSystem/object.o \
-	$(SERVICESDIR)/fakeFileSystem/fakeFileSystem.o \
-	$(SERVICESDIR)/startup/startup.o \
-
+include src/services/make.config
 include src/userland/make.config
 
 OBJS = \

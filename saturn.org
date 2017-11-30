@@ -438,9 +438,11 @@ Next steps:
 - [ ] replace char* with string_view wherever possible
 - [ ] implement a split() func that returns a vector of string_views
        to tidy up the shell
+- [ ] add one line history support to shell
 
 ** Interlude
 - [ ] cleanup all warnings
 - [ ] cleanup all commented-out code
 - [ ] start documenting some stuff
+- [ ] make a services make.config just like userland to cleanup makefile
 
