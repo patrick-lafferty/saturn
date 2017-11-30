@@ -14,10 +14,14 @@ using namespace Vostok;
 
 namespace PFS {
 
-    void registerMessages() {
-
-    }
-
+    /*
+    You can either open
+    1) the VostokObject itself, reading it does something like returning a default
+        property important to the object
+    2) a function, reading returns the function's signature and writing
+        calls the function
+    3) a property, reading returns the value and writing sets the value
+    */
     enum class DescriptorType {
         Object,
         Function,
@@ -75,6 +79,7 @@ namespace PFS {
         OpenResult result{};
         result.serviceType = ServiceType::VFS;
 
+        //TODO: replace this string parsing with a proper C++ split()
         auto word = markWord(request.path, '/');
         auto start = word + 1;
         word = markWord(start, '/');
@@ -135,6 +140,7 @@ namespace PFS {
         CreateResult result{};
         result.serviceType = ServiceType::VFS;
 
+        //TODO: replace this string parsing with a proper C++ split()
         auto word = markWord(request.path, '/');
         auto start = word + 1;
         word = markWord(start, '/');
@@ -205,7 +211,6 @@ namespace PFS {
             if (buffer.messageId == OpenRequest::MessageId) {
                 auto request = IPC::extractMessage<OpenRequest>(buffer);
                 handleOpenRequest(request, processes, openDescriptors);
-                
             }
             else if (buffer.messageId == CreateRequest::MessageId) {
                 auto request = IPC::extractMessage<CreateRequest>(buffer);

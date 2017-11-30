@@ -13,7 +13,9 @@ namespace PFS {
         memset(executable, '\0', sizeof(executable));
     }
 
-    //functions
+    /*
+    Vostok Object function support
+    */
     int ProcessObject::getFunction(char* name) {
         if (strcmp(name, "testA") == 0) {
             return static_cast<int>(FunctionId::TestA);
@@ -112,7 +114,9 @@ namespace PFS {
         send(IPC::RecipientType::TaskId, &result);
     }
 
-    //properties
+    /*
+    Vostok Object property support
+    */
     int ProcessObject::getProperty(char* name) {
         if (strcmp(name, "Executable") == 0) {
             return static_cast<int>(PropertyId::Executable);
@@ -169,9 +173,9 @@ namespace PFS {
         }
     }
 
-    //process-specific implementation
-
-    
+    /*
+    ProcessObject specific implementation
+    */
     void ProcessObject::testA(uint32_t requesterTaskId, int x) {
         replyWriteSucceeded(requesterTaskId);
         ReadResult result;

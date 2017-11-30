@@ -5,6 +5,12 @@
 
 namespace PFS {
 
+    /*
+    A ProcessObject is meant to emulate entries in Plan9's /proc
+    It allows the user/other processes to query data about
+    the process, such as the executable it started,
+    or the commandline args perhaps
+    */
     class ProcessObject : public Vostok::Object {
     public:
 
@@ -27,6 +33,12 @@ namespace PFS {
         void testA(uint32_t requesterTaskId, int x);
         void testB(uint32_t requesterTaskId, bool b);
 
+        /*
+        The convention for VostokObjects is to have two enums that
+        represent the publicly exposed functions and properties
+        accessible via the VFS. getFunction/getProperty takes a 
+        string name and sees if it matches something in these enums.
+        */
         enum class FunctionId {
             TestA,
             TestB

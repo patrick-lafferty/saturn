@@ -444,5 +444,6 @@ Next steps:
 - [ ] cleanup all warnings
 - [ ] cleanup all commented-out code
 - [ ] start documenting some stuff
-- [ ] make a services make.config just like userland to cleanup makefile
+- [X] make a services make.config just like userland to cleanup makefile
+- [ ] tidy up ugly code
 
