@@ -77,8 +77,9 @@ namespace FakeFileSystem {
                 ReadResult result;
                 result.success = true;
                 memcpy(result.buffer, &descriptors[request.fileDescriptor].entryPoint, sizeof(uintptr_t));
-                result.recipientId = request.senderTaskId;
-                send(IPC::RecipientType::TaskId, &result);
+                //result.recipientId = request.senderTaskId;
+                result.serviceType = ServiceType::VFS;
+                send(IPC::RecipientType::ServiceName, &result);
             }
         }
     }

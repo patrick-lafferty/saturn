@@ -78,6 +78,7 @@ namespace Kernel {
             result.pid = task->id;
             auto currentTask = currentScheduler->getTask(message->senderTaskId);
             currentTask->mailbox->send(&result);
+            //currentScheduler->sendMessage(IPC::RecipientType::TaskId, &result);
         }
     }
 

@@ -19,7 +19,10 @@ public:
             auto oldSize = maxItems;
             maxItems *= 2;
             auto newData = new T[maxItems];
-            memcpy(newData, data, sizeof(T) * oldSize);
+            //memcpy((void*)newData, data, sizeof(T) * oldSize);
+            for(int i = 0; i < oldSize; i++) { 
+                newData[i] = data[i];
+            }
             delete data;
             data = newData;
         }

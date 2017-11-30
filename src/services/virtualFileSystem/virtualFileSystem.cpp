@@ -299,9 +299,9 @@ namespace VFS {
 
                         descriptor.close();
 
-                        OpenResult result;
+                        CloseResult result;
                         result.success = true;
-                        result.recipientId = request.senderTaskId;
+                        result.recipientId = buffer.senderTaskId;
                         send(IPC::RecipientType::TaskId, &result);
                     }
                     else {
@@ -313,9 +313,9 @@ namespace VFS {
                 }
 
                 if (failed) {
-                    OpenResult result;
+                    CloseResult result;
                     result.success = false;
-                    result.recipientId = request.senderTaskId;
+                    result.recipientId = buffer.senderTaskId;
                     send(IPC::RecipientType::TaskId, &result);
                 }
             }
