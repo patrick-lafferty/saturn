@@ -2,7 +2,8 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <limits.h>
-
+#include <system_calls.h>
+#include <services.h>
 #include <services/terminal/vga.h>
 #include <services/terminal/terminal.h>
 
@@ -151,6 +152,34 @@ int kprintf(const char* format, ...) {
     printf_impl(format, args, write, charactersWritten);
 
     va_end(args);
+
+    return charactersWritten;
+}
+
+int printf(const char* format, ...) {
+    if (format == nullptr) {
+        return -1;
+    }
+
+    va_list args;
+    va_start(args, format);
+
+    int charactersWritten = 0;
+    Terminal::PrintMessage message;
+    message.serviceType = Kernel::ServiceType::Terminal;
+
+    auto write = [&](auto c) {
+        message.buffer[charactersWritten] = c;
+        charactersWritten++;
+    };
+
+    printf_impl(format, args, write, charactersWritten);
+
+    va_end(args);
+    
+    message.buffer[charactersWritten] = '\0';
+    message.stringLength = charactersWritten;
+    send(IPC::RecipientType::ServiceName, &message);
 
     return charactersWritten;
 }
