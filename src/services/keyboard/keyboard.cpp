@@ -65,13 +65,13 @@ namespace Keyboard {
         //keypad
         en_US[0x70] = {'0', 0};
         en_US[0x69] = {'1', 0};
-        en_US[0x72] = {'2', 0};
+        en_US[0x72] = {16, 6}; //down arrow
         en_US[0x7A] = {'3', 0};
-        en_US[0x6B] = {'4', 0};
+        en_US[0x6B] = {14, 14}; //left arrow (should be keypad 4)
         en_US[0x73] = {'5', 0};
-        en_US[0x74] = {'6', 0};
+        en_US[0x74] = {17, 17}; //right arrow
         en_US[0x6C] = {'7', 0};
-        en_US[0x75] = {'8', 0};
+        en_US[0x75] = {15, 15}; //up arrow (should be keypad 8 but qemu has a bug)
         en_US[0x7D] = {'9', 0};
         en_US[0x71] = {'.', 0};
         en_US[0x79] = {'+', 0};
@@ -172,7 +172,7 @@ namespace Keyboard {
         }
     }
 
-    void service() {
+    void registerService() {
         RegisterService registerRequest {};
         registerRequest.type = ServiceType::Keyboard;
 
@@ -186,8 +186,12 @@ namespace Keyboard {
         }
         else if (buffer.messageId == GenericServiceMeta::MessageId) {
             registerMessages();
-            loadKeymap();
-            messageLoop();
         }
+    }
+
+    void service() {
+        registerService();        
+        loadKeymap();
+        messageLoop();
     }
 }
