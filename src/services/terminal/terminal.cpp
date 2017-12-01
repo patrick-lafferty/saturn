@@ -4,6 +4,7 @@
 #include <system_calls.h>
 #include "vga.h"
 #include <stdlib.h>
+#include <algorithm>
 
 using namespace VGA;
 using namespace Kernel;
@@ -89,13 +90,24 @@ namespace Terminal {
                 index = dirty.startIndex;
                 uint32_t count{dirty.endIndex};
 
-                BlitMessage blit;
-                blit.index = index;
-                blit.count = count;
-                blit.serviceType = ServiceType::VGA;
-                memcpy(blit.buffer, emulator.getBuffer() + index, sizeof(uint16_t) * count);
+                uint32_t blitBufferSize = sizeof(BlitMessage::buffer) / sizeof(uint16_t);                
+                auto blitsToDo = count / blitBufferSize + 1;
 
-                send(IPC::RecipientType::ServiceName, &blit);
+                for (auto i = 0u; i < blitsToDo; i++) {
+
+                    BlitMessage blit;
+                    blit.index = index + i * blitBufferSize;
+                    blit.count = std::min(count, blitBufferSize);
+                    blit.serviceType = ServiceType::VGA;
+                    memcpy(blit.buffer, 
+                        emulator.getBuffer() + index + i * blitBufferSize, 
+                        sizeof(uint16_t) * blit.count);
+
+                    send(IPC::RecipientType::ServiceName, &blit);
+
+                    count -= blitBufferSize;
+                }
+                
             }
             else if (buffer.messageId == KeyPress::MessageId) {
                 auto message = IPC::extractMessage<KeyPress>(buffer);
@@ -407,6 +419,8 @@ namespace Terminal {
             }
 
         }
+
+        dirty.endIndex = getIndex() - dirty.startIndex;
 
         return dirty;
     }
