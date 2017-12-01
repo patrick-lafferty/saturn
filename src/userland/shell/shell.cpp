@@ -9,6 +9,7 @@
 #include <services/virtualFileSystem/virtualFileSystem.h>
 #include <services/virtualFileSystem/vostok.h>
 #include <stdlib.h>
+#include <parsing>
 
 namespace Shell {
 
@@ -279,6 +280,16 @@ namespace Shell {
 
     bool parse(char* input) {
         auto start = input;
+
+        auto testSplit = split({input, strlen(input)}, ' ');
+        for (auto& s : testSplit) {
+            char b[50];
+            memset(b, '\0', sizeof(b));
+            s.copy(b, s.length());
+            print(b);
+            print("\n");
+        }
+
         auto word = markWord(input);
 
         if (word == nullptr) {
@@ -382,6 +393,7 @@ namespace Shell {
     int main() {
 
         char inputBuffer[1000];
+        memset(inputBuffer, '\0', sizeof(inputBuffer));
         uint32_t index {0};
         auto prompt = "\e[38;5;9mshell> \e[38;5;15m";
         uint32_t promptLength = 7;
