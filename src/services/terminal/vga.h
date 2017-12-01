@@ -26,6 +26,7 @@ namespace VGA {
         }
 
         static uint32_t MessageId;
+        uint32_t linesToScroll {0};
     };
 
     enum class Colours {

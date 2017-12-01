@@ -28,8 +28,9 @@ namespace VGA {
                 memcpy(vgaBuffer + message.index, message.buffer, sizeof(uint16_t) * message.count);
             }
             else if (buffer.messageId == ScrollScreen::MessageId) {
-                auto byteCount = sizeof(uint16_t) * Width * (Height - 1);
-                memcpy(vgaBuffer, vgaBuffer + Width, byteCount);
+                auto message = IPC::extractMessage<ScrollScreen>(buffer);
+                auto byteCount = sizeof(uint16_t) * Width * (Height - message.linesToScroll);
+                memcpy(vgaBuffer, vgaBuffer + Width * message.linesToScroll, byteCount);
 
                 auto row = Height - 1;
 

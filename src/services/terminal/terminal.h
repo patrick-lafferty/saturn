@@ -50,6 +50,7 @@ namespace Terminal {
         uint32_t startIndex {0};
         uint32_t endIndex {0};
         bool overflowed {false};
+        uint32_t linesOverflowed {0};
     };
 
     enum class CSIFinalByte {

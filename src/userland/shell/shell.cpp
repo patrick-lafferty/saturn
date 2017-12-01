@@ -354,9 +354,6 @@ namespace Shell {
 
                         if (index > 0) {
                             int a = index + promptLength;
-                            /*moveCursor(a);
-                            printf(" ");
-                            moveCursor(a);*/
                             clearCursor(a);
 
                             index--;

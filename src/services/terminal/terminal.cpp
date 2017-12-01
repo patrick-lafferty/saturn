@@ -84,6 +84,7 @@ namespace Terminal {
                 if (dirty.overflowed) {
                     ScrollScreen scroll {};
                     scroll.serviceType = ServiceType::VGA;
+                    scroll.linesToScroll = dirty.linesOverflowed;
                     send(IPC::RecipientType::ServiceName, &scroll);
                 }
 
@@ -203,8 +204,8 @@ namespace Terminal {
             auto byteCount = sizeof(uint16_t) * Width * (Height - 1);
             memcpy(buffer, buffer + Width, byteCount);
 
-            row = Height - 2;
-            dirty.startIndex = getIndex();
+            dirty.startIndex -= Width;
+            dirty.linesOverflowed++;
             row = Height - 1;
 
             for (uint32_t x = 0; x < Width; x++) {
@@ -387,6 +388,7 @@ namespace Terminal {
         dirty.startIndex = getIndex();
         dirty.endIndex = 0;
         dirty.overflowed = false;
+        dirty.linesOverflowed = 0;
 
         while (count >= 0 && *buffer != 0) {
             count--;
