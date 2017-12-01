@@ -41,8 +41,12 @@ namespace Shell {
         printf("\e[%dG\e[48;5;15m \e[48;5;0m\e[%dG", column, column);
     }
 
-    void clearCursor(int column) {
-        printf("\e[%dG\e[48;5;0m \e[%dG", column, column);
+    void clearCursor(int column, char c = ' ') {
+        if (c == '\0') {
+            c = ' ';
+        }
+
+        printf("\e[%dG\e[48;5;0m%c\e[%dG", column, c, column);
     }
 
     bool doOpen(string_view path, uint32_t& descriptor) {
@@ -320,6 +324,9 @@ namespace Shell {
                 printf("open failed\n");
             }
         }
+        else {
+            return false;
+        }
 
         return true;
     }
@@ -330,9 +337,11 @@ namespace Shell {
 
     int main() {
 
-        char inputBuffer[1000];
+        char inputBuffer[500];
+        char previousLine[500];
         memset(inputBuffer, '\0', sizeof(inputBuffer));
         uint32_t index {0};
+        uint32_t cursorPosition {0};
         uint32_t promptLength = 7;
 
         while (true) {
@@ -342,7 +351,7 @@ namespace Shell {
             uint8_t c {0};
 
             while (c != 13) {
-                printCursor(index + promptLength + 1);
+                printCursor(cursorPosition + promptLength + 1);
 
                 c = getChar();
 
@@ -350,41 +359,86 @@ namespace Shell {
 
                 switch(c) {
                     case 8: {
-                        clearCursor(index + promptLength + 1);
+                        clearCursor(cursorPosition + promptLength + 1);
 
                         if (index > 0) {
-                            int a = index + promptLength;
+                            int a = cursorPosition + promptLength;
                             clearCursor(a);
 
                             index--;
-                            printCursor(index + promptLength + 1);
+                            cursorPosition--;
+                            printCursor(cursorPosition + promptLength + 1);
                         }
                         break;
                     }
                     case 13: {
-                        clearCursor(index + promptLength + 1);
+                        clearCursor(cursorPosition + promptLength + 1, inputBuffer[cursorPosition]);
                         printf("\n");
 
                         if (index > 0) {
-                        
                             if (!parse(inputBuffer)) {
                                 printf("Unknown command\n");
                             }
                         }
                         
                         printf("\n");
-
+                        memcpy(previousLine, inputBuffer, sizeof(previousLine));
                         memset(inputBuffer, '\0', index);
                         index = 0;
+                        cursorPosition = 0;
 
                         break;
                     }
+                    case 14: {
+                        //left arrow
+                        if (cursorPosition > 0) {
+                            auto c = index == cursorPosition ? ' ' : inputBuffer[cursorPosition];
+                            clearCursor(cursorPosition + promptLength + 1, c);
+                            cursorPosition--;
+                        }
+
+                        break;
+                    }
+                    case 15: {
+                        //up arrow
+                        memcpy(inputBuffer, previousLine, sizeof(previousLine));
+                        moveCursor(1 + promptLength);
+                        printf("%s", inputBuffer); 
+                        auto length = strlen(inputBuffer);
+                        moveCursor(1 + promptLength + length);
+                        index = length;
+                        cursorPosition = length;
+                        break;
+                    }
+                    case 16: {
+                        break;
+                    }
+                    case 17: {
+                        //right arrow
+                        if (cursorPosition < index) {
+                            auto c = index == cursorPosition ? ' ' : inputBuffer[cursorPosition];
+                            clearCursor(cursorPosition + promptLength + 1, c);
+                            cursorPosition++;
+                        }
+                        break;
+                    }
                     default: {
-                        clearCursor(index + promptLength + 1);
-                        inputBuffer[index] = c;
+                        clearCursor(cursorPosition + promptLength + 1);
+                        if (index == cursorPosition) {
+                            inputBuffer[index] = c;
+                            printf("%c", c);
+                        }
+                        else {
+                            memmove(inputBuffer + cursorPosition + 1, inputBuffer + cursorPosition, index - cursorPosition);
+                            inputBuffer[cursorPosition] = c;
+                            moveCursor(1 + promptLength);
+                            printf("%s", inputBuffer);
+                        }
+
                         index++;
-                        printf("%c", c);
-                        printCursor(index + promptLength + 1);
+                        cursorPosition++;
+
+                        printCursor(cursorPosition + promptLength + 1);
                     }
                 }
 
