@@ -61,8 +61,6 @@ namespace Kernel {
             while (task != nullptr) {
                 auto kernelStackAddress = (task->context.kernelESP & ~0xFFF);
                 delete reinterpret_cast<Stack*>(kernelStackAddress);
-                //printf("[Scheduler] Cleaned up task\n");
-                //Memory::currentPMM->report();
                 auto next = task->nextTask;
                 deleteQueue.remove(task);
                 task = next;
@@ -367,7 +365,6 @@ namespace Kernel {
 
     void Scheduler::sendMessage(IPC::RecipientType recipient, IPC::Message* message) {
         if (currentTask != nullptr) {
-            //printf("[Scheduler] sendMessage from: %d to: %d\n", currentTask->id, message->recipientId);
             message->senderTaskId = currentTask->id;
         }
         //TODO: implement return value for recipient not found?
@@ -388,7 +385,7 @@ namespace Kernel {
                         return;
                     }
                     else {
-                        printf("[Scheduler] Unknown Service Name\n");
+                        kprintf("[Scheduler] Unknown Service Name\n");
                         return;
                     }
                 }
@@ -433,21 +430,17 @@ namespace Kernel {
             }
         }
 
-        printf("[Scheduler] Unsent message from: %d to: %d type: %d\n", message->senderTaskId, taskId, recipient);
-        //asm("hlt");
+        kprintf("[Scheduler] Unsent message from: %d to: %d type: %d\n", message->senderTaskId, taskId, recipient);
     }
 
     void Scheduler::receiveMessage(IPC::Message* buffer) {
-        //printf("[Scheduler] %d waiting on message\n", currentTask->id);
         if (currentTask != nullptr) {
             auto task = currentTask;
 
             if (!currentTask->mailbox->hasUnreadMessages()) {
-                //printf("blocking %d\n", task->id);
                 blockTask(BlockReason::WaitingForMessage, 0);
             }
 
-            //printf("receive %d\n", task->id);
             task->mailbox->receive(buffer);
         }
     }

@@ -9,7 +9,7 @@ namespace CPU {
         auto rsdp = findRSDP();
 
         if (!verifyRSDPChecksum(rsdp)) {
-            printf("\n[ACPI] RSDP Checksum invalid\n");
+            kprintf("\n[ACPI] RSDP Checksum invalid\n");
             return false;
         }
 
@@ -26,12 +26,12 @@ namespace CPU {
                 APIC::loadAPICStructures(apicStartingAddress, apicHeader->length - sizeof(SystemDescriptionTableHeader));
             }
             else {
-                printf("\n[ACPI] APIC Header Checksum invalid\n");
+                kprintf("\n[ACPI] APIC Header Checksum invalid\n");
                 return false;
             }
         }
         else {
-            printf("\n[ACPI] Root Checksum invalid\n");
+            kprintf("\n[ACPI] Root Checksum invalid\n");
             return false;
         }
 

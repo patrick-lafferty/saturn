@@ -93,7 +93,7 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
 
     if (!CPU::parseACPITables()) {
 
-        printf("[Kernel] Parsing ACPI Tables failed, halting\n");
+        kprintf("[Kernel] Parsing ACPI Tables failed, halting\n");
         asm volatile("hlt");
     }
 
@@ -105,7 +105,7 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
 
     Kernel::Scheduler scheduler;
 
-    printf("Saturn OS v 0.1.0\n------------------\n\n");
+    kprintf("Saturn OS v 0.1.0\n------------------\n\n");
 
     ServiceRegistry registry;
     ServiceRegistryInstance = &registry;

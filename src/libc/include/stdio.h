@@ -1,6 +1,7 @@
 #pragma once
 
 extern "C" {
-    int printf(const char* format, ...);
+    int kprintf(const char* format, ...);
+    //int printf(const char* format, ...);
     int sprintf(char* buffer, const char* format, ...);
 }

@@ -91,14 +91,14 @@ namespace Kernel {
 
     bool ServiceRegistry::registerService(uint32_t taskId, ServiceType type) {
         if (type == ServiceType::ServiceTypeEnd) {
-            printf("[ServiceRegistry] Tried to register ServiceTypeEnd\n");
+            kprintf("[ServiceRegistry] Tried to register ServiceTypeEnd\n");
             return false;
         }
 
         auto index = static_cast<uint32_t>(type);
 
         if (taskIds[index] != 0) {
-            printf("[ServiceRegistry] Tried to register a service[%d] that's taken\n", index);
+            kprintf("[ServiceRegistry] Tried to register a service[%d] that's taken\n", index);
             return false;
         }
 
@@ -108,7 +108,7 @@ namespace Kernel {
             NotifyServiceRegistered notify;
             notify.type = type;
             notify.recipientId = taskId;
-            printf("[ServiceRegistry] notifying subscribers\n");
+            kprintf("[ServiceRegistry] notifying subscribers\n");
 
             currentScheduler->sendMessage(IPC::RecipientType::TaskId, &notify);
         }
@@ -121,14 +121,14 @@ namespace Kernel {
 
     bool ServiceRegistry::registerPseudoService(ServiceType type, PseudoMessageHandler handler) {
         if (type == ServiceType::ServiceTypeEnd) {
-            printf("[ServiceRegistry] Tried to register PseudoServiceTypeEnd\n");
+            kprintf("[ServiceRegistry] Tried to register PseudoServiceTypeEnd\n");
             return false;
         }
 
         auto index = static_cast<uint32_t>(type);
 
         if (pseudoMessageHandlers[index] != nullptr) {
-            printf("[ServiceRegistry] Tried to register a pseudo service that's taken\n");
+            kprintf("[ServiceRegistry] Tried to register a pseudo service that's taken\n");
             return false;
         }
 
@@ -138,7 +138,7 @@ namespace Kernel {
 
     uint32_t ServiceRegistry::getServiceTaskId(ServiceType type) {
         if (type == ServiceType::ServiceTypeEnd) {
-            printf("[ServiceRegistry] Tried to get ServiceTypeEnd taskId\n");
+            kprintf("[ServiceRegistry] Tried to get ServiceTypeEnd taskId\n");
             return 0;
         }
 
@@ -159,7 +159,7 @@ namespace Kernel {
                 auto task = currentScheduler->getTask(taskId);
 
                 if (task == nullptr) {
-                    printf("[ServiceRegistry] Tried to setupService a null task\n");
+                    kprintf("[ServiceRegistry] Tried to setupService a null task\n");
                     return;
                 }
 
@@ -186,7 +186,7 @@ namespace Kernel {
                 auto task = currentScheduler->getTask(taskId);
 
                 if (task == nullptr) {
-                    printf("[ServiceRegistry] Tried to setupService a null task\n");
+                    kprintf("[ServiceRegistry] Tried to setupService a null task\n");
                     return;
                 }
 
@@ -197,11 +197,11 @@ namespace Kernel {
                 break;
             }
             case ServiceType::ServiceTypeEnd: {
-                printf("[ServiceRegistry] Tried to setupService a ServiceTypeEnd\n");
+                kprintf("[ServiceRegistry] Tried to setupService a ServiceTypeEnd\n");
                 break;
             }
             default: {
-                printf("[ServiceRegistry] Unsupported service type\n");   
+                kprintf("[ServiceRegistry] Unsupported service type\n");   
             }
         }
 

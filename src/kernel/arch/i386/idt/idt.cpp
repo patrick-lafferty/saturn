@@ -124,10 +124,10 @@ enum class PageFaultError {
 void handlePageFault(uintptr_t virtualAddress, uint32_t errorCode) {
 
     if (errorCode & static_cast<uint32_t>(PageFaultError::ProtectionViolation)) {
-        printf("[IDT] Page fault: protection violation [%x]\n", virtualAddress);
+        kprintf("[IDT] Page fault: protection violation [%x]\n", virtualAddress);
         
         if (errorCode & static_cast<uint32_t>(PageFaultError::UserMode)) {
-            printf("[IDT] Attempted %s in usermode\n",
+            kprintf("[IDT] Attempted %s in usermode\n",
                 errorCode & static_cast<uint32_t>(PageFaultError::WriteAccess)
                     ? "write" : "read");
         }
@@ -140,18 +140,17 @@ void handlePageFault(uintptr_t virtualAddress, uint32_t errorCode) {
         
         if (pageStatus == Memory::PageStatus::Allocated) {
             //we need to map a physical page
-            //printf("[IDT] Page Fault: allocated page not mapped\n");
             auto physicalPage = Memory::currentPMM->allocatePage(1);
             Memory::currentVMM->map(virtualAddress, physicalPage);
             Memory::currentPMM->finishAllocation(virtualAddress, 1);
         }
         else if (pageStatus == Memory::PageStatus::Mapped) {
             //this shouldn't happen?
-            printf("[IDT] Page Fault: mapped address?\n");
+            kprintf("[IDT] Page Fault: mapped address?\n");
             asm volatile("hlt");
         }
         else {
-            printf("[IDT] Illegal Memory Access: %x\n", virtualAddress);     
+            kprintf("[IDT] Illegal Memory Access: %x\n", virtualAddress);     
             asm volatile("hlt");
         }
     }
@@ -168,16 +167,6 @@ void handleSystemCall(CPU::InterruptStackFrame* frame) {
             Kernel::currentScheduler->blockTask(Kernel::BlockReason::Sleep, frame->ebx);
             break;
         }
-
-        /*case 2: {
-            if (frame->ebx == 100) {
-                printf("[IDT] Registering service %d failed\n", frame->ecx);
-            }
-            else if (frame->ebx == 101) {
-                printf("[IDT] Registering service %d succeded\n", frame->ecx);
-            }
-            break;
-        }*/
         case 3: {
             Kernel::currentScheduler->sendMessage(static_cast<IPC::RecipientType>(frame->ebx), reinterpret_cast<IPC::Message*>(frame->ecx));
             break;
@@ -187,7 +176,7 @@ void handleSystemCall(CPU::InterruptStackFrame* frame) {
             break;
         }
         default: {
-            printf("[IDT] Unhandled system call: %d (ebx: %x)\n", frame->eax, frame->ebx);
+            kprintf("[IDT] Unhandled system call: %d (ebx: %x)\n", frame->eax, frame->ebx);
             break;
         }
     }
@@ -221,21 +210,21 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
     
     switch(frame->interruptNumber) {
         case 0: {
-            printf("[IDT] Divide Error\n");
+            kprintf("[IDT] Divide Error\n");
             break;
         }
         //...TODO...
         case 13: {
-            printf("[IDT] General Protection Fault\n");
-            printf("GS: %x, FS: %x, ES: %x, DS: %x\n", 
+            kprintf("[IDT] General Protection Fault\n");
+            kprintf("GS: %x, FS: %x, ES: %x, DS: %x\n", 
                 frame->gs, frame->fs, frame->es, frame->ds);
-            printf("EDI: %x, ESI: %x, EBP: %x, ESP: %x\n", 
+            kprintf("EDI: %x, ESI: %x, EBP: %x, ESP: %x\n", 
                 frame->edi, frame->esi, frame->ebp, frame->esp);
-            printf("EBX: %x, EDX: %x, ECX: %x, EAX: %x\n", 
+            kprintf("EBX: %x, EDX: %x, ECX: %x, EAX: %x\n", 
                 frame->ebx, frame->edx, frame->ecx, frame->eax);
-            printf("Error code: %x, EIP: %x, CS: %x, EFLAGS: %x\n", 
+            kprintf("Error code: %x, EIP: %x, CS: %x, EFLAGS: %x\n", 
                 frame->errorCode, frame->eip, frame->cs, frame->eflags);
-            printf("RESP: %x, SS: %x\n", 
+            kprintf("RESP: %x, SS: %x\n", 
                 frame->resp, frame->ss);
             asm volatile("hlt");
             break;
@@ -299,7 +288,7 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
                 return;
             }
             else {
-                printf("[IDT] Unhandled APIC IRQ %d\n", frame->interruptNumber);
+                kprintf("[IDT] Unhandled APIC IRQ %d\n", frame->interruptNumber);
             }
             APIC::signalEndOfInterrupt();
             break;
@@ -310,13 +299,13 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
             break;
         }
         default: {
-            printf("[IDT] Unhandled interrupt %d, ", frame->interruptNumber);
+            kprintf("[IDT] Unhandled interrupt %d, ", frame->interruptNumber);
 
             if (frame->interruptNumber < 21) {
-                printf(exceptions[frame->interruptNumber]);
+                kprintf(exceptions[frame->interruptNumber]);
             }
 
-            printf("\n");
+            kprintf("\n");
 
             asm volatile("hlt");
             break;

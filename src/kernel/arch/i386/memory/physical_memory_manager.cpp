@@ -86,7 +86,7 @@ namespace Memory {
     }
 
     void PhysicalMemoryManager::report() {
-        printf("[PMM] Allocated: %d pages, %d KB; Free: %d pages, %d KB\n", 
+        kprintf("[PMM] Allocated: %d pages, %d KB; Free: %d pages, %d KB\n", 
             allocatedPages, allocatedPages * PageSize / 1024,
             freePages, freePages * PageSize / 1024);
     }
@@ -103,7 +103,7 @@ namespace Memory {
     void PhysicalMemoryManager::freePage(uintptr_t pageAddress, uint32_t count) {
 
         if (freePages == totalPages) {
-            printf("[PMM] Tried to free an extra page: %x\n", pageAddress);
+            kprintf("[PMM] Tried to free an extra page: %x\n", pageAddress);
             return;
         }
 

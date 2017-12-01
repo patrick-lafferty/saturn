@@ -13,15 +13,15 @@ namespace Memory {
 
         auto kernelEndAddress = reinterpret_cast<uint32_t>(&__kernel_memory_end);
         auto firstPage = (kernelEndAddress & 0xFFFFF000) + 0x1000;
-        printf("First page will be located at: %x\n", firstPage);
+        kprintf("First page will be located at: %x\n", firstPage);
 
         for(auto i = 0u; i < count; i++) {
             auto record = *memoryMap;
             if (record.lowerBaseAddress > firstPage && record.type == 1) {
-                printf("\nMemoryMapRecord\n----------------\n");
-                printf("Size: %d, Type: %d %s, ", record.size, record.type, types[record.type]);
-                printf("Addr_L: %x, Addr_H: %x, ", record.lowerBaseAddress, record.higherBaseAddress);
-                printf("Len_L: %x, Len_H: %x\n", record.lowerLength, record.higherLength);
+                kprintf("\nMemoryMapRecord\n----------------\n");
+                kprintf("Size: %d, Type: %d %s, ", record.size, record.type, types[record.type]);
+                kprintf("Addr_L: %x, Addr_H: %x, ", record.lowerBaseAddress, record.higherBaseAddress);
+                kprintf("Len_L: %x, Len_H: %x\n", record.lowerLength, record.higherLength);
             }
 
             memoryMap++;

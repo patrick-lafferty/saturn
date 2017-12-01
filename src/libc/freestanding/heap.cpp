@@ -44,14 +44,14 @@ namespace LibC_Implementation {
             //TODO: this should never be true
             if ((alignedAddress - startingAddress) < sizeof(ChunkHeader)) {
                 //TODO: not enough space to split chunk, wat do
-                printf("[HEAP] aligned_allocate not enough space in this chunk??\n");
+                kprintf("[HEAP] aligned_allocate not enough space in this chunk??\n");
                 return nullptr;
             }
             else {
                 auto alignedChunk = reinterpret_cast<ChunkHeader*>(alignedAddress - sizeof(ChunkHeader));
                 alignedChunk->magic = 0xabababab;
                 alignedChunk->magic2 = 0xcdcdcdcd;
-                alignedChunk->size = chunkEndAddress - alignedAddress;// - sizeof(ChunkHeader);
+                alignedChunk->size = chunkEndAddress - alignedAddress;
                 alignedChunk->free = true;
                 alignedChunk->next = chunk->next;
                 alignedChunk->previous = chunk;
@@ -124,7 +124,7 @@ namespace LibC_Implementation {
             }
         }
 
-        printf("[HEAP] couldn't find free aligned chunk\n");
+        kprintf("[HEAP] couldn't find free aligned chunk\n");
         return nullptr;
     }
 
@@ -152,10 +152,6 @@ namespace LibC_Implementation {
             chunk->size = size;
 
             nextFreeChunk = nextChunk;
-            /*printf("[Heap] nfc m: %x m2: %x s: %x n: %x p: %x\n", 
-                nextFreeChunk->magic, nextFreeChunk->magic2,
-                nextFreeChunk->size,
-                nextFreeChunk->next, nextFreeChunk->previous);*/
         }
 
         return reinterpret_cast<void*>(allocatedAddress);

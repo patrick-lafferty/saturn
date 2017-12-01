@@ -122,7 +122,6 @@ namespace APIC {
     }
 
     void setAPICTimer(LVT_TimerMode mode, uint32_t timeInMilliseconds) {
-        //printf("[APIC] Initializing timer for %u ms, %u ticks\n", timeInMilliseconds, timeInMilliseconds * ticksPerMilliSecond);
 
         writeLocalAPICRegister(Registers::LVT_Timer, combineFlags(
             52,
@@ -354,23 +353,20 @@ namespace APIC {
         ptr += 4;
 
         if (VerboseAPIC) {
-            printf("[APIC] Local APIC Address: %x\n", localAPICAddress);
+            kprintf("[APIC] Local APIC Address: %x\n", localAPICAddress);
         }
 
         uint32_t apicFlags;
         memcpy(&apicFlags, ptr, 4);
         ptr += 4;
 
-        //printf("[APIC] Flags: %x\n", apicFlags);
-
         byteLength -= 8;
 
         if (apicFlags & static_cast<uint32_t>(DescriptionFlags::PCAT_COMPAT)
             && VerboseAPIC) {
-            printf("[APIC] Dual 8259 detected, will be disabled\n");
+            kprintf("[APIC] Dual 8259 detected, will be disabled\n");
         }
 
-        //printf("[APIC] Bytes remaining: %d, sizes: local %d io %d\n", byteLength, sizeof(LocalAPICHeader), sizeof(IOAPICHeader));
         uintptr_t ioAPICAddress {0};
 
         while(byteLength > 0) {
@@ -381,8 +377,8 @@ namespace APIC {
                     auto localAPIC = reinterpret_cast<LocalAPICHeader*>(ptr);
                     
                     if (VerboseAPIC) {
-                        printf("[APIC] Loading Local APIC structure\n");
-                        printf("[APIC] Local APIC Id: %d, address: %d\n", localAPIC->apicId);
+                        kprintf("[APIC] Loading Local APIC structure\n");
+                        kprintf("[APIC] Local APIC Id: %d, address: %d\n", localAPIC->apicId);
                     }
 
                     byteLength -= sizeof(LocalAPICHeader);
@@ -394,8 +390,8 @@ namespace APIC {
                     auto ioAPIC = reinterpret_cast<IOAPICHeader*>(ptr);
 
                     if (VerboseAPIC) {
-                        printf("[APIC] Loading IO APIC structure\n");
-                        printf("[APIC] IOAPIC id: %d, address: %x, sysVecBase: %d\n", 
+                        kprintf("[APIC] Loading IO APIC structure\n");
+                        kprintf("[APIC] IOAPIC id: %d, address: %x, sysVecBase: %d\n", 
                         ioAPIC->apicId, ioAPIC->address, ioAPIC->systemVectorBase);
                     }
 
@@ -411,8 +407,8 @@ namespace APIC {
                     auto interruptOverride = reinterpret_cast<InterruptSourceOverride*>(ptr);
 
                     if (VerboseAPIC) {
-                        printf("[APIC] Loading InterruptSourceOverride structure\n");
-                        printf("[APIC] NMI bus: %d, source: %d, globSysIntV: %d, flags: %d\n",
+                        kprintf("[APIC] Loading InterruptSourceOverride structure\n");
+                        kprintf("[APIC] NMI bus: %d, source: %d, globSysIntV: %d, flags: %d\n",
                             interruptOverride->bus, interruptOverride->source,
                             interruptOverride->globalSystemInterruptVector,
                             interruptOverride->flags);
@@ -435,7 +431,7 @@ namespace APIC {
 
                 case APICType::NMI: {
                     if (VerboseAPIC) {
-                        printf("[APIC] Loading NMI structure\n");
+                        kprintf("[APIC] Loading NMI structure\n");
                     }
 
                     byteLength -= sizeof(LocalAPICNMI);
@@ -447,7 +443,7 @@ namespace APIC {
                     uint8_t length = *(ptr + 1);
 
                     if (VerboseAPIC) {
-                        printf("[APIC] Skipping reserved APIC structure type: %d length: %d\n", type, length);
+                        kprintf("[APIC] Skipping reserved APIC structure type: %d length: %d\n", type, length);
                     }
                     
                     byteLength -= length;

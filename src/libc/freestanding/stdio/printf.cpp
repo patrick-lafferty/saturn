@@ -132,7 +132,7 @@ int printf_impl(const char* format, va_list args, T write, int& charactersWritte
     return charactersWritten;
 }
 
-int printf(const char* format, ...) {
+int kprintf(const char* format, ...) {
     if (format == nullptr) {
         return -1;
     }

@@ -60,8 +60,6 @@ namespace IPC {
         void send(Message* message) {
             uint32_t availableSpace {0};
 
-            //printf("[Mailbox] lastWrite: %d\n", lastWriteOffset);
-
             if (lastReadOffset > lastWriteOffset) {
                 availableSpace = lastReadOffset - lastWriteOffset;
             }
@@ -71,7 +69,7 @@ namespace IPC {
 
             if (message->length > availableSpace) {
                 //??
-                printf("[IPC] Send() ??\n");
+                kprintf("[IPC] Send() ??\n");
             }
             else {
                 auto ptr = buffer + lastWriteOffset;
@@ -95,20 +93,17 @@ namespace IPC {
             }
 
              if (lastWriteOffset > bufferSize) {
-                    printf("[Mailbox] lastWriteOffset is invalid\n");
+                    kprintf("[Mailbox] lastWriteOffset is invalid\n");
                 }
-
-            //printf("[IPC] Send() lastRead: %d, lastWrite: %d\n", lastReadOffset, lastWriteOffset);
         }
 
         bool receive(Message* message) {
             if (unreadMessages == 0) {
                 //block
-                printf("[IPC] Read blocked\n");
+                kprintf("[IPC] Read blocked\n");
                 return false;
             }
             else {
-                //printf("[Mailbox] lastRead: %d\n", lastReadOffset);
                 uint32_t messageLength {0};
 
                 if ((bufferSize - lastReadOffset) < sizeof(Message)) {
@@ -130,9 +125,9 @@ namespace IPC {
                 }
 
                 if (messageLength > 10000) {
-                    printf("stop here");
+                    kprintf("stop here");
                 }
-                //printf("[IPC] Receive() messageLength: %d\n", messageLength);
+
                 auto ptr = buffer + lastReadOffset;
 
                 if (lastReadOffset > lastWriteOffset) {
@@ -170,10 +165,8 @@ namespace IPC {
                 }
 
                 if (lastReadOffset > bufferSize) {
-                    printf("[Mailbox] lastReadOffset is invalid\n");
+                    kprintf("[Mailbox] lastReadOffset is invalid\n");
                 }
-
-                //printf("[IPC] Read() unread: %d, lastRead: %d, lastWrite: %d\n", unreadMessages, lastReadOffset, lastWriteOffset);
 
                 unreadMessages--;
                 return true;

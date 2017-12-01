@@ -203,23 +203,23 @@ namespace PS2 {
     void printPortTestResults(uint8_t testResult) {
         switch(testResult) {
             case static_cast<uint8_t>(PortTestResult::Passed): {
-                printf(" test passed\n");
+                kprintf(" test passed\n");
                 break;
             }
             case static_cast<uint8_t>(PortTestResult::ClockLineStuckLow): {
-                printf(" clock line stuck low\n");
+                kprintf(" clock line stuck low\n");
                 break;
             }
             case static_cast<uint8_t>(PortTestResult::ClockLineStuckHigh): {
-                printf(" clock line stuck high\n");
+                kprintf(" clock line stuck high\n");
                 break;
             }
             case static_cast<uint8_t>(PortTestResult::DataLineStuckLow): {
-                printf(" data line stuck low\n");
+                kprintf(" data line stuck low\n");
                 break;
             }
             case static_cast<uint8_t>(PortTestResult::DataLineStuckHigh): {
-                printf(" data line stuck high\n");
+                kprintf(" data line stuck high\n");
                 break;
             }
         }
@@ -230,14 +230,14 @@ namespace PS2 {
             writeControllerCommand(ControllerCommand::TestFirstPort);
             auto testResult = readByte();
 
-            printf("[PS/2] First port test: ");
+            kprintf("[PS/2] First port test: ");
             printPortTestResults(testResult);
         }
         else {
             writeControllerCommand(ControllerCommand::TestSecondPort);
             auto testResult = readByte();
 
-            printf("[PS/2] Second port test: ");
+            kprintf("[PS/2] Second port test: ");
             printPortTestResults(testResult); 
         }
     }
@@ -266,7 +266,7 @@ namespace PS2 {
         auto testResult = readByte();
 
         if (testResult == static_cast<uint8_t>(ControllerTestResult::Passed)) {
-            printf("[PS/2] Controller test passed\n");
+            kprintf("[PS/2] Controller test passed\n");
         }
 
         //determine if controller has 1 or 2 channels
@@ -317,9 +317,9 @@ namespace PS2 {
         asm volatile("clt");
 
         auto firstId = identifyDevice(Port::First);
-        printf("[PS/2] First port identified as %x\n", firstId);
+        kprintf("[PS/2] First port identified as %x\n", firstId);
         auto secondId = identifyDevice(Port::Second);
-        printf("[PS/2] Second port identified as %x\n", secondId);
+        kprintf("[PS/2] Second port identified as %x\n", secondId);
 
         asm volatile("sti");
     }
