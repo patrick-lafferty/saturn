@@ -1,0 +1,8 @@
+#pragma once
+
+#include <stdint.h>
+#include <iosfwd>
+
+namespace std {
+    using streamoff = int64_t;
+}

@@ -1,0 +1,5 @@
+#pragma once
+
+namespace std {
+    using mbstate_t = struct mbstate {};
+}

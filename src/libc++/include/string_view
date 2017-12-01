@@ -1,0 +1,186 @@
+#pragma once
+
+#include <string>
+#include <algorithm>
+
+namespace std {
+
+    template<class charT, class traits = char_traits<charT>>
+    class basic_string_view {
+    public:
+
+        using value_type = charT;
+        using pointer = charT*;
+        using const_pointer = const charT*;
+        using size_type = size_t;
+
+        static constexpr size_type npos = size_type(-1);
+
+        /*
+        constructors
+        */
+        constexpr basic_string_view() noexcept {
+            _data = nullptr;
+            _length = 0;
+        }
+
+        constexpr basic_string_view(const basic_string_view& other) noexcept = default;
+
+        constexpr basic_string_view(const charT* str, size_type len) {
+            _data = str;
+            _length = len;
+        }
+
+        constexpr basic_string_view(const charT* s) {
+            _data = s;
+            _length = traits::length(s);
+        }
+
+        /*
+        iterators
+        */
+        //begin
+        //cbegin
+        //end
+        //cend
+        //rbegin
+        //crbegin
+        //rend
+        //crend
+
+        /*
+        element access
+        */
+        //operator[]
+        //at
+        //front
+        //back
+        constexpr const_pointer data() const noexcept {
+            return _data;
+        }
+
+        /*
+        capacity
+        */
+        constexpr size_type size() const noexcept {
+            return _length;
+        }
+
+        constexpr size_type length() const noexcept {
+            return _length;
+        }
+
+        //max_size
+        [[nodiscard]] constexpr bool empty() const noexcept {
+            return size() == 0;
+        }
+
+        /*
+        modifiers
+        */
+        constexpr void remove_prefix(size_type n) {
+            if (n < size()) {
+                _data += n;
+            }
+        }
+
+        constexpr void remove_suffix(size_type n) {
+            if (n < size()) {
+                _length -= n;
+            }
+        }
+        //swap
+
+        /*
+        operations
+        */
+        size_type copy(charT* dest, size_type count, size_type pos = 0) const {
+            auto rcount = min(count, size() - pos);
+
+            for (auto i = 0u; i < rcount; i++) {
+                dest[i] = _data[pos + i];
+            }
+
+            return rcount;
+        }
+
+        constexpr basic_string_view substr(size_type pos = 0, size_type count = npos) const {
+            auto end = min(count, size() - pos);
+
+            if (end < 0) {
+                end = size();
+            }
+
+            return basic_string_view(_data + pos, end);
+        }
+
+        constexpr int compare(basic_string_view v) const noexcept {
+            auto result = traits::compare(_data, v.data(), min(_length, v.size()));
+
+            if (result < 0) {
+                return result;
+            }
+            else if (result > 0) {
+                return result;
+            }
+            else {
+                if (_length < v._length) {
+                    return -1;
+                }
+                else if (_length > v._length) {
+                    return 1;
+                }
+                else {
+                    return 0;
+                }
+            }
+        }
+
+        constexpr int compare(size_type position, size_type count, basic_string_view v) const {
+            return substr(position, count).compare(v);
+        }
+
+        constexpr int compare(size_type position1, size_type count1, basic_string_view v,
+            size_type position2, size_type count2) const {
+            
+            return substr(position1, count1).compare(v.substr(position2, count2));
+        }
+
+        constexpr int compare(const charT* s) const {
+            return compare(basic_string_view(s));
+        }
+
+        constexpr int compare(size_type position, size_type count, const charT* s) const {
+            return substr(position, count).compare(basic_string_view(s));
+        }
+
+        constexpr int compare(size_type position, size_type count1, 
+            const charT* s, size_type count2) const {
+
+            return substr(position, count1).compare(basic_string_view(s, count2));
+        }
+
+        constexpr size_type find(charT c, size_type pos = 0) const noexcept {
+            for (auto i = pos; i < _length; i++) {
+                if (_data[i] == c) {
+                    return i;
+                }
+            }
+
+            return npos;
+        }
+
+        //rfind
+        //find_first_of
+        //find_last_of
+        //find_first_not_of
+        //find_last_not_of
+
+    private:
+        
+        const_pointer _data;
+        size_type _length;
+    };
+
+    typedef basic_string_view<char> string_view;
+}

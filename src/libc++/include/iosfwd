@@ -1,0 +1,11 @@
+#pragma once
+
+#include <cwchar>
+
+namespace std {
+
+    template<class state> class fpos;
+    using _STATE = mbstate_t;
+
+    using streampos = fpos<_STATE>;
+}
