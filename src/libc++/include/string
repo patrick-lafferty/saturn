@@ -46,7 +46,17 @@ namespace std {
             return 0;
         }
 
-        //length
+        static constexpr size_t length(const char_type* s) {
+            size_t i = 0;
+
+            while (*s != char_type()) {
+                i++;
+                s++;
+            }
+
+            return i;
+        }
+
         //to_char_type
         //to_int_type
         //eq_int_type
