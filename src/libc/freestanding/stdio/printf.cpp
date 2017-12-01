@@ -64,7 +64,7 @@ int printf_impl(const char* format, va_list args, T write, int& charactersWritte
                 while (!done) {
                     switch (*format) {
                         case 'c': {
-                            auto c = va_arg(args, int);
+                            unsigned char c = va_arg(args, int);
                             write(c);
                             done = true;
                             break;
@@ -167,6 +167,7 @@ int printf(const char* format, ...) {
     int charactersWritten = 0;
     Terminal::PrintMessage message;
     message.serviceType = Kernel::ServiceType::Terminal;
+    memset(message.buffer, '\0', sizeof(message.buffer));
 
     auto write = [&](auto c) {
         message.buffer[charactersWritten] = c;

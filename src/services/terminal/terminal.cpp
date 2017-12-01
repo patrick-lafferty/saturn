@@ -397,8 +397,8 @@ namespace Terminal {
                         break;
                     }
 
-                    auto consumedChars = 1 + handleEscapeSequence(buffer + 1, count);
-                    buffer += consumedChars;
+                    auto consumedChars = 0 + handleEscapeSequence(buffer + 1, count);
+                    buffer += consumedChars + 1;
                     count -= consumedChars;
 
                     //TODO: better way of tracking dirty areas
@@ -420,7 +420,7 @@ namespace Terminal {
 
         }
 
-        dirty.endIndex = getIndex() - dirty.startIndex;
+        dirty.endIndex = getIndex() - dirty.startIndex + 1;
 
         return dirty;
     }
