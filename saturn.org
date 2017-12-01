@@ -434,9 +434,9 @@ Next steps:
 - [ ] add a hardware filesystem mounted at /hardware to store read-only info
        about the detected hardware (later mount to /system/hardware when mounts
        support non-root mounting)
-- [ ] implement string_view
-- [ ] replace char* with string_view wherever possible
-- [ ] implement a split() func that returns a vector of string_views
+- [X] implement string_view
+- [X] replace char* with string_view wherever possible
+- [X] implement a split() func that returns a vector of string_views
        to tidy up the shell
 - [ ] add one line history support to shell
 

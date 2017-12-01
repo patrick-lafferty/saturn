@@ -11,16 +11,9 @@
 #include <stdlib.h>
 #include <parsing>
 
-namespace Shell {
+using namespace std;
 
-    void print(const char* s) {
-        Terminal::PrintMessage message {};
-        message.serviceType = Kernel::ServiceType::Terminal;
-        message.stringLength = strlen(s);
-        memset(message.buffer, '\0', sizeof(message.buffer));
-        memcpy(message.buffer, s, message.stringLength);
-        send(IPC::RecipientType::ServiceName, &message);
-    }
+namespace Shell {
 
     uint8_t getChar() {
 
@@ -44,44 +37,20 @@ namespace Shell {
         return 0;
     }
 
-    void moveCursor(int column) {
-        if (column >= 10) {
-            char s[] = {
-                '\e',
-                '[',
-                (char)('0' + column / 10 % 10),
-                (char)('0' + column % 10),
-                'G',
-                '\0'
-            };
-            print(s);
-        }
-        else {
-            char s[] = {
-                '\e',
-                '[',
-                (char)('0' + column % 10),
-                'G',
-                '\0'
-            };
-            print(s);
-        }
-    }
-
     void printCursor(int column) {
-        moveCursor(column);
-        print("\e[48;5;15m \e[48;5;0");
-        moveCursor(column);
+        printf("\e[%dG\e[48;5;15m \e[48;5;0m\e[%dG", column, column);
     }
 
     void clearCursor(int column) {
-        moveCursor(column);
-        print("\e[48;5;0m ");
-        moveCursor(column);
+        printf("\e[%dG\e[48;5;0m \e[%dG", column, column);
     }
 
-    bool doOpen(const char* path, uint32_t& descriptor) {
-        open(path);
+    bool doOpen(string_view path, uint32_t& descriptor) {
+        char pathNullTerminated[64];
+        path.copy(pathNullTerminated, path.length());
+        pathNullTerminated[path.length()] = '\0';
+
+        open(pathNullTerminated);
         IPC::MaximumMessageBuffer buffer;
         receive(&buffer);
 
@@ -117,33 +86,28 @@ namespace Shell {
 
         auto type = args.readType();
         if (type == Vostok::ArgTypes::Property) {
-            print("Property ");
-            //its a property
+            printf("Property ");
+
             while (type != Vostok::ArgTypes::EndArg) {
 
                 type = args.peekType();
 
                 switch(type) {
                     case Vostok::ArgTypes::Void: {
-                        print("void");
+                        printf("void");
                         return;
                     }
                     case Vostok::ArgTypes::Uint32: {
                         auto value = args.read<uint32_t>(type);
                         if (!args.hasErrors()) {
-                            char s[15];
-                            sprintf(s, "uint32 = %d\n", value);
-                            print(s);
+                            printf("uint32 = %d\n", value);
                         }
                         break;
                     }
                     case Vostok::ArgTypes::Cstring: {
                         auto value = args.read<char*>(type);
                         if (!args.hasErrors()) {
-                            char* s = new char[8 + strlen(value)];
-                            sprintf(s, "char* = \"%s\"\n", value);
-                            print(s);
-                            delete[] s;
+                            printf("char* = \"%s\"\n", value);
                         }
                         break;
                     }
@@ -154,38 +118,38 @@ namespace Shell {
             }
         }
         else {
-            print("Function Signature: (");
+            printf("Function Signature: (");
             type = args.readType();
 
             while (type != Vostok::ArgTypes::EndArg) {
                 auto nextType = args.readType();
 
                 if (nextType == Vostok::ArgTypes::EndArg) {
-                    print(") -> ");
+                    printf(") -> ");
                 }
 
                 switch(type) {
                     case Vostok::ArgTypes::Void: {
-                        print("void");
+                        printf("void");
                         break;
                     }
                     case Vostok::ArgTypes::Uint32: {
-                        print("uint32");
+                        printf("uint32");
                         break;
                     }
                     case Vostok::ArgTypes::Cstring: {
-                        print("char*");
+                        printf("char*");
                         break;
                     }
                 }
 
                 if (nextType != Vostok::ArgTypes::EndArg) {
                     if (args.peekType() != Vostok::ArgTypes::EndArg) {
-                        print(", ");
+                        printf(", ");
                     }
                 }
                 else {
-                    print("\n");
+                    printf("\n");
                 }
 
                 type = nextType;                
@@ -193,7 +157,76 @@ namespace Shell {
         }
     }
 
-    void doWrite(uint32_t descriptor, char* arg) {
+    void doWriteFunction_impl(uint32_t descriptor, VFS::ReadResult& sig) {
+        write(descriptor, sig.buffer, sizeof(sig.buffer));
+
+        /*
+        writes to a function yield 1 or 2 messages,
+        if the write failed then only a WriteResult,
+        otherwise a WriteResult followed by a ReadResult
+        */
+        {
+            IPC::MaximumMessageBuffer buffer;
+            receive(&buffer);
+
+            if (buffer.messageId == VFS::WriteResult::MessageId) {
+                auto msg = IPC::extractMessage<VFS::WriteResult>(buffer);
+
+                if (!msg.success) {
+                    printf("write failed\n");
+                    return;
+                }
+            }
+        }
+
+        IPC::MaximumMessageBuffer buffer;
+        receive(&buffer);
+
+        if (buffer.messageId == VFS::ReadResult::MessageId) {
+            auto msg = IPC::extractMessage<VFS::ReadResult>(buffer);
+            printf("%s", msg.buffer);
+        }
+    }
+
+    void doWriteProperty_impl(uint32_t descriptor, VFS::ReadResult& sig) {
+        write(descriptor, sig.buffer, sizeof(sig.buffer));
+
+        IPC::MaximumMessageBuffer buffer;
+        receive(&buffer);
+
+        if (buffer.messageId == VFS::WriteResult::MessageId) {
+            auto msg = IPC::extractMessage<VFS::WriteResult>(buffer);
+
+            if (!msg.success) {
+                printf("write failed\n");
+                return;
+            }
+        }
+    }
+
+    void doWrite(uint32_t descriptor) {
+        bool success {false};
+        auto sig = readSignature(descriptor, success);
+        Vostok::ArgBuffer args{sig.buffer, sizeof(sig.buffer)};
+        //type starts with function or property
+        auto type = args.readType();
+
+        if (type == Vostok::ArgTypes::Function) {
+            auto expectedType = args.peekType();
+
+            if (expectedType != Vostok::ArgTypes::Void) {
+                printf("[Shell] function expects arguments\n");
+                return;
+            }
+
+            doWriteFunction_impl(descriptor, sig);
+        }
+        else if (type == Vostok::ArgTypes::Property) {
+            printf("[Shell] property expects value\n");
+        }
+    }
+
+    void doWrite(uint32_t descriptor, string_view arg) {
         bool success {false};
         auto sig = readSignature(descriptor, success);
         Vostok::ArgBuffer args{sig.buffer, sizeof(sig.buffer)};
@@ -204,190 +237,95 @@ namespace Shell {
             auto expectedType = args.peekType();
 
             if (expectedType == Vostok::ArgTypes::Uint32) {
-                args.write(strtol(arg, nullptr, 10), expectedType);
+                char argTerminated[arg.length() + 1];
+                arg.copy(argTerminated, arg.length());
+                argTerminated[arg.length()] = '\0';
+                args.write(strtol(argTerminated, nullptr, 10), expectedType);
             }
             else if (expectedType == Vostok::ArgTypes::Bool) {
                 bool b {false};
-                if (strcmp(arg, "true") == 0) {
+                if (arg.compare("true") == 0) {
                     b = true;
                 }
                 args.write(b, expectedType);
             }
 
-            write(descriptor, sig.buffer, sizeof(sig.buffer));
-
-            /*
-            writes to a function yield 1 or 2 messages,
-            if the write failed then only a WriteResult,
-            otherwise a WriteResult followed by a ReadResult
-            */
-            {
-                IPC::MaximumMessageBuffer buffer;
-                receive(&buffer);
-
-                if (buffer.messageId == VFS::WriteResult::MessageId) {
-                    auto msg = IPC::extractMessage<VFS::WriteResult>(buffer);
-
-                    if (!msg.success) {
-                        print("write failed\n");
-                        return;
-                    }
-                }
-            }
-
-            IPC::MaximumMessageBuffer buffer;
-            receive(&buffer);
-
-            if (buffer.messageId == VFS::ReadResult::MessageId) {
-                auto msg = IPC::extractMessage<VFS::ReadResult>(buffer);
-
-                char s[20];
-                memset(s, '\0', sizeof(s));
-                memcpy(s, msg.buffer, 10);
-                print(s);
-            }
+            doWriteFunction_impl(descriptor, sig); 
         }
         else if (type == Vostok::ArgTypes::Property) {
             auto expectedType = args.peekType();
 
             if (expectedType == Vostok::ArgTypes::Uint32) {
-                args.write(strtol(arg, nullptr, 10), expectedType);
+                char argTerminated[arg.length() + 1];
+                arg.copy(argTerminated, arg.length());
+                argTerminated[arg.length()] = '\0';
+                args.write(strtol(argTerminated, nullptr, 10), expectedType);
             }
             else if (expectedType == Vostok::ArgTypes::Bool) {
                 bool b {false};
-                if (strcmp(arg, "true") == 0) {
+                if (arg.compare("true") == 0) {
                     b = true;
                 }
                 args.write(b, expectedType);
             }
 
-            write(descriptor, sig.buffer, sizeof(sig.buffer));
-            
-            IPC::MaximumMessageBuffer buffer;
-            receive(&buffer);
-
-            if (buffer.messageId == VFS::WriteResult::MessageId) {
-                auto msg = IPC::extractMessage<VFS::WriteResult>(buffer);
-
-                if (!msg.success) {
-                    print("write failed\n");
-                    return;
-                }
-            }
+            doWriteProperty_impl(descriptor, sig);            
         }
-
     }
 
     bool parse(char* input) {
-        auto start = input;
 
-        auto testSplit = split({input, strlen(input)}, ' ');
-        for (auto& s : testSplit) {
-            char b[50];
-            memset(b, '\0', sizeof(b));
-            s.copy(b, s.length());
-            print(b);
-            print("\n");
-        }
-
-        auto word = markWord(input);
-
-        if (word == nullptr) {
+        auto words = split({input, strlen(input)}, ' ');
+        
+        if (words.empty()) {
             return false;
         }
 
-        if (strcmp(start, "help") == 0) {
-            print("Available commands:\n");
-            print("help\n");
-            print("version\n");
-            print("ask <service name> <request name>\n");
+        if (words[0].compare("help") == 0) {
+            printf("Available commands:\nhelp\nversion\nread\nwrite\n");
         }
-        else if (strcmp(start, "version") == 0) {
-            print("Saturn 0.1.0\n");
+        else if (words[0].compare("version") == 0) {
+            printf("Saturn 0.1.0\n");
         }
-        else if (strcmp(start, "read") == 0) {
-            start = word + 1;
-            word = markWord(start);
+        else if (words[0].compare("read") == 0) {
 
-            if (word != nullptr) {
-                uint32_t descriptor {0};
-                if (doOpen(start, descriptor)) {
-                    doRead(descriptor); 
-                }
-                else {
-                    print("open failed\n");
-                }
-            }
-        }
-        else if (strcmp(start, "write") == 0) {
-            start = word + 1;
-            word = markWord(start);
-
-            if (word != nullptr) {
-                auto object = start;
-                start = word + 1;
-
-                uint32_t descriptor {0};
-                if (doOpen(object, descriptor)) {
-                    doWrite(descriptor, start); 
-                }
-                else {
-                    print("open failed\n");
-                }
-            }
-        }
-        else if (strcmp(start, "ask") == 0) {
-            start = word + 1;
-            word = markWord(start);
-
-            if (word == nullptr) {
-                print("available services:\n");
-                print("memory\n");
-                return true;
+            if (words.size() < 2) {
+                return false;
             }
 
-            if (strcmp(start, "memory") == 0) {
-                start = word + 1;
-                word = markWord(start);
+            uint32_t descriptor {0};
+            if (doOpen(words[1], descriptor)) {
+                doRead(descriptor); 
+            }
+            else {
+                printf("open failed\n");
+            }
+        }
+        else if (words[0].compare("write") == 0) {
 
-                if (word == nullptr) {
-                    print("available requests:\n");
-                    print("report\n");
-                    return true;
-                }
+            if (words.size() < 2) {
+                return false;
+            }
 
-                if (strcmp(start, "report") == 0) {
-                    Memory::GetPhysicalReport report{};
-                    report.serviceType = Kernel::ServiceType::Memory;
-                    send(IPC::RecipientType::ServiceName, &report);
-
-                    IPC::MaximumMessageBuffer buffer;
-                    receive(&buffer);
-
-                    if (buffer.messageId == Memory::PhysicalReport::MessageId) {
-                        auto message = IPC::extractMessage<Memory::PhysicalReport>(buffer);
-                        char s[20];
-                        memset(s, '\0', sizeof(s));
-                        sprintf(s, "Free: %dKB\n", message.freeMemory * Memory::PageSize / 1024);
-                        print(s);
-                        memset(s, '\0', sizeof(s));
-                        sprintf(s, "Total: %dKB\n", message.totalMemory * Memory::PageSize / 1024);
-                        print(s);
-                    }
+            uint32_t descriptor {0};
+            if (doOpen(words[1], descriptor)) {
+                if (words.size() > 2) {
+                    doWrite(descriptor, words[2]); 
                 }
                 else {
-                    return false;
+                    doWrite(descriptor);
                 }
             }
             else {
-                return false;
+                printf("open failed\n");
             }
-        }
-        else {
-            return false;
         }
 
         return true;
+    }
+
+    void moveCursor(int column) {
+        printf("\e[%dG", column);
     }
 
     int main() {
@@ -395,12 +333,11 @@ namespace Shell {
         char inputBuffer[1000];
         memset(inputBuffer, '\0', sizeof(inputBuffer));
         uint32_t index {0};
-        auto prompt = "\e[38;5;9mshell> \e[38;5;15m";
         uint32_t promptLength = 7;
 
         while (true) {
             moveCursor(1);
-            print(prompt);
+            printf("\e[38;5;9mshell> \e[38;5;15m");
 
             uint8_t c {0};
 
@@ -409,7 +346,7 @@ namespace Shell {
 
                 c = getChar();
 
-                print("\e[38;5;15m");
+                printf("\e[38;5;15m");
 
                 switch(c) {
                     case 8: {
@@ -417,9 +354,10 @@ namespace Shell {
 
                         if (index > 0) {
                             int a = index + promptLength;
-                            moveCursor(a);
-                            print(" ");
-                            moveCursor(a);
+                            /*moveCursor(a);
+                            printf(" ");
+                            moveCursor(a);*/
+                            clearCursor(a);
 
                             index--;
                             printCursor(index + promptLength + 1);
@@ -428,16 +366,16 @@ namespace Shell {
                     }
                     case 13: {
                         clearCursor(index + promptLength + 1);
-                        print("\n");
+                        printf("\n");
 
                         if (index > 0) {
                         
                             if (!parse(inputBuffer)) {
-                                print("Unknown command\n");
+                                printf("Unknown command\n");
                             }
                         }
                         
-                        print("\n");
+                        printf("\n");
 
                         memset(inputBuffer, '\0', index);
                         index = 0;
@@ -446,10 +384,9 @@ namespace Shell {
                     }
                     default: {
                         clearCursor(index + promptLength + 1);
-                        char s[] = {(char)c, '\0'};
                         inputBuffer[index] = c;
                         index++;
-                        print(s);
+                        printf("%c", c);
                         printCursor(index + promptLength + 1);
                     }
                 }

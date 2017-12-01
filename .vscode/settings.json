@@ -1,6 +1,8 @@
 {
     "files.associations": {
         "**/libc++/**/*": "cpp",
-        "vector": "cpp"
+        "**/libc++/include/*": "cpp",
+        "string": "cpp",
+        "string_view": "cpp"
     }
 }
