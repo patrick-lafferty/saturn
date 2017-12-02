@@ -1,16 +1,14 @@
 #pragma once
 
 #include "object.h"
-#include "cpuid.h"
 #include <string_view>
 
 namespace HardwareFileSystem {
-
-    class CPUObject : public HardwareObject {
+    class CPUIdObject : public HardwareObject {
     public:
 
-        CPUObject();
-        virtual ~CPUObject() {}
+        CPUIdObject();
+        virtual ~CPUIdObject() {}
 
         void readSelf(uint32_t requesterTaskId, uint32_t requestId) override;
 
@@ -21,7 +19,7 @@ namespace HardwareFileSystem {
 
         int getProperty(std::string_view name) override;
         void readProperty(uint32_t requesterTaskId, uint32_t requestId, uint32_t propertyId) override;
-        void writeProperty(uint32_t requesterTaskId, uint32_t requestId, uint32_t propertyId, Vostok::ArgBuffer& args) override;
+        void writeProperty(uint32_t requesterTaskId, uint32_t requestId, uint32_t propertyId, Vostok::ArgBuffer& args) override; 
 
         Object* getNestedObject(std::string_view name) override;
 
@@ -29,17 +27,16 @@ namespace HardwareFileSystem {
 
     private:
 
-        enum class FunctionId {
-
-        };
-
         enum class PropertyId {
-            Id
+            Model,
+            FamilyId,
+            Brand,    
         };
-
-        CPUIdObject id;
         
+        uint32_t model;
+        uint32_t familyId;
+        char brand[48];
     };
 
-    void detectCPU();
+    void detectId(uint32_t eax, uint32_t ebx);
 }
