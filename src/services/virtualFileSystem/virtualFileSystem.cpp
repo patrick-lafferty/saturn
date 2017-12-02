@@ -83,7 +83,7 @@ namespace VFS {
                 continue;
             }
 
-            if (strncmp(path, mount.path, mount.pathLength) == 0) {
+            if (strncmp(path, mount.path, mount.pathLength) == 0 && mount.pathLength <= strlen(path)) {
                 matchingMount = mount;
                 return true;
             }
@@ -110,7 +110,7 @@ namespace VFS {
                 //TODO: for now only support top level mounts to /
                 auto request = IPC::extractMessage<MountRequest>(buffer);
                 auto pathLength = strlen(request.path) + 1;
-                mounts.push_back({nullptr, pathLength, request.senderTaskId});
+                mounts.push_back({nullptr, pathLength - 1, request.senderTaskId});
                 auto& mount = mounts[mounts.size() - 1];
                 mount.path = new char[pathLength];
                 memcpy(mount.path, request.path, pathLength);

@@ -115,6 +115,55 @@ namespace Vostok {
         virtual void writeProperty(uint32_t requesterTaskId, uint32_t propertyId, ArgBuffer& args) = 0;
     };
 
+    /*
+    You can either open
+    1) the VostokObject itself, reading it does something like returning a default
+        property important to the object
+    2) a function, reading returns the function's signature and writing
+        calls the function
+    3) a property, reading returns the value and writing sets the value
+    */
+    enum class DescriptorType {
+        Object,
+        Function,
+        Property
+    };
+
+    struct FileDescriptor {
+        Object* instance;
+
+        union {
+            uint32_t functionId;
+            uint32_t propertyId;
+        };
+
+        DescriptorType type;
+
+        void read(uint32_t requesterTaskId) {
+            if (type == DescriptorType::Object) {
+
+            }
+            else if (type == DescriptorType::Function) {
+                instance->readFunction(requesterTaskId, functionId);
+            }
+            else if (type == DescriptorType::Property) {
+                instance->readProperty(requesterTaskId, propertyId);
+            }
+        }
+
+        void write(uint32_t requesterTaskId, ArgBuffer& args) {
+            if (type == DescriptorType::Object) {
+
+            }
+            else if (type == DescriptorType::Function) {
+                instance->writeFunction(requesterTaskId, functionId, args);
+            }
+            else if (type == DescriptorType::Property) {
+                instance->writeProperty(requesterTaskId, propertyId, args);
+            }
+        }
+    };
+
     enum class ArgTypes : uint8_t {
         Function,
         Property,

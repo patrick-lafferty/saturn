@@ -2,9 +2,11 @@
 #include <services.h>
 #include <system_calls.h>
 #include <services/virtualFileSystem/virtualFileSystem.h>
+#include "cpu.h"
 
 using namespace Kernel;
 using namespace VFS;
+using namespace Vostok;
 
 namespace HardwareFileSystem {
 
@@ -17,11 +19,20 @@ namespace HardwareFileSystem {
         send(IPC::RecipientType::ServiceName, &request);
     }
 
+    void handleOpenRequest(OpenRequest& request) {
+
+    }
+
     void messageLoop() {
 
         while (true) {
             IPC::MaximumMessageBuffer buffer;
             receive(&buffer);
+
+            if (buffer.messageId == OpenRequest::MessageId) {
+                auto request = IPC::extractMessage<OpenRequest>(buffer);
+                handleOpenRequest(request);
+            }
         }
     }
 

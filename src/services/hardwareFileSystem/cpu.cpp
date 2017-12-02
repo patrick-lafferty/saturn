@@ -11,7 +11,7 @@ namespace HardwareFileSystem {
     /*
     Vostok Object function support
     */
-    int CPUObject::getFunction(char* name) {
+    int CPUObject::getFunction(std::string_view name) {
         return -1;
     }
 
@@ -28,7 +28,7 @@ namespace HardwareFileSystem {
     /*
     Vostok Object property support
     */
-    int CPUObject::getProperty(char* name) {
+    int CPUObject::getProperty(std::string_view name) {
     }
 
     void CPUObject::readProperty(uint32_t requesterTaskId, uint32_t propertyId) {
