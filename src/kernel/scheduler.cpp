@@ -197,8 +197,8 @@ namespace Kernel {
         task->virtualMemoryManager = Memory::currentVMM;
         task->heap = LibC_Implementation::KernelHeap;
 
-        const uint32_t mailboxSize = Memory::PageSize;
-        auto mailboxMemory = task->heap->aligned_allocate(mailboxSize, Memory::PageSize);
+        const uint32_t mailboxSize = 2 * Memory::PageSize;
+        auto mailboxMemory = task->heap->aligned_allocate(mailboxSize, 2 * Memory::PageSize);
 
         task->mailbox = new (mailboxMemory) 
             IPC::Mailbox(reinterpret_cast<uint32_t>(mailboxMemory) + sizeof(IPC::Mailbox), 
