@@ -72,6 +72,9 @@ namespace HardwareFileSystem {
         if (name.compare("instruction_sets") == 0) {
             return &instructionSets;
         }
+        else if (name.compare("instructions") == 0) {
+            return &instructions;
+        }
 
         return nullptr;
     }
@@ -87,5 +90,6 @@ namespace HardwareFileSystem {
     void detectFeatures(uint32_t ecx, uint32_t edx) {
 
         detectInstructionSets(ecx, edx);
+        detectInstructions(ecx, edx);
     }
 }

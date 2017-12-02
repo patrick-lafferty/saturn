@@ -40,7 +40,7 @@ namespace Vostok {
             return {};
         }
         else {
-            auto result = reinterpret_cast<const char*>(typedBuffer) + nextValueIndex;
+            auto result = reinterpret_cast<const char*>(typedBuffer + nextValueIndex);
             auto length = strlen(result) + 1;
             nextValueIndex += length;
             nextTypeIndex--;

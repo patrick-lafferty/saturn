@@ -2,6 +2,7 @@
 
 #include "../object.h"
 #include "instructionsets.h"
+#include "instructions.h"
 #include <string_view>
 
 namespace HardwareFileSystem {
@@ -38,6 +39,7 @@ namespace HardwareFileSystem {
         };
 
         CPUInstructionSetsObject instructionSets;
+        CPUInstructionsObject instructions;
 
         /*
 

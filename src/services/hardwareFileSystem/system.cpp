@@ -102,7 +102,7 @@ namespace HardwareFileSystem {
                         //its the object itself
                         addDescriptor(object, 0, DescriptorType::Object);
                     }*/
-                    uint32_t lastObjectWord {0};
+                    uint32_t lastObjectWord {2};
                     for (auto i = 3u; i < words.size(); i++) {
                         auto nestedObject = object->getNestedObject(words[i]);
 
