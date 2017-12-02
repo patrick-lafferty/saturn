@@ -77,7 +77,7 @@ namespace Startup {
     void setupProcessObject(const char* path, uint32_t pid) {
         char processPath[50];
         memset(processPath, '\0', sizeof(processPath));
-        sprintf(processPath, "/process/%d/Executable", pid);
+        sprintf(processPath, "/process/%d/executable", pid);
         auto openResult = openSynchronous(processPath);
 
         if (openResult.success) {
@@ -93,11 +93,11 @@ namespace Startup {
 
                 write(openResult.fileDescriptor, readResult.buffer, sizeof(readResult.buffer));
                 dummyReceive();
-                close(openResult.fileDescriptor);
-                dummyReceive();
             }
+
+            close(openResult.fileDescriptor);
+            dummyReceive();
         }
-        
     }
 
     void runProgram(const char* path) {

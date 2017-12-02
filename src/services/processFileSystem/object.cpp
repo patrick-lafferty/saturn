@@ -13,6 +13,21 @@ namespace PFS {
         memset(executable, '\0', sizeof(executable));
     }
 
+    void ProcessObject::readSelf(uint32_t requesterTaskId, uint32_t requestId) {
+        ReadResult result;
+        result.success = true;
+        result.requestId = requestId;
+        ArgBuffer args {result.buffer, sizeof(result.buffer)};
+        args.writeType(ArgTypes::Property);
+
+        args.writeValueWithType("executable", ArgTypes::Cstring);
+
+        args.writeType(ArgTypes::EndArg);
+
+        result.recipientId = requesterTaskId;
+        send(IPC::RecipientType::TaskId, &result);
+    }
+
     /*
     Vostok Object function support
     */
@@ -113,7 +128,7 @@ namespace PFS {
     Vostok Object property support
     */
     int ProcessObject::getProperty(std::string_view name) {
-        if (name.compare("Executable") == 0) {
+        if (name.compare("executable") == 0) {
             return static_cast<int>(PropertyId::Executable);
         }
 
@@ -167,6 +182,10 @@ namespace PFS {
                 replyWriteSucceeded(requesterTaskId, requestId, false);
             }
         }
+    }
+
+    Object* ProcessObject::getNestedObject(std::string_view name) {
+        return nullptr;
     }
 
     /*
