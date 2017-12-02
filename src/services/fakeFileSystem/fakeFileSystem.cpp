@@ -46,6 +46,7 @@ namespace FakeFileSystem {
                 OpenResult result;
                 result.success = true;
                 result.serviceType = ServiceType::VFS;
+                result.requestId = request.requestId;
 
                 auto descriptor = nextFileDescriptor++;
                 result.fileDescriptor = descriptor;
@@ -83,6 +84,7 @@ namespace FakeFileSystem {
 
                 ReadResult result;
                 result.success = true;
+                result.requestId = request.requestId;
                 memcpy(result.buffer, &descriptors[request.fileDescriptor].entryPoint, sizeof(uintptr_t));
                 result.serviceType = ServiceType::VFS;
                 send(IPC::RecipientType::ServiceName, &result);

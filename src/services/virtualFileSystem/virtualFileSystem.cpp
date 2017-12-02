@@ -92,15 +92,33 @@ namespace VFS {
         return false;
     }
 
+    struct PendingRequest {
+        uint32_t id;
+        uint32_t requesterTaskId;
+    };
+
+    PendingRequest getPendingRequest(uint32_t requestId, std::vector<PendingRequest>& requests) {
+        PendingRequest result;
+
+        for (auto& request : requests) {
+            if (request.id == requestId) {
+                result = request;
+                requests.erase(&request);
+                break;
+            }
+        }
+
+        return result;
+    }
+
     void messageLoop() {
         /*
         TODO: Replace with a trie where the leaf node values are services 
         */
         std::vector<Mount> mounts;
-
-        //TODO: design a proper data structure for holding outstanding requests
-        uint32_t outstandingRequestSenderId {0};
         std::vector<FileDescriptor> openFileDescriptors;
+        std::vector<PendingRequest> pendingRequests;
+        uint32_t nextRequestId {0};
 
         while (true) {
             IPC::MaximumMessageBuffer buffer;
@@ -125,8 +143,9 @@ namespace VFS {
 
                 if (foundMount) {
                     request.recipientId = mount.serviceId;
+                    request.requestId = nextRequestId++;
+                    pendingRequests.push_back({request.requestId, buffer.senderTaskId});
                     send(IPC::RecipientType::TaskId, &request);   
-                    outstandingRequestSenderId = buffer.senderTaskId;
                 }
                 else {
                     OpenResult result;
@@ -167,11 +186,13 @@ namespace VFS {
                             }
 
                             result.fileDescriptor = processFileDescriptor;
-                            result.recipientId = outstandingRequestSenderId;
+                            auto pendingRequest = getPendingRequest(result.requestId, pendingRequests);
+                            result.recipientId = pendingRequest.requesterTaskId;
                             send(IPC::RecipientType::TaskId, &result);
                         }
                         else {
-                            result.recipientId = outstandingRequestSenderId;
+                            auto pendingRequest = getPendingRequest(result.requestId, pendingRequests);
+                            result.recipientId = pendingRequest.requesterTaskId;
                             send(IPC::RecipientType::TaskId, &result);
                         }
 
@@ -186,8 +207,9 @@ namespace VFS {
 
                 if (foundMount) {
                     request.recipientId = mount.serviceId;
+                    request.requestId = nextRequestId++;
                     send(IPC::RecipientType::TaskId, &request);
-                    outstandingRequestSenderId = buffer.senderTaskId;
+                    pendingRequests.push_back({request.requestId, buffer.senderTaskId});
                 }
                 else {
                     CreateResult result;
@@ -198,12 +220,12 @@ namespace VFS {
             }
             else if (buffer.messageId == CreateResult::MessageId) {
                 auto result = IPC::extractMessage<CreateResult>(buffer);
-                result.recipientId = outstandingRequestSenderId;
+                auto pendingRequest = getPendingRequest(result.requestId, pendingRequests);
+                result.recipientId = pendingRequest.requesterTaskId;
                 send(IPC::RecipientType::TaskId, &result);
             }
             else if (buffer.messageId == ReadRequest::MessageId) {
                 auto request = IPC::extractMessage<ReadRequest>(buffer);
-                outstandingRequestSenderId = request.senderTaskId;
 
                 /*
                 TODO: consider implementing either:
@@ -215,6 +237,8 @@ namespace VFS {
                     auto descriptor = openFileDescriptors[request.fileDescriptor];
 
                     if (descriptor.isOpen()) {
+                        request.requestId = nextRequestId++;
+                        pendingRequests.push_back({request.requestId, buffer.senderTaskId});
                         request.recipientId = descriptor.mountTaskId;
                         request.fileDescriptor = descriptor.descriptor;
                         send(IPC::RecipientType::TaskId, &request);
@@ -237,12 +261,12 @@ namespace VFS {
             }
             else if (buffer.messageId == ReadResult::MessageId) {
                 auto result = IPC::extractMessage<ReadResult>(buffer);
-                result.recipientId = outstandingRequestSenderId;
+                auto pendingRequest = getPendingRequest(result.requestId, pendingRequests);
+                result.recipientId = pendingRequest.requesterTaskId;
                 send(IPC::RecipientType::TaskId, &result);
             }
             else if (buffer.messageId == WriteRequest::MessageId) {
                 auto request = IPC::extractMessage<WriteRequest>(buffer);
-                outstandingRequestSenderId = request.senderTaskId;
 
                 bool failed {false};
 
@@ -250,6 +274,8 @@ namespace VFS {
                     auto descriptor = openFileDescriptors[request.fileDescriptor];
 
                     if (descriptor.isOpen()) {
+                        request.requestId = nextRequestId++;
+                        pendingRequests.push_back({request.requestId, buffer.senderTaskId});
                         request.recipientId = descriptor.mountTaskId;
                         request.fileDescriptor = descriptor.descriptor;
                         send(IPC::RecipientType::TaskId, &request);
@@ -271,7 +297,8 @@ namespace VFS {
             }
             else if (buffer.messageId == WriteResult::MessageId) {
                 auto result = IPC::extractMessage<WriteResult>(buffer);
-                result.recipientId = outstandingRequestSenderId;
+                auto pendingRequest = getPendingRequest(result.requestId, pendingRequests);
+                result.recipientId = pendingRequest.requesterTaskId;
                 send(IPC::RecipientType::TaskId, &result);
             }
             else if (buffer.messageId == CloseRequest::MessageId) {

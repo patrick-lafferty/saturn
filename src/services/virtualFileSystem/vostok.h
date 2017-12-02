@@ -52,7 +52,7 @@ namespace Vostok {
         IPC:
             Generates a ReadResult message
         */
-        virtual void readFunction(uint32_t requesterTaskId, uint32_t functionId) = 0;
+        virtual void readFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId) = 0;
 
         /*
         Writing a function calls the function with the supplied arguments passed via
@@ -72,13 +72,13 @@ namespace Vostok {
             Generates a WriteResult message
             [Optional] Generates a ReadResult message
         */
-        virtual void writeFunction(uint32_t requesterTaskId, uint32_t functionId, ArgBuffer& args) = 0;
+        virtual void writeFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId, ArgBuffer& args) = 0;
 
         /*
         describeFunction writes the signature of the given function into an ArgBuffer.
         It is called by readFunction
         */
-        virtual void describeFunction(uint32_t requesterTaskId, uint32_t functionId) = 0;
+        virtual void describeFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId) = 0;
 
         /*
         When the ProcessFileSystem handles an OpenRequest, it first calls getFunction
@@ -103,7 +103,7 @@ namespace Vostok {
             Generates a ReadResult message
 
         */
-        virtual void readProperty(uint32_t requesterTaskId, uint32_t propertyId) = 0;
+        virtual void readProperty(uint32_t requesterTaskId, uint32_t requestId, uint32_t propertyId) = 0;
 
         /*
         Sets the property to the given value, if the type of the property matches
@@ -112,7 +112,7 @@ namespace Vostok {
         IPC:
             Generates a WriteResult message
         */
-        virtual void writeProperty(uint32_t requesterTaskId, uint32_t propertyId, ArgBuffer& args) = 0;
+        virtual void writeProperty(uint32_t requesterTaskId, uint32_t requestId, uint32_t propertyId, ArgBuffer& args) = 0;
     };
 
     /*
@@ -139,27 +139,27 @@ namespace Vostok {
 
         DescriptorType type;
 
-        void read(uint32_t requesterTaskId) {
+        void read(uint32_t requesterTaskId, uint32_t requestId) {
             if (type == DescriptorType::Object) {
 
             }
             else if (type == DescriptorType::Function) {
-                instance->readFunction(requesterTaskId, functionId);
+                instance->readFunction(requesterTaskId, requestId, functionId);
             }
             else if (type == DescriptorType::Property) {
-                instance->readProperty(requesterTaskId, propertyId);
+                instance->readProperty(requesterTaskId, requestId, propertyId);
             }
         }
 
-        void write(uint32_t requesterTaskId, ArgBuffer& args) {
+        void write(uint32_t requesterTaskId, uint32_t requestId, ArgBuffer& args) {
             if (type == DescriptorType::Object) {
 
             }
             else if (type == DescriptorType::Function) {
-                instance->writeFunction(requesterTaskId, functionId, args);
+                instance->writeFunction(requesterTaskId, requestId, functionId, args);
             }
             else if (type == DescriptorType::Property) {
-                instance->writeProperty(requesterTaskId, propertyId, args);
+                instance->writeProperty(requesterTaskId, requestId, propertyId, args);
             }
         }
     };

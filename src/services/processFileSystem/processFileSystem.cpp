@@ -29,6 +29,7 @@ namespace PFS {
     void handleOpenRequest(OpenRequest& request, std::vector<ProcessObject>& processes, std::vector<FileDescriptor>& openDescriptors) {
         bool failed {true};
         OpenResult result;
+        result.requestId = request.requestId;
         result.serviceType = ServiceType::VFS;
 
         auto addDescriptor = [&](auto instance, auto id, auto type) {
@@ -87,6 +88,7 @@ namespace PFS {
     void handleCreateRequest(CreateRequest& request, std::vector<ProcessObject>& processes) {
         bool failed {true};
         CreateResult result;
+        result.requestId = request.requestId;
         result.serviceType = ServiceType::VFS;
 
         auto words = split({request.path, strlen(request.path)}, '/');
@@ -120,6 +122,7 @@ namespace PFS {
 
         if (descriptor.type == DescriptorType::Object) {
             ReadResult result;
+            result.requestId = request.requestId;
             result.success = true;
             ArgBuffer args{result.buffer, sizeof(result.buffer)};
             args.writeType(ArgTypes::Property);
@@ -145,13 +148,13 @@ namespace PFS {
             send(IPC::RecipientType::TaskId, &result);
         }
         else {
-            descriptor.read(request.senderTaskId);
+            descriptor.read(request.senderTaskId, request.requestId);
         }
     }
 
     void handleWriteRequest(WriteRequest& request, std::vector<FileDescriptor>& openDescriptors) {
         ArgBuffer args{request.buffer, sizeof(request.buffer)};
-        openDescriptors[request.fileDescriptor].write(request.senderTaskId, args);
+        openDescriptors[request.fileDescriptor].write(request.senderTaskId, request.requestId, args);
     }
 
     void messageLoop() {

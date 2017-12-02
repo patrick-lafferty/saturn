@@ -32,6 +32,7 @@ namespace VFS {
 
         static uint32_t MessageId;
         char path[64];
+        uint32_t requestId;
 
         //TODO: read/write, permissions
     };
@@ -45,6 +46,7 @@ namespace VFS {
         static uint32_t MessageId;
         uint32_t fileDescriptor;
         bool success;
+        uint32_t requestId;
     };
 
     struct CreateRequest : IPC::Message {
@@ -56,6 +58,7 @@ namespace VFS {
 
         static uint32_t MessageId;
         char path[64];
+        uint32_t requestId;
 
         //TODO: read/write, permissions
     };
@@ -68,6 +71,7 @@ namespace VFS {
 
         static uint32_t MessageId;
         bool success;
+        uint32_t requestId;
     };
 
     struct ReadRequest : IPC::Message {
@@ -77,6 +81,7 @@ namespace VFS {
         }
 
         static uint32_t MessageId;
+        uint32_t requestId;
         uint32_t fileDescriptor;
         uint32_t readLength;
     };
@@ -89,6 +94,7 @@ namespace VFS {
         }
 
         static uint32_t MessageId;
+        uint32_t requestId;
         bool success;
         uint8_t buffer[256];
     };
@@ -101,6 +107,7 @@ namespace VFS {
         }
 
         static uint32_t MessageId;
+        uint32_t requestId;
         uint32_t fileDescriptor;
         uint32_t writeLength;
         uint8_t buffer[256];
@@ -113,6 +120,7 @@ namespace VFS {
         }
 
         static uint32_t MessageId;
+        uint32_t requestId;
         bool success;
     };
 

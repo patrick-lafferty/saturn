@@ -27,29 +27,23 @@ namespace PFS {
         return -1;
     }
 
-    void ProcessObject::readFunction(uint32_t requesterTaskId, uint32_t functionId) {
-        describeFunction(requesterTaskId, functionId);
+    void ProcessObject::readFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId) {
+        describeFunction(requesterTaskId, requestId, functionId);
     }
 
-    void replyWriteFailed(uint32_t requesterTaskId) {
+    void replyWriteSucceeded(uint32_t requesterTaskId, uint32_t requestId, bool success) {
         WriteResult result;
-        result.success = false;
+        result.requestId = requestId;
+        result.success = success;
         result.recipientId = requesterTaskId;
         send(IPC::RecipientType::TaskId, &result);
     }
 
-    void replyWriteSucceeded(uint32_t requesterTaskId) {
-        WriteResult result;
-        result.success = true;
-        result.recipientId = requesterTaskId;
-        send(IPC::RecipientType::TaskId, &result);
-    }
-
-    void ProcessObject::writeFunction(uint32_t requesterTaskId, uint32_t functionId, ArgBuffer& args) {
+    void ProcessObject::writeFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId, ArgBuffer& args) {
         auto type = args.readType();
 
         if (type != ArgTypes::Function) {
-            replyWriteFailed(requesterTaskId);
+            replyWriteSucceeded(requesterTaskId, requestId, false);
             return;
         }
 
@@ -62,7 +56,7 @@ namespace PFS {
                     testA(requesterTaskId, x);
                 }
                 else {
-                    replyWriteFailed(requesterTaskId);
+                    replyWriteSucceeded(requesterTaskId, requestId, false);
                 }
 
                 break;
@@ -75,19 +69,20 @@ namespace PFS {
                     testB(requesterTaskId, b);
                 }
                 else {
-                    replyWriteFailed(requesterTaskId);
+                    replyWriteSucceeded(requesterTaskId, requestId, false);
                 }
 
                 break;
             }
             default: {
-                replyWriteFailed(requesterTaskId);
+                replyWriteSucceeded(requesterTaskId, requestId, false);
             }
         }
     }
 
-    void ProcessObject::describeFunction(uint32_t requesterTaskId, uint32_t functionId) {
+    void ProcessObject::describeFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId) {
         ReadResult result {};
+        result.requestId = requestId;
         result.success = true;
         ArgBuffer args{result.buffer, sizeof(result.buffer)};
         args.writeType(ArgTypes::Function);
@@ -125,8 +120,9 @@ namespace PFS {
         return -1;
     }
 
-    void ProcessObject::readProperty(uint32_t requesterTaskId, uint32_t propertyId) {
+    void ProcessObject::readProperty(uint32_t requesterTaskId, uint32_t requestId, uint32_t propertyId) {
         ReadResult result;
+        result.requestId = requestId;
         result.success = true;
         ArgBuffer args{result.buffer, sizeof(result.buffer)};
         args.writeType(ArgTypes::Property);
@@ -144,11 +140,11 @@ namespace PFS {
         send(IPC::RecipientType::TaskId, &result);
     }
 
-    void ProcessObject::writeProperty(uint32_t requesterTaskId, uint32_t propertyId, ArgBuffer& args) {
+    void ProcessObject::writeProperty(uint32_t requesterTaskId, uint32_t requestId, uint32_t propertyId, ArgBuffer& args) {
         auto type = args.readType();
 
         if (type != ArgTypes::Property) {
-            replyWriteFailed(requesterTaskId);
+            replyWriteSucceeded(requesterTaskId, requestId, false);
             return;
         }
 
@@ -159,16 +155,16 @@ namespace PFS {
 
                 if (!args.hasErrors()) {
                     memcpy(executable, x, sizeof(executable));
-                    replyWriteSucceeded(requesterTaskId);
+                    replyWriteSucceeded(requesterTaskId, requestId, true);
                 }
                 else {
-                    replyWriteFailed(requesterTaskId);
+                    replyWriteSucceeded(requesterTaskId, requestId, false);
                 }
 
                 break;
             } 
             default: {
-                replyWriteFailed(requesterTaskId);
+                replyWriteSucceeded(requesterTaskId, requestId, false);
             }
         }
     }
@@ -177,7 +173,7 @@ namespace PFS {
     ProcessObject specific implementation
     */
     void ProcessObject::testA(uint32_t requesterTaskId, int x) {
-        replyWriteSucceeded(requesterTaskId);
+        replyWriteSucceeded(requesterTaskId, 0, false);
         ReadResult result;
         result.success = true;
         char s[10];
@@ -189,7 +185,7 @@ namespace PFS {
     }
 
     void ProcessObject::testB(uint32_t requesterTaskId, bool b) {
-        replyWriteSucceeded(requesterTaskId);
+        replyWriteSucceeded(requesterTaskId, 0, false);
         ReadResult result;
         result.success = true;
         char s[10];
