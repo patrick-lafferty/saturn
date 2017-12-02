@@ -8,3 +8,8 @@ void receive(IPC::Message* buffer) {
         : "a" (systemCall),
           "b" (buffer));
 }
+
+void receiveAndIgnore() {
+    IPC::MaximumMessageBuffer buffer;
+    receive(&buffer);
+}
