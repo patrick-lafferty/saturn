@@ -63,6 +63,15 @@ namespace std {
             items = 0;
         }
 
+        iterator erase(iterator pos) {
+            for (auto it = pos; it != end(); it++) {
+                *it = *(it + 1);
+            }
+
+            items--;
+            return pos + 1;
+        }
+
     private:
 
         size_type items {0};
