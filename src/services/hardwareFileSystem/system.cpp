@@ -50,6 +50,25 @@ namespace HardwareFileSystem {
             result.fileDescriptor = openDescriptors.size() - 1;
         };
 
+        auto tryOpenObject = [&](auto object, auto name) {
+            auto functionId = object->getFunction(name);
+
+            if (functionId >= 0) {
+                addDescriptor(object, functionId, DescriptorType::Function);
+                return true;
+            }
+            else {
+                auto propertyId = object->getProperty(name);
+
+                if (propertyId >= 0) {
+                    addDescriptor(object, propertyId, DescriptorType::Property);
+                    return true;
+                }
+            }
+
+            return false;
+        };
+
         auto words = split({request.path, strlen(request.path)}, '/');
         if (words.size() >= 2
             && words[0].compare("system") == 0
@@ -60,17 +79,21 @@ namespace HardwareFileSystem {
                 auto found = findObject(objects, words[2], &object);
 
                 if (found) {
-                    if (words.size() > 3) {
-                        auto functionId = object->getFunction(words[3]);
+                    if (words.size() > 4) {
+                        //its a nested object
+                        auto nestedObject = object->getNestedObject(words[3]);
 
-                        if (functionId >= 0) {
-                            addDescriptor(object, functionId, DescriptorType::Function);
+                        if (nestedObject != nullptr) {
+                            tryOpenObject(nestedObject, words[4]);
                         }
-                        else {
-                            auto propertyId = object->getProperty(words[3]);
+                    }
+                    else if (words.size() == 4) {
+                        if (!tryOpenObject(object, words[3])) {
+                            //see if its just the name of a nested object
+                            auto nestedObject = object->getNestedObject(words[3]);
 
-                            if (propertyId >= 0) {
-                                addDescriptor(object, propertyId, DescriptorType::Property);
+                            if (nestedObject != nullptr) {
+                                addDescriptor(nestedObject, 0, DescriptorType::Object);
                             }
                         }
                     }
@@ -147,35 +170,34 @@ namespace HardwareFileSystem {
         send(IPC::RecipientType::ServiceName, &result);
     }
 
-    void handleReadRequest(ReadRequest& request, std::vector<FileDescriptor>& openDescriptors) {
+    void handleReadRequest(ReadRequest& request, std::vector<NamedObject>& objects, std::vector<FileDescriptor>& openDescriptors) {
         auto& descriptor = openDescriptors[request.fileDescriptor];
 
         if (descriptor.type == DescriptorType::Object) {
-            ReadResult result;
-            result.requestId = request.requestId;
-            result.success = true;
-            ArgBuffer args{result.buffer, sizeof(result.buffer)};
-            args.writeType(ArgTypes::Property);
 
             if (descriptor.instance == nullptr) {
+
+                ReadResult result;
+                result.requestId = request.requestId;
+                result.success = true;
+                ArgBuffer args{result.buffer, sizeof(result.buffer)};
+                args.writeType(ArgTypes::Property);
                 //its the main /system/hardware thing, return a list of all objects
 
-                for (auto& desc : openDescriptors) {
-                    if (desc.instance != nullptr)  {
-                        args.writeValueWithType(static_cast<HardwareObject*>(desc.instance)->getName(), ArgTypes::Cstring);
-                    }
+                for (auto& object : objects) {
+                    args.writeValueWithType(object.name, ArgTypes::Cstring);
                 }
 
+                args.writeType(ArgTypes::EndArg);
+                result.recipientId = request.senderTaskId;
+
+                send(IPC::RecipientType::TaskId, &result);
             }
             else {
                 //its a hardware object, return a summary of it
-
+                descriptor.read(request.senderTaskId, request.requestId);
             }
 
-            args.writeType(ArgTypes::EndArg);
-            result.recipientId = request.senderTaskId;
-
-            send(IPC::RecipientType::TaskId, &result);
         }
         else {
             descriptor.read(request.senderTaskId, request.requestId);
@@ -185,6 +207,10 @@ namespace HardwareFileSystem {
     void handleWriteRequest(WriteRequest& request, std::vector<FileDescriptor>& openDescriptors) {
         ArgBuffer args{request.buffer, sizeof(request.buffer)};
         openDescriptors[request.fileDescriptor].write(request.senderTaskId, request.requestId, args);
+    }
+
+    void handleCloseRequest(CloseRequest& request, std::vector<FileDescriptor>& openDescriptors) {
+        openDescriptors.erase(&openDescriptors[request.fileDescriptor]);
     }
 
     void messageLoop() {
@@ -206,11 +232,15 @@ namespace HardwareFileSystem {
             }
             else if (buffer.messageId == ReadRequest::MessageId) {
                 auto request = IPC::extractMessage<ReadRequest>(buffer);
-                handleReadRequest(request, openDescriptors);
+                handleReadRequest(request, objects, openDescriptors);
             }
             else if (buffer.messageId == WriteRequest::MessageId) {
                 auto request = IPC::extractMessage<WriteRequest>(buffer);
                 handleWriteRequest(request, openDescriptors);
+            }
+            else if (buffer.messageId == CloseRequest::MessageId) {
+                auto request = IPC::extractMessage<CloseRequest>(buffer);
+                handleCloseRequest(request, openDescriptors);
             }
         }
     }
