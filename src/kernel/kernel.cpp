@@ -23,6 +23,7 @@
 #include <services/virtualFileSystem/virtualFileSystem.h>
 #include <services/processFileSystem/processFileSystem.h>
 #include <services/fakeFileSystem/fakeFileSystem.h>
+#include <services/hardwareFileSystem/system.h>
 #include <services/startup/startup.h>
 
 using namespace Kernel;
@@ -113,13 +114,10 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     /*runNewTests();*/
     //runAllLibCTests();
 
-    //pseudo services
-    //scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(Memory::service)));
-
-    //normal services
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(VFS::service)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(PFS::service)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(FakeFileSystem::service)));
+    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(HardwareFileSystem::service)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(Startup::service)));
     
 
