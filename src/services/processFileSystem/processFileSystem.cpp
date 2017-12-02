@@ -7,6 +7,7 @@
 #include "object.h"
 #include <stdlib.h>
 #include <vector>
+#include <parsing>
 
 using namespace Kernel;
 using namespace VFS;
@@ -80,25 +81,22 @@ namespace PFS {
         result.serviceType = ServiceType::VFS;
 
         //TODO: replace this string parsing with a proper C++ split()
-        auto word = markWord(request.path, '/');
-        auto start = word + 1;
-        word = markWord(start, '/');
+        auto words = split({request.path, strlen(request.path)}, '/');
+        if (!words.empty() && words[0].compare("process") == 0) {
 
-        if (strcmp(start, "process") == 0) {
-            start = word + 1;
-            word = markWord(start, '/');
-
-            if (word != nullptr) {
-                uint32_t pid = strtol(start, nullptr, 10);
+            if (words.size() > 1) {
+                char pidString[11];
+                memset(pidString, '\0', sizeof(pidString));
+                words[1].copy(pidString, words[1].length());
+                uint32_t pid = strtol(pidString, nullptr, 10);
                 ProcessObject* process;
                 auto found = findObject(processes, pid, &process);
 
                 if (found) {
-                    start = word + 1;
-                    word = markWord(start, '/');
 
-                    if (word != nullptr) {
-                        auto functionId = process->getFunction(start);
+                    if (words.size() > 2) {
+                        //path is /process/<pid>/<function or property>
+                        auto functionId = process->getFunction(words[2]);
 
                         if (functionId >= 0) {
                             failed = false;
@@ -107,7 +105,7 @@ namespace PFS {
                             result.fileDescriptor = openDescriptors.size() - 1;
                         }
                         else {
-                            auto propertyId = process->getProperty(start);
+                            auto propertyId = process->getProperty(words[2]);
 
                             if (propertyId >= 0) {
                                 failed = false;
@@ -117,6 +115,13 @@ namespace PFS {
                             }
                             
                         }
+                    }
+                    else {
+                        //its the process object itself
+                        failed = false;
+                        result.success = true;
+                        openDescriptors.push_back({process, {}, DescriptorType::Object});
+                        result.fileDescriptor = openDescriptors.size() - 1;
                     }
                 }
             }
@@ -140,26 +145,22 @@ namespace PFS {
         CreateResult result{};
         result.serviceType = ServiceType::VFS;
 
-        //TODO: replace this string parsing with a proper C++ split()
-        auto word = markWord(request.path, '/');
-        auto start = word + 1;
-        word = markWord(start, '/');
+        auto words = split({request.path, strlen(request.path)}, '/');
 
-        if (strcmp(start, "process") == 0) {
-            start = word + 1;
-            word = markWord(start, '/');
+        if (words.size() == 2 && words[0].compare("process") == 0) {
 
-            if (word != nullptr) {
-                uint32_t pid = strtol(start, nullptr, 10);
-                ProcessObject* process;
-                auto found = findObject(processes, pid, &process);
+            char pidString[11];
+            memset(pidString, '\0', sizeof(pidString));
+            words[1].copy(pidString, words[1].length());
+            uint32_t pid = strtol(pidString, nullptr, 10);
+            ProcessObject* process;
+            auto found = findObject(processes, pid, &process);
 
-                if (!found) {
-                    ProcessObject p {pid};
-                    processes.push_back(p);
-                    failed = false;
-                    result.success = true;
-                }
+            if (!found) {
+                ProcessObject p {pid};
+                processes.push_back(p);
+                failed = false;
+                result.success = true;
             }
         }
 
@@ -179,14 +180,24 @@ namespace PFS {
             ArgBuffer args{result.buffer, sizeof(result.buffer)};
             args.writeType(ArgTypes::Property);
 
-            for (auto& desc : openDescriptors) {
-                if (desc.instance != nullptr) 
-                args.writeValueWithType(desc.instance->pid, ArgTypes::Uint32);
+            if (descriptor.instance == nullptr) {
+                //its the main /process thing, return a list of all objects
+
+                for (auto& desc : openDescriptors) {
+                    if (desc.instance != nullptr)  {
+                        args.writeValueWithType(desc.instance->pid, ArgTypes::Uint32);
+                    }
+                }
+
+            }
+            else {
+                //its a process object, return a summary of it
+
             }
 
             args.writeType(ArgTypes::EndArg);
-
             result.recipientId = request.senderTaskId;
+
             send(IPC::RecipientType::TaskId, &result);
         }
         else {
