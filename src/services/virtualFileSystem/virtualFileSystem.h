@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <ipc.h>
+#include <string.h>
 
 namespace VFS {
 
@@ -11,6 +12,7 @@ namespace VFS {
         MountRequest() {
             messageId = MessageId;
             length = sizeof(MountRequest);
+            memset(path, '\0', sizeof(path));
         }
 
         static uint32_t MessageId;
@@ -25,6 +27,7 @@ namespace VFS {
         OpenRequest() {
             messageId = MessageId;
             length = sizeof(OpenRequest);
+            memset(path, '\0', sizeof(path));
         }
 
         static uint32_t MessageId;
@@ -48,6 +51,7 @@ namespace VFS {
         CreateRequest() {
             messageId = MessageId;
             length = sizeof(CreateRequest);
+            memset(path, '\0', sizeof(path));
         }
 
         static uint32_t MessageId;
