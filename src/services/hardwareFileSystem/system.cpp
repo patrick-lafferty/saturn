@@ -23,7 +23,7 @@ namespace HardwareFileSystem {
 
     struct NamedObject {
         char name[20];
-        Object* instance;
+        HardwareObject* instance;
     };
 
     bool findObject(std::vector<NamedObject>& objects, std::string_view name, Object** found) {
@@ -39,7 +39,8 @@ namespace HardwareFileSystem {
 
     void handleOpenRequest(OpenRequest& request, std::vector<NamedObject> objects,  std::vector<FileDescriptor>& openDescriptors) {
         bool failed {true};
-        OpenResult result{};
+        OpenResult result;
+        result.requestId = request.requestId;
         result.serviceType = ServiceType::VFS;
 
         auto addDescriptor = [&](auto instance, auto id, auto type) {
@@ -92,18 +93,18 @@ namespace HardwareFileSystem {
         send(IPC::RecipientType::ServiceName, &result);
     }
 
-    Object* createObject(std::string_view name) {
+    HardwareObject* createObject(std::string_view name) {
         if (name.compare("cpu") == 0) {
+            return new CPUObject();
+        }
 
-        }
-        else {
-            return nullptr;
-        }
+        return nullptr;
     }
 
     void handleCreateRequest(CreateRequest& request, std::vector<NamedObject>& objects) {
         bool failed {true};
         CreateResult result;
+        result.requestId = request.requestId;
         result.serviceType = ServiceType::VFS;
 
         auto words = split({request.path, strlen(request.path)}, '/');
@@ -146,6 +147,46 @@ namespace HardwareFileSystem {
         send(IPC::RecipientType::ServiceName, &result);
     }
 
+    void handleReadRequest(ReadRequest& request, std::vector<FileDescriptor>& openDescriptors) {
+        auto& descriptor = openDescriptors[request.fileDescriptor];
+
+        if (descriptor.type == DescriptorType::Object) {
+            ReadResult result;
+            result.requestId = request.requestId;
+            result.success = true;
+            ArgBuffer args{result.buffer, sizeof(result.buffer)};
+            args.writeType(ArgTypes::Property);
+
+            if (descriptor.instance == nullptr) {
+                //its the main /system/hardware thing, return a list of all objects
+
+                for (auto& desc : openDescriptors) {
+                    if (desc.instance != nullptr)  {
+                        args.writeValueWithType(static_cast<HardwareObject*>(desc.instance)->getName(), ArgTypes::Cstring);
+                    }
+                }
+
+            }
+            else {
+                //its a hardware object, return a summary of it
+
+            }
+
+            args.writeType(ArgTypes::EndArg);
+            result.recipientId = request.senderTaskId;
+
+            send(IPC::RecipientType::TaskId, &result);
+        }
+        else {
+            descriptor.read(request.senderTaskId, request.requestId);
+        }
+    }
+
+    void handleWriteRequest(WriteRequest& request, std::vector<FileDescriptor>& openDescriptors) {
+        ArgBuffer args{request.buffer, sizeof(request.buffer)};
+        openDescriptors[request.fileDescriptor].write(request.senderTaskId, request.requestId, args);
+    }
+
     void messageLoop() {
 
         std::vector<NamedObject> objects;
@@ -162,6 +203,14 @@ namespace HardwareFileSystem {
             else if (buffer.messageId == CreateRequest::MessageId) {
                 auto request = IPC::extractMessage<CreateRequest>(buffer);
                 handleCreateRequest(request, objects);
+            }
+            else if (buffer.messageId == ReadRequest::MessageId) {
+                auto request = IPC::extractMessage<ReadRequest>(buffer);
+                handleReadRequest(request, openDescriptors);
+            }
+            else if (buffer.messageId == WriteRequest::MessageId) {
+                auto request = IPC::extractMessage<WriteRequest>(buffer);
+                handleWriteRequest(request, openDescriptors);
             }
         }
     }
