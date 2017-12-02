@@ -22,4 +22,6 @@ namespace HardwareFileSystem {
 
     private:
     };
+
+    void detectCPU();
 }

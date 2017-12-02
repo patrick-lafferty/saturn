@@ -40,4 +40,8 @@ namespace HardwareFileSystem {
     /*
     CPUObject specific implementation
     */
+
+    void detectCPU() {
+
+    }
 }
