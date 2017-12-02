@@ -28,8 +28,15 @@ namespace PFS {
 
     void handleOpenRequest(OpenRequest& request, std::vector<ProcessObject>& processes, std::vector<FileDescriptor>& openDescriptors) {
         bool failed {true};
-        OpenResult result{};
+        OpenResult result;
         result.serviceType = ServiceType::VFS;
+
+        auto addDescriptor = [&](auto instance, auto id, auto type) {
+            failed = false;
+            result.success = true;
+            openDescriptors.push_back({instance, {static_cast<uint32_t>(id)}, type});
+            result.fileDescriptor = openDescriptors.size() - 1;
+        };
 
         auto words = split({request.path, strlen(request.path)}, '/');
         if (!words.empty() && words[0].compare("process") == 0) {
@@ -49,37 +56,24 @@ namespace PFS {
                         auto functionId = process->getFunction(words[2]);
 
                         if (functionId >= 0) {
-                            failed = false;
-                            result.success = true;
-                            openDescriptors.push_back({process, {static_cast<uint32_t>(functionId)}, DescriptorType::Function});
-                            result.fileDescriptor = openDescriptors.size() - 1;
+                            addDescriptor(process, functionId, DescriptorType::Function);
                         }
                         else {
                             auto propertyId = process->getProperty(words[2]);
 
                             if (propertyId >= 0) {
-                                failed = false;
-                                result.success = true;
-                                openDescriptors.push_back({process, {static_cast<uint32_t>(propertyId)}, DescriptorType::Property});
-                                result.fileDescriptor = openDescriptors.size() - 1;
+                                addDescriptor(process, propertyId, DescriptorType::Property);
                             }
-                            
                         }
                     }
                     else {
                         //its the process object itself
-                        failed = false;
-                        result.success = true;
-                        openDescriptors.push_back({process, {}, DescriptorType::Object});
-                        result.fileDescriptor = openDescriptors.size() - 1;
+                        addDescriptor(process, 0, DescriptorType::Object);
                     }
                 }
             }
             else {
-                failed = false;
-                result.success = true;
-                openDescriptors.push_back({nullptr, {}, DescriptorType::Object});
-                result.fileDescriptor = openDescriptors.size() - 1;
+                addDescriptor(nullptr, 0, DescriptorType::Object);
             }
         }
 
