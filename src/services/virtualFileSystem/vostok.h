@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <string_view>
+#include <string.h>
 
 /*
 Vostok is the Virtual Object System. It allows for objects to
@@ -15,6 +16,16 @@ namespace Vostok {
 
     class Object {
     public:
+
+        /*
+        In addition to properties and functions, you can read an Object itself.
+        This returns an implementation-defined value, such as a string
+        containing all the properties/methods supported by the object.
+
+        IPC:
+            Generates a ReadResult message
+        */
+        virtual void readSelf(uint32_t requesterTaskId, uint32_t requestId) = 0;
 
         /*
         getFunction is called when an object is opened, and the path
@@ -113,6 +124,13 @@ namespace Vostok {
             Generates a WriteResult message
         */
         virtual void writeProperty(uint32_t requesterTaskId, uint32_t requestId, uint32_t propertyId, ArgBuffer& args) = 0;
+
+        /*
+        Vostok Objects can contain and expose other Vostok Objects nested within them.
+        In order to read/write properties/functions to nested objects, we must get
+        a pointer to said object
+        */
+        virtual Object* getNestedObject(std::string_view name) = 0;
     };
 
     /*
@@ -141,7 +159,7 @@ namespace Vostok {
 
         void read(uint32_t requesterTaskId, uint32_t requestId) {
             if (type == DescriptorType::Object) {
-
+                instance->readSelf(requesterTaskId, requestId);
             }
             else if (type == DescriptorType::Function) {
                 instance->readFunction(requesterTaskId, requestId, functionId);

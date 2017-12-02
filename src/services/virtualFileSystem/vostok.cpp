@@ -10,7 +10,9 @@ namespace Vostok {
         }
         else {
             nextTypeIndex--;
-            memcpy(typedBuffer + nextValueIndex, arg, strlen(arg) + 1);
+            auto size = strlen(arg) + 1;
+            memcpy(typedBuffer + nextValueIndex, arg, size);
+            nextValueIndex += size;
         }
     }
 
@@ -39,7 +41,7 @@ namespace Vostok {
         }
         else {
             auto result = reinterpret_cast<const char*>(typedBuffer) + nextValueIndex;
-            auto length = strlen(result);
+            auto length = strlen(result) + 1;
             nextValueIndex += length;
             nextTypeIndex--;
             return const_cast<char*>(result);
