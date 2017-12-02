@@ -86,7 +86,7 @@ namespace PFS {
 
     void handleCreateRequest(CreateRequest& request, std::vector<ProcessObject>& processes) {
         bool failed {true};
-        CreateResult result{};
+        CreateResult result;
         result.serviceType = ServiceType::VFS;
 
         auto words = split({request.path, strlen(request.path)}, '/');

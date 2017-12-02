@@ -85,6 +85,7 @@ namespace VFS {
         ReadResult() {
             messageId = MessageId;
             length = sizeof(ReadResult);
+            memset(buffer, 0, sizeof(buffer));
         }
 
         static uint32_t MessageId;
@@ -96,6 +97,7 @@ namespace VFS {
         WriteRequest() {
             messageId = MessageId;
             length = sizeof(WriteRequest);
+            memset(buffer, 0, sizeof(buffer));
         }
 
         static uint32_t MessageId;

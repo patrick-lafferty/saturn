@@ -11,4 +11,6 @@ pci information at /system/hardware/pci
 
 namespace HardwareFileSystem {
     void service();
+
+    void detectHardware();
 }

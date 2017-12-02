@@ -92,6 +92,60 @@ namespace HardwareFileSystem {
         send(IPC::RecipientType::ServiceName, &result);
     }
 
+    Object* createObject(std::string_view name) {
+        if (name.compare("cpu") == 0) {
+
+        }
+        else {
+            return nullptr;
+        }
+    }
+
+    void handleCreateRequest(CreateRequest& request, std::vector<NamedObject>& objects) {
+        bool failed {true};
+        CreateResult result;
+        result.serviceType = ServiceType::VFS;
+
+        auto words = split({request.path, strlen(request.path)}, '/');
+        if (words.size() >= 3
+            && words[0].compare("system") == 0
+            && words[1].compare("hardware") == 0) {
+
+            if (words.size() == 3) {
+                bool alreadyExists {false};
+
+                for (auto& object : objects) {
+                    if (words[2].compare(object.name) == 0) {
+                        alreadyExists = true;
+                        break;
+                    }
+                }
+
+                if (!alreadyExists) {
+                    auto object = createObject(words[2]);
+                    if (object != nullptr) {
+                        objects.push_back({});
+                        auto& namedObject = objects[objects.size() - 1];
+                        words[2].copy(namedObject.name, words[2].length());
+                        namedObject.instance = object;
+
+                        failed = false;
+                        result.success = true;
+                    }
+                }
+            }
+            else {
+                //TODO: its a subobject
+            }
+        } 
+
+        if (failed) {
+            result.success = false;
+        }
+
+        send(IPC::RecipientType::ServiceName, &result);
+    }
+
     void messageLoop() {
 
         std::vector<NamedObject> objects;
@@ -105,6 +159,10 @@ namespace HardwareFileSystem {
                 auto request = IPC::extractMessage<OpenRequest>(buffer);
                 handleOpenRequest(request, objects, openDescriptors);
             }
+            else if (buffer.messageId == CreateRequest::MessageId) {
+                auto request = IPC::extractMessage<CreateRequest>(buffer);
+                handleCreateRequest(request, objects);
+            }
         }
     }
 
@@ -112,5 +170,11 @@ namespace HardwareFileSystem {
         waitForServiceRegistered(ServiceType::VFS);
         registerService();
         messageLoop();
+    }
+
+    void detectHardware() {
+        waitForServiceRegistered(ServiceType::VFS);
+
+        detectCPU();
     }
 }
