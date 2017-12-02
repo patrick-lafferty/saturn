@@ -30,6 +30,10 @@ namespace Kernel {
         currentScheduler->cleanupTasks();
     }
 
+    void callExitKernelTask() {
+        currentScheduler->exitKernelTask();
+    }
+
     struct alignas(0x1000) Stack {
 
     };
@@ -142,38 +146,6 @@ namespace Kernel {
         scheduleNextTask(); 
         runNextTask();
     }
-    
-    Task* Scheduler::createKernelTask(uintptr_t functionAddress) {
-        auto processStack = createStack(false);
-
-        uint8_t volatile* stackPointer = static_cast<uint8_t volatile*>(reinterpret_cast<void volatile*>(processStack + 4096));
-        stackPointer -= sizeof(TaskStack);
-
-        TaskStack volatile* stack = reinterpret_cast<TaskStack volatile*>(stackPointer);
-        stack->eflags = 
-            static_cast<uint32_t>(EFlags::InterruptEnable) | 
-            static_cast<uint32_t>(EFlags::Reserved);
-        stack->eip = functionAddress;
-
-        static uint32_t nextTaskId {0};
-        Task* task = taskBuffer;
-        task->id = nextTaskId++;
-        task->context.esp = reinterpret_cast<uint32_t>(stackPointer);
-        task->context.kernelESP = task->context.esp;
-        task->virtualMemoryManager = Memory::currentVMM;
-        task->heap = LibC_Implementation::KernelHeap;
-
-        const uint32_t mailboxSize = Memory::PageSize;
-        auto mailboxMemory = task->heap->aligned_allocate(mailboxSize, Memory::PageSize);
-
-        task->mailbox = new (mailboxMemory) 
-            IPC::Mailbox(reinterpret_cast<uint32_t>(mailboxMemory) + sizeof(IPC::Mailbox), 
-            mailboxSize - sizeof(IPC::Mailbox));
-
-        taskBuffer++;
-
-        return task;
-    }
 
     /*
     When creating a user task, we need to push additional arguments to the stack
@@ -203,6 +175,42 @@ namespace Kernel {
         task->context.esp = reinterpret_cast<uint32_t>(stackPointer);
 
         return stackPointer + sizeof(TaskStack);
+    }
+    
+    Task* Scheduler::createKernelTask(uintptr_t functionAddress) {
+        auto processStack = createStack(false);
+
+        uint8_t volatile* stackPointer = static_cast<uint8_t volatile*>(reinterpret_cast<void volatile*>(processStack + 4096));
+        stackPointer -= sizeof(TaskStack);
+
+        TaskStack volatile* stack = reinterpret_cast<TaskStack volatile*>(stackPointer);
+        stack->eflags = 
+            static_cast<uint32_t>(EFlags::InterruptEnable) | 
+            static_cast<uint32_t>(EFlags::Reserved);
+        stack->eip = functionAddress;
+
+        static uint32_t nextTaskId {0};
+        Task* task = taskBuffer;
+        task->id = nextTaskId++;
+        task->context.esp = reinterpret_cast<uint32_t>(stackPointer);
+        task->context.kernelESP = task->context.esp;
+        task->virtualMemoryManager = Memory::currentVMM;
+        task->heap = LibC_Implementation::KernelHeap;
+
+        const uint32_t mailboxSize = Memory::PageSize;
+        auto mailboxMemory = task->heap->aligned_allocate(mailboxSize, Memory::PageSize);
+
+        task->mailbox = new (mailboxMemory) 
+            IPC::Mailbox(reinterpret_cast<uint32_t>(mailboxMemory) + sizeof(IPC::Mailbox), 
+            mailboxSize - sizeof(IPC::Mailbox));
+
+        auto kernelStackPointer = adjustStack(task, 4);
+        auto stackExtras = reinterpret_cast<uint32_t volatile*>(kernelStackPointer);
+        *stackExtras = reinterpret_cast<uint32_t>(callExitKernelTask);
+
+        taskBuffer++;
+
+        return task;
     }
 
     Task* Scheduler::createUserTask(uintptr_t functionAddress) {
@@ -487,7 +495,6 @@ namespace Kernel {
 
         user stack is at kernelStack - 8
         */
-        //Memory::currentPMM->report();
         
         auto kernelStackAddress = (currentTask->context.esp & ~0xFFF) + Memory::PageSize;
         auto kernelStack = reinterpret_cast<uint32_t volatile*>(kernelStackAddress);
@@ -511,8 +518,29 @@ namespace Kernel {
         deleteQueue.append(currentTask);
         unblockTask(cleanupTask);
         
-        //Memory::currentPMM->report();
+        runNextTask();
+    }
 
+    void Scheduler::exitKernelTask() {
+        /*
+        for kernel tasks, the things we need to cleanup:
+
+        -kernel stack
+        -free the PID
+        -mailbox
+        -free the space in the taskBuffer
+        */
+        kernelVMM->activate();
+        LibC_Implementation::KernelHeap = kernelHeap;
+        kernelHeap->free(currentTask->mailbox);
+        //TODO: free task pid
+
+        currentTask->state = TaskState::Blocked;
+        scheduleNextTask();
+        readyQueue.remove(currentTask);
+        deleteQueue.append(currentTask);
+        unblockTask(cleanupTask);
+        
         runNextTask();
     }
 

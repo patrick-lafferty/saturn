@@ -169,6 +169,7 @@ namespace Kernel {
 
         Task* getTask(uint32_t taskId);
         void exitTask();
+        void exitKernelTask();
 
         void cleanupTasks();
 
