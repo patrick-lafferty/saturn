@@ -231,7 +231,7 @@ namespace PFS {
 
         waitForServiceRegistered(ServiceType::VFS);
 
-        MountRequest request{};
+        MountRequest request;
         const char* path = "/process";
         memcpy(request.path, path, strlen(path) + 1);
         request.serviceType = ServiceType::VFS;

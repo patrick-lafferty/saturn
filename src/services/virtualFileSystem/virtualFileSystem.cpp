@@ -314,7 +314,7 @@ namespace VFS {
     }
 
     void registerService() {
-        RegisterService registerRequest {};
+        RegisterService registerRequest;
         registerRequest.type = ServiceType::VFS;
 
         IPC::MaximumMessageBuffer buffer;
@@ -325,6 +325,9 @@ namespace VFS {
         if (buffer.messageId == GenericServiceMeta::MessageId) {
             registerMessages();
         }
+
+        NotifyServiceReady ready;
+        send(IPC::RecipientType::ServiceRegistryMailbox, &ready);
     }
 
     void service() {

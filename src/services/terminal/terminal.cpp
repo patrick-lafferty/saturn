@@ -153,6 +153,9 @@ namespace Terminal {
         else if (buffer.messageId == GenericServiceMeta::MessageId) {
             registerMessages();
         }
+
+        NotifyServiceReady ready;
+        send(IPC::RecipientType::ServiceRegistryMailbox, &ready);
     }
 
     void service() {

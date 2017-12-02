@@ -46,7 +46,21 @@ namespace Kernel {
         bool success {false};
     };
 
+    struct NotifyServiceReady : IPC::Message {
+        NotifyServiceReady() {
+            messageId = MessageId;
+            length = sizeof(NotifyServiceReady);
+        }
+
+        static uint32_t MessageId;
+    };
+
     struct ServiceMeta : IPC::Message {
+        ServiceMeta() {
+            ready = false;
+        }
+
+        bool ready;
     };
 
     struct VGAServiceMeta : ServiceMeta {
@@ -134,12 +148,12 @@ namespace Kernel {
         
         bool registerService(uint32_t taskId, ServiceType type);
         bool registerPseudoService(ServiceType type, PseudoMessageHandler handler);
-
+        void notifySubscribers(uint32_t index);
         void setupService(uint32_t taskId, ServiceType type);
 
         uint32_t* taskIds;
-        ServiceMeta** meta;
+        std::vector<ServiceMeta> meta;
         PseudoMessageHandler* pseudoMessageHandlers;
-        std::vector<uint32_t>* subscribers;
+        std::vector<std::vector<uint32_t>> subscribers;
     };
 }

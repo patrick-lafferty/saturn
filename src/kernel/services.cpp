@@ -9,6 +9,7 @@ namespace Kernel {
     uint32_t RegisterService::MessageId;
     uint32_t RegisterPseudoService::MessageId;
     uint32_t RegisterServiceDenied::MessageId;
+    uint32_t NotifyServiceReady::MessageId;
     uint32_t VGAServiceMeta::MessageId;
     uint32_t GenericServiceMeta::MessageId;
     uint32_t SubscribeServiceRegistered::MessageId;
@@ -21,14 +22,17 @@ namespace Kernel {
         taskIds = new uint32_t[count];
         memset(taskIds, 0, count * sizeof(uint32_t));
 
-        meta = new ServiceMeta*[count];
+        for (auto i = 0u; i < count; i++) {
+            meta.push_back({});
+            subscribers.push_back({});
+        }
 
         pseudoMessageHandlers = new PseudoMessageHandler[count];
-        subscribers = new std::vector<uint32_t>[count];
 
         IPC::registerMessage<RegisterService>();
         IPC::registerMessage<RegisterPseudoService>();
         IPC::registerMessage<RegisterServiceDenied>();
+        IPC::registerMessage<NotifyServiceReady>();
         IPC::registerMessage<VGAServiceMeta>();
         IPC::registerMessage<GenericServiceMeta>();
         IPC::registerMessage<SubscribeServiceRegistered>();
@@ -53,16 +57,11 @@ namespace Kernel {
                 *static_cast<IPC::MaximumMessageBuffer*>(message));
             
             auto index = static_cast<uint32_t>(request.type);
-            if (taskIds[index] != 0) {
-                NotifyServiceRegistered notify;
-                notify.type = request.type;
-                notify.recipientId = request.senderTaskId;
+            
+            subscribers[index].push_back(request.senderTaskId);
 
-                auto task = currentScheduler->getTask(notify.recipientId);
-                task->mailbox->send(&notify);
-            }
-            else {
-                subscribers[index].push_back(request.senderTaskId);
+            if (meta[index].ready) {
+                notifySubscribers(index);
             }
         }
         else if (message->messageId == RunProgram::MessageId) {
@@ -78,6 +77,22 @@ namespace Kernel {
             result.pid = task->id;
             auto currentTask = currentScheduler->getTask(message->senderTaskId);
             currentTask->mailbox->send(&result);
+        }
+        else if (message->messageId == NotifyServiceReady::MessageId) {
+            auto lastService = static_cast<uint32_t>(ServiceType::ServiceTypeEnd);
+            auto index = lastService;
+
+            for (auto i = 0u; i < lastService; i++) {
+                if (taskIds[i] == message->senderTaskId) {
+                    index = i;
+                    break;
+                }
+            }
+
+            if (index != lastService) {
+                meta[index].ready = true;
+                notifySubscribers(index);
+            }
         }
     }
 
@@ -103,17 +118,6 @@ namespace Kernel {
         }
 
         setupService(taskId, type);
-
-        for (auto taskId : subscribers[index]) {
-            NotifyServiceRegistered notify;
-            notify.type = type;
-            notify.recipientId = taskId;
-            kprintf("[ServiceRegistry] notifying subscribers\n");
-
-            currentScheduler->sendMessage(IPC::RecipientType::TaskId, &notify);
-        }
-
-        subscribers[index].clear();
 
         taskIds[index] = taskId;
         return true;
@@ -151,6 +155,18 @@ namespace Kernel {
         return pseudoMessageHandlers[index] != nullptr;
     }
 
+    void ServiceRegistry::notifySubscribers(uint32_t index) {
+        for (auto taskId : subscribers[index]) {
+            NotifyServiceRegistered notify;
+            notify.type = static_cast<ServiceType>(index);
+            notify.recipientId = taskId;
+
+            currentScheduler->sendMessage(IPC::RecipientType::TaskId, &notify);
+        }
+
+        subscribers[index].clear();
+    }
+
     void ServiceRegistry::setupService(uint32_t taskId, ServiceType type) {
         //TODO: iopb/page map
 
@@ -170,10 +186,9 @@ namespace Kernel {
                     | static_cast<int>(Memory::PageTableFlags::AllowUserModeAccess);
                 task->virtualMemoryManager->map(vgaPage, 0xB8000, pageFlags);
 
-                auto vgaMeta = new VGAServiceMeta;
-                vgaMeta->vgaAddress = vgaPage;
-                meta[static_cast<uint32_t>(type)] = vgaMeta;
-                task->mailbox->send(vgaMeta);
+                VGAServiceMeta vgaMeta;
+                vgaMeta.vgaAddress = vgaPage;
+                task->mailbox->send(&vgaMeta);
 
                 break;
             }
@@ -190,9 +205,8 @@ namespace Kernel {
                     return;
                 }
 
-                auto genericMeta = new GenericServiceMeta;
-                meta[static_cast<uint32_t>(type)] = genericMeta;
-                task->mailbox->send(genericMeta);
+                GenericServiceMeta genericMeta;
+                task->mailbox->send(&genericMeta);
 
                 break;
             }
@@ -204,6 +218,5 @@ namespace Kernel {
                 kprintf("[ServiceRegistry] Unsupported service type\n");   
             }
         }
-
     }
 }

@@ -111,8 +111,7 @@ namespace Startup {
         uint32_t descriptor {0};
 
         while (!openProgram(path, descriptor)) {
-            asm("hlt");
-            sleep(100);
+            sleep(10);
         }
 
         auto entryPoint = getEntryPoint(descriptor);
@@ -121,8 +120,7 @@ namespace Startup {
             auto pid = run(entryPoint);
 
             while (!createProcessObject(pid)) {
-                asm("hlt");
-                sleep(100);
+                sleep(10);
             }
 
             setupProcessObject(path, pid);

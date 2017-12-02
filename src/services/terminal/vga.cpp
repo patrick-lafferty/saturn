@@ -56,6 +56,10 @@ namespace VGA {
         }
         else if (buffer.messageId == VGAServiceMeta::MessageId) {
             registerMessages();
+
+            NotifyServiceReady ready;
+            send(IPC::RecipientType::ServiceRegistryMailbox, &ready);
+
             auto vgaMeta = IPC::extractMessage<VGAServiceMeta>(buffer);
 
             return vgaMeta.vgaAddress;
