@@ -17,12 +17,12 @@ namespace PFS {
         ProcessObject(uint32_t pid = 0);
         virtual ~ProcessObject() {}
 
-        int getFunction(char* name) override;
+        int getFunction(std::string_view name) override;
         void readFunction(uint32_t requesterTaskId, uint32_t functionId) override;
         void writeFunction(uint32_t requesterTaskId, uint32_t functionId, Vostok::ArgBuffer& args) override;
         void describeFunction(uint32_t requesterTaskId, uint32_t functionId) override;
 
-        int getProperty(char* name) override;
+        int getProperty(std::string_view name) override;
         void readProperty(uint32_t requesterTaskId, uint32_t propertyId) override;
         void writeProperty(uint32_t requesterTaskId, uint32_t propertyId, Vostok::ArgBuffer& args) override;
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <string_view>
 
 /*
 Vostok is the Virtual Object System. It allows for objects to
@@ -28,7 +29,7 @@ namespace Vostok {
         Returns an implementation specific index to a function,
         or -1 if no function matches the given name
         */
-        virtual int getFunction(char* name) = 0; 
+        virtual int getFunction(std::string_view name) = 0; 
 
         /*
         Reading a function returns the signature of the function, using
@@ -87,7 +88,7 @@ namespace Vostok {
         Returns an implementation specific index to a property,
         or -1 if no property matches the given name 
         */
-        virtual int getProperty(char* name) = 0;
+        virtual int getProperty(std::string_view name) = 0;
 
         /*
         Writes the value of the property at the beginning of the ReadResult buffer,
@@ -174,7 +175,7 @@ namespace Vostok {
         template<typename T>
         void writeValueWithType(T arg, ArgTypes type) {
             writeType(type);
-            nextValueIndex++;
+            nextTypeIndex++;
             write(arg, type);
         }
 

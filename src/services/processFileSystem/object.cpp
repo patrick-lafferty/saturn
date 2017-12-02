@@ -16,11 +16,11 @@ namespace PFS {
     /*
     Vostok Object function support
     */
-    int ProcessObject::getFunction(char* name) {
-        if (strcmp(name, "testA") == 0) {
+    int ProcessObject::getFunction(std::string_view name) {
+        if (name.compare("testA") == 0) {
             return static_cast<int>(FunctionId::TestA);
         }
-        else if (strcmp(name, "testB") == 0) {
+        else if (name.compare("testB") == 0) {
             return static_cast<int>(FunctionId::TestB);
         }
 
@@ -117,8 +117,8 @@ namespace PFS {
     /*
     Vostok Object property support
     */
-    int ProcessObject::getProperty(char* name) {
-        if (strcmp(name, "Executable") == 0) {
+    int ProcessObject::getProperty(std::string_view name) {
+        if (name.compare("Executable") == 0) {
             return static_cast<int>(PropertyId::Executable);
         }
 
