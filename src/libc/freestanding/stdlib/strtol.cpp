@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 
-long strtol(const char* restrict str, char** restrict str_end, int base) {
+long strtol(const char* str, char** str_end, int base) {
     while(*str != '\0') {
         if (isspace(*str)) {
             str++;

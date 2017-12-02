@@ -79,13 +79,14 @@ namespace std {
         modifiers
         */
         constexpr void remove_prefix(size_type n) {
-            if (n < size()) {
+            if (n <= size()) {
                 _data += n;
+                _length -= n;
             }
         }
 
         constexpr void remove_suffix(size_type n) {
-            if (n < size()) {
+            if (n <= size()) {
                 _length -= n;
             }
         }

@@ -20,7 +20,9 @@ vector<string_view> split(string_view s, char separator) {
         s.remove_prefix(nextSplit);
     }
 
-    substrings.push_back(s);
+    if (!s.empty()) {
+        substrings.push_back(s);
+    }
 
     return substrings;
 }
