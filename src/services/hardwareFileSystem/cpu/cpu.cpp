@@ -21,6 +21,7 @@ namespace HardwareFileSystem {
         args.writeType(ArgTypes::Property);
 
         args.writeValueWithType("id", ArgTypes::Cstring);
+        args.writeValueWithType("features", ArgTypes::Cstring);
 
         args.writeType(ArgTypes::EndArg);
 
@@ -87,6 +88,9 @@ namespace HardwareFileSystem {
         if (name.compare("id") == 0) {
             return &id;
         }
+        else if (name.compare("features") == 0) {
+            return &features;
+        }
         
         return nullptr;
     }
@@ -127,5 +131,6 @@ namespace HardwareFileSystem {
         );
 
         detectId(eax, ebx);
+        detectFeatures(ecx, edx);
     }
 }

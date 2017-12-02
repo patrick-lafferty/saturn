@@ -383,7 +383,7 @@ namespace Shell {
                         
                         printf("\n");
                         memcpy(previousLine, inputBuffer, sizeof(previousLine));
-                        memset(inputBuffer, '\0', index);
+                        memset(inputBuffer, '\0', sizeof(inputBuffer));
                         index = 0;
                         cursorPosition = 0;
 

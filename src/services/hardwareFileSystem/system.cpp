@@ -4,7 +4,7 @@
 #include <services/virtualFileSystem/virtualFileSystem.h>
 #include <vector>
 #include <parsing>
-#include "cpu.h"
+#include "cpu/cpu.h"
 
 using namespace Kernel;
 using namespace VFS;
@@ -79,6 +79,7 @@ namespace HardwareFileSystem {
                 auto found = findObject(objects, words[2], &object);
 
                 if (found) {
+                    /*
                     if (words.size() > 4) {
                         //its a nested object
                         auto nestedObject = object->getNestedObject(words[3]);
@@ -100,6 +101,21 @@ namespace HardwareFileSystem {
                     else {
                         //its the object itself
                         addDescriptor(object, 0, DescriptorType::Object);
+                    }*/
+                    uint32_t lastObjectWord {0};
+                    for (auto i = 3u; i < words.size(); i++) {
+                        auto nestedObject = object->getNestedObject(words[i]);
+
+                        if (nestedObject != nullptr) {
+                            object = nestedObject;
+                            lastObjectWord = i;
+                        }
+                    }
+
+                    if (!tryOpenObject(object, words[words.size() - 1])) {
+                        if (lastObjectWord == (words.size() - 1)) {
+                            addDescriptor(object, 0, DescriptorType::Object);
+                        }
                     }
                 }
             }

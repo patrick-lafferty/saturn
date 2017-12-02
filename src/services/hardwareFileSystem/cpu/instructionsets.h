@@ -1,14 +1,15 @@
 #pragma once
 
-#include "object.h"
+#include "../object.h"
 #include <string_view>
 
 namespace HardwareFileSystem {
-    class CPUIdObject : public HardwareObject {
+
+    class CPUInstructionSetsObject : public HardwareObject {
     public:
 
-        CPUIdObject();
-        virtual ~CPUIdObject() {}
+        CPUInstructionSetsObject();
+        virtual ~CPUInstructionSetsObject() {}
 
         void readSelf(uint32_t requesterTaskId, uint32_t requestId) override;
 
@@ -28,15 +29,16 @@ namespace HardwareFileSystem {
     private:
 
         enum class PropertyId {
-            Model,
-            FamilyId,
-            Brand,    
+            SSE3,
+            SSSE3,
+            SSE4_1,
+            SSE4_2,
+            AVX
         };
-        
-        uint32_t model;
-        uint32_t familyId;
-        char brand[48];
+
+        uint32_t features;
     };
 
-    void detectId(uint32_t eax, uint32_t ebx);
+    void detectInstructionSets(uint32_t ecx, uint32_t edx);
+
 }
