@@ -230,15 +230,19 @@ namespace PS2 {
             writeControllerCommand(ControllerCommand::TestFirstPort);
             auto testResult = readByte();
 
-            kprintf("[PS/2] First port test: ");
-            printPortTestResults(testResult);
+            if (testResult != static_cast<uint32_t>(PortTestResult::Passed)) {
+                kprintf("[PS/2] First port test: ");
+                printPortTestResults(testResult);
+            }
         }
         else {
             writeControllerCommand(ControllerCommand::TestSecondPort);
             auto testResult = readByte();
 
-            kprintf("[PS/2] Second port test: ");
-            printPortTestResults(testResult); 
+            if (testResult != static_cast<uint32_t>(PortTestResult::Passed)) {
+                kprintf("[PS/2] Second port test: ");
+                printPortTestResults(testResult); 
+            }
         }
     }
 
@@ -265,8 +269,8 @@ namespace PS2 {
         writeControllerCommand(ControllerCommand::Test);
         auto testResult = readByte();
 
-        if (testResult == static_cast<uint8_t>(ControllerTestResult::Passed)) {
-            kprintf("[PS/2] Controller test passed\n");
+        if (testResult != static_cast<uint8_t>(ControllerTestResult::Passed)) {
+            kprintf("[PS/2] Controller test failed\n");
         }
 
         //determine if controller has 1 or 2 channels
