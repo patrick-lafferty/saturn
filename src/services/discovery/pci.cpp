@@ -3,6 +3,8 @@
 #include <services.h>
 #include <system_calls.h>
 #include <services/hardwareFileSystem/object.h>
+#include <vector>
+#include <services/drivers/bochsGraphicsAdaptor/driver.h>
 
 namespace Discovery::PCI {
 
@@ -65,7 +67,9 @@ namespace Discovery::PCI {
         return bridge;
     }
 
-    void discoverDevices(uint8_t bus) {
+    std::vector<Device> discoverDevices(uint8_t bus) {
+        std::vector<Device> devices;
+
         const uint8_t devicesPerBridge = 32;
 
         for (uint8_t deviceId = 1; deviceId < devicesPerBridge; deviceId++) {
@@ -91,8 +95,11 @@ namespace Discovery::PCI {
                     HardwareFileSystem::writeTransaction(barName, bar, Vostok::ArgTypes::Uint32);
                 }
 
+                devices.push_back({id, deviceId});
             }
         }
+
+        return devices;
     }
 
     bool createPCIObject() {
@@ -110,6 +117,27 @@ namespace Discovery::PCI {
         return false;
     }
 
+    KnownDevices getDeviceType(Identification id) {
+
+        if (id.vendorId == 0x1111 && id.deviceId == 0x1234) {
+            return KnownDevices::BochsVBE;
+        }
+
+        return KnownDevices::Unknown;
+    }
+
+    void loadDriver(KnownDevices type) {
+        switch(type) {
+            case KnownDevices::BochsVBE: {
+                BGA::loadDriver();
+                break;
+            }
+            default: {
+
+            }
+        }
+    }
+
     void discoverDevices() {
         waitForServiceRegistered(Kernel::ServiceType::VFS);
 
@@ -123,6 +151,16 @@ namespace Discovery::PCI {
             return;
         }
 
-        discoverDevices(hostBridge.bus); 
+        auto devices = discoverDevices(hostBridge.bus); 
+        bool loaded[static_cast<int>(KnownDevices::Unknown)];
+
+        for (auto& device : devices) {
+            auto type = getDeviceType(device.id);
+
+            if (type != KnownDevices::Unknown
+                && !loaded[static_cast<int>(type)]) {
+                loaded[static_cast<int>(type)] = true;
+            }
+        }
     }
 }
