@@ -447,3 +447,9 @@ Next steps:
 - [X] make a services make.config just like userland to cleanup makefile
 - [X] tidy up ugly code
 - [X] fix occasional startup hang
+
+
+* Step 12: PCI
+
+- [ ] device scanner
+- [ ] driver loader
