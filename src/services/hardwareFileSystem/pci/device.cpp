@@ -23,6 +23,12 @@ namespace HardwareFileSystem::PCI {
 
         args.writeValueWithType("vendorId", ArgTypes::Cstring);
         args.writeValueWithType("deviceId", ArgTypes::Cstring);
+        args.writeValueWithType("bar0", ArgTypes::Cstring);
+        args.writeValueWithType("bar1", ArgTypes::Cstring);
+        args.writeValueWithType("bar2", ArgTypes::Cstring);
+        args.writeValueWithType("bar3", ArgTypes::Cstring);
+        args.writeValueWithType("bar4", ArgTypes::Cstring);
+        args.writeValueWithType("bar5", ArgTypes::Cstring);
 
         args.writeType(ArgTypes::EndArg);
 
@@ -39,6 +45,24 @@ namespace HardwareFileSystem::PCI {
         }
         else if (name.compare("deviceId") == 0) {
             return static_cast<int>(PropertyId::DeviceId);
+        }
+        else if (name.compare("bar0") == 0) {
+            return static_cast<int>(PropertyId::Bar0);
+        }
+        else if (name.compare("bar1") == 0) {
+            return static_cast<int>(PropertyId::Bar1);
+        }
+        else if (name.compare("bar2") == 0) {
+            return static_cast<int>(PropertyId::Bar2);
+        }
+        else if (name.compare("bar3") == 0) {
+            return static_cast<int>(PropertyId::Bar3);
+        }
+        else if (name.compare("bar4") == 0) {
+            return static_cast<int>(PropertyId::Bar4);
+        }
+        else if (name.compare("bar5") == 0) {
+            return static_cast<int>(PropertyId::Bar5);
         }
 
         return -1;
@@ -58,6 +82,30 @@ namespace HardwareFileSystem::PCI {
             }
             case PropertyId::DeviceId: {
                 args.writeValueWithType(deviceId, ArgTypes::Uint32);
+                break;
+            }
+            case PropertyId::Bar0: {
+                args.writeValueWithType(bar0, ArgTypes::Uint32);
+                break;
+            }
+            case PropertyId::Bar1: {
+                args.writeValueWithType(bar1, ArgTypes::Uint32);
+                break;
+            }
+            case PropertyId::Bar2: {
+                args.writeValueWithType(bar2, ArgTypes::Uint32);
+                break;
+            }
+            case PropertyId::Bar3: {
+                args.writeValueWithType(bar3, ArgTypes::Uint32);
+                break;
+            }
+            case PropertyId::Bar4: {
+                args.writeValueWithType(bar4, ArgTypes::Uint32);
+                break;
+            }
+            case PropertyId::Bar5: {
+                args.writeValueWithType(bar5, ArgTypes::Uint32);
                 break;
             }
         }
@@ -99,12 +147,58 @@ namespace HardwareFileSystem::PCI {
 
                 break;
             }
+            case PropertyId::Bar0: 
+            case PropertyId::Bar1: 
+            case PropertyId::Bar2: 
+            case PropertyId::Bar3: 
+            case PropertyId::Bar4: 
+            case PropertyId::Bar5:  {
+                auto x = args.read<uint32_t>(ArgTypes::Uint32);
+
+                if (!args.hasErrors()) {
+                    switch(static_cast<PropertyId>(propertyId)) {
+                        case PropertyId::Bar0: {
+                            bar0 = x;
+                            break;
+                        }
+                        case PropertyId::Bar1: {
+                            bar1 = x;
+                            break;
+                        }
+                        case PropertyId::Bar2: {
+                            bar2 = x;
+                            break;
+                        }
+                        case PropertyId::Bar3: {
+                            bar3 = x;
+                            break;
+                        }
+                        case PropertyId::Bar4: {
+                            bar4 = x;
+                            break;
+                        }
+                        case PropertyId::Bar5: {
+                            bar5 = x;
+                            break;
+                        }
+                        default: {
+                            //should never get here
+                        }
+                    }
+
+                    replyWriteSucceeded(requesterTaskId, requestId, true);
+                    return;
+                }
+
+                break;
+            }
+            
         }
 
         replyWriteSucceeded(requesterTaskId, requestId, false);
     }
 
-    ::Object* DeviceObject::getNestedObject(std::string_view name) {
+    ::Object* DeviceObject::getNestedObject(std::string_view) {
 
         return nullptr;
     }

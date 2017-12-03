@@ -31,11 +31,22 @@ namespace HardwareFileSystem::PCI {
 
         enum class PropertyId {
             VendorId,
-            DeviceId
+            DeviceId,
+            Bar0,
+            Bar1,
+            Bar2,
+            Bar3,
+            Bar4,
+            Bar5
         };
 
         uint16_t vendorId;
         uint16_t deviceId;
-
+        uint32_t bar0;
+        uint32_t bar1;
+        uint32_t bar2;
+        uint32_t bar3;
+        uint32_t bar4;
+        uint32_t bar5;
     };
 }
