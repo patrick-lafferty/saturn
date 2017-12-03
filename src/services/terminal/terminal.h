@@ -13,6 +13,39 @@ namespace Terminal {
         }
 
         static uint32_t MessageId;
+        char buffer[256];
+        uint32_t stringLength {0};
+    };
+
+    struct Print32Message : IPC::Message {
+        Print32Message() {
+            messageId = MessageId;
+            length = sizeof(Print32Message);
+        }
+
+        static uint32_t MessageId;
+        char buffer[32];
+        uint32_t stringLength {0};
+    };
+
+    struct Print64Message : IPC::Message {
+        Print64Message() {
+            messageId = MessageId;
+            length = sizeof(Print64Message);
+        }
+
+        static uint32_t MessageId;
+        char buffer[64];
+        uint32_t stringLength {0};
+    };
+
+    struct Print128Message : IPC::Message {
+        Print128Message() {
+            messageId = MessageId;
+            length = sizeof(Print128Message);
+        }
+
+        static uint32_t MessageId;
         char buffer[128];
         uint32_t stringLength {0};
     };

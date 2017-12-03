@@ -12,12 +12,18 @@ using namespace Kernel;
 namespace Terminal {
 
     uint32_t PrintMessage::MessageId;
+    uint32_t Print32Message::MessageId;
+    uint32_t Print64Message::MessageId;
+    uint32_t Print128Message::MessageId;
     uint32_t KeyPress::MessageId;
     uint32_t GetCharacter::MessageId;
     uint32_t CharacterInput::MessageId;
 
     void registerMessages() {
         IPC::registerMessage<PrintMessage>();
+        IPC::registerMessage<Print32Message>();
+        IPC::registerMessage<Print64Message>();
+        IPC::registerMessage<Print128Message>();
         IPC::registerMessage<KeyPress>();
         IPC::registerMessage<GetCharacter>();
         IPC::registerMessage<CharacterInput>();
@@ -65,6 +71,13 @@ namespace Terminal {
         uint32_t size {0};
     };
 
+    bool isPrintMessage(uint32_t id) {
+        return id == PrintMessage::MessageId
+            || id == Print32Message::MessageId
+            || id == Print64Message::MessageId
+            || id == Print128Message::MessageId;
+    }
+
     void messageLoop() {
 
         Terminal emulator{new uint16_t[2000]};
@@ -75,11 +88,25 @@ namespace Terminal {
             IPC::MaximumMessageBuffer buffer;
             receive(&buffer);
 
-            if (buffer.messageId == PrintMessage::MessageId) {
-                auto message = IPC::extractMessage<PrintMessage>(buffer);
-                auto iterator = message.buffer;
-                auto index = emulator.getIndex();
-                auto dirty = emulator.interpret(iterator, message.stringLength);
+            if (isPrintMessage(buffer.messageId)) {
+                DirtyRect dirty;
+
+                if (buffer.messageId == PrintMessage::MessageId) {
+                    auto message = IPC::extractMessage<PrintMessage>(buffer);
+                    dirty = emulator.interpret(message.buffer, message.stringLength);
+                }
+                else if (buffer.messageId == Print32Message::MessageId) {
+                    auto message = IPC::extractMessage<Print32Message>(buffer);
+                    dirty = emulator.interpret(message.buffer, message.stringLength);
+                }
+                else if (buffer.messageId == Print64Message::MessageId) {
+                    auto message = IPC::extractMessage<Print64Message>(buffer);
+                    dirty = emulator.interpret(message.buffer, message.stringLength);
+                }
+                else if (buffer.messageId == Print128Message::MessageId) {
+                    auto message = IPC::extractMessage<Print128Message>(buffer);
+                    dirty = emulator.interpret(message.buffer, message.stringLength);
+                }
 
                 if (dirty.overflowed) {
                     ScrollScreen scroll {};
@@ -88,7 +115,7 @@ namespace Terminal {
                     send(IPC::RecipientType::ServiceName, &scroll);
                 }
 
-                index = dirty.startIndex;
+                auto index = dirty.startIndex;
                 uint32_t count{dirty.endIndex};
 
                 uint32_t blitBufferSize = sizeof(BlitMessage::buffer) / sizeof(uint16_t);                

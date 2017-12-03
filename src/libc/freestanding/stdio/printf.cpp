@@ -180,6 +180,17 @@ int printf(const char* format, ...) {
     
     message.buffer[charactersWritten] = '\0';
     message.stringLength = charactersWritten;
+
+    if (charactersWritten < 32) {
+        message.messageId = Terminal::Print32Message::MessageId;
+    }
+    else if (charactersWritten < 64) {
+        message.messageId = Terminal::Print64Message::MessageId;
+    }
+    else if (charactersWritten < 128) {
+        message.messageId = Terminal::Print128Message::MessageId;
+    }
+
     send(IPC::RecipientType::ServiceName, &message);
 
     return charactersWritten;
