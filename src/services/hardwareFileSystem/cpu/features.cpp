@@ -78,6 +78,9 @@ namespace HardwareFileSystem {
         else if (name.compare("support") == 0) {
             return &support;
         }
+        else if (name.compare("extensions") == 0) {
+            return &extensions;
+        }
 
         return nullptr;
     }
@@ -95,5 +98,6 @@ namespace HardwareFileSystem {
         detectInstructionSets(ecx, edx);
         detectInstructions(ecx, edx);
         detectSupport(ecx, edx);
+        detectExtensions(ecx, edx);
     }
 }

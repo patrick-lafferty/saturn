@@ -1,19 +1,15 @@
 #pragma once
 
 #include "../object.h"
-#include "instructionsets.h"
-#include "instructions.h"
-#include "support.h"
-#include "extensions.h"
 #include <string_view>
 
 namespace HardwareFileSystem {
 
-    class CPUFeaturesObject : public HardwareObject {
+    class CPUTechnologyObject : public HardwareObject {
     public:
 
-        CPUFeaturesObject();
-        virtual ~CPUFeaturesObject() {}
+        CPUTechnologyObject();
+        virtual ~CPUTechnologyObject() {}
 
         void readSelf(uint32_t requesterTaskId, uint32_t requestId) override;
 
@@ -33,24 +29,20 @@ namespace HardwareFileSystem {
     private:
 
         enum class PropertyId {
-            InstructionSets,
-            Instructions,
-            Features,
-            Extensions,
-            Technology
+            VMX,
+            SMX,
+            FMA,
+            FPU,
+            VME,
+            DE,
+            PSE,
+            PAE,
+            MCE,
+            PSE_36
         };
 
-        CPUInstructionSetsObject instructionSets;
-        CPUInstructionsObject instructions;
-        CPUSupportObject support;
-        CPUExtensionsObject extensions;
-
-        /*
-        technology
-        eist
-        tm2
-        */
+        uint32_t extensions;
     };
 
-    void detectFeatures(uint32_t ecx, uint32_t edx);
+    void detectExtensions(uint32_t ecx, uint32_t edx);
 }
