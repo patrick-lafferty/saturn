@@ -38,54 +38,37 @@ namespace HardwareFileSystem {
     }
 
     /*
-    Vostok Object function support
-    */
-    int CPUExtensionsObject::getFunction(std::string_view name) {
-        return -1;
-    }
-
-    void CPUExtensionsObject::readFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId) {
-        describeFunction(requesterTaskId, requestId, functionId);
-    }
-
-    void CPUExtensionsObject::writeFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId, ArgBuffer& args) {
-    }
-
-    void CPUExtensionsObject::describeFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId) {
-    }
-
-    /*
     Vostok Object property support
     */
     int CPUExtensionsObject::getProperty(std::string_view name) {
         if (name.compare("vmx") == 0) {
             return static_cast<int>(PropertyId::VMX);
         }
-        if (name.compare("smx") == 0) {
+        else if (name.compare("smx") == 0) {
             return static_cast<int>(PropertyId::SMX);
         }
-        if (name.compare("fma") == 0) {
+        else if (name.compare("fma") == 0) {
             return static_cast<int>(PropertyId::FMA);
         }
-        if (name.compare("fpu") == 0) {
+        else if (name.compare("fpu") == 0) {
             return static_cast<int>(PropertyId::FPU);
         }
-        if (name.compare("vme") == 0) {
+        else if (name.compare("vme") == 0) {
             return static_cast<int>(PropertyId::VME);
         }
-        if (name.compare("de") == 0) {
+        else if (name.compare("de") == 0) {
             return static_cast<int>(PropertyId::DE);
         }
-        if (name.compare("pse") == 0) {
+        else if (name.compare("pse") == 0) {
             return static_cast<int>(PropertyId::PSE);
         }
-        if (name.compare("pae") == 0) {
+        else if (name.compare("pae") == 0) {
             return static_cast<int>(PropertyId::PAE);
         }
-        if (name.compare("mce") == 0) {
+        else if (name.compare("mce") == 0) {
             return static_cast<int>(PropertyId::MCE);
         }
-        if (name.compare("pse_36") == 0) {
+        else if (name.compare("pse_36") == 0) {
             return static_cast<int>(PropertyId::PSE_36);
         }
 
@@ -126,10 +109,6 @@ namespace HardwareFileSystem {
         }
 
         replyWriteSucceeded(requesterTaskId, requestId, false);
-    }
-
-    Object* CPUExtensionsObject::getNestedObject(std::string_view name) {
-        return nullptr;
     }
 
     /*

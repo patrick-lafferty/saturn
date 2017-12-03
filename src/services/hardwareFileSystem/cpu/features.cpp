@@ -33,30 +33,13 @@ namespace HardwareFileSystem {
     }
 
     /*
-    Vostok Object function support
-    */
-    int CPUFeaturesObject::getFunction(std::string_view name) {
-        return -1;
-    }
-
-    void CPUFeaturesObject::readFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId) {
-        describeFunction(requesterTaskId, requestId, functionId);
-    }
-
-    void CPUFeaturesObject::writeFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId, ArgBuffer& args) {
-    }
-
-    void CPUFeaturesObject::describeFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId) {
-    }
-
-    /*
     Vostok Object property support
     */
-    int CPUFeaturesObject::getProperty(std::string_view name) {
+    int CPUFeaturesObject::getProperty(std::string_view) {
         return -1;
     }
 
-    void CPUFeaturesObject::readProperty(uint32_t requesterTaskId, uint32_t requestId, uint32_t propertyId) {
+    void CPUFeaturesObject::readProperty(uint32_t requesterTaskId, uint32_t requestId, uint32_t) {
         ReadResult result;
         result.success = false;
         result.requestId = requestId;
@@ -64,7 +47,7 @@ namespace HardwareFileSystem {
         send(IPC::RecipientType::TaskId, &result);
     }
 
-    void CPUFeaturesObject::writeProperty(uint32_t requesterTaskId, uint32_t requestId, uint32_t propertyId, ArgBuffer& args) {
+    void CPUFeaturesObject::writeProperty(uint32_t requesterTaskId, uint32_t requestId, uint32_t, ArgBuffer&) {
         replyWriteSucceeded(requesterTaskId, requestId, false);
     }
 
@@ -81,6 +64,9 @@ namespace HardwareFileSystem {
         else if (name.compare("extensions") == 0) {
             return &extensions;
         }
+        else if (name.compare("technology") == 0) {
+            return &technology;
+        }
 
         return nullptr;
     }
@@ -95,9 +81,10 @@ namespace HardwareFileSystem {
 
     void detectFeatures(uint32_t ecx, uint32_t edx) {
 
-        detectInstructionSets(ecx, edx);
+        detectInstructionSets(ecx);
         detectInstructions(ecx, edx);
         detectSupport(ecx, edx);
         detectExtensions(ecx, edx);
+        detectTechnology(ecx);
     }
 }

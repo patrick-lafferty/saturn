@@ -31,23 +31,6 @@ namespace HardwareFileSystem {
     }
 
     /*
-    Vostok Object function support
-    */
-    int CPUIdObject::getFunction(std::string_view name) {
-        return -1;
-    }
-
-    void CPUIdObject::readFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId) {
-        describeFunction(requesterTaskId, requestId, functionId);
-    }
-
-    void CPUIdObject::writeFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId, ArgBuffer& args) {
-    }
-
-    void CPUIdObject::describeFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId) {
-    }
-
-    /*
     Vostok Object property support
     */
     int CPUIdObject::getProperty(std::string_view name) {
@@ -131,10 +114,6 @@ namespace HardwareFileSystem {
         }
 
         replyWriteSucceeded(requesterTaskId, requestId, false);
-    }
-
-    Object* CPUIdObject::getNestedObject(std::string_view name) {
-        return nullptr;
     }
 
     /*

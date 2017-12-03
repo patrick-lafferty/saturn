@@ -8,6 +8,13 @@ namespace HardwareFileSystem {
     class HardwareObject : public Vostok::Object {
     public:
 
+        virtual int getFunction(std::string_view) override;
+        virtual void readFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId) override;
+        virtual void writeFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId, Vostok::ArgBuffer& args) override;
+        virtual void describeFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId) override;
+
+        virtual Object* getNestedObject(std::string_view name) override;
+
         virtual const char* getName() = 0;
     };
 

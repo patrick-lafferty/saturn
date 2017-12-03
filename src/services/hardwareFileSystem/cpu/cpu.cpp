@@ -30,39 +30,18 @@ namespace HardwareFileSystem {
     }
 
     /*
-    Vostok Object function support
-    */
-    int CPUObject::getFunction(std::string_view name) {
-        return -1;
-    }
-
-    void CPUObject::readFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId) {
-        describeFunction(requesterTaskId, requestId, functionId);
-    }
-
-    void CPUObject::writeFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId, ArgBuffer& args) {
-    }
-
-    void CPUObject::describeFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId) {
-    }
-
-    /*
     Vostok Object property support
     */
-    int CPUObject::getProperty(std::string_view name) {
-
+    int CPUObject::getProperty(std::string_view) {
         return -1;
     }
 
-    void CPUObject::readProperty(uint32_t requesterTaskId, uint32_t requestId, uint32_t propertyId) {
+    void CPUObject::readProperty(uint32_t requesterTaskId, uint32_t requestId, uint32_t) {
         ReadResult result;
         result.success = true;
         result.requestId = requestId;
         ArgBuffer args {result.buffer, sizeof(result.buffer)};
         args.writeType(ArgTypes::Property);
-
-        switch(static_cast<PropertyId>(propertyId)) {
-        }
 
         args.writeType(ArgTypes::EndArg);
 
@@ -70,17 +49,7 @@ namespace HardwareFileSystem {
         send(IPC::RecipientType::TaskId, &result);
     }
 
-    void CPUObject::writeProperty(uint32_t requesterTaskId, uint32_t requestId, uint32_t propertyId, ArgBuffer& args) {
-        auto type = args.readType();
-
-        if (type != ArgTypes::Property) {
-            replyWriteSucceeded(requesterTaskId, requestId, false);
-            return;
-        }
-
-        switch(static_cast<PropertyId>(propertyId)) {
-        }
-
+    void CPUObject::writeProperty(uint32_t requesterTaskId, uint32_t requestId, uint32_t, ArgBuffer&) {
         replyWriteSucceeded(requesterTaskId, requestId, false);
     }
 

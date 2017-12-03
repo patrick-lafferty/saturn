@@ -33,23 +33,6 @@ namespace HardwareFileSystem {
     }
 
     /*
-    Vostok Object function support
-    */
-    int CPUInstructionSetsObject::getFunction(std::string_view name) {
-        return -1;
-    }
-
-    void CPUInstructionSetsObject::readFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId) {
-        describeFunction(requesterTaskId, requestId, functionId);
-    }
-
-    void CPUInstructionSetsObject::writeFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId, ArgBuffer& args) {
-    }
-
-    void CPUInstructionSetsObject::describeFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId) {
-    }
-
-    /*
     Vostok Object property support
     */
     int CPUInstructionSetsObject::getProperty(std::string_view name) {
@@ -108,10 +91,6 @@ namespace HardwareFileSystem {
         replyWriteSucceeded(requesterTaskId, requestId, false);
     }
 
-    Object* CPUInstructionSetsObject::getNestedObject(std::string_view name) {
-        return nullptr;
-    }
-
     /*
     CPU Features Object specific implementation
     */
@@ -120,7 +99,7 @@ namespace HardwareFileSystem {
         return "instruction_sets";
     }
 
-    void detectInstructionSets(uint32_t ecx, uint32_t edx) {
+    void detectInstructionSets(uint32_t ecx) {
         auto sse3 = (ecx & (1u << 0));
         auto ssse3 = (ecx & (1u << 9));
         auto sse4_1 = (ecx & (1u << 19));

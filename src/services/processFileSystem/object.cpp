@@ -184,7 +184,7 @@ namespace PFS {
         }
     }
 
-    Object* ProcessObject::getNestedObject(std::string_view name) {
+    Object* ProcessObject::getNestedObject(std::string_view) {
         return nullptr;
     }
 
