@@ -104,7 +104,7 @@ namespace Shell {
                     case Vostok::ArgTypes::Uint32: {
                         auto value = args.read<uint32_t>(type);
                         if (!args.hasErrors()) {
-                            printf("uint32 = %d\n", value);
+                            printf("uint32 = %u\n", value);
                         }
                         break;
                     }

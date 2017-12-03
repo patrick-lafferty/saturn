@@ -83,6 +83,14 @@ namespace Discovery::PCI {
                 char deviceIdName[30 + 11];
                 sprintf(deviceIdName, "%s/deviceId", deviceName);
                 HardwareFileSystem::writeTransaction(deviceIdName, id.deviceId, Vostok::ArgTypes::Uint32);
+
+                for (auto offset = 0x10u; offset < 0x28; offset += 4) {
+                    char barName[30 + 6];
+                    sprintf(barName, "%s/bar%d", deviceName, (offset - 0x10) / 4);
+                    auto bar = readRegister(getAddress(bus, deviceId, 0, offset));
+                    HardwareFileSystem::writeTransaction(barName, bar, Vostok::ArgTypes::Uint32);
+                }
+
             }
         }
     }
