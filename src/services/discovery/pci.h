@@ -4,10 +4,9 @@
 
 namespace Discovery {
 
-    void discoverPCIDevices(); 
-
-
     namespace PCI {
+
+        void discoverDevices(); 
 
         namespace StandardConfiguration {
             /*

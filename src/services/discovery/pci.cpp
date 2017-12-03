@@ -2,8 +2,9 @@
 #include <stdio.h>
 #include <services.h>
 #include <system_calls.h>
+#include <services/hardwareFileSystem/object.h>
 
-namespace Discovery {
+namespace Discovery::PCI {
 
     uint32_t getAddress(uint8_t bus, uint8_t device,
         uint8_t function, uint8_t registerIndex) {
@@ -32,8 +33,7 @@ namespace Discovery {
         return result;
     }
     
-    using namespace PCI;
-    using namespace PCI::StandardConfiguration;
+    using namespace StandardConfiguration;
 
     HostBridge findHostBridge() {
         HostBridge bridge {};
@@ -72,13 +72,42 @@ namespace Discovery {
             auto id = Identification{readRegister(getAddress(bus, deviceId, 0, 0))};
 
             if (id.isValid()) {
-                printf("vendor: %x device: %x\n", id.vendorId, id.deviceId);
+                char deviceName[30];
+                sprintf(deviceName, "/system/hardware/pci/host0/%d", deviceId);
+
+                char vendorIdName[30 + 11];
+                sprintf(vendorIdName, "%s/vendorId", deviceName);
+
+                HardwareFileSystem::writeTransaction(vendorIdName, id.vendorId, Vostok::ArgTypes::Uint32);
+
+                char deviceIdName[30 + 11];
+                sprintf(deviceIdName, "%s/deviceId", deviceName);
+                HardwareFileSystem::writeTransaction(deviceIdName, id.deviceId, Vostok::ArgTypes::Uint32);
             }
         }
     }
 
-    void discoverPCIDevices() {
-        waitForServiceRegistered(Kernel::ServiceType::Terminal);
+    bool createPCIObject() {
+        auto path = "/system/hardware/pci";
+        create(path);
+
+        IPC::MaximumMessageBuffer buffer;
+        receive(&buffer);
+
+        if (buffer.messageId == VFS::CreateResult::MessageId) {
+            auto result = IPC::extractMessage<VFS::CreateResult>(buffer);
+            return result.success;
+        }
+
+        return false;
+    }
+
+    void discoverDevices() {
+        waitForServiceRegistered(Kernel::ServiceType::VFS);
+
+        while (!createPCIObject()) {
+            sleep(10);
+        }
 
         auto hostBridge = findHostBridge();
         

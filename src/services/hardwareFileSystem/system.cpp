@@ -5,6 +5,7 @@
 #include <vector>
 #include <parsing>
 #include "cpu/cpu.h"
+#include "pci/pci.h"
 
 using namespace Kernel;
 using namespace VFS;
@@ -79,29 +80,7 @@ namespace HardwareFileSystem {
                 auto found = findObject(objects, words[2], &object);
 
                 if (found) {
-                    /*
-                    if (words.size() > 4) {
-                        //its a nested object
-                        auto nestedObject = object->getNestedObject(words[3]);
-
-                        if (nestedObject != nullptr) {
-                            tryOpenObject(nestedObject, words[4]);
-                        }
-                    }
-                    else if (words.size() == 4) {
-                        if (!tryOpenObject(object, words[3])) {
-                            //see if its just the name of a nested object
-                            auto nestedObject = object->getNestedObject(words[3]);
-
-                            if (nestedObject != nullptr) {
-                                addDescriptor(nestedObject, 0, DescriptorType::Object);
-                            }
-                        }
-                    }
-                    else {
-                        //its the object itself
-                        addDescriptor(object, 0, DescriptorType::Object);
-                    }*/
+                    
                     uint32_t lastObjectWord {2};
                     for (auto i = 3u; i < words.size(); i++) {
                         auto nestedObject = object->getNestedObject(words[i]);
@@ -135,6 +114,9 @@ namespace HardwareFileSystem {
     HardwareObject* createObject(std::string_view name) {
         if (name.compare("cpu") == 0) {
             return new CPUObject();
+        }
+        else if (name.compare("pci") == 0) {
+            return new PCI::Object();
         }
 
         return nullptr;

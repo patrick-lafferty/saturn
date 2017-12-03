@@ -2,7 +2,8 @@
 #include "pci.h"
 
 namespace Discovery {
+    
     void discoverDevices() {
-        discoverPCIDevices();
+        PCI::discoverDevices();
     }
 }
