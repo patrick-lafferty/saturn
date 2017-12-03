@@ -31,8 +31,6 @@ ARCH_OBJS = \
 	$(ARCHDIR)/idt/isr_stubs.o \
 	$(ARCHDIR)/idt/loadIDT.o \
 	$(ARCHDIR)/idt/idt.o \
-	$(ARCHDIR)/cpu/cpuid.o \
-	$(ARCHDIR)/cpu/cpuid_impl.o \
 	$(ARCHDIR)/cpu/acpi.o \
 	$(ARCHDIR)/cpu/initialize_sse.o \
 	$(ARCHDIR)/cpu/pic.o \

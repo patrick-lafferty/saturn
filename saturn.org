@@ -431,7 +431,7 @@ Next steps:
 - [X] create syscall wrapper
 - [X] create a new process object per process
 - [ ] only allow kernel to write to process object
-- [ ] add a hardware filesystem mounted at /hardware to store read-only info
+- [X] add a hardware filesystem mounted at /hardware to store read-only info
        about the detected hardware (later mount to /system/hardware when mounts
        support non-root mounting)
 - [X] implement string_view
@@ -441,9 +441,9 @@ Next steps:
 - [X] add one line history support to shell
 
 ** Interlude
-- [ ] cleanup all warnings
-- [ ] cleanup all commented-out code
-- [ ] start documenting some stuff
+- [X] cleanup all warnings
+- [X] cleanup all commented-out code
+- [X] start documenting some stuff
 - [X] make a services make.config just like userland to cleanup makefile
-- [ ] tidy up ugly code
-- [ ] fix occasional startup hang
+- [X] tidy up ugly code
+- [X] fix occasional startup hang

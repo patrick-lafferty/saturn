@@ -2,7 +2,6 @@
 #include <gdt/gdt.h>
 #include <idt/idt.h>
 #include <cpu/pic.h>
-#include <cpu/cpuid.h>
 #include <cpu/acpi.h>
 #include <cpu/sse.h>
 #include <cpu/tss.h>
