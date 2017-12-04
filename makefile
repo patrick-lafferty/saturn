@@ -48,6 +48,7 @@ KERNEL_OBJS = \
 	src/kernel/ipc.o \
 	src/kernel/scheduler.o \
 	src/kernel/services.o \
+	src/kernel/permissions.o \
 	src/kernel/pre_kernel.o \
 	src/kernel/kernel.o
 

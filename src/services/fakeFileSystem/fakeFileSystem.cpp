@@ -9,6 +9,7 @@
 #include <services/ps2/ps2.h>
 #include <services/keyboard/keyboard.h>
 #include <userland/shell/shell.h>
+#include <services/drivers/bochsGraphicsAdaptor/driver.h>
 
 using namespace Kernel;
 using namespace VFS;
@@ -70,6 +71,9 @@ namespace FakeFileSystem {
                 }
                 else if (strcmp(request.path, "/bin/shell") == 0) {
                     entryPoint = reinterpret_cast<uintptr_t>(Shell::main);
+                }
+                else if (strcmp(request.path, "/bin/bochsGraphicsAdaptor.service") == 0) {
+                    entryPoint = reinterpret_cast<uintptr_t>(BGA::service);
                 }
                 else {
                     result.success = false;
