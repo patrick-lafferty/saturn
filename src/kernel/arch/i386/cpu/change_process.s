@@ -139,7 +139,6 @@ fillTSS:
     mov eax, [esp + 4]
     mov [eax + 4], esp
     mov [eax + 8], DWORD 0x10
-    mov [eax + 102], DWORD 0x68
     ret
 
 global loadTSS

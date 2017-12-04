@@ -29,11 +29,11 @@ namespace CPU {
         uint32_t fs;
         uint32_t gs;
         uint32_t ldtSegmentSelector;
-        uint16_t reserved;
-        uint16_t ioMapBaseAddress;
+        uint32_t ioMapBaseAddress;
+        uint8_t ioPermissionBitmap[0xf98];
     };
 
-    void setupTSS(uint32_t address);
+    TSS* setupTSS(uint32_t address);
 }
 
 extern "C" void fillTSS(CPU::TSS* tss);
