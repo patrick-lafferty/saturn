@@ -2,5 +2,5 @@
 
 namespace BGA {
 
-    void loadDriver();
+    void service();
 }
