@@ -14,6 +14,7 @@ namespace Kernel {
         Mouse,
         Memory,
         VFS,
+        BGA,
         ServiceTypeEnd
     };
 

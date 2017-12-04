@@ -80,17 +80,17 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
 
     asm volatile("sti");
 
-    auto pageFlags = 
-        static_cast<int>(PageTableFlags::AllowWrite)
-        | static_cast<int>(PageTableFlags::AllowUserModeAccess);
+    auto pageFlags = static_cast<int>(PageTableFlags::AllowWrite);
 
     auto afterKernel = (kernelEndAddress & ~0xfff) + 0x1000;
+
+    virtualMemManager.HACK_setNextAddress(0xCFFF'F000);
+    auto tssAddress = virtualMemManager.allocatePages(1, pageFlags);
     virtualMemManager.HACK_setNextAddress(afterKernel);
 
-    auto tssAddress = virtualMemManager.allocatePages(3, pageFlags);
     HACK_TSS_ADDRESS = tssAddress;
-    GDT::addTSSEntry(tssAddress, 0x1000 * 3);
-    CPU::setupTSS(tssAddress);
+    GDT::addTSSEntry(tssAddress, 0x1000 * 1);
+    auto tss = CPU::setupTSS(tssAddress);
 
     if (!CPU::parseACPITables()) {
 
@@ -104,7 +104,7 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
 
     LibC_Implementation::createHeap(PageSize * PageSize);
 
-    Kernel::Scheduler scheduler;
+    Kernel::Scheduler scheduler{tss};
 
     kprintf("Saturn OS v 0.1.0\n------------------\n\n");
 
@@ -121,7 +121,6 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     scheduler.scheduleTask(scheduler.createKernelTask(reinterpret_cast<uint32_t>(HardwareFileSystem::detectHardware)));
     scheduler.scheduleTask(scheduler.createKernelTask(reinterpret_cast<uint32_t>(Discovery::discoverDevices)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(Startup::service)));
-    
 
     scheduler.enterIdle();
 

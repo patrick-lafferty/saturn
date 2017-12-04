@@ -3,6 +3,8 @@
 #include <scheduler.h>
 #include <memory/virtual_memory_manager.h>
 #include <stdio.h>
+#include "permissions.h"
+#include <cpu/tss.h>
 
 namespace Kernel {
 
@@ -204,6 +206,22 @@ namespace Kernel {
                     kprintf("[ServiceRegistry] Tried to setupService a null task\n");
                     return;
                 }
+
+                GenericServiceMeta genericMeta;
+                task->mailbox->send(&genericMeta);
+
+                break;
+            }
+            case ServiceType::BGA: {
+                
+                auto task = currentScheduler->getTask(taskId);
+
+                if (task == nullptr) {
+                    kprintf("[ServiceRegistry] Tried to setupService a null task\n");
+                    return;
+                }
+
+                grantIOPort16(0x1ce, task->tss->ioPermissionBitmap);
 
                 GenericServiceMeta genericMeta;
                 task->mailbox->send(&genericMeta);
