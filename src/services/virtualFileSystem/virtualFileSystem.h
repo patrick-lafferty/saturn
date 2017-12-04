@@ -30,9 +30,16 @@ namespace VFS {
             memset(path, '\0', sizeof(path));
         }
 
+        void shrink(int pathLength) {
+            length = sizeof(OpenRequest) 
+                - sizeof(path)
+                + pathLength 
+                + sizeof(requestId);
+        }
+
         static uint32_t MessageId;
-        char path[64];
         uint32_t requestId;
+        char path[64];
 
         //TODO: read/write, permissions
     };
@@ -56,9 +63,16 @@ namespace VFS {
             memset(path, '\0', sizeof(path));
         }
 
+        void shrink(int pathLength) {
+            length = sizeof(CreateRequest) 
+                - sizeof(path)
+                + pathLength 
+                + sizeof(requestId);
+        } 
+
         static uint32_t MessageId;
-        char path[64];
         uint32_t requestId;
+        char path[64];
 
         //TODO: read/write, permissions
     };

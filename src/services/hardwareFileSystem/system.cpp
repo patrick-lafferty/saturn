@@ -208,7 +208,8 @@ namespace HardwareFileSystem {
     }
 
     void handleCloseRequest(CloseRequest& request, std::vector<FileDescriptor>& openDescriptors) {
-        openDescriptors.erase(&openDescriptors[request.fileDescriptor]);
+        //TODO: this is broken
+        //openDescriptors.erase(&openDescriptors[request.fileDescriptor]);
     }
 
     void messageLoop() {

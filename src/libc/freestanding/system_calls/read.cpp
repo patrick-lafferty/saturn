@@ -4,7 +4,9 @@
 void open(const char* path) {
     VFS::OpenRequest open;
     open.serviceType = Kernel::ServiceType::VFS;
-    memcpy(open.path, path, strlen(path));
+    auto pathLength = strlen(path) + 1;
+    memcpy(open.path, path, pathLength);
+    open.shrink(pathLength);
     send(IPC::RecipientType::ServiceName, &open);
 }
 
@@ -26,7 +28,9 @@ VFS::OpenResult openSynchronous(const char* path) {
 void create(const char* path) {
     VFS::CreateRequest request;
     request.serviceType = Kernel::ServiceType::VFS;
-    memcpy(request.path, path, strlen(path));
+    auto pathLength = strlen(path) + 1;
+    memcpy(request.path, path, pathLength);
+    request.shrink(pathLength);
     send(IPC::RecipientType::ServiceName, &request);
 }   
 

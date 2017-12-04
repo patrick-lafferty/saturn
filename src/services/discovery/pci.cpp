@@ -4,7 +4,7 @@
 #include <system_calls.h>
 #include <services/hardwareFileSystem/object.h>
 #include <vector>
-#include <services/drivers/bochsGraphicsAdaptor/driver.h>
+#include <services/startup/startup.h>
 
 namespace Discovery::PCI {
 
@@ -77,19 +77,23 @@ namespace Discovery::PCI {
 
             if (id.isValid()) {
                 char deviceName[30];
+                memset(deviceName, '\0', sizeof(deviceName));
                 sprintf(deviceName, "/system/hardware/pci/host0/%d", deviceId);
 
                 char vendorIdName[30 + 11];
+                memset(vendorIdName, '\0', sizeof(vendorIdName));
                 sprintf(vendorIdName, "%s/vendorId", deviceName);
 
                 HardwareFileSystem::writeTransaction(vendorIdName, id.vendorId, Vostok::ArgTypes::Uint32);
 
                 char deviceIdName[30 + 11];
+                memset(deviceIdName, '\0', sizeof(deviceIdName));
                 sprintf(deviceIdName, "%s/deviceId", deviceName);
                 HardwareFileSystem::writeTransaction(deviceIdName, id.deviceId, Vostok::ArgTypes::Uint32);
 
                 for (auto offset = 0x10u; offset < 0x28; offset += 4) {
                     char barName[30 + 6];
+                    memset(barName, '\0', sizeof(barName));
                     sprintf(barName, "%s/bar%d", deviceName, (offset - 0x10) / 4);
                     auto bar = readRegister(getAddress(bus, deviceId, 0, offset));
                     HardwareFileSystem::writeTransaction(barName, bar, Vostok::ArgTypes::Uint32);
@@ -119,7 +123,7 @@ namespace Discovery::PCI {
 
     KnownDevices getDeviceType(Identification id) {
 
-        if (id.vendorId == 0x1111 && id.deviceId == 0x1234) {
+        if (id.vendorId == 0x1234 && id.deviceId == 0x1111) {
             return KnownDevices::BochsVBE;
         }
 
@@ -129,7 +133,7 @@ namespace Discovery::PCI {
     void loadDriver(KnownDevices type) {
         switch(type) {
             case KnownDevices::BochsVBE: {
-                BGA::loadDriver();
+                Startup::runProgram("/bin/bochsGraphicsAdaptor.service");
                 break;
             }
             default: {
@@ -159,7 +163,9 @@ namespace Discovery::PCI {
 
             if (type != KnownDevices::Unknown
                 && !loaded[static_cast<int>(type)]) {
+
                 loaded[static_cast<int>(type)] = true;
+                loadDriver(type);
             }
         }
     }
