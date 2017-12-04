@@ -57,7 +57,7 @@ namespace Memory {
 
         auto flags = 3;
 
-        if (index < 0x340 || virtualAddress < KernelVirtualStartingAddress) {
+        if ((index < 0x33F) || (virtualAddress < KernelVirtualStartingAddress)) {
             //usermode addresses are 0 to KernelVirtualStartingAddress, and should be
             //modifiable by user processes
             flags |= static_cast<uint32_t>(PageTableFlags::AllowUserModeAccess);
@@ -272,7 +272,7 @@ namespace Memory {
 
     void VirtualMemoryManager::cleanup() {
 
-        for(auto start = 0xa000'0000; start < 0xd000'0000; start += 0x1000) {
+        for(auto start = 0xa000'0000; start < KernelVirtualStartingAddress; start += 0x1000) {
             auto directoryIndex = extractDirectoryIndex(start);
 
             //if the pageTable for this address wasn't even allocated, don't bother doing anything

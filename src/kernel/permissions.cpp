@@ -30,7 +30,7 @@ namespace Kernel {
             *byte |= 1;
         }
         else {
-            &byte |= (1 << (bit + 1));
+            *byte |= (1 << (bit + 1));
         }
     }
 }

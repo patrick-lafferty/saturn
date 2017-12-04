@@ -8,6 +8,7 @@
 #include <new>
 #include <services.h>
 #include <stdlib.h>
+#include <cpu/tss.h>
 
 extern "C" void startProcess(Kernel::Task* task);
 extern "C" void changeProcess(Kernel::Task* current, Kernel::Task* next);
@@ -43,7 +44,7 @@ namespace Kernel {
         return reinterpret_cast<uint32_t>(address);
     }
 
-    Scheduler::Scheduler() {
+    Scheduler::Scheduler(CPU::TSS* kernelTSS) {
         currentScheduler = this;
 
         taskBuffer = new Task[20];
@@ -56,6 +57,7 @@ namespace Kernel {
         timeslice_milliseconds = 10;
         kernelHeap = LibC_Implementation::KernelHeap;
         kernelVMM = Memory::currentVMM;
+        this->kernelTSS = kernelTSS;
     }
 
     void Scheduler::cleanupTasks() {
@@ -196,6 +198,7 @@ namespace Kernel {
         task->context.kernelESP = task->context.esp;
         task->virtualMemoryManager = Memory::currentVMM;
         task->heap = LibC_Implementation::KernelHeap;
+        task->tss = kernelTSS;
 
         const uint32_t mailboxSize = 2 * Memory::PageSize;
         auto mailboxMemory = task->heap->aligned_allocate(mailboxSize, 2 * Memory::PageSize);
@@ -227,7 +230,17 @@ namespace Kernel {
         //vmm->HACK_setNextAddress(0xd000'0000 - 0x2000);
         //auto backupHeap = LibC_Implementation::KernelHeap;
         //LibC_Implementation::KernelHeap = nullptr;
+        auto backupTSS = *kernelTSS;
         vmm->activate();
+        vmm->HACK_setNextAddress(0xcfff'f000);
+        auto tssAddress = vmm->allocatePages(1, static_cast<int>(Memory::PageTableFlags::AllowWrite));
+        task->tss = reinterpret_cast<CPU::TSS*>(tssAddress);
+        *task->tss = backupTSS;
+
+        for (auto i = 0u; i < sizeof(CPU::TSS::ioPermissionBitmap); i++) {
+            task->tss->ioPermissionBitmap[i] = 0xFF;
+        }
+
         vmm->HACK_setNextAddress(0xa000'0000);
         LibC_Implementation::createHeap(Memory::PageSize * Memory::PageSize);
         auto userStackAddress = createStack(true);

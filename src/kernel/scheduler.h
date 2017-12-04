@@ -19,6 +19,10 @@ namespace IPC {
     enum class RecipientType;
 }
 
+namespace CPU {
+    struct TSS;
+}
+
 namespace Kernel {
 
     template<typename T> class LinkedList {
@@ -122,6 +126,7 @@ namespace Kernel {
         Memory::VirtualMemoryManager* virtualMemoryManager;
         LibC_Implementation::Heap* heap;
         IPC::Mailbox* mailbox;
+        CPU::TSS* tss;
     };
 
     enum class EFlags {
@@ -150,7 +155,7 @@ namespace Kernel {
     class Scheduler {
     public:
 
-        Scheduler();
+        Scheduler(CPU::TSS* kernelTSS);
 
         Task* createKernelTask(uintptr_t functionAddress);
         Task* createUserTask(uintptr_t functionAddress);
@@ -200,6 +205,7 @@ namespace Kernel {
 
         LibC_Implementation::Heap* kernelHeap;
         Memory::VirtualMemoryManager* kernelVMM;
+        CPU::TSS* kernelTSS;
     };
 }
 

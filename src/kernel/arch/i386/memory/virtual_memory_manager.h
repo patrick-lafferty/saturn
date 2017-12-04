@@ -22,7 +22,7 @@ namespace MemoryPrekernel {
 namespace Memory {
 #endif
 
-    const uint32_t KernelVirtualStartingAddress = 0xD000'0000;
+    const uint32_t KernelVirtualStartingAddress = 0xCFFF'F000;
 
     class PhysicalMemoryManager;
 
