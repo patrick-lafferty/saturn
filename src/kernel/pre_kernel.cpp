@@ -16,6 +16,7 @@ VirtualMemoryManager _virtualMemManager;
 struct MemManagerAddresses {
     uint32_t physicalManager;
     uint32_t virtualManager;
+    uint32_t multiboot;
 };
 
 extern "C" 
@@ -27,12 +28,12 @@ MemManagerAddresses MemoryManagerAddresses;
 const uint32_t virtualOffset = 0xD000'0000;
 
 extern "C" void setupKernel(MultibootInformation* info) {
-
-    _physicalMemManager.initialize(info);
+    auto acpiTableLocation = _physicalMemManager.initialize(info);
     _virtualMemManager.initialize(&_physicalMemManager);
 
     MemoryManagerAddresses.physicalManager = reinterpret_cast<uint32_t>(&_physicalMemManager);
     MemoryManagerAddresses.virtualManager = reinterpret_cast<uint32_t>(&_virtualMemManager);
+    MemoryManagerAddresses.multiboot = reinterpret_cast<uint32_t>(info);
 
     auto pageFlags = 
         static_cast<int>(PageTableFlags::Present)
@@ -62,8 +63,18 @@ extern "C" void setupKernel(MultibootInformation* info) {
     //TODO: until we get an elf loader, kernel code needs to have usermode access
     pageFlags &= ~static_cast<int>(PageTableFlags::AllowUserModeAccess); 
 
+    ACPITableLocation location {static_cast<uint32_t>(acpiTableLocation >> 32), 
+        static_cast<uint32_t>(acpiTableLocation & 0xFFFFFFFF)};
+
     //ACPI tables
-    _virtualMemManager.map_unpaged(0x7fe0000, 0x7fe0000, (0x8fe0000 - 0x7fe0000) / 0x1000, pageFlags);
+    if (location.startAddress == 0 || location.pages == 0) {
+        //QEMU doesn't record the ACPI memory range as type 3, so just hardcode it
+        _virtualMemManager.map_unpaged(0x7fe0000, 0x7fe0000, (0x8fe0000 - 0x7fe0000) / 0x1000, pageFlags);
+    }
+    else {
+        //we're on a sane system, map the proper addresses
+        _virtualMemManager.map_unpaged(location.startAddress, location.startAddress, location.pages, pageFlags);
+    }
 
     //APIC registers
     _virtualMemManager.map_unpaged(0xfec00000, 0xfec00000, (0xfef00000 - 0xfec00000) / 0x1000, pageFlags | 0b10000);

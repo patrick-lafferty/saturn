@@ -20,6 +20,14 @@ namespace Memory {
         uintptr_t nextFreePage;
     };
 
+#if TARGET_PREKERNEL
+    struct ACPITableLocation {
+        uint32_t startAddress;
+        uint32_t pages;
+    };
+
+#endif
+
     const int PageSize {0x1000};
 
     //TODO: HACK: decide how ISR can get access to current PMM
@@ -34,7 +42,7 @@ namespace Memory {
         memory space we can use
         */
         #if TARGET_PREKERNEL
-        void initialize(const Kernel::MultibootInformation* info);
+        uint64_t initialize(const Kernel::MultibootInformation* info);
         #endif
 
         /*

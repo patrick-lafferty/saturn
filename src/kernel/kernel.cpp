@@ -40,6 +40,7 @@ in pre_kernel.cpp
 struct MemManagerAddresses {
     uint32_t physicalManager;
     uint32_t virtualManager;
+    uint32_t multiboot;
 };
 
 extern "C" int kernel_main(MemManagerAddresses* addresses) {
@@ -100,7 +101,7 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
 
     //also don't need APIC tables anymore
     //NOTE: if we actually do, copy them before this line to a new address space
-    virtualMemManager.unmap(0x7fe0000, (0x8fe0000 - 0x7fe0000) / 0x1000);
+    //virtualMemManager.unmap(0x7fe0000, (0x8fe0000 - 0x7fe0000) / 0x1000);
 
     LibC_Implementation::createHeap(PageSize * PageSize);
 
@@ -119,7 +120,7 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(FakeFileSystem::service)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(HardwareFileSystem::service)));
     scheduler.scheduleTask(scheduler.createKernelTask(reinterpret_cast<uint32_t>(HardwareFileSystem::detectHardware)));
-    scheduler.scheduleTask(scheduler.createKernelTask(reinterpret_cast<uint32_t>(Discovery::discoverDevices)));
+    //scheduler.scheduleTask(scheduler.createKernelTask(reinterpret_cast<uint32_t>(Discovery::discoverDevices)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(Startup::service)));
 
     scheduler.enterIdle();

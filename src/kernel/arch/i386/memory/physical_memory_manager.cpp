@@ -18,11 +18,13 @@ namespace Memory {
 
     PhysicalMemoryManager::PhysicalMemoryManager() {
         allocatedPages = 0;
-        //currentPMM = this;
     }
 
     #if TARGET_PREKERNEL
-    void PhysicalMemoryManager::initialize(const Kernel::MultibootInformation* info) {
+    uint64_t PhysicalMemoryManager::initialize(const Kernel::MultibootInformation* info) {
+
+        uint64_t acpiLocation{};
+
         if (Kernel::hasValidMemoryMap(info)) {
 
             auto memoryMap = static_cast<MEMORY_NS MemoryMapRecord*>(reinterpret_cast<void*>(info->memoryMapAddress));
@@ -39,13 +41,18 @@ namespace Memory {
                     auto pages = record.lowerLength / PageSize;
 
                     if (address >= kernelStartAddress && address <= kernelEndAddress) {
-                        pages -= (kernelEndAddress - kernelStartAddress) / PageSize;
-                        address = (kernelEndAddress & 0xFFFFF000) + PageSize;
+                        auto end = (kernelEndAddress & 0xFFFFF000) + PageSize;
+                        pages -= (1 + (end - address) / PageSize);
+                        address = end; 
                     }
 
                     allocatedPages += pages;
                     totalPages += pages;
                     freePage(address, pages);
+                }
+                else if (record.type == 3) {
+                    acpiLocation = static_cast<uint64_t>(record.lowerBaseAddress) << 32
+                        | (record.lowerLength / PageSize + 1);
                 }
             }
         }
@@ -54,6 +61,8 @@ namespace Memory {
             freePage(0x8000, 1);
             totalPages++;
         }
+
+        return acpiLocation;
     }
     #endif
     
@@ -109,7 +118,6 @@ namespace Memory {
 
         for (uint32_t i = 0; i < count; i++) {
             auto page = static_cast<Page volatile*>(reinterpret_cast<void*>(pageAddress & ~0xfff));
-
             page->nextFreePage = nextFreeAddress;
             nextFreeAddress = pageAddress;
             pageAddress += PageSize;

@@ -5,6 +5,35 @@
 
 namespace CPU {
 
+    void printHeader(RootSystemDescriptionPointer header) {
+        kprintf("Signature:  %d %d %d %d %d %d %d %d\n", 
+            header.signature[0], header.signature[1], header.signature[2], 
+            header.signature[3], header.signature[4], header.signature[5],
+            header.signature[6], header.signature[7]);
+        kprintf("Checksum: %d\n", header.checksum);
+        kprintf("Oemid: %d %d %d %d %d %d\n", 
+            header.oemid[0], header.oemid[1], header.oemid[2], 
+            header.oemid[3], header.oemid[4], header.oemid[5]);
+        kprintf("Revision: %d\n", header.revision);
+        kprintf("CreatorRevision: %d\n", header.rsdtAddress);
+    }
+
+    void printHeader(SystemDescriptionTableHeader header) {
+        kprintf("Signature: %d %d %d %d\n", header.signature[0], header.signature[1], header.signature[2], header.signature[3]);
+        kprintf("Length: %d\n", header.length);
+        kprintf("Revision: %d\n", header.revision);
+        kprintf("Checksum: %d\n", header.checksum);
+        kprintf("Oemid: %d %d %d %d %d %d\n", 
+            header.oemid[0], header.oemid[1], header.oemid[2], 
+            header.oemid[3], header.oemid[4], header.oemid[5]);
+        kprintf("OemTableId:  %d %d %d %d %d %d %d %d\n", 
+            header.oemTableId[0], header.oemTableId[1], header.oemTableId[2], 
+            header.oemTableId[3], header.oemTableId[4], header.oemTableId[5],
+            header.oemTableId[6], header.oemTableId[7]);
+        kprintf("CreatorId: %d\n", header.creatorId);
+        kprintf("CreatorRevision: %d\n", header.creatorRevision);
+    }
+
     bool parseACPITables() {
         auto rsdp = findRSDP();
 
@@ -15,8 +44,8 @@ namespace CPU {
 
         auto rootSystemHeader = getRootSystemHeader(rsdp.rsdtAddress);
 
-        if (verifySystemHeaderChecksum(rootSystemHeader)) {
-            auto apicHeader = getAPICHeader(rootSystemHeader, (rootSystemHeader->length - sizeof(SystemDescriptionTableHeader)) / 4);
+        if (verifySystemHeaderChecksum(&rootSystemHeader->header)) {
+            auto apicHeader = getAPICHeader(rootSystemHeader, (rootSystemHeader->header.length - sizeof(SystemDescriptionTableHeader)) / 4);
 
             if (verifySystemHeaderChecksum(apicHeader)) {
                 auto apicStartingAddress = reinterpret_cast<uintptr_t>(apicHeader);
@@ -55,33 +84,24 @@ namespace CPU {
     }
 
     bool verifyRSDPChecksum(const RootSystemDescriptionPointer& rsdp) {
+        auto ptr = static_cast<const unsigned char*>(reinterpret_cast<const void*>(&rsdp));
 
-        uint32_t check = rsdp.checksum;
-
-        for(int i = 0; i < 8; i++) {
-            check += rsdp.signature[i];
+        auto l = sizeof(RootSystemDescriptionPointer);
+        uint8_t c = 0;
+        for (auto i = 0u; i < l; i++) {
+            c += (char)ptr[i];
         }
 
-        for(int i = 0; i < 6; i++) {
-            check += rsdp.oemid[i];
-        }
-
-        check += rsdp.revision;
-        check += (rsdp.rsdtAddress & 0xFFFF);
-        check += ((rsdp.rsdtAddress >> 8) & 0xFFFF);
-        check += ((rsdp.rsdtAddress >> 16) & 0xFFFF);
-        check += ((rsdp.rsdtAddress >> 24) & 0xFFFF);
-
-        return (check & 0xFF) == 0;
+        return c == 0;
     }
 
     /*
     System Description Table
     */
-    SystemDescriptionTableHeader* getRootSystemHeader(uintptr_t address) {
+    RootSystemDescriptorTable* getRootSystemHeader(uintptr_t address) {
         auto ptr = reinterpret_cast<void*>(address);
         
-        return static_cast<SystemDescriptionTableHeader*>(ptr);
+        return static_cast<RootSystemDescriptorTable*>(ptr);
     }
 
     bool verifySystemHeaderChecksum(SystemDescriptionTableHeader* p) {
@@ -91,15 +111,14 @@ namespace CPU {
         auto l = p->length;
         uint8_t c = 0;
         for (auto i = 0u; i < l; i++) {
-            c += ptr[i];
+            c += (char)ptr[i];
         }
 
         return c == 0;
     }
 
-    SystemDescriptionTableHeader* getAPICHeader(SystemDescriptionTableHeader* rootSystemHeader, uint32_t entryCount) {
-        auto ptr = reinterpret_cast<uintptr_t*>(rootSystemHeader);
-        ptr += sizeof(SystemDescriptionTableHeader) / 4;
+    SystemDescriptionTableHeader* getAPICHeader(RootSystemDescriptorTable* rootSystemHeader, uint32_t entryCount) {
+        auto ptr = reinterpret_cast<uintptr_t*>(&rootSystemHeader->firstTableAddress);
 
         for (auto i = 0u; i < entryCount; i++) {
             auto address = *(ptr + i);
@@ -115,6 +134,6 @@ namespace CPU {
             }
         }
 
-        return rootSystemHeader;
+        return nullptr;
     }
 }

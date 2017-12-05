@@ -1,6 +1,7 @@
 #include "apic.h"
 #include <stdio.h>
 #include <string.h>
+#include "rtc.h"
 
 //TODO: this will all have to be overhauled to handle multiple apics (per cpu)
 namespace APIC {
@@ -31,59 +32,6 @@ namespace APIC {
         writeLocalAPICRegister(Registers::EndOfInterrupt, 0);
     }
 
-    void setupRTC(bool enabled) {
-        uint16_t rtcIndexPort {0x70};
-        uint16_t rtcIOPort {0x71};
-        uint8_t statusRegisterB {0};
-
-        auto setIndex = [=](uint8_t index) {
-            asm("out %0, %1"
-                : //no output
-                : "a" (index), "Nd" (rtcIndexPort));
-        };
-
-        auto writePort = [=](uint8_t value) {
-            asm("out %0, %1"
-                : //no output
-                : "a" (value), "Nd" (rtcIOPort));
-        };
-
-        auto readPort = [=]() {
-            uint8_t result;
-            asm("inb %1, %0"
-                : "=a" (result)
-                : "Nd" (rtcIOPort));
-
-            return result;
-        };
-        
-        setIndex(0x8B);
-        statusRegisterB = readPort();
-        setIndex(0x8B);
-
-        if (enabled) {
-            statusRegisterB |= 0x40;
-        }
-        else {
-            statusRegisterB &= ~0x40;
-        }
-
-        writePort(statusRegisterB);
-
-        setIndex(0x8A);
-        auto statusRegisterA = readPort();
-        setIndex(0x8A);
-        /*
-        0xD corresponds to a rate of 13
-        frequency is calculated as:
-        32768 >> (rate - 1)
-
-        so this gives a rate of 8Hz
-        */
-        writePort((statusRegisterA & 0xF0) | 0xD);
-        
-    }
-
     void setupAPICTimer() {
 
         writeLocalAPICRegister(Registers::LVT_Timer, combineFlags(
@@ -91,10 +39,10 @@ namespace APIC {
             LVT_TimerMode::OneShot
         ));
 
-        writeLocalAPICRegister(Registers::DivideConfiguration, combineFlags(DivideConfiguration::By16));
+        writeLocalAPICRegister(Registers::DivideConfiguration, combineFlags(DivideConfiguration::By1));
         writeLocalAPICRegister(Registers::InitialCount, 0xFFFFFFFF);
 
-        setupRTC(true);
+        RTC::enable(0xD);
     }
 
     uint32_t ticksPerMilliSecond = 0;
@@ -106,16 +54,17 @@ namespace APIC {
 
             writeLocalAPICRegister(Registers::LVT_Timer, combineFlags(LVT_Mask::DisableInterrupt));
             uint32_t ticks = 0xFFFFFFFF - readLocalAPICRegister(Registers::CurrentCount);
-            setupRTC(false);
+            RTC::disable();
             auto ticksPerSecond = ticks * 8; //RTC was using 8Hz rate
             ticksPerMilliSecond = ticksPerSecond / (1000 * (tries + 1));
             
             writeLocalAPICRegister(Registers::InitialCount, 0x0);
-            writeLocalAPICRegister(Registers::DivideConfiguration, combineFlags(DivideConfiguration::By16));
+            writeLocalAPICRegister(Registers::DivideConfiguration, combineFlags(DivideConfiguration::By1));
 
             return true;
         }
         else {
+            RTC::reset();
             tries++;
             return false;
         }
