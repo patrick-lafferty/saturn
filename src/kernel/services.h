@@ -124,6 +124,21 @@ namespace Kernel {
         uint32_t pid;
     };
 
+    struct LinearFrameBufferFound : IPC::Message {
+        LinearFrameBufferFound() {
+            messageId = MessageId;
+            length = sizeof(LinearFrameBufferFound);
+        }
+
+        static uint32_t MessageId;
+        uint32_t address;
+    };
+
+
+    struct KnownHardwareAddresses {
+        uint32_t linearFrameBuffer;    
+    };
+
     inline uint32_t ServiceRegistryMailbox {0};
 
     /*
@@ -156,5 +171,7 @@ namespace Kernel {
         std::vector<ServiceMeta> meta;
         PseudoMessageHandler* pseudoMessageHandlers;
         std::vector<std::vector<uint32_t>> subscribers;
+
+        KnownHardwareAddresses addresses;
     };
 }

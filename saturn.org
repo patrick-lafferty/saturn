@@ -453,3 +453,16 @@ Next steps:
 
 - [ ] device scanner
 - [ ] driver loader
+- [ ] setup iopb
+
+tss iopb:
+kernel tasks get a page of 0's
+user tasks get a page of 1's at the same virtual address
+vmm needs to reserve that page as a special page
+
+aside: instead of print32/64/128, have a shrink() method that resets message.length
+
+-each task gets its own TSS, all at the same virtual address cffff000
+-cffff000 must not be user writeable/readable
+
+NOTE: addr2line usage: addr2line -e sysroot/system/boot/saturn.bin  .text 

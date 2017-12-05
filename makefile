@@ -165,4 +165,8 @@ clean:
 	$(RM) test/libc/libc_test_freestanding.a
 	$(RM) .d/ -rf
 
+iso: 
+	$(RM) sysroot/system/boot/saturn.iso
+	grub-mkrescue -o sysroot/system/boot/saturn.iso sysroot/system
+
 .PHONY: all deps sysroot clean

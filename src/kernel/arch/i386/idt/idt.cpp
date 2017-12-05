@@ -121,7 +121,23 @@ enum class PageFaultError {
     UserMode = 1 << 2
 };
 
-void handlePageFault(uintptr_t virtualAddress, uint32_t errorCode) {
+void panic(CPU::InterruptStackFrame* frame) {
+
+    kprintf("[IDT] General Protection Fault\n");
+            kprintf("GS: %x, FS: %x, ES: %x, DS: %x\n", 
+                frame->gs, frame->fs, frame->es, frame->ds);
+            kprintf("EDI: %x, ESI: %x, EBP: %x, ESP: %x\n", 
+                frame->edi, frame->esi, frame->ebp, frame->esp);
+            kprintf("EBX: %x, EDX: %x, ECX: %x, EAX: %x\n", 
+                frame->ebx, frame->edx, frame->ecx, frame->eax);
+            kprintf("Error code: %x, EIP: %x, CS: %x, EFLAGS: %x\n", 
+                frame->errorCode, frame->eip, frame->cs, frame->eflags);
+            kprintf("RESP: %x, SS: %x\n", 
+                frame->resp, frame->ss);
+    asm volatile("hlt");
+}
+
+bool handlePageFault(uintptr_t virtualAddress, uint32_t errorCode) {
 
     if (errorCode & static_cast<uint32_t>(PageFaultError::ProtectionViolation)) {
         kprintf("[IDT] Page fault: protection violation [%x]\n", virtualAddress);
@@ -143,6 +159,8 @@ void handlePageFault(uintptr_t virtualAddress, uint32_t errorCode) {
             auto physicalPage = Memory::currentPMM->allocatePage(1);
             Memory::currentVMM->map(virtualAddress, physicalPage);
             Memory::currentPMM->finishAllocation(virtualAddress, 1);
+
+            return true;
         }
         else if (pageStatus == Memory::PageStatus::Mapped) {
             //this shouldn't happen?
@@ -151,9 +169,11 @@ void handlePageFault(uintptr_t virtualAddress, uint32_t errorCode) {
         }
         else {
             kprintf("[IDT] Illegal Memory Access: %x\n", virtualAddress);     
-            asm volatile("hlt");
+            //asm volatile("hlt");
         }
     }
+
+    return false;
 }
 
 void handleSystemCall(CPU::InterruptStackFrame* frame) {
@@ -234,7 +254,9 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
             uintptr_t virtualAddress;
             asm("movl %%CR2, %%eax" : "=a"(virtualAddress));
 
-            handlePageFault(virtualAddress, frame->errorCode); 
+            if (!handlePageFault(virtualAddress, frame->errorCode)) {
+                panic(frame);
+            } 
             break;
         }
         case 48:
