@@ -34,6 +34,7 @@ ARCH_OBJS = \
 	$(ARCHDIR)/cpu/acpi.o \
 	$(ARCHDIR)/cpu/initialize_sse.o \
 	$(ARCHDIR)/cpu/pic.o \
+	$(ARCHDIR)/cpu/rtc.o \
 	$(ARCHDIR)/cpu/apic.o \
 	$(ARCHDIR)/cpu/change_process.o \
 	$(ARCHDIR)/cpu/tss.o \
