@@ -18,6 +18,7 @@ namespace Kernel {
     uint32_t NotifyServiceRegistered::MessageId;
     uint32_t RunProgram::MessageId;
     uint32_t RunResult::MessageId;
+    uint32_t LinearFrameBufferFound::MessageId;
 
     ServiceRegistry::ServiceRegistry() {
         auto count = static_cast<uint32_t>(ServiceType::ServiceTypeEnd) + 1;
@@ -41,6 +42,7 @@ namespace Kernel {
         IPC::registerMessage<NotifyServiceRegistered>();
         IPC::registerMessage<RunProgram>();
         IPC::registerMessage<RunResult>();
+        IPC::registerMessage<LinearFrameBufferFound>();
     }
 
     void ServiceRegistry::receiveMessage(IPC::Message* message) {
@@ -95,6 +97,12 @@ namespace Kernel {
                 meta[index].ready = true;
                 notifySubscribers(index);
             }
+        }
+        else if (message->messageId == LinearFrameBufferFound::MessageId) {
+            auto msg = IPC::extractMessage<LinearFrameBufferFound>(
+                    *static_cast<IPC::MaximumMessageBuffer*>(message));
+
+            addresses.linearFrameBuffer = msg.address;
         }
     }
 
@@ -222,9 +230,21 @@ namespace Kernel {
                 }
 
                 grantIOPort16(0x1ce, task->tss->ioPermissionBitmap);
+                grantIOPort16(0x1cf, task->tss->ioPermissionBitmap);
 
-                GenericServiceMeta genericMeta;
-                task->mailbox->send(&genericMeta);
+                auto linearFrameBuffer = task->virtualMemoryManager->allocatePages(470);
+                auto pageFlags = 
+                    static_cast<int>(Memory::PageTableFlags::Present)
+                    | static_cast<int>(Memory::PageTableFlags::AllowWrite)
+                    | static_cast<int>(Memory::PageTableFlags::AllowUserModeAccess);
+
+                for (int i = 0; i < 470; i++) {
+                    task->virtualMemoryManager->map(linearFrameBuffer + 0x1000 * i, addresses.linearFrameBuffer + 0x1000 * i, pageFlags);
+                }
+
+                VGAServiceMeta meta;
+                meta.vgaAddress = linearFrameBuffer;
+                task->mailbox->send(&meta);
 
                 break;
             }

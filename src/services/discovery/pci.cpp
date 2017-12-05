@@ -133,6 +133,9 @@ namespace Discovery::PCI {
     void loadDriver(KnownDevices type) {
         switch(type) {
             case KnownDevices::BochsVBE: {
+                Kernel::LinearFrameBufferFound found;
+                found.address = 0xfd000008;
+                send(IPC::RecipientType::ServiceRegistryMailbox, &found);
                 Startup::runProgram("/bin/bochsGraphicsAdaptor.service");
                 break;
             }
