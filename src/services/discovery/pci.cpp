@@ -77,7 +77,6 @@ namespace Discovery::PCI {
 
     std::vector<Device> discoverDevices(uint8_t bus) {
         std::vector<Device> devices;
-        sleep(2000);
 
         const uint8_t devicesPerBridge = 32;
 
@@ -104,6 +103,10 @@ namespace Discovery::PCI {
             for (uint8_t functionId = 0; functionId < lastFunction; functionId++) {
                 id = Identification{readRegister(getAddress(bus, deviceId, functionId, 0))};
 
+                /*
+                even though a device may be multifunctional, not all functions exist.
+                it could have only functions 0 and 4 and still be valid
+                */
                 if (!id.isValid()) {
                     continue;
                 }
@@ -112,27 +115,10 @@ namespace Discovery::PCI {
                 char functionName[30 + 2];
                 memset(functionName, '\0', sizeof(functionName));
                 sprintf(functionName, "%s/%d", deviceName, functionId);
-                
-                {
-                    char vendorIdName[30 + 13];
-                    memset(vendorIdName, '\0', sizeof(vendorIdName));
-                    sprintf(vendorIdName, "%s/vendorId", functionName);
-                    HardwareFileSystem::writeTransaction(vendorIdName, id.vendorId, Vostok::ArgTypes::Uint32);
-                }
 
-                {
-                    char classCode[30 + 13];
-                    memset(classCode, '\0', sizeof(classCode));
-                    sprintf(classCode, "%s/classCode", functionName);
-                    HardwareFileSystem::writeTransaction(classCode, classReg.classCode, Vostok::ArgTypes::Uint32);
-                }
-
-                {
-                    char subclassCode[40 + 13];
-                    memset(subclassCode, '\0', sizeof(subclassCode));
-                    sprintf(subclassCode, "%s/subclassCode", functionName);
-                    HardwareFileSystem::writeTransaction(subclassCode, classReg.subclass, Vostok::ArgTypes::Uint32);
-                }
+                performHardwareTransaction("%s/vendorId", functionName, id.vendorId, Vostok::ArgTypes::Uint32);
+                performHardwareTransaction("%s/classCode", functionName, classReg.classCode, Vostok::ArgTypes::Uint32);
+                performHardwareTransaction("%s/subclassCode", functionName, classReg.subclass, Vostok::ArgTypes::Uint32);
                 
                 for (auto offset = 0x10u; offset < 0x28; offset += 4) {
                     char barName[30 + 8];
