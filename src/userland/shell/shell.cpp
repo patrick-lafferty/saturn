@@ -359,7 +359,14 @@ namespace Shell {
 
                 switch(c) {
                     case 8: {
+                        //backspace
                         clearCursor(cursorPosition + promptLength + 1);
+
+                        if (index != cursorPosition) {
+                            memmove(inputBuffer + cursorPosition, inputBuffer + cursorPosition + 1, index - cursorPosition);
+                        }
+
+                        inputBuffer[index] = '\0';
 
                         if (index > 0) {
                             int a = cursorPosition + promptLength;
@@ -372,6 +379,7 @@ namespace Shell {
                         break;
                     }
                     case 13: {
+                        //newline
                         clearCursor(cursorPosition + promptLength + 1, inputBuffer[cursorPosition]);
                         printf("\n");
 

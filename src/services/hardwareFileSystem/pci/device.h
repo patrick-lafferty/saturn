@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../object.h"
+#include "function.h"
 #include <string_view>
 
 namespace HardwareFileSystem::PCI {
@@ -26,27 +27,17 @@ namespace HardwareFileSystem::PCI {
     private:
 
         enum class FunctionId {
-
         };
+
+        void summary(uint32_t requesterTaskId, uint32_t requestId);
 
         enum class PropertyId {
             VendorId,
             DeviceId,
-            Bar0,
-            Bar1,
-            Bar2,
-            Bar3,
-            Bar4,
-            Bar5
         };
 
         uint16_t vendorId;
         uint16_t deviceId;
-        uint32_t bar0;
-        uint32_t bar1;
-        uint32_t bar2;
-        uint32_t bar3;
-        uint32_t bar4;
-        uint32_t bar5;
+        FunctionObject function[8];
     };
 }

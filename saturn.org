@@ -468,7 +468,7 @@ aside: instead of print32/64/128, have a shrink() method that resets message.len
 NOTE: addr2line usage: addr2line -e sysroot/system/boot/saturn.bin  .text 
 
 todo:
-** [ ] find out why it wont boot in virtualbox
+** find out why it wont boot in virtualbox
    - it was trying to read RSDT @ 0xfff0000, and the physical mem manager
      overwrote it with the address of the next free page
 ** [ ] ATA driver

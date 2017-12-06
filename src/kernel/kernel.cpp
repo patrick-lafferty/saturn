@@ -120,7 +120,7 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(FakeFileSystem::service)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(HardwareFileSystem::service)));
     scheduler.scheduleTask(scheduler.createKernelTask(reinterpret_cast<uint32_t>(HardwareFileSystem::detectHardware)));
-    //scheduler.scheduleTask(scheduler.createKernelTask(reinterpret_cast<uint32_t>(Discovery::discoverDevices)));
+    scheduler.scheduleTask(scheduler.createKernelTask(reinterpret_cast<uint32_t>(Discovery::discoverDevices)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(Startup::service)));
 
     scheduler.enterIdle();

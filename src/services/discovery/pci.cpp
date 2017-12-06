@@ -56,7 +56,7 @@ namespace Discovery::PCI {
                         bridge.secondaryBus = busInfo.secondaryBusNumber;
                     }
 
-                    bridge.isMultiFunction = header.isMultiFunction;
+                    bridge.isMultiFunction = header.headerType & (1 << 7);
                     bridge.exists = true;
 
                     return bridge;
@@ -67,35 +67,78 @@ namespace Discovery::PCI {
         return bridge;
     }
 
+    template<typename T>
+    void performHardwareTransaction(const char* path, const char* subpath, T value, Vostok::ArgTypes type) {
+        char buffer[100];
+        memset(buffer, '\0', sizeof(buffer));
+        sprintf(buffer, path, subpath);
+        HardwareFileSystem::writeTransaction(buffer, value, type);
+    }
+
     std::vector<Device> discoverDevices(uint8_t bus) {
         std::vector<Device> devices;
+        sleep(2000);
 
         const uint8_t devicesPerBridge = 32;
 
         for (uint8_t deviceId = 1; deviceId < devicesPerBridge; deviceId++) {
             auto id = Identification{readRegister(getAddress(bus, deviceId, 0, 0))};
 
-            if (id.isValid()) {
-                char deviceName[30];
-                memset(deviceName, '\0', sizeof(deviceName));
-                sprintf(deviceName, "/system/hardware/pci/host0/%d", deviceId);
+            if (!id.isValid()) {
+                continue;
+            }
 
-                char vendorIdName[30 + 11];
-                memset(vendorIdName, '\0', sizeof(vendorIdName));
-                sprintf(vendorIdName, "%s/vendorId", deviceName);
+            char deviceName[30];
+            memset(deviceName, '\0', sizeof(deviceName));
+            sprintf(deviceName, "/system/hardware/pci/host0/%d", deviceId);
 
-                HardwareFileSystem::writeTransaction(vendorIdName, id.vendorId, Vostok::ArgTypes::Uint32);
+            performHardwareTransaction("%s/vendorId", deviceName, id.vendorId, Vostok::ArgTypes::Uint32);
+            performHardwareTransaction("%s/deviceId", deviceName, id.deviceId, Vostok::ArgTypes::Uint32);
 
-                char deviceIdName[30 + 11];
-                memset(deviceIdName, '\0', sizeof(deviceIdName));
-                sprintf(deviceIdName, "%s/deviceId", deviceName);
-                HardwareFileSystem::writeTransaction(deviceIdName, id.deviceId, Vostok::ArgTypes::Uint32);
+            auto header = Header{readRegister(getAddress(bus, deviceId, 0, 0x0c))};
+            auto lastFunction = 1;
+            if (header.isMultiFunction()) {
+                lastFunction = 8;
+            }
 
+            for (uint8_t functionId = 0; functionId < lastFunction; functionId++) {
+                id = Identification{readRegister(getAddress(bus, deviceId, functionId, 0))};
+
+                if (!id.isValid()) {
+                    continue;
+                }
+
+                auto classReg = Class{readRegister(getAddress(bus, deviceId, functionId, 0x08))};
+                char functionName[30 + 2];
+                memset(functionName, '\0', sizeof(functionName));
+                sprintf(functionName, "%s/%d", deviceName, functionId);
+                
+                {
+                    char vendorIdName[30 + 13];
+                    memset(vendorIdName, '\0', sizeof(vendorIdName));
+                    sprintf(vendorIdName, "%s/vendorId", functionName);
+                    HardwareFileSystem::writeTransaction(vendorIdName, id.vendorId, Vostok::ArgTypes::Uint32);
+                }
+
+                {
+                    char classCode[30 + 13];
+                    memset(classCode, '\0', sizeof(classCode));
+                    sprintf(classCode, "%s/classCode", functionName);
+                    HardwareFileSystem::writeTransaction(classCode, classReg.classCode, Vostok::ArgTypes::Uint32);
+                }
+
+                {
+                    char subclassCode[40 + 13];
+                    memset(subclassCode, '\0', sizeof(subclassCode));
+                    sprintf(subclassCode, "%s/subclassCode", functionName);
+                    HardwareFileSystem::writeTransaction(subclassCode, classReg.subclass, Vostok::ArgTypes::Uint32);
+                }
+                
                 for (auto offset = 0x10u; offset < 0x28; offset += 4) {
-                    char barName[30 + 6];
+                    char barName[30 + 8];
                     memset(barName, '\0', sizeof(barName));
-                    sprintf(barName, "%s/bar%d", deviceName, (offset - 0x10) / 4);
-                    auto bar = readRegister(getAddress(bus, deviceId, 0, offset));
+                    sprintf(barName, "%s/bar%d", functionName, (offset - 0x10) / 4);
+                    auto bar = readRegister(getAddress(bus, deviceId, functionId, offset));// & 0xFFFFFFF0;
                     HardwareFileSystem::writeTransaction(barName, bar, Vostok::ArgTypes::Uint32);
                 }
 
@@ -131,6 +174,8 @@ namespace Discovery::PCI {
     }
 
     void loadDriver(KnownDevices type) {
+        return;//dont want this for virtualbox yet
+
         switch(type) {
             case KnownDevices::BochsVBE: {
                 Kernel::LinearFrameBufferFound found;
@@ -157,6 +202,8 @@ namespace Discovery::PCI {
         if (!hostBridge.exists) {
             return;
         }
+
+        if (hostBridge.isMultiFunction) kprintf("host is MF\n");
 
         auto devices = discoverDevices(hostBridge.bus); 
         bool loaded[static_cast<int>(KnownDevices::Unknown)];

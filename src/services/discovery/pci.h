@@ -22,7 +22,7 @@ namespace Discovery::PCI {
             }
 
             bool isValid() {
-                return vendorId != 0xFFFF && deviceId != 0xFFFF;
+                return vendorId != 0xFFFF;// && deviceId != 0xFFFF;
             }
         };
 
@@ -49,9 +49,13 @@ namespace Discovery::PCI {
         struct Header {
             uint8_t cacheLineSize;
             uint8_t latencyTimer;
-            uint8_t headerType : 7;
-            bool isMultiFunction : 1;
+            uint8_t headerType;// : 7;
+            //bool isMultiFunction : 1;
             uint8_t builtInSelfTest;
+
+            bool isMultiFunction() {
+                return headerType & 0x80;
+            }
 
             Header(uint32_t word) {
                 cacheLineSize = word & 0xFF;
