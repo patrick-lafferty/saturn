@@ -28,6 +28,9 @@ namespace HardwareFileSystem::PCI {
 
         bool exists() const;
 
+        uint8_t getClassCode() const {return classCode;}
+        uint8_t getSubClassCode() const {return subclassCode;}
+
     private:
 
         enum class FunctionId {

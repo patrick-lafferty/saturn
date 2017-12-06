@@ -451,9 +451,9 @@ Next steps:
 
 * Step 12: PCI
 
-- [ ] device scanner
-- [ ] driver loader
-- [ ] setup iopb
+- [X] device scanner
+- [X] driver loader
+- [X] setup iopb
 
 tss iopb:
 kernel tasks get a page of 0's
@@ -474,3 +474,10 @@ todo:
 ** [ ] ATA driver
 ** [ ] ext2 filesystem
 ** [ ] elf loader
+
+* Interlude
+
+-need to develop a good debugger
+-able to pick a vmm to activate to view a user address space
+-examine memory
+-addr2line functionality

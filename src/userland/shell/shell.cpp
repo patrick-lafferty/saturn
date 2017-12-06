@@ -83,11 +83,7 @@ namespace Shell {
         }
     }
 
-    void doRead(uint32_t descriptor) {
-        bool success {false};
-        auto r = readSignature(descriptor, success); 
-        Vostok::ArgBuffer args{r.buffer, sizeof(r.buffer)};
-
+    void printResult(Vostok::ArgBuffer& args) {
         auto type = args.readType();
         if (type == Vostok::ArgTypes::Property) {
             printf("Property ");
@@ -161,6 +157,13 @@ namespace Shell {
         }
     }
 
+    void doRead(uint32_t descriptor) {
+        bool success {false};
+        auto r = readSignature(descriptor, success); 
+        Vostok::ArgBuffer args{r.buffer, sizeof(r.buffer)};
+        printResult(args);        
+    }
+
     void doWriteFunction_impl(uint32_t descriptor, VFS::ReadResult& sig) {
         write(descriptor, sig.buffer, sizeof(sig.buffer));
 
@@ -188,7 +191,8 @@ namespace Shell {
 
         if (buffer.messageId == VFS::ReadResult::MessageId) {
             auto msg = IPC::extractMessage<VFS::ReadResult>(buffer);
-            printf("%s", msg.buffer);
+            Vostok::ArgBuffer args{msg.buffer, sizeof(msg.buffer)};
+            printResult(args); 
         }
     }
 
@@ -230,7 +234,7 @@ namespace Shell {
         }
     }
 
-    void doWrite(uint32_t descriptor, string_view arg) {
+    void doWrite(uint32_t descriptor, std::vector<string_view> arg, int startIndex) {
         bool success {false};
         auto sig = readSignature(descriptor, success);
         Vostok::ArgBuffer args{sig.buffer, sizeof(sig.buffer)};
@@ -240,18 +244,29 @@ namespace Shell {
         if (type == Vostok::ArgTypes::Function) {
             auto expectedType = args.peekType();
 
-            if (expectedType == Vostok::ArgTypes::Uint32) {
-                char argTerminated[arg.length() + 1];
-                arg.copy(argTerminated, arg.length());
-                argTerminated[arg.length()] = '\0';
-                args.write(strtol(argTerminated, nullptr, 10), expectedType);
-            }
-            else if (expectedType == Vostok::ArgTypes::Bool) {
-                bool b {false};
-                if (arg.compare("true") == 0) {
-                    b = true;
+            while (expectedType != Vostok::ArgTypes::Void
+                && expectedType != Vostok::ArgTypes::EndArg) {
+
+                auto value = arg[startIndex];
+                
+                if (expectedType == Vostok::ArgTypes::Uint32) {
+                    char argTerminated[value.length() + 1];
+                    value.copy(argTerminated, value.length());
+                    argTerminated[value.length()] = '\0';
+                    args.write(strtol(argTerminated, nullptr, 10), expectedType);
+                    startIndex++;
                 }
-                args.write(b, expectedType);
+                else if (expectedType == Vostok::ArgTypes::Bool) {
+                    bool b {false};
+
+                    if (value.compare("true") == 0) {
+                        b = true;
+                    }
+
+                    args.write(b, expectedType);
+                }
+
+                expectedType = args.readType();
             }
 
             doWriteFunction_impl(descriptor, sig); 
@@ -260,14 +275,14 @@ namespace Shell {
             auto expectedType = args.peekType();
 
             if (expectedType == Vostok::ArgTypes::Uint32) {
-                char argTerminated[arg.length() + 1];
-                arg.copy(argTerminated, arg.length());
-                argTerminated[arg.length()] = '\0';
+                char argTerminated[arg[startIndex].length() + 1];
+                arg[startIndex].copy(argTerminated, arg[startIndex].length());
+                argTerminated[arg[startIndex].length()] = '\0';
                 args.write(strtol(argTerminated, nullptr, 10), expectedType);
             }
             else if (expectedType == Vostok::ArgTypes::Bool) {
                 bool b {false};
-                if (arg.compare("true") == 0) {
+                if (arg[startIndex].compare("true") == 0) {
                     b = true;
                 }
                 args.write(b, expectedType);
@@ -314,7 +329,7 @@ namespace Shell {
             uint32_t descriptor {0};
             if (doOpen(words[1], descriptor)) {
                 if (words.size() > 2) {
-                    doWrite(descriptor, words[2]); 
+                    doWrite(descriptor, words, 2); 
                 }
                 else {
                     doWrite(descriptor);
