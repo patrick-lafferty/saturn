@@ -1,5 +1,10 @@
 #pragma once
 
 namespace ATA {
-    void service();
+    class Driver {
+    public: 
+
+    private:
+    
+    };
 }

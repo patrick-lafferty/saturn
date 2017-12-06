@@ -35,6 +35,8 @@ namespace Discovery::PCI {
             uint8_t subclass;
             uint8_t classCode;
 
+            Class() {}
+
             Class(uint32_t word) {
                 revisionId = word & 0xFF;
                 programmingInterface = (word >> 8) & 0xFF;
@@ -128,11 +130,13 @@ namespace Discovery::PCI {
 
     struct Device {
         StandardConfiguration::Identification id;
+        StandardConfiguration::Class classCode;
         uint8_t index;
     };
 
     enum class KnownDevices {
         BochsVBE,
+        ATADrive,
         Unknown
     };
 }

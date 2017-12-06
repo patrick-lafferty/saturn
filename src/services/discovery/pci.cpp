@@ -128,7 +128,7 @@ namespace Discovery::PCI {
                     HardwareFileSystem::writeTransaction(barName, bar, Vostok::ArgTypes::Uint32);
                 }
 
-                devices.push_back({id, deviceId});
+                devices.push_back({id, classReg, deviceId});
             }
         }
 
@@ -150,24 +150,31 @@ namespace Discovery::PCI {
         return false;
     }
 
-    KnownDevices getDeviceType(Identification id) {
+    KnownDevices getDeviceType(Device& device) {
 
-        if (id.vendorId == 0x1234 && id.deviceId == 0x1111) {
+        if (device.id.vendorId == 0x1234 && device.id.deviceId == 0x1111) {
             return KnownDevices::BochsVBE;
+        }
+        else if (device.classCode.classCode == static_cast<int>(ClassCode::MassStorageController)) {
+            return KnownDevices::ATADrive;
         }
 
         return KnownDevices::Unknown;
     }
 
     void loadDriver(KnownDevices type) {
-        return;//dont want this for virtualbox yet
 
         switch(type) {
             case KnownDevices::BochsVBE: {
-                Kernel::LinearFrameBufferFound found;
+                /*Kernel::LinearFrameBufferFound found;
                 found.address = 0xfd000008;
                 send(IPC::RecipientType::ServiceRegistryMailbox, &found);
                 Startup::runProgram("/bin/bochsGraphicsAdaptor.service");
+                */
+                break;
+            }
+            case KnownDevices::ATADrive: {
+                Startup::runProgram("/bin/ext2fs.service");
                 break;
             }
             default: {
@@ -195,7 +202,7 @@ namespace Discovery::PCI {
         bool loaded[static_cast<int>(KnownDevices::Unknown)];
 
         for (auto& device : devices) {
-            auto type = getDeviceType(device.id);
+            auto type = getDeviceType(device);
 
             if (type != KnownDevices::Unknown
                 && !loaded[static_cast<int>(type)]) {
