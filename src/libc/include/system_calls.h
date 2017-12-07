@@ -34,6 +34,7 @@ void read(uint32_t fileDescriptor, uint32_t length);
 VFS::ReadResult readSynchronous(uint32_t fileDescriptor, uint32_t length);
 
 void write(uint32_t fileDescriptor, const void* data, uint32_t length);
+VFS::WriteResult writeSynchronous(uint32_t fileDescriptor, const void* data, uint32_t length);
 void close(uint32_t fileDescriptor);
 
 void waitForServiceRegistered(Kernel::ServiceType type);

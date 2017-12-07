@@ -67,6 +67,21 @@ void write(uint32_t fileDescriptor, const void* data, uint32_t length) {
     send(IPC::RecipientType::ServiceName, &request);
 }
 
+VFS::WriteResult writeSynchronous(uint32_t fileDescriptor, const void* data, uint32_t length) {
+    write(fileDescriptor, data, length);
+
+    IPC::MaximumMessageBuffer buffer;
+    receive(&buffer);
+
+    if (buffer.messageId == VFS::WriteResult::MessageId) {
+        return IPC::extractMessage<VFS::WriteResult>(buffer);
+    }
+    else {
+        asm("hlt");
+        return {};
+    }
+}
+
 void close(uint32_t fileDescriptor) {
     VFS::CloseRequest request;
     request.fileDescriptor = fileDescriptor;
