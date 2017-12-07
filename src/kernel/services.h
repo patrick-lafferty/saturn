@@ -28,6 +28,31 @@ namespace Kernel {
         ServiceType type;
     };
 
+    enum class DriverType {
+        ATA,
+        DriverTypeEnd
+    };
+
+    struct RegisterDriver : IPC::Message {
+        RegisterDriver() {
+            messageId = MessageId;
+            length = sizeof(RegisterDriver);
+        }
+
+        static uint32_t MessageId;
+        DriverType type;
+    };
+
+    struct RegisterDriverResult : IPC::Message {
+        RegisterDriverResult() {
+            messageId = MessageId;
+            length = sizeof(RegisterDriverResult);
+        }
+
+        static uint32_t MessageId;
+        bool success;
+    };
+
     typedef void (*PseudoMessageHandler)(IPC::Message*);
 
     struct RegisterPseudoService : IPC::Message {
@@ -163,14 +188,17 @@ namespace Kernel {
     private:
         
         bool registerService(uint32_t taskId, ServiceType type);
+        bool registerDriver(uint32_t taskId, DriverType type);
         bool registerPseudoService(ServiceType type, PseudoMessageHandler handler);
         void notifySubscribers(uint32_t index);
         void setupService(uint32_t taskId, ServiceType type);
+        void setupDriver(uint32_t taskId, DriverType type);
 
         uint32_t* taskIds;
         std::vector<ServiceMeta> meta;
         PseudoMessageHandler* pseudoMessageHandlers;
         std::vector<std::vector<uint32_t>> subscribers;
+        uint32_t* driverTaskIds;
 
         KnownHardwareAddresses addresses;
     };

@@ -9,6 +9,8 @@
 namespace Kernel {
 
     uint32_t RegisterService::MessageId;
+    uint32_t RegisterDriver::MessageId;
+    uint32_t RegisterDriverResult::MessageId;
     uint32_t RegisterPseudoService::MessageId;
     uint32_t RegisterServiceDenied::MessageId;
     uint32_t NotifyServiceReady::MessageId;
@@ -25,6 +27,9 @@ namespace Kernel {
         taskIds = new uint32_t[count];
         memset(taskIds, 0, count * sizeof(uint32_t));
 
+        driverTaskIds = new uint32_t[count];
+        memset(driverTaskIds, 0, count * sizeof(uint32_t));
+
         for (auto i = 0u; i < count; i++) {
             meta.push_back({});
             subscribers.push_back({});
@@ -33,6 +38,8 @@ namespace Kernel {
         pseudoMessageHandlers = new PseudoMessageHandler[count];
 
         IPC::registerMessage<RegisterService>();
+        IPC::registerMessage<RegisterDriver>();
+        IPC::registerMessage<RegisterDriverResult>();
         IPC::registerMessage<RegisterPseudoService>();
         IPC::registerMessage<RegisterServiceDenied>();
         IPC::registerMessage<NotifyServiceReady>();
@@ -104,6 +111,12 @@ namespace Kernel {
 
             addresses.linearFrameBuffer = msg.address;
         }
+        else if (message->messageId == RegisterDriver::MessageId) {
+            auto request = IPC::extractMessage<RegisterDriver>(
+                *static_cast<IPC::MaximumMessageBuffer*>(message));
+            
+            registerDriver(request.senderTaskId, request.type);
+        }
     }
 
     void ServiceRegistry::receivePseudoMessage(ServiceType type, IPC::Message* message) {
@@ -130,6 +143,25 @@ namespace Kernel {
         setupService(taskId, type);
 
         taskIds[index] = taskId;
+        return true;
+    }
+
+    bool ServiceRegistry::registerDriver(uint32_t taskId, DriverType type) {
+        if (type == DriverType::DriverTypeEnd) {
+            kprintf("[ServiceRegistry] Tried to register DriverTypeEnd\n");
+            return false;
+        }
+
+        auto index = static_cast<uint32_t>(type);
+
+        if (driverTaskIds[index] != 0) {
+            kprintf("[ServiceRegistry] Tried to register a driver[%d] that's taken\n", index);
+            return false;
+        }
+
+        setupDriver(taskId, type);
+
+        driverTaskIds[index] = taskId;
         return true;
     }
 
@@ -178,7 +210,6 @@ namespace Kernel {
     }
 
     void ServiceRegistry::setupService(uint32_t taskId, ServiceType type) {
-        //TODO: iopb/page map
 
         switch (type) {
             case ServiceType::VGA: {
@@ -250,6 +281,38 @@ namespace Kernel {
             }
             case ServiceType::ServiceTypeEnd: {
                 kprintf("[ServiceRegistry] Tried to setupService a ServiceTypeEnd\n");
+                break;
+            }
+            default: {
+                kprintf("[ServiceRegistry] Unsupported service type\n");   
+            }
+        }
+
+    }
+
+    void ServiceRegistry::setupDriver(uint32_t taskId, DriverType type) {
+
+        switch (type) {
+            
+            case DriverType::ATA: {
+                
+                auto task = currentScheduler->getTask(taskId);
+
+                if (task == nullptr) {
+                    kprintf("[ServiceRegistry] Tried to setupDriver a null task\n");
+                    return;
+                }
+
+                grantIOPortRange(0x1f0, 0x1f7, task->tss->ioPermissionBitmap);
+                grantIOPort8(0x3f6, task->tss->ioPermissionBitmap);
+
+                RegisterDriverResult result;
+                task->mailbox->send(&result);
+
+                break;
+            }
+            case DriverType::DriverTypeEnd: {
+                kprintf("[ServiceRegistry] Tried to setupDriver a DriverTypeEnd\n");
                 break;
             }
             default: {
