@@ -98,6 +98,7 @@ namespace Ext2FileSystem {
     void service() {
         waitForServiceRegistered(ServiceType::VFS);
         registerService();
+        sleep(100);
         auto driver = setup();
         messageLoop(driver);
     }
