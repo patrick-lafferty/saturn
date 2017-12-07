@@ -4,9 +4,12 @@
 #include <services/virtualFileSystem/virtualFileSystem.h>
 #include <vector>
 #include <parsing>
+#include <services/drivers/ata/driver.h>
+#include <services/virtualFileSystem/vostok.h>
 
 using namespace Kernel;
 using namespace VFS;
+using namespace ATA;
 
 namespace Ext2FileSystem {
 
@@ -19,9 +22,71 @@ namespace Ext2FileSystem {
         send(IPC::RecipientType::ServiceName, &request);
     }
 
-    void messageLoop() {
+    uint32_t callFind() {
 
-        printf("Ext2FS started\n");
+        auto openResult = openSynchronous("/system/hardware/pci/find");
+
+        if (!openResult.success) {
+            return -1;
+        }
+
+        auto readResult = readSynchronous(openResult.fileDescriptor, 0);
+
+        if (!readResult.success) {
+            return -1;
+        } 
+        
+        Vostok::ArgBuffer args{readResult.buffer, sizeof(readResult.buffer)};
+        auto type = args.readType();
+
+        if (type != Vostok::ArgTypes::Function) {
+            return -1;
+        }
+
+        args.write(1, Vostok::ArgTypes::Uint32);
+        type = args.readType();
+        args.write(1, Vostok::ArgTypes::Uint32);
+
+        auto writeResult = writeSynchronous(openResult.fileDescriptor, readResult.buffer, sizeof(readResult.buffer));
+
+        if (!writeResult.success) {
+            return -1;
+        }
+
+        return openResult.fileDescriptor;
+    }
+
+    Driver* setup() {
+
+        auto descriptor = callFind();
+
+        if (descriptor == -1) {
+            return nullptr;
+        }
+
+        IPC::MaximumMessageBuffer buffer;
+        receive(&buffer);
+
+        if (buffer.messageId != VFS::ReadResult::MessageId) {
+            return nullptr;
+        }
+
+        auto callResult = IPC::extractMessage<VFS::ReadResult>(buffer);
+        auto args = Vostok::ArgBuffer{callResult.buffer, sizeof(callResult.buffer)};
+        auto type = args.readType();
+
+        if (type != Vostok::ArgTypes::Property) {
+            return nullptr;
+        }
+
+        auto combinedId = args.read<uint32_t>(args.peekType());
+        uint8_t functionId = combinedId & 0xFF;
+        uint8_t deviceId = (combinedId >> 8) & 0xFF;
+
+        return new Driver(deviceId, functionId);
+    }
+
+    void messageLoop(Driver* driver) {
 
         while (true) {
             IPC::MaximumMessageBuffer buffer;
@@ -33,6 +98,7 @@ namespace Ext2FileSystem {
     void service() {
         waitForServiceRegistered(ServiceType::VFS);
         registerService();
-        messageLoop();
+        auto driver = setup();
+        messageLoop(driver);
     }
 }

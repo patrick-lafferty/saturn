@@ -121,7 +121,7 @@ namespace Discovery::PCI {
                 performHardwareTransaction("%s/subclassCode", functionName, classReg.subclass, Vostok::ArgTypes::Uint32);
                 
                 for (auto offset = 0x10u; offset < 0x28; offset += 4) {
-                    char barName[30 + 8];
+                    char barName[100];
                     memset(barName, '\0', sizeof(barName));
                     sprintf(barName, "%s/bar%d", functionName, (offset - 0x10) / 4);
                     auto bar = readRegister(getAddress(bus, deviceId, functionId, offset));// & 0xFFFFFFF0;
