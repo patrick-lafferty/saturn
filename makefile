@@ -168,6 +168,8 @@ clean:
 
 iso: 
 	$(RM) sysroot/system/boot/saturn.iso
+	mkdir sysroot/system/boot/grub -p
+	cp src/grub.cfg sysroot/system/boot/grub
 	grub-mkrescue -o sysroot/system/boot/saturn.iso sysroot/system
 
 .PHONY: all deps sysroot clean
