@@ -1,4 +1,5 @@
 #include "permissions.h"
+#include <stdio.h>
 
 namespace Kernel {
     
@@ -7,7 +8,7 @@ namespace Kernel {
         auto bit = port % 8;
 
         auto byte = iopb + index;
-        *byte &= ~(1 << (7 - bit));
+        *byte &= ~(1 << bit);
     }
     
     void grantIOPort16(uint16_t port, uint8_t volatile* iopb) {
@@ -33,7 +34,7 @@ namespace Kernel {
 
     void grantIOPortRange(uint16_t portStart, uint16_t portEnd, uint8_t volatile* iopb) {
 
-        for (auto port = portStart; port != portEnd; port++) {
+        for (auto port = portStart; port != portEnd + 1; port++) {
             grantIOPort8(port, iopb);
         }
     }
