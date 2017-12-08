@@ -11,6 +11,7 @@ namespace Kernel {
     uint32_t RegisterService::MessageId;
     uint32_t RegisterDriver::MessageId;
     uint32_t RegisterDriverResult::MessageId;
+    uint32_t DriverIrqReceived::MessageId;
     uint32_t RegisterPseudoService::MessageId;
     uint32_t RegisterServiceDenied::MessageId;
     uint32_t NotifyServiceReady::MessageId;
@@ -40,6 +41,7 @@ namespace Kernel {
         IPC::registerMessage<RegisterService>();
         IPC::registerMessage<RegisterDriver>();
         IPC::registerMessage<RegisterDriverResult>();
+        IPC::registerMessage<DriverIrqReceived>();
         IPC::registerMessage<RegisterPseudoService>();
         IPC::registerMessage<RegisterServiceDenied>();
         IPC::registerMessage<NotifyServiceReady>();
@@ -195,6 +197,24 @@ namespace Kernel {
         auto index = static_cast<uint32_t>(type);
 
         return pseudoMessageHandlers[index] != nullptr;
+    }
+
+    bool ServiceRegistry::handleDriverIrq(uint32_t irq) {
+        switch(irq) {
+            case 53: {
+                auto taskId = driverTaskIds[static_cast<uint32_t>(DriverType::ATA)];
+
+                if (taskId != 0) {
+                    DriverIrqReceived msg;
+                    msg.recipientId = taskId;
+                    currentScheduler->sendMessage(IPC::RecipientType::TaskId, &msg);
+
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     void ServiceRegistry::notifySubscribers(uint32_t index) {

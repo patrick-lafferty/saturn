@@ -53,6 +53,15 @@ namespace Kernel {
         bool success;
     };
 
+    struct DriverIrqReceived : IPC::Message {
+        DriverIrqReceived() {
+            messageId = MessageId;
+            length = sizeof(DriverIrqReceived);
+        }
+
+        static uint32_t MessageId;
+    };
+
     typedef void (*PseudoMessageHandler)(IPC::Message*);
 
     struct RegisterPseudoService : IPC::Message {
@@ -184,6 +193,7 @@ namespace Kernel {
         void receivePseudoMessage(ServiceType type, IPC::Message* message);
         uint32_t getServiceTaskId(ServiceType type);
         bool isPseudoService(ServiceType type);
+        bool handleDriverIrq(uint32_t irq);
 
     private:
         
