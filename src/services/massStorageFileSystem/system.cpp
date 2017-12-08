@@ -6,12 +6,13 @@
 #include <parsing>
 #include <services/drivers/ata/driver.h>
 #include <services/virtualFileSystem/vostok.h>
+#include <crc>
 
 using namespace Kernel;
 using namespace VFS;
 using namespace ATA;
 
-namespace Ext2FileSystem {
+namespace MassStorageFileSystem {
 
     void registerService() {
         MountRequest request;
@@ -56,7 +57,7 @@ namespace Ext2FileSystem {
         return openResult.fileDescriptor;
     }
 
-    Driver* setup() {
+    Driver* setupDriver() {
 
         auto descriptor = callFind();
 
@@ -86,12 +87,49 @@ namespace Ext2FileSystem {
         return new Driver(deviceId, functionId);
     }
 
-    void messageLoop(Driver* driver) {
+    void MassStorageController::messageLoop() {
+        while (true) {
+            IPC::MaximumMessageBuffer buffer;
+            receive(&buffer);
+        }
+    }
 
+    void MassStorageController::preloop() {
         while (true) {
             IPC::MaximumMessageBuffer buffer;
             receive(&buffer);
 
+            if (buffer.messageId == DriverIrqReceived::MessageId) {
+                driver->receiveSector(reinterpret_cast<uint16_t*>(&gptHeader));
+
+sleep(2000);
+                auto s = gptHeader.signature;
+
+                printf("%x %x %x %x %x %x %x %x\n",
+                    s[0], 
+                    s[1], 
+                    s[2], 
+                    s[3], 
+                    s[4], 
+                    s[5], 
+                    s[6], 
+                    s[7]);
+
+                printf("%x %x\n", gptHeader.headerSize, gptHeader.headerCRC32);
+
+                /*
+                make sure we got a valid GPT header by checking the crc
+                */
+                auto headerCRC = gptHeader.headerCRC32;
+                gptHeader.headerCRC32 = 0;
+                auto ptr = reinterpret_cast<uint8_t*>(&gptHeader);
+
+                if (!CRC::check32(headerCRC, ptr, sizeof(GPTHeader) - sizeof(GPTHeader::remaining))) {
+                    printf("[Mass Storage] Invalid GPT Header, CRC32 check failed\n");
+                }
+
+                return;
+            }
         }
     }
 
@@ -99,7 +137,14 @@ namespace Ext2FileSystem {
         waitForServiceRegistered(ServiceType::VFS);
         registerService();
         sleep(100);
-        auto driver = setup();
-        messageLoop(driver);
+        auto driver = setupDriver();
+        auto massStorage = new MassStorageController(driver);
+        massStorage->preloop();
+        massStorage->messageLoop();
+    }
+
+    MassStorageController::MassStorageController(Driver* driver) {
+        this->driver = driver;
+        driver->queueReadSector(1);
     }
 }

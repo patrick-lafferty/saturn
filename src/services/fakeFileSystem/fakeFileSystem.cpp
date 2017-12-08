@@ -10,7 +10,7 @@
 #include <services/keyboard/keyboard.h>
 #include <userland/shell/shell.h>
 #include <services/drivers/bochsGraphicsAdaptor/driver.h>
-#include <services/ext2FileSystem/system.h>
+#include <services/massStorageFileSystem/system.h>
 
 using namespace Kernel;
 using namespace VFS;
@@ -76,8 +76,8 @@ namespace FakeFileSystem {
                 else if (strcmp(request.path, "/bin/bochsGraphicsAdaptor.service") == 0) {
                     entryPoint = reinterpret_cast<uintptr_t>(BGA::service);
                 }
-                else if (strcmp(request.path, "/bin/ext2fs.service") == 0) {
-                    entryPoint = reinterpret_cast<uintptr_t>(Ext2FileSystem::service);
+                else if (strcmp(request.path, "/bin/massStorage.service") == 0) {
+                    entryPoint = reinterpret_cast<uintptr_t>(MassStorageFileSystem::service);
                 }
                 else {
                     result.success = false;
