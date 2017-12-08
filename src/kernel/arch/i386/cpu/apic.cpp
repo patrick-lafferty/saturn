@@ -418,6 +418,17 @@ namespace APIC {
                 IO_TriggerMode::Edge
             ), 0);
 
+            /*
+            change ATA irq 14 to be 53
+            */
+            writeIOAPICRegister(ioAPICAddress, 14, combineFlags(
+                53,
+                IO_DeliveryMode::Fixed,
+                IO_DestinationMode::Physical,
+                IO_Polarity::ActiveHigh,
+                IO_TriggerMode::Edge
+            ), 0);
+
         setupAPICTimer();
     }
 }

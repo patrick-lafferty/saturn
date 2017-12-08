@@ -304,12 +304,11 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
                 }
             }
             else if (frame->interruptNumber == 52) {
-                
                 APIC::signalEndOfInterrupt();
                 Kernel::currentScheduler->notifyTimesliceExpired();
                 return;
             }
-            else {
+            else if (!Kernel::ServiceRegistryInstance->handleDriverIrq(frame->interruptNumber)) {
                 kprintf("[IDT] Unhandled APIC IRQ %d\n", frame->interruptNumber);
             }
             APIC::signalEndOfInterrupt();
