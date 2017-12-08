@@ -49,6 +49,7 @@ namespace ATA {
 
     enum class Command {
         Reset = 0x08,
+        ReadSectors = 0x20,
         Identify = 0xEC
     };
 
@@ -155,6 +156,9 @@ namespace ATA {
     public: 
 
         Driver(uint8_t device, uint8_t function);
+
+        void queueReadSector(uint32_t address);
+        void receiveSector(uint16_t* buffer);
         
     private:
 

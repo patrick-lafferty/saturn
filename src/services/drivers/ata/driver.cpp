@@ -100,20 +100,6 @@ namespace ATA {
         for (int i = 0; i < 256; i++) {
             *ptr++ = readRegister16(Register::Data);
         }
-
-        reportDeviceIdentification(data);
-    }
-
-    void readSector() {
-        /*
-        Note: 
-
-        Don't write to the same IO port twice in a row, apparently
-        its slower than doing two writes to different ports
-
-        Each register is 8bits wide, some take a 16 bit value, 
-        the high byte needs to be written before the low byte
-        */
     }
 
     Driver::Driver(uint8_t device, uint8_t function) {
@@ -128,8 +114,63 @@ namespace ATA {
         if (buffer.messageId == Kernel::RegisterDriverResult::MessageId) {
             auto result = readRegister8(Register::Command);
             resetDevice(Device::Master);
-            identifyDevice(Device::Master);
         }
+    }
+
+    void Driver::queueReadSector(uint32_t address) {
+        //readSector();
+        /*
+        Note: 
+
+        Don't write to the same IO port twice in a row, apparently
+        its slower than doing two writes to different ports
+
+        Each register is 8bits wide, some take a 16 bit value, 
+        the high byte needs to be written before the low byte
+        */
+        writeRegister(Register::SectorCount, 1);
+        writeRegister(Register::LBALow, address & 0xFF);
+        writeRegister(Register::LBAMid, (address >> 8) & 0xFF);
+        writeRegister(Register::LBAHigh, (address >> 16) & 0xFF);
+        writeRegister(Register::Command, static_cast<uint8_t>(Command::ReadSectors));
+    }
+
+    //void Driver::handleIrq() {
+    void Driver::receiveSector(uint16_t* buffer) {
+        auto result = readRegister8(Register::Command);
+
+        //printf("[ATA] HandleIrq status: %x\n", result);
+        //
+
+        if (isBusy(result)) {
+            return;
+        }
+
+        for(int i = 0; i < 256; i++) {
+            *buffer++ = readRegister16(Register::Data);
+        }
+
+        //uint16_t buffer[256];
+        //uint32_t count {0};
+
+        /*while (hasData(readRegister8(Register::Command))) {
+            buffer[count] = readRegister16(Register::Data);
+            count++;
+
+            if (count == 256) {
+                break;
+            }
+        }*/
+
+        /*printf("[ATA] Read %x words\n", count);
+
+        for (auto i = 0u; i < count; i += 16) {
+            printf("%x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x  \n",
+                buffer[i + 0], buffer[i + 1], buffer[i + 2], buffer[i + 3], 
+                buffer[i + 4], buffer[i + 5], buffer[i + 6], buffer[i + 7],
+                buffer[i + 8], buffer[i + 9], buffer[i + 10], buffer[i + 11],
+                buffer[i + 12], buffer[i + 13], buffer[i + 14], buffer[i + 15]);
+        }*/
     }
 
     void Driver::selectDevice(Device device) {
@@ -139,18 +180,17 @@ namespace ATA {
             return;
         }
 
-        writeRegister(Register::Device, 0x80 | static_cast<uint8_t>(device) << 4);
+        writeRegister(Register::Control, 4);
+        wait();
+        writeRegister(Register::Control, 2);
+        wait();
+
+        writeRegister(Register::Device, 0xE0 | static_cast<uint8_t>(device) << 4);
         uint8_t result {0};
 
         for (int i = 0; i < 5; i++) {
             result = readRegister8(Register::Control);
         }
-
-        writeRegister(Register::Control, 0);
-        wait();
-        writeRegister(Register::Control, 4);
-        wait();
-        writeRegister(Register::Control, 1);
 
         currentDevice = Device::Master;
     }
@@ -158,6 +198,8 @@ namespace ATA {
     void Driver::resetDevice(Device device) {
         selectDevice(device);
         writeRegister(Register::Command, static_cast<uint8_t>(Command::Reset));
-        auto result = readRegister8(Register::Command);
+
+        writeRegister(Register::Control, 0);
+        wait();
     }
 }
