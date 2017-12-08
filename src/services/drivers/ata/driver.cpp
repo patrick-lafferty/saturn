@@ -135,42 +135,22 @@ namespace ATA {
         writeRegister(Register::Command, static_cast<uint8_t>(Command::ReadSectors));
     }
 
-    //void Driver::handleIrq() {
     void Driver::receiveSector(uint16_t* buffer) {
         auto result = readRegister8(Register::Command);
 
-        //printf("[ATA] HandleIrq status: %x\n", result);
-        //
-
         if (isBusy(result)) {
+            printf("[ATA] receiveSector failed: busy\n");
+            return;
+        }
+
+        if (hasError(result)) {
+            printf("[ATA] receiveSector failed: error\n");
             return;
         }
 
         for(int i = 0; i < 256; i++) {
             *buffer++ = readRegister16(Register::Data);
         }
-
-        //uint16_t buffer[256];
-        //uint32_t count {0};
-
-        /*while (hasData(readRegister8(Register::Command))) {
-            buffer[count] = readRegister16(Register::Data);
-            count++;
-
-            if (count == 256) {
-                break;
-            }
-        }*/
-
-        /*printf("[ATA] Read %x words\n", count);
-
-        for (auto i = 0u; i < count; i += 16) {
-            printf("%x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x  \n",
-                buffer[i + 0], buffer[i + 1], buffer[i + 2], buffer[i + 3], 
-                buffer[i + 4], buffer[i + 5], buffer[i + 6], buffer[i + 7],
-                buffer[i + 8], buffer[i + 9], buffer[i + 10], buffer[i + 11],
-                buffer[i + 12], buffer[i + 13], buffer[i + 14], buffer[i + 15]);
-        }*/
     }
 
     void Driver::selectDevice(Device device) {

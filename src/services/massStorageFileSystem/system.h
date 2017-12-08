@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <vector>
 
 namespace ATA {
     class Driver;
@@ -9,7 +10,16 @@ namespace ATA {
 namespace MassStorageFileSystem {
     void service();
 
+    uint64_t convert64ToLittleEndian(uint64_t input);
+    uint32_t convert32ToLittleEndian(uint32_t input);
+    uint16_t convert16ToLittleEndian(uint16_t input);
+
     struct GUID {
+        GUID() {}
+        GUID(uint32_t a, uint16_t b, uint16_t c, uint8_t d[8]);
+        GUID(uint32_t a, uint16_t b, uint16_t c, uint64_t d);
+        bool matches(uint32_t a1, uint16_t b1, uint16_t c1, uint64_t d1);
+            
         uint32_t a;
         uint16_t b;
         uint16_t c;
@@ -35,7 +45,12 @@ namespace MassStorageFileSystem {
     };
 
     struct Partition {
-
+        GUID partitionType;
+        GUID id;
+        uint64_t firstLBA;
+        uint64_t lastLBA;
+        uint64_t attributeFlags;
+        uint8_t name[72];
     };
 
     enum class PendingDiskCommand {
@@ -56,5 +71,6 @@ namespace MassStorageFileSystem {
         ATA::Driver* driver;
         GPTHeader gptHeader;
         PendingDiskCommand pendingCommand {PendingDiskCommand::None};
+        std::vector<Partition> partitions;
     };
 }
