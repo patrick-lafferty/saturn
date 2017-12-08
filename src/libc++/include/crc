@@ -1,0 +1,46 @@
+#pragma once
+
+#include <stdint.h>
+
+/*
+Implementation based off of RFC1952
+*/
+
+namespace CRC {
+
+    inline uint32_t lookup32[256];
+    inline bool needToComputeLookup {true};
+
+    void computeLookupTable() {
+        for (uint32_t i = 0; i < 256; i++) {
+            auto word = i;
+
+            for (int b = 0; b < 8; b++) {
+                if (word & 1) {
+                    word = 0xEDB88320u ^ (word >> 1);
+                }
+                else {
+                    word = word >> 1;
+                }
+            }
+
+            lookup32[i] = word;
+        }
+    }
+
+    bool check32(uint32_t originalCRC, uint8_t* buffer, uint32_t length) {
+        if (needToComputeLookup) {
+            needToComputeLookup = false;
+            computeLookupTable();
+        }
+
+        uint32_t crc = 0xFFFFFFFF;
+
+        for (int i = 0; i < length; i++) {
+            auto index = (crc ^ buffer[i]) & 0xFF;
+            crc = lookup32[index] ^ (crc >> 8);
+        }
+
+        return originalCRC == ~crc;
+    }
+}
