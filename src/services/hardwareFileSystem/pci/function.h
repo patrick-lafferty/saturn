@@ -43,22 +43,28 @@ namespace HardwareFileSystem::PCI {
             VendorId,
             ClassCode,
             SubclassCode,
+            Interface,
             Bar0,
             Bar1,
             Bar2,
             Bar3,
             Bar4,
-            Bar5
+            Bar5,
+            InterruptLine,
+            InterruptPin
         };
 
         uint16_t vendorId;
         uint8_t classCode;
         uint8_t subclassCode;
+        uint8_t interface;
         uint32_t bar0;
         uint32_t bar1;
         uint32_t bar2;
         uint32_t bar3;
         uint32_t bar4;
         uint32_t bar5;
+        uint32_t interruptLine;
+        uint32_t interruptPin;
     };
 }

@@ -22,12 +22,15 @@ namespace HardwareFileSystem::PCI {
 
         args.writeValueWithType("classCode", ArgTypes::Cstring);
         args.writeValueWithType("subclassCode", ArgTypes::Cstring);
+        args.writeValueWithType("interface", ArgTypes::Cstring);
         args.writeValueWithType("bar0", ArgTypes::Cstring);
         args.writeValueWithType("bar1", ArgTypes::Cstring);
         args.writeValueWithType("bar2", ArgTypes::Cstring);
         args.writeValueWithType("bar3", ArgTypes::Cstring);
         args.writeValueWithType("bar4", ArgTypes::Cstring);
         args.writeValueWithType("bar5", ArgTypes::Cstring);
+        args.writeValueWithType("interruptLine", ArgTypes::Cstring);
+        args.writeValueWithType("interruptPin", ArgTypes::Cstring);
 
         args.writeType(ArgTypes::EndArg);
 
@@ -112,6 +115,9 @@ namespace HardwareFileSystem::PCI {
         else if (name.compare("subclassCode") == 0) {
             return static_cast<int>(PropertyId::SubclassCode);
         }
+        else if (name.compare("interface") == 0) {
+            return static_cast<int>(PropertyId::Interface);
+        }
         else if (name.compare("bar0") == 0) {
             return static_cast<int>(PropertyId::Bar0);
         }
@@ -129,6 +135,12 @@ namespace HardwareFileSystem::PCI {
         }
         else if (name.compare("bar5") == 0) {
             return static_cast<int>(PropertyId::Bar5);
+        }
+        else if (name.compare("interruptLine") == 0) {
+            return static_cast<int>(PropertyId::InterruptLine);
+        }
+        else if (name.compare("interruptPin") == 0) {
+            return static_cast<int>(PropertyId::InterruptPin);
         }
 
         return -1;
@@ -154,6 +166,10 @@ namespace HardwareFileSystem::PCI {
                 args.writeValueWithType(subclassCode, ArgTypes::Uint32);
                 break;
             }
+            case PropertyId::Interface: {
+                args.writeValueWithType(interface, ArgTypes::Uint32);
+                break;
+            }
             case PropertyId::Bar0: {
                 args.writeValueWithType(bar0, ArgTypes::Uint32);
                 break;
@@ -176,6 +192,14 @@ namespace HardwareFileSystem::PCI {
             }
             case PropertyId::Bar5: {
                 args.writeValueWithType(bar5, ArgTypes::Uint32);
+                break;
+            }
+            case PropertyId::InterruptLine: {
+                args.writeValueWithType(interruptLine, ArgTypes::Uint32);
+                break;
+            }
+            case PropertyId::InterruptPin: {
+                args.writeValueWithType(interruptPin, ArgTypes::Uint32);
                 break;
             }
         }
@@ -228,6 +252,17 @@ namespace HardwareFileSystem::PCI {
 
                 break;
             }
+            case PropertyId::Interface: {
+                auto x = args.read<uint32_t>(ArgTypes::Uint32);
+
+                if (!args.hasErrors()) {
+                    interface = x;
+                    replyWriteSucceeded(requesterTaskId, requestId, true);
+                    return;
+                }
+
+                break;
+            }
             case PropertyId::Bar0: 
             case PropertyId::Bar1: 
             case PropertyId::Bar2: 
@@ -267,6 +302,28 @@ namespace HardwareFileSystem::PCI {
                         }
                     }
 
+                    replyWriteSucceeded(requesterTaskId, requestId, true);
+                    return;
+                }
+
+                break;
+            }
+            case PropertyId::InterruptLine: {
+                auto x = args.read<uint32_t>(ArgTypes::Uint32);
+
+                if (!args.hasErrors()) {
+                    interruptLine = x;
+                    replyWriteSucceeded(requesterTaskId, requestId, true);
+                    return;
+                }
+
+                break;
+            }
+            case PropertyId::InterruptPin: {
+                auto x = args.read<uint32_t>(ArgTypes::Uint32);
+
+                if (!args.hasErrors()) {
+                    interruptPin = x;
                     replyWriteSucceeded(requesterTaskId, requestId, true);
                     return;
                 }

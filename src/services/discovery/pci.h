@@ -43,6 +43,17 @@ namespace Discovery::PCI {
                 subclass = (word >> 16) & 0xFF;
                 classCode = (word >> 24) & 0xFF;
             }
+
+            uint32_t getWord() {
+                uint32_t result {0};
+
+                result = revisionId
+                    | (programmingInterface << 8)
+                    | (subclass << 16)
+                    | (classCode << 24);
+
+                return result;
+            }
         };
 
         /*
@@ -64,6 +75,23 @@ namespace Discovery::PCI {
                 latencyTimer = (word >> 8) & 0xFF;
                 headerType = (word >> 16) & 0xFF;
                 builtInSelfTest = (word >> 24) & 0xFF;
+            }
+        };
+
+        /*
+        This is Configuration Space register offset 0x3C
+        */
+        struct Interrupt {
+            uint8_t interruptLine;
+            uint8_t interruptPin;
+            uint8_t minGrant;
+            uint8_t maxLatency;
+
+            Interrupt(uint32_t word) {
+                interruptLine = word & 0xFF;
+                interruptPin = (word >> 8) & 0xFF;
+                minGrant = (word >> 16) & 0xFF;
+                maxLatency = (word >> 24) & 0xFF; 
             }
         };
     }
@@ -132,6 +160,7 @@ namespace Discovery::PCI {
         StandardConfiguration::Identification id;
         StandardConfiguration::Class classCode;
         uint8_t index;
+        uint8_t functionId;
     };
 
     enum class KnownDevices {

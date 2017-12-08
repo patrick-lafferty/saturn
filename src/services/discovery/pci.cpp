@@ -34,6 +34,20 @@ namespace Discovery::PCI {
 
         return result;
     }
+
+    void writeRegister(uint32_t address, uint32_t value) {
+        uint16_t configAddress {0xCF8};
+
+        asm("outl %0, %1"
+            : //no output
+            : "a" (address), "d" (configAddress));
+
+        uint16_t configData {0xCFC};
+
+        asm("outl %0, %1"
+            : //no output
+            : "a" (value), "d" (configData));
+    }
     
     using namespace StandardConfiguration;
 
@@ -119,6 +133,7 @@ namespace Discovery::PCI {
                 performHardwareTransaction("%s/vendorId", functionName, id.vendorId, Vostok::ArgTypes::Uint32);
                 performHardwareTransaction("%s/classCode", functionName, classReg.classCode, Vostok::ArgTypes::Uint32);
                 performHardwareTransaction("%s/subclassCode", functionName, classReg.subclass, Vostok::ArgTypes::Uint32);
+                performHardwareTransaction("%s/interface", functionName, classReg.programmingInterface, Vostok::ArgTypes::Uint32);
                 
                 for (auto offset = 0x10u; offset < 0x28; offset += 4) {
                     char barName[100];
@@ -128,7 +143,12 @@ namespace Discovery::PCI {
                     HardwareFileSystem::writeTransaction(barName, bar, Vostok::ArgTypes::Uint32);
                 }
 
-                devices.push_back({id, classReg, deviceId});
+                auto interrupt = Interrupt{readRegister(getAddress(bus, deviceId, functionId, 0x3C))};
+
+                performHardwareTransaction("%s/interruptLine", functionName, interrupt.interruptLine, Vostok::ArgTypes::Uint32);
+                performHardwareTransaction("%s/interruptPin", functionName, interrupt.interruptPin, Vostok::ArgTypes::Uint32);
+
+                devices.push_back({id, classReg, deviceId, functionId});
             }
         }
 
@@ -162,7 +182,7 @@ namespace Discovery::PCI {
         return KnownDevices::Unknown;
     }
 
-    void loadDriver(KnownDevices type) {
+    void loadDriver(Device device, KnownDevices type) {
 
         switch(type) {
             case KnownDevices::BochsVBE: {
@@ -174,7 +194,11 @@ namespace Discovery::PCI {
                 break;
             }
             case KnownDevices::ATADrive: {
-                Startup::runProgram("/bin/ext2fs.service");
+                /*device.classCode.programmingInterface |= 1;
+                auto value = device.classCode.getWord();
+                writeRegister(getAddress(0, device.id.deviceId, device.functionId, 0x08), value);
+                */
+                Startup::runProgram("/bin/massStorage.service");
                 break;
             }
             default: {
@@ -208,7 +232,7 @@ namespace Discovery::PCI {
                 && !loaded[static_cast<int>(type)]) {
 
                 loaded[static_cast<int>(type)] = true;
-                loadDriver(type);
+                loadDriver(device, type);
             }
         }
     }
