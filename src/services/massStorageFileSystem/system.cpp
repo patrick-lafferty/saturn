@@ -8,10 +8,12 @@
 #include <services/virtualFileSystem/vostok.h>
 #include <crc>
 #include <string.h>
+#include "ext2/filesystem.h"
 
 using namespace Kernel;
 using namespace VFS;
 using namespace ATA;
+using namespace MassStorageFileSystem::Ext2;
 
 namespace MassStorageFileSystem {
 
@@ -194,7 +196,7 @@ namespace MassStorageFileSystem {
                         partition.partitionType = GUID(type.a, type.b, type.c, type.d);
 
                         if (partition.partitionType.matches(0x0FC63DAF, 0x8483, 0x4772, 0x8E793D69D8477DE4)) {
-                            partitions.push_back(partition);
+                            fileSystems.push_back(new Ext2FileSystem(partition));
                         }
 
                         remainingPartitionEntries--;
