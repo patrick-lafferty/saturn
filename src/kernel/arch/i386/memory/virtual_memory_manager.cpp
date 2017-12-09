@@ -9,6 +9,8 @@ void activateVMM(Memory::VirtualMemoryManager* vmm) {
 }
 #endif
 
+extern "C" void setCR3(uint32_t);
+
 #if TARGET_PREKERNEL
 namespace MemoryPrekernel {
 #else
@@ -46,10 +48,11 @@ namespace Memory {
     void updateCR3Address(PageDirectory* directory) {
         auto directoryAddress = directory->pageTableAddresses[1023] & ~0x3ff;
         
-        asm("movl %%eax, %%CR3 \n"
+        /*asm("movl %%eax, %%CR3 \n"
             : //no output
             : "a" (directoryAddress)
-        );
+        );*/
+        setCR3(directoryAddress);
     }
 
     uintptr_t VirtualMemoryManager::allocatePageTable(uintptr_t virtualAddress, int index) {
@@ -65,9 +68,8 @@ namespace Memory {
 
         directory->pageTableAddresses[index] = physicalPage | flags;
 
-        updateCR3Address(directory);
-
         if (pagingActive) {
+            updateCR3Address(directory);
             physicalManager->finishAllocation(virtualAddress, 1);
         }
         else {
@@ -126,7 +128,9 @@ namespace Memory {
         }
 
         //TODO: add dirty flag to check if this is necessary
-        updateCR3Address(directory);
+        if (pagingActive) {
+            updateCR3Address(directory);
+        }
 
         return startingAddress;
     }
