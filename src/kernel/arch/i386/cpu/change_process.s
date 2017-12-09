@@ -146,3 +146,9 @@ loadTSS:
     mov ax, 0x28
     ltr ax
     ret
+
+global setCR3
+setCR3:
+    mov eax, [esp + 4]
+    mov cr3, eax
+    ret

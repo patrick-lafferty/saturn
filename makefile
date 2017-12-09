@@ -149,7 +149,7 @@ userland: $(USERLAND_OBJS)
 %.o: %.cpp $(DEPENDENCYDIR)/%.d 
 	$(CXX) -c $< -o $@ $(CXXFLAGS)
 
-src/kernel/arch/i386/memory/physical_memory_manager_pre_kernel.o: src/kernel/arch/i386/memory/physical_memory_manager.cpp $(DEPENDENCYDIR)/src/kernel/arch/i386/memory/virtual_memory_manager.d
+src/kernel/arch/i386/memory/physical_memory_manager_pre_kernel.o: src/kernel/arch/i386/memory/physical_memory_manager.cpp $(DEPENDENCYDIR)/src/kernel/arch/i386/memory/physical_memory_manager.d
 	$(CXX) -c $< -o $@ $(CXXFLAGS) -DTARGET_PREKERNEL
 
 src/kernel/arch/i386/memory/virtual_memory_manager_pre_kernel.o: src/kernel/arch/i386/memory/virtual_memory_manager.cpp $(DEPENDENCYDIR)/src/kernel/arch/i386/memory/virtual_memory_manager.d
