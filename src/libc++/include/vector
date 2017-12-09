@@ -5,9 +5,9 @@
 namespace std {
 
     template<typename T>
-    struct Allocator {};
+    struct allocator {};
 
-    template<typename T, class Allocator = std::Allocator<T>>
+    template<typename T, class Allocator = std::allocator<T>>
     class vector {
     public:
 
@@ -66,11 +66,19 @@ namespace std {
         }
 
         iterator erase(iterator pos) {
+
             for (auto it = pos; it != end(); it++) {
-                *it = *(it + 1);
+                auto next = it + 1;
+
+                if (next != end()) {
+                    *it = *next;
+                }
             }
 
             items--;
+
+
+
             return pos + 1;
         }
 
