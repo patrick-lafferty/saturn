@@ -233,6 +233,10 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
             kprintf("[IDT] Divide Error\n");
             break;
         }
+        case 6: {
+            kprintf("[IDT] %s\n", exceptions[frame->interruptNumber]);
+            panic(frame);
+        }
         //...TODO...
         case 13: {
             kprintf("[IDT] General Protection Fault\n");
