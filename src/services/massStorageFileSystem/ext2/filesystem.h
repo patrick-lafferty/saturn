@@ -33,6 +33,16 @@ namespace MassStorageFileSystem::Ext2 {
         uint16_t groupId;
         uint32_t firstNonReservedInode;
         uint16_t inodeSize;
+        uint16_t blockGroup;
+        uint32_t optionalFeatures;
+        uint32_t requiredFeatures;
+    };
+
+    enum class RequiredFeatures {
+        Compression = 0x1,
+        DirectoryEntryTypeField = 0x2,
+        ReplayJournalNeeded = 0x4,
+        UseJournal = 0x8
     };
 
     enum class States {
@@ -59,7 +69,7 @@ namespace MassStorageFileSystem::Ext2 {
         BlockGroupDescriptorTable,
         InodeTable,
         Inode,
-        File,
+        DirectoryEntry,
         None
     };
 
@@ -77,7 +87,7 @@ namespace MassStorageFileSystem::Ext2 {
         uint16_t userId;
         uint32_t sizeLower32Bits;
         uint32_t lastAccessTime;
-        uint32_t createtionTime;
+        uint32_t creationTime;
         uint32_t lastModificationTime;
         uint32_t deletionTime;
         uint16_t groupId;
@@ -85,18 +95,7 @@ namespace MassStorageFileSystem::Ext2 {
         uint32_t diskSectorsCount;
         uint32_t flags;
         uint32_t operatingSystem;
-        uint32_t directBlock0;
-        uint32_t directBlock1;
-        uint32_t directBlock2;
-        uint32_t directBlock3;
-        uint32_t directBlock4;
-        uint32_t directBlock5;
-        uint32_t directBlock6;
-        uint32_t directBlock7;
-        uint32_t directBlock8;
-        uint32_t directBlock9;
-        uint32_t directBlock10;
-        uint32_t directBlock11;
+        uint32_t directBlock[12];
         uint32_t singlyIndirectBlock;
         uint32_t doublyIndirectBlock;
         uint32_t triplyIndirectBlock;
@@ -105,6 +104,25 @@ namespace MassStorageFileSystem::Ext2 {
         uint32_t sizeUpper32Bits;
         uint32_t fragmentBlockId;
         uint8_t osSpecificValue[12];
+
+        bool isDirectory();
+    };
+
+    enum class InodeType {
+        FIFO = 0x1000,
+        CharacterDevice = 0x2000,
+        Directory = 0x4000,
+        BlockDevice = 0x6000,
+        RegularFile = 0x8000,
+        SymbolicLink = 0xA000,
+        UnixSocket = 0xC000
+    };
+
+    struct DirectoryEntry {
+        uint32_t inode;
+        uint16_t size;
+        uint8_t nameLength;
+        uint8_t typeIndicator;
     };
 
     class Ext2FileSystem : public FileSystem {
@@ -119,6 +137,7 @@ namespace MassStorageFileSystem::Ext2 {
         void setupSuperBlock();
         void setupBlockDescriptorTable(uint16_t* buffer);
         void readInode(uint32_t id);
+        void readDirectory(Inode& inode);
 
         SuperBlock superBlock;
         ReadState readState;
@@ -133,5 +152,6 @@ namespace MassStorageFileSystem::Ext2 {
         needs to be updated
         */
         std::vector<BlockGroupDescriptor> blockGroupDescriptorTable;
+        uint16_t* buffer;
     };
 }

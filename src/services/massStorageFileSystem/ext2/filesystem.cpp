@@ -4,11 +4,16 @@
 
 namespace MassStorageFileSystem::Ext2 {
 
+    bool Inode::isDirectory() {
+        return typeAndPermissions & static_cast<uint16_t>(InodeType::Directory);
+    }
+
     Ext2FileSystem::Ext2FileSystem(IBlockDevice* device) 
         : FileSystem(device) {
         
         //superblock spans 2 sectors, but I don't care about the second
         //sector contents... yet
+        buffer = new uint16_t[256];
         blockDevice->queueReadSector(2, 1);
         readState = ReadState::SuperBlock;
     }
@@ -79,31 +84,70 @@ namespace MassStorageFileSystem::Ext2 {
         readState = ReadState::InodeTable;
     }
 
+    void Ext2FileSystem::readDirectory(Inode& inode) {
+        auto blocksToRead = inode.sizeLower32Bits / blockSize;
+        
+        for (int i = 0; i < blocksToRead; i++) {
+            auto lba = blockIdToLba(inode.directBlock[i]);
+            blockDevice->queueReadSector(lba, 1);
+            break;
+        }
+
+        readState = ReadState::DirectoryEntry;
+    }
+
     void Ext2FileSystem::receiveSector() {
-        uint16_t buffer[256];
+
+        memset(buffer, 0, 512);
         blockDevice->receiveSector(buffer);
 
         switch(readState) {
             case ReadState::SuperBlock: {
-                memcpy(&superBlock, buffer, sizeof(superBlock));
+                memcpy(&superBlock, buffer, sizeof(SuperBlock));
                 setupSuperBlock();
 
                 break;
             }
             case ReadState::BlockGroupDescriptorTable: {
 
-printf("[Ext2] reading blockGroupDescriptorTable %x\n", blockGroupCount);
                 setupBlockDescriptorTable(buffer);
                 readInode(2);
-printf("[Ext2]  queued\n");
                 break;
             }
             case ReadState::InodeTable: {
                 auto inodes = reinterpret_cast<Inode*>(buffer);
                 auto inode = inodes[(ino - 1) % superBlock.inodesPerGroup];
 
-                printf("[Ext2] Inode type: %x\n", inode.typeAndPermissions);
-            
+                if (inode.isDirectory()) {
+                    readDirectory(inode);
+                }
+
+                break;
+            }
+            case ReadState::DirectoryEntry: {
+
+                uint8_t* ptr = reinterpret_cast<uint8_t*>(buffer);
+                auto entry = *reinterpret_cast<DirectoryEntry*>(ptr);
+
+                for (int i = 0; i < 512; i++) {
+                    ptr += sizeof(DirectoryEntry);
+                    i += sizeof(DirectoryEntry);
+
+                    if (entry.inode != 0 && entry.nameLength > 0) {
+
+                        char name[256];
+
+                        memcpy(name, ptr, entry.nameLength);
+                        name[entry.nameLength] = '\0';
+
+                        printf("[Ext2] found: %s\n", name);
+                    }
+
+                    ptr += entry.size - sizeof(DirectoryEntry);
+                    i += entry.size - sizeof(DirectoryEntry);
+                    entry = *reinterpret_cast<DirectoryEntry*>(ptr);
+                }
+
                 break;
             }
         }

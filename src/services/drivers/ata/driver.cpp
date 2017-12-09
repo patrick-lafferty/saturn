@@ -118,7 +118,6 @@ namespace ATA {
     }
 
     void Driver::queueReadSector(uint32_t lba, uint32_t sectorCount) {
-        //readSector();
         /*
         Note: 
 
@@ -149,7 +148,8 @@ namespace ATA {
         }
 
         for(int i = 0; i < 256; i++) {
-            *buffer++ = readRegister16(Register::Data);
+            //*buffer++ = readRegister16(Register::Data);
+            buffer[i] = readRegister16(Register::Data);
         }
     }
 
