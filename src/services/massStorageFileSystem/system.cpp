@@ -150,12 +150,18 @@ namespace MassStorageFileSystem {
                 }
 
                 if (pendingCommand == PendingDiskCommand::Read) {
-                    auto& request = queuedRequests[0];
+                    auto request = queuedRequests.front();
                     fileSystems[request.requesterId]->receiveSector();
                     request.sectorCount--;
+                    pendingCommand = PendingDiskCommand::None;
 
                     if (request.sectorCount == 0) {
+                        //queuedRequests.erase(queuedRequests.begin());
+                        queuedRequests.pop();
 
+                        if (!queuedRequests.empty()) {
+                            queueReadSector(queuedRequests.front());
+                        }
                     }
                 }
             }
@@ -259,7 +265,8 @@ namespace MassStorageFileSystem {
             queueReadSector(request);
         }
 
-        queuedRequests.push_back(request);
+        queuedRequests.push(request);
+        printf("[MS] pb\n");
     }
 
     void MassStorageController::queueReadSector(Request request) {

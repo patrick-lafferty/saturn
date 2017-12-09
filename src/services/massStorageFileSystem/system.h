@@ -2,6 +2,8 @@
 
 #include <stdint.h>
 #include <vector>
+#include <queue>
+#include <list>
 #include "filesystem.h"
 
 namespace ATA {
@@ -62,6 +64,6 @@ namespace MassStorageFileSystem {
         PendingDiskCommand pendingCommand {PendingDiskCommand::None};
         std::vector<Partition> partitions;
         std::vector<FileSystem*> fileSystems;
-        std::vector<Request> queuedRequests;
+        std::queue<Request, std::list<Request>> queuedRequests;
     };
 }
