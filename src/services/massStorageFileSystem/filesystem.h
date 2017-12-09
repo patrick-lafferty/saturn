@@ -1,6 +1,8 @@
 #pragma once
 
 #include <stdint.h>
+#include <utility>
+#include <type_traits>
 
 namespace MassStorageFileSystem {
 
@@ -41,20 +43,30 @@ namespace MassStorageFileSystem {
     template<typename Read, typename Write>
     struct Requester {
 
-        Requester(Read r, Write w) : read{r}, write{w} {}
+        Requester(Read&& r, Write&& w) : read{std::forward<Read>(r)}, write{std::forward<Write>(w)} {}
 
         Read read;
         Write write; 
     };
 
     template<typename Read, typename Write>
+    Requester<std::remove_reference_t<Read>, std::remove_reference_t<Write>> makeRequester(Read&& r, Write&& w) {
+        return Requester<std::remove_reference_t<Read>, std::remove_reference_t<Write>>(std::forward<Read>(r), std::forward<Write>(w));
+    }
+
+    template<typename Read, typename Write>
     struct Transfer {
 
-        Transfer(Read r, Write w) : read{r}, write{w} {}
+        Transfer(Read&& r, Write&& w) : read{std::forward<Read>(r)}, write{std::forward<Write>(w)} {}
 
         Read read;
         Write write; 
     };
+
+    template<typename Read, typename Write>
+    Transfer<std::remove_reference_t<Read>, std::remove_reference_t<Write>> makeTransfer(Read&& r, Write&& w) {
+        return Transfer<std::remove_reference_t<Read>, std::remove_reference_t<Write>>(std::forward<Read>(r), std::forward<Write>(w));
+    }
 
     template<typename Requester, typename Transfer>
     class BlockDevice : public IBlockDevice {

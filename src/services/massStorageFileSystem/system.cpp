@@ -151,12 +151,12 @@ namespace MassStorageFileSystem {
 
                 if (pendingCommand == PendingDiskCommand::Read) {
                     auto request = queuedRequests.front();
+
                     fileSystems[request.requesterId]->receiveSector();
                     request.sectorCount--;
                     pendingCommand = PendingDiskCommand::None;
 
                     if (request.sectorCount == 0) {
-                        //queuedRequests.erase(queuedRequests.begin());
                         queuedRequests.pop();
 
                         if (!queuedRequests.empty()) {
@@ -177,7 +177,7 @@ namespace MassStorageFileSystem {
 
         int remainingPartitionEntries {0};
         State currentState {State::ReadGPTHeader};
-        sleep(2000);
+        sleep(400);
 
         while (true) {
             IPC::MaximumMessageBuffer buffer;
@@ -221,19 +221,19 @@ namespace MassStorageFileSystem {
                             auto requesterId = fileSystems.size();
                             pendingCommand = PendingDiskCommand::None;
 
-                            auto requester = Requester {
-                                [&](auto lba, auto sectorCount) {
+                            auto requester = makeRequester(
+                                [this, requesterId](auto lba, auto sectorCount) {
                                     queueReadSectorRequest(lba, sectorCount, requesterId);
                                 },
                                 []() {return;}
-                            };
+                            );
 
-                            auto transfer = Transfer {
-                                [&](auto buffer) {
+                            auto transfer = makeTransfer(
+                                [this](auto buffer) {
                                     driver->receiveSector(buffer);
                                 },
-                                [&](auto buffer) {}
-                            };
+                                []() {return;}
+                            );
 
                             auto device = new BlockDevice(
                                 requester,
@@ -266,7 +266,6 @@ namespace MassStorageFileSystem {
         }
 
         queuedRequests.push(request);
-        printf("[MS] pb\n");
     }
 
     void MassStorageController::queueReadSector(Request request) {
