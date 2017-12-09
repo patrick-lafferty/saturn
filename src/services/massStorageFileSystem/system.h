@@ -39,6 +39,12 @@ namespace MassStorageFileSystem {
         None
     };
 
+    struct Request {
+        uint32_t lba;
+        uint32_t sectorCount;
+        uint32_t requesterId;
+    };
+
     class MassStorageController {
     public:
 
@@ -48,10 +54,14 @@ namespace MassStorageFileSystem {
 
     private:
 
+        void queueReadSectorRequest(uint32_t lba, uint32_t sectorCount, uint32_t requesterId);
+        void queueReadSector(Request request);
+
         ATA::Driver* driver;
         GPTHeader gptHeader;
         PendingDiskCommand pendingCommand {PendingDiskCommand::None};
         std::vector<Partition> partitions;
         std::vector<FileSystem*> fileSystems;
+        std::vector<Request> queuedRequests;
     };
 }

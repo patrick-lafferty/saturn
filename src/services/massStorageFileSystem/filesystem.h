@@ -25,14 +25,71 @@ namespace MassStorageFileSystem {
         uint8_t name[72];
     };
 
+    class IBlockDevice {
+    public:
+        
+        IBlockDevice(Partition partition) : partition{partition} {}
+
+        virtual void queueReadSector(uint32_t lba, uint32_t sectorCount) = 0;
+        virtual void receiveSector(uint16_t* buffer) = 0;
+
+    protected:
+
+        Partition partition;
+    };
+
+    template<typename Read, typename Write>
+    struct Requester {
+
+        Requester(Read r, Write w) : read{r}, write{w} {}
+
+        Read read;
+        Write write; 
+    };
+
+    template<typename Read, typename Write>
+    struct Transfer {
+
+        Transfer(Read r, Write w) : read{r}, write{w} {}
+
+        Read read;
+        Write write; 
+    };
+
+    template<typename Requester, typename Transfer>
+    class BlockDevice : public IBlockDevice {
+    
+    public:
+
+        BlockDevice(Requester requester, Transfer transfer, Partition partition) 
+            : IBlockDevice(partition),
+                requester{requester},
+                transfer{transfer} {
+        }
+        
+        void queueReadSector(uint32_t lba, uint32_t sectorCount) override {
+            requester.read(partition.firstLBA + lba, sectorCount);
+        }
+
+        virtual void receiveSector(uint16_t* buffer) override {
+            transfer.read(buffer);
+        }
+    
+    private:
+
+        Requester requester;
+        Transfer transfer;
+    };
+
     class FileSystem {
     public: 
 
-        FileSystem(Partition partition) : partition{partition} {}
+        FileSystem(IBlockDevice* device) : blockDevice{device} {}
         virtual ~FileSystem() {}
 
-    protected: 
+        virtual void receiveSector() = 0;
 
-        Partition partition;
+    protected: 
+        IBlockDevice* blockDevice;
     };
 }

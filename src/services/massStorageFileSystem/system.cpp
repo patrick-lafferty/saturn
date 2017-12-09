@@ -140,10 +140,25 @@ namespace MassStorageFileSystem {
 
     void MassStorageController::messageLoop() {
 
-
         while (true) {
             IPC::MaximumMessageBuffer buffer;
             receive(&buffer);
+
+            if (buffer.messageId == DriverIrqReceived::MessageId) {
+                if (queuedRequests.empty()) {
+                    continue;
+                }
+
+                if (pendingCommand == PendingDiskCommand::Read) {
+                    auto& request = queuedRequests[0];
+                    fileSystems[request.requesterId]->receiveSector();
+                    request.sectorCount--;
+
+                    if (request.sectorCount == 0) {
+
+                    }
+                }
+            }
         }
     }
 
@@ -156,6 +171,7 @@ namespace MassStorageFileSystem {
 
         int remainingPartitionEntries {0};
         State currentState {State::ReadGPTHeader};
+        sleep(2000);
 
         while (true) {
             IPC::MaximumMessageBuffer buffer;
@@ -181,7 +197,7 @@ namespace MassStorageFileSystem {
                         remainingPartitionEntries = gptHeader.partitionEntriesCount;
                         currentState = State::ReadPartitionTable;
 
-                        driver->queueReadSector(gptHeader.partitionArrayLBA);
+                        driver->queueReadSector(gptHeader.partitionArrayLBA, 1);
 
                         break;
                     }
@@ -196,8 +212,32 @@ namespace MassStorageFileSystem {
                         partition.partitionType = GUID(type.a, type.b, type.c, type.d);
 
                         if (partition.partitionType.matches(0x0FC63DAF, 0x8483, 0x4772, 0x8E793D69D8477DE4)) {
-                            fileSystems.push_back(new Ext2FileSystem(partition));
+                            auto requesterId = fileSystems.size();
+                            pendingCommand = PendingDiskCommand::None;
+
+                            auto requester = Requester {
+                                [&](auto lba, auto sectorCount) {
+                                    queueReadSectorRequest(lba, sectorCount, requesterId);
+                                },
+                                []() {return;}
+                            };
+
+                            auto transfer = Transfer {
+                                [&](auto buffer) {
+                                    driver->receiveSector(buffer);
+                                },
+                                [&](auto buffer) {}
+                            };
+
+                            auto device = new BlockDevice(
+                                requester,
+                                transfer,
+                                partition
+                            );
+                            fileSystems.push_back(new Ext2FileSystem(device));
                         }
+
+                        return;
 
                         remainingPartitionEntries--;
                        
@@ -212,6 +252,21 @@ namespace MassStorageFileSystem {
         }
     }
 
+    void MassStorageController::queueReadSectorRequest(uint32_t lba, uint32_t sectorCount, uint32_t requesterId) {
+        Request request{lba, sectorCount, requesterId};
+
+        if (pendingCommand == PendingDiskCommand::None) {
+            queueReadSector(request);
+        }
+
+        queuedRequests.push_back(request);
+    }
+
+    void MassStorageController::queueReadSector(Request request) {
+        pendingCommand = PendingDiskCommand::Read;
+        driver->queueReadSector(request.lba, request.sectorCount);
+    }
+
     void service() {
         waitForServiceRegistered(ServiceType::VFS);
         registerService();
@@ -224,6 +279,6 @@ namespace MassStorageFileSystem {
 
     MassStorageController::MassStorageController(Driver* driver) {
         this->driver = driver;
-        driver->queueReadSector(1);
+        driver->queueReadSector(1, 1);
     }
 }

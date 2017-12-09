@@ -117,7 +117,7 @@ namespace ATA {
         }
     }
 
-    void Driver::queueReadSector(uint32_t address) {
+    void Driver::queueReadSector(uint32_t lba, uint32_t sectorCount) {
         //readSector();
         /*
         Note: 
@@ -128,10 +128,10 @@ namespace ATA {
         Each register is 8bits wide, some take a 16 bit value, 
         the high byte needs to be written before the low byte
         */
-        writeRegister(Register::SectorCount, 1);
-        writeRegister(Register::LBALow, address & 0xFF);
-        writeRegister(Register::LBAMid, (address >> 8) & 0xFF);
-        writeRegister(Register::LBAHigh, (address >> 16) & 0xFF);
+        writeRegister(Register::SectorCount, sectorCount);
+        writeRegister(Register::LBALow, lba & 0xFF);
+        writeRegister(Register::LBAMid, (lba >> 8) & 0xFF);
+        writeRegister(Register::LBAHigh, (lba >> 16) & 0xFF);
         writeRegister(Register::Command, static_cast<uint8_t>(Command::ReadSectors));
     }
 
