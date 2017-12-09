@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../filesystem.h"
+#include <vector>
 
 namespace MassStorageFileSystem::Ext2 {
     
@@ -30,6 +31,8 @@ namespace MassStorageFileSystem::Ext2 {
         uint32_t majorVersion;
         uint16_t userId;
         uint16_t groupId;
+        uint32_t firstNonReservedInode;
+        uint16_t inodeSize;
     };
 
     enum class States {
@@ -53,6 +56,9 @@ namespace MassStorageFileSystem::Ext2 {
 
     enum class ReadState {
         SuperBlock,
+        BlockGroupDescriptorTable,
+        InodeTable,
+        Inode,
         File,
         None
     };
@@ -108,7 +114,24 @@ namespace MassStorageFileSystem::Ext2 {
 
     private:
 
+        uint32_t blockIdToLba(uint32_t blockId);
+
+        void setupSuperBlock();
+        void setupBlockDescriptorTable(uint16_t* buffer);
+        void readInode(uint32_t id);
+
         SuperBlock superBlock;
         ReadState readState;
+        uint32_t blockGroupCount;
+        uint32_t blockSize;
+        uint32_t blockGroupDescriptorTableId;
+        /*
+        cache the whole block group descriptor table here, its only
+        max 8 megs
+
+        TODO: whenever a block group descriptor changes, this
+        needs to be updated
+        */
+        std::vector<BlockGroupDescriptor> blockGroupDescriptorTable;
     };
 }
