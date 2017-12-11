@@ -8,7 +8,7 @@
 #include "pci/pci.h"
 
 using namespace Kernel;
-using namespace VFS;
+using namespace VirtualFileSystem;
 using namespace Vostok;
 
 namespace HardwareFileSystem {

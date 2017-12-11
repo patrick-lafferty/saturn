@@ -13,7 +13,7 @@
 #include <services/massStorageFileSystem/system.h>
 
 using namespace Kernel;
-using namespace VFS;
+using namespace VirtualFileSystem;
 
 namespace FakeFileSystem {
 

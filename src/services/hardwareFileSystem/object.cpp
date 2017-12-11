@@ -1,7 +1,7 @@
 #include "object.h"
 #include <services/virtualFileSystem/virtualFileSystem.h>
 
-using namespace VFS;
+using namespace VirtualFileSystem;
 using namespace Vostok;
 
 namespace HardwareFileSystem {

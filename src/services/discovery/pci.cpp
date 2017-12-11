@@ -162,8 +162,8 @@ namespace Discovery::PCI {
         IPC::MaximumMessageBuffer buffer;
         receive(&buffer);
 
-        if (buffer.messageId == VFS::CreateResult::MessageId) {
-            auto result = IPC::extractMessage<VFS::CreateResult>(buffer);
+        if (buffer.messageId == VirtualFileSystem::CreateResult::MessageId) {
+            auto result = IPC::extractMessage<VirtualFileSystem::CreateResult>(buffer);
             return result.success;
         }
 
