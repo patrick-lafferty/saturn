@@ -3,159 +3,82 @@
 #include <stdint.h>
 #include <ipc.h>
 #include <string.h>
+#include <string_view>
+#include <stack>
+#include <vector>
+#include "cache.h"
+#include "messages.h"
 
-namespace VFS {
+namespace VirtualFileSystem {
+
+    class VirtualFileSystem {
+    public:
+
+        void messageLoop();
+
+    private:
+        
+        void handleMountRequest(MountRequest& request);
+        void handleGetDirectoryEntriesResult(GetDirectoryEntriesResult& result);
+        void handleOpenRequest(OpenRequest& request);
+        bool tryOpen(Cache::Entry* entry, PendingRequest& pendingRequest);
+        void handleOpenResult(OpenResult& result);
+        void handleCreateRequest(CreateRequest& request);
+        bool tryCreate(Cache::Entry* entry, PendingRequest& pendingRequest);
+        void handleCreateResult(CreateResult& result);
+        void handleReadRequest(ReadRequest& request);
+        void handleReadResult(ReadResult& result);
+        void handleWriteRequest(WriteRequest& request);
+        void handleWriteResult(WriteResult& result);
+        void handleCloseRequest(CloseRequest& request);
+
+        Cache::Union root;
+        std::vector<PendingRequest> pendingRequests;
+        uint32_t nextRequestId;
+        std::vector<FileDescriptor> openFileDescriptors;
+    };
 
     void service();
 
-    struct MountRequest : IPC::Message {
-        MountRequest() {
-            messageId = MessageId;
-            length = sizeof(MountRequest);
-            memset(path, '\0', sizeof(path));
-        }
-
-        static uint32_t MessageId;
-        char path[64];
-        uint32_t serviceId;
+    struct PendingOpen {
+        Cache::Entry* entry;
+        Cache::Directory* parent;
+        char* fullPath;
+        std::string_view remainingPath;
+        bool completed {false};
+        std::stack<Cache::Entry*, std::vector<Cache::Entry*>> breadcrumbs;
     };
 
-    //TODO: result or response?
-    //mountresult
-
-    struct OpenRequest : IPC::Message {
-        OpenRequest() {
-            messageId = MessageId;
-            length = sizeof(OpenRequest);
-            memset(path, '\0', sizeof(path));
-        }
-
-        void shrink(int pathLength) {
-            length = sizeof(OpenRequest) 
-                - sizeof(path)
-                + pathLength 
-                + sizeof(requestId);
-        }
-
-        static uint32_t MessageId;
-        uint32_t requestId;
-        char path[64];
-
-        //TODO: read/write, permissions
+    struct PendingCreate {
+        Cache::Entry* entry;
+        Cache::Directory* parent;
+        char* fullPath;
+        std::string_view remainingPath;
+        bool completed {false};
+        std::stack<Cache::Entry*, std::vector<Cache::Entry*>> breadcrumbs;
     };
 
-    struct OpenResult : IPC::Message {
-        OpenResult() {
-            messageId = MessageId;
-            length = sizeof(OpenResult);
-        }
-
-        static uint32_t MessageId;
-        uint32_t fileDescriptor;
-        bool success;
-        uint32_t requestId;
+    enum class RequestType {
+        Open,
+        Create,
+        Read,
+        Write
     };
 
-    struct CreateRequest : IPC::Message {
-        CreateRequest() {
-            messageId = MessageId;
-            length = sizeof(CreateRequest);
-            memset(path, '\0', sizeof(path));
+    struct PendingRequest {
+
+        PendingRequest() {
+
         }
 
-        void shrink(int pathLength) {
-            length = sizeof(CreateRequest) 
-                - sizeof(path)
-                + pathLength 
-                + sizeof(requestId);
-        } 
+        union {
+            PendingOpen open;
+            PendingOpen create;
+        };
 
-        static uint32_t MessageId;
-        uint32_t requestId;
-        char path[64];
-
-        //TODO: read/write, permissions
-    };
-
-    struct CreateResult : IPC::Message {
-        CreateResult() {
-            messageId = MessageId;
-            length = sizeof(CreateResult);
-        }
-
-        static uint32_t MessageId;
-        bool success;
-        uint32_t requestId;
-    };
-
-    struct ReadRequest : IPC::Message {
-        ReadRequest() {
-            messageId = MessageId;
-            length = sizeof(ReadRequest);
-        }
-
-        static uint32_t MessageId;
-        uint32_t requestId;
-        uint32_t fileDescriptor;
-        uint32_t readLength;
-    };
-
-    struct ReadResult : IPC::Message {
-        ReadResult() {
-            messageId = MessageId;
-            length = sizeof(ReadResult);
-            memset(buffer, 0, sizeof(buffer));
-        }
-
-        static uint32_t MessageId;
-        uint32_t requestId;
-        bool success;
-        uint8_t buffer[256];
-    };
-
-    struct WriteRequest : IPC::Message {
-        WriteRequest() {
-            messageId = MessageId;
-            length = sizeof(WriteRequest);
-            memset(buffer, 0, sizeof(buffer));
-        }
-
-        static uint32_t MessageId;
-        uint32_t requestId;
-        uint32_t fileDescriptor;
-        uint32_t writeLength;
-        uint8_t buffer[256];
-    };
-
-    struct WriteResult : IPC::Message {
-        WriteResult() {
-            messageId = MessageId;
-            length = sizeof(WriteResult);
-        }
-
-        static uint32_t MessageId;
-        uint32_t requestId;
-        bool success;
-    };
-
-    struct CloseRequest : IPC::Message {
-        CloseRequest() {
-            messageId = MessageId;
-            length = sizeof(CloseRequest);
-        }
-
-        static uint32_t MessageId;
-        uint32_t fileDescriptor;
-    };
-
-    struct CloseResult : IPC::Message {
-        CloseResult() {
-            messageId = MessageId;
-            length = sizeof(CloseResult);
-        }
-
-        static uint32_t MessageId;
-        bool success;
+        uint32_t id;
+        uint32_t requesterTaskId;
+        RequestType type;
     };
 
 }
