@@ -4,7 +4,7 @@
 #include <services/virtualFileSystem/virtualFileSystem.h>
 #include <algorithm>
 
-using namespace VFS;
+using namespace VirtualFileSystem;
 using namespace Vostok;
 
 namespace HardwareFileSystem::PCI {

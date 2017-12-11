@@ -1,8 +1,10 @@
 #include <system_calls.h>
 #include <services.h>
 
+using namespace VirtualFileSystem;
+
 void open(const char* path) {
-    VFS::OpenRequest open;
+    OpenRequest open;
     open.serviceType = Kernel::ServiceType::VFS;
     auto pathLength = strlen(path) + 1;
     memcpy(open.path, path, pathLength);
@@ -10,14 +12,14 @@ void open(const char* path) {
     send(IPC::RecipientType::ServiceName, &open);
 }
 
-VFS::OpenResult openSynchronous(const char* path) {
+OpenResult openSynchronous(const char* path) {
     open(path);
 
     IPC::MaximumMessageBuffer buffer;
     receive(&buffer);
 
-    if (buffer.messageId == VFS::OpenResult::MessageId) {
-        return IPC::extractMessage<VFS::OpenResult>(buffer);
+    if (buffer.messageId == OpenResult::MessageId) {
+        return IPC::extractMessage<OpenResult>(buffer);
     }
     else {
         asm ("hlt");
@@ -26,7 +28,7 @@ VFS::OpenResult openSynchronous(const char* path) {
 }
 
 void create(const char* path) {
-    VFS::CreateRequest request;
+    CreateRequest request;
     request.serviceType = Kernel::ServiceType::VFS;
     auto pathLength = strlen(path) + 1;
     memcpy(request.path, path, pathLength);
@@ -35,7 +37,7 @@ void create(const char* path) {
 }   
 
 void read(uint32_t fileDescriptor, uint32_t length) {
-    VFS::ReadRequest request;
+    ReadRequest request;
     request.fileDescriptor = fileDescriptor;
     request.readLength = length;
     request.serviceType = Kernel::ServiceType::VFS;
@@ -43,14 +45,14 @@ void read(uint32_t fileDescriptor, uint32_t length) {
     send(IPC::RecipientType::ServiceName, &request);
 }
 
-VFS::ReadResult readSynchronous(uint32_t fileDescriptor, uint32_t length) {
+ReadResult readSynchronous(uint32_t fileDescriptor, uint32_t length) {
     read(fileDescriptor, length);
 
     IPC::MaximumMessageBuffer buffer;
     receive(&buffer);
 
-    if (buffer.messageId == VFS::ReadResult::MessageId) {
-        return IPC::extractMessage<VFS::ReadResult>(buffer);
+    if (buffer.messageId == ReadResult::MessageId) {
+        return IPC::extractMessage<ReadResult>(buffer);
     }
     else {
         asm ("hlt");
@@ -59,7 +61,7 @@ VFS::ReadResult readSynchronous(uint32_t fileDescriptor, uint32_t length) {
 }
 
 void write(uint32_t fileDescriptor, const void* data, uint32_t length) {
-    VFS::WriteRequest request;
+    WriteRequest request;
     request.fileDescriptor = fileDescriptor;
     request.writeLength = length;
     request.serviceType = Kernel::ServiceType::VFS;
@@ -67,14 +69,14 @@ void write(uint32_t fileDescriptor, const void* data, uint32_t length) {
     send(IPC::RecipientType::ServiceName, &request);
 }
 
-VFS::WriteResult writeSynchronous(uint32_t fileDescriptor, const void* data, uint32_t length) {
+VirtualFileSystem::WriteResult writeSynchronous(uint32_t fileDescriptor, const void* data, uint32_t length) {
     write(fileDescriptor, data, length);
 
     IPC::MaximumMessageBuffer buffer;
     receive(&buffer);
 
-    if (buffer.messageId == VFS::WriteResult::MessageId) {
-        return IPC::extractMessage<VFS::WriteResult>(buffer);
+    if (buffer.messageId == WriteResult::MessageId) {
+        return IPC::extractMessage<WriteResult>(buffer);
     }
     else {
         asm("hlt");
@@ -83,7 +85,7 @@ VFS::WriteResult writeSynchronous(uint32_t fileDescriptor, const void* data, uin
 }
 
 void close(uint32_t fileDescriptor) {
-    VFS::CloseRequest request;
+    CloseRequest request;
     request.fileDescriptor = fileDescriptor;
     request.serviceType = Kernel::ServiceType::VFS;
     send(IPC::RecipientType::ServiceName, &request);

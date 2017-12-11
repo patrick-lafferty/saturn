@@ -11,7 +11,7 @@
 #include "ext2/filesystem.h"
 
 using namespace Kernel;
-using namespace VFS;
+using namespace VirtualFileSystem;
 using namespace ATA;
 using namespace MassStorageFileSystem::Ext2;
 
@@ -119,11 +119,11 @@ namespace MassStorageFileSystem {
         IPC::MaximumMessageBuffer buffer;
         receive(&buffer);
 
-        if (buffer.messageId != VFS::ReadResult::MessageId) {
+        if (buffer.messageId != VirtualFileSystem::ReadResult::MessageId) {
             return nullptr;
         }
 
-        auto callResult = IPC::extractMessage<VFS::ReadResult>(buffer);
+        auto callResult = IPC::extractMessage<VirtualFileSystem::ReadResult>(buffer);
         auto args = Vostok::ArgBuffer{callResult.buffer, sizeof(callResult.buffer)};
         auto type = args.readType();
 

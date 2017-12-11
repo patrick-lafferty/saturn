@@ -58,8 +58,8 @@ namespace Shell {
         IPC::MaximumMessageBuffer buffer;
         receive(&buffer);
 
-        if (buffer.messageId == VFS::OpenResult::MessageId) {
-            auto msg = IPC::extractMessage<VFS::OpenResult>(buffer);
+        if (buffer.messageId == VirtualFileSystem::OpenResult::MessageId) {
+            auto msg = IPC::extractMessage<VirtualFileSystem::OpenResult>(buffer);
             descriptor = msg.fileDescriptor;
 
             return msg.success;
@@ -68,13 +68,13 @@ namespace Shell {
         return false;
     }
 
-    VFS::ReadResult readSignature(uint32_t descriptor, bool& success) {
+    VirtualFileSystem::ReadResult readSignature(uint32_t descriptor, bool& success) {
         read(descriptor, 0);
         IPC::MaximumMessageBuffer buffer;
         receive(&buffer);
 
-        if (buffer.messageId == VFS::ReadResult::MessageId) {
-            auto r = IPC::extractMessage<VFS::ReadResult>(buffer);
+        if (buffer.messageId == VirtualFileSystem::ReadResult::MessageId) {
+            auto r = IPC::extractMessage<VirtualFileSystem::ReadResult>(buffer);
             success = r.success;
             return r;
         }
@@ -164,7 +164,7 @@ namespace Shell {
         printResult(args);        
     }
 
-    void doWriteFunction_impl(uint32_t descriptor, VFS::ReadResult& sig) {
+    void doWriteFunction_impl(uint32_t descriptor, VirtualFileSystem::ReadResult& sig) {
         write(descriptor, sig.buffer, sizeof(sig.buffer));
 
         /*
@@ -176,8 +176,8 @@ namespace Shell {
             IPC::MaximumMessageBuffer buffer;
             receive(&buffer);
 
-            if (buffer.messageId == VFS::WriteResult::MessageId) {
-                auto msg = IPC::extractMessage<VFS::WriteResult>(buffer);
+            if (buffer.messageId == VirtualFileSystem::WriteResult::MessageId) {
+                auto msg = IPC::extractMessage<VirtualFileSystem::WriteResult>(buffer);
 
                 if (!msg.success) {
                     printf("write failed\n");
@@ -189,21 +189,21 @@ namespace Shell {
         IPC::MaximumMessageBuffer buffer;
         receive(&buffer);
 
-        if (buffer.messageId == VFS::ReadResult::MessageId) {
-            auto msg = IPC::extractMessage<VFS::ReadResult>(buffer);
+        if (buffer.messageId == VirtualFileSystem::ReadResult::MessageId) {
+            auto msg = IPC::extractMessage<VirtualFileSystem::ReadResult>(buffer);
             Vostok::ArgBuffer args{msg.buffer, sizeof(msg.buffer)};
             printResult(args); 
         }
     }
 
-    void doWriteProperty_impl(uint32_t descriptor, VFS::ReadResult& sig) {
+    void doWriteProperty_impl(uint32_t descriptor, VirtualFileSystem::ReadResult& sig) {
         write(descriptor, sig.buffer, sizeof(sig.buffer));
 
         IPC::MaximumMessageBuffer buffer;
         receive(&buffer);
 
-        if (buffer.messageId == VFS::WriteResult::MessageId) {
-            auto msg = IPC::extractMessage<VFS::WriteResult>(buffer);
+        if (buffer.messageId == VirtualFileSystem::WriteResult::MessageId) {
+            auto msg = IPC::extractMessage<VirtualFileSystem::WriteResult>(buffer);
 
             if (!msg.success) {
                 printf("write failed\n");

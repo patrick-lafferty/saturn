@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-#include <services/virtualFileSystem/virtualFileSystem.h>
+#include <services/virtualFileSystem/messages.h>
 
 extern "C" void sleep(uint32_t milliseconds);
 
@@ -28,13 +28,13 @@ void receive(IPC::Message* buffer);
 void receiveAndIgnore();
 
 void open(const char* path);
-VFS::OpenResult openSynchronous(const char* path);
+VirtualFileSystem::OpenResult openSynchronous(const char* path);
 void create(const char* path);
 void read(uint32_t fileDescriptor, uint32_t length);
-VFS::ReadResult readSynchronous(uint32_t fileDescriptor, uint32_t length);
+VirtualFileSystem::ReadResult readSynchronous(uint32_t fileDescriptor, uint32_t length);
 
 void write(uint32_t fileDescriptor, const void* data, uint32_t length);
-VFS::WriteResult writeSynchronous(uint32_t fileDescriptor, const void* data, uint32_t length);
+VirtualFileSystem::WriteResult writeSynchronous(uint32_t fileDescriptor, const void* data, uint32_t length);
 void close(uint32_t fileDescriptor);
 
 void waitForServiceRegistered(Kernel::ServiceType type);

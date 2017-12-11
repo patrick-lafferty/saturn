@@ -10,7 +10,7 @@
 #include <parsing>
 
 using namespace Kernel;
-using namespace VFS;
+using namespace VirtualFileSystem;
 using namespace Vostok;
 
 namespace PFS {

@@ -4,7 +4,7 @@
 #include <services/virtualFileSystem/virtualFileSystem.h>
 #include <services/virtualFileSystem/vostok.h>
 
-using namespace VFS;
+using namespace VirtualFileSystem;
 
 namespace Startup {
 
@@ -58,8 +58,8 @@ namespace Startup {
         IPC::MaximumMessageBuffer buffer;
         receive(&buffer);
 
-        if (buffer.messageId == VFS::CreateResult::MessageId) {
-            auto result = IPC::extractMessage<VFS::CreateResult>(buffer);
+        if (buffer.messageId == VirtualFileSystem::CreateResult::MessageId) {
+            auto result = IPC::extractMessage<VirtualFileSystem::CreateResult>(buffer);
             return result.success;
         }
         else {

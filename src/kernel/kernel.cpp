@@ -115,7 +115,7 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     /*runNewTests();*/
     //runAllLibCTests();
 
-    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(VFS::service)));
+    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(VirtualFileSystem::service)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(PFS::service)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(FakeFileSystem::service)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(HardwareFileSystem::service)));
