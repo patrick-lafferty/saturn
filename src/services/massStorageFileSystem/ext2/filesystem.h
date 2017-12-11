@@ -125,10 +125,56 @@ namespace MassStorageFileSystem::Ext2 {
         uint8_t typeIndicator;
     };
 
+    enum class State {
+        ReadingSuperBlock,
+        ReadingBlockGroupDescriptorTable,
+
+    };
+
+    /*
+    Requests that FileSystems get:
+
+    1) directory contents for a path (represented by a uint32)
+    2) file contents for a path (represented by a uint32)
+    
+    directory contents: given an int (inode), return a struct of directory entires
+    -read the inode
+    -
+
+    */
+    
+    struct ReadDirectory {
+        struct ReadInodes {
+
+        };
+
+        struct ReadEntry {
+
+        };
+        
+        union {
+            ReadInodes inodes;
+            ReadEntry entry;
+        };
+
+        enum class State {
+            Inodes,
+            Entry
+        };
+
+        State state;
+    };
+
+    struct Closure {
+
+    };
+
     class Ext2FileSystem : public FileSystem {
     public:
         Ext2FileSystem(IBlockDevice* device); 
         void receiveSector() override;
+
+        void readDirectory(uint32_t index, uint32_t requestId) override;
 
     private:
 

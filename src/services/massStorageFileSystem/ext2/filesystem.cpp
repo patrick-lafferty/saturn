@@ -152,4 +152,15 @@ namespace MassStorageFileSystem::Ext2 {
             }
         }
     }
+
+    void Ext2FileSystem::readDirectory(uint32_t index, uint32_t requestId) {
+        /*
+        Steps:
+
+        1 - read the inode, 1 queueReadSector
+        2 - read the blocks of the inode, x queueReadSectors
+        3 - for each block, extract the directory entries, send response message
+        */
+
+    }
 }
