@@ -2,11 +2,16 @@
 
 using namespace std;
 
-vector<string_view> split(string_view s, char separator) {
+vector<string_view> split(string_view s, char separator, bool includeSeparator) {
     vector<string_view> substrings;
 
     while (!s.empty()) {
         if (*s.data() == separator) {
+
+            if (includeSeparator) {
+                substrings.push_back(s.substr(0, 1));
+            }
+
             s.remove_prefix(1);
         }
 
