@@ -481,3 +481,63 @@ todo:
 -able to pick a vmm to activate to view a user address space
 -examine memory
 -addr2line functionality
+
+
+ATA driver, reading lbas
+lba 1: 
+
+ba 1:
+
+signature: 
+[4645 2049 4150 5452]
+
+revision: 
+[0 1]
+ 
+header size: 
+
+[5c 0]
+
+crc32 of header:
+[788b b663]
+
+reserved (must be zero):
+[0 0]
+
+current lba:
+[1 0 0 0]
+
+backup lba:
+[ffff 3 0 0]
+
+first usable lba for partitons
+(primary partition table last LBA + 1):
+[22 0 0 0]
+
+last usable lba
+(secondary partition table first LBA - 1):
+[ffde 3 0 0] 
+
+disk guid:
+[1535 2a75 2e6c 4278 f6a5 6968 6e5f 2e0b]
+
+starting lba of array of partiton entries
+(always 2 in primary copy):
+[2 0 0 0]
+
+number of partition entries in array:
+[80 0] 
+
+size of a single partition entry
+(usually 0x80 or 128):
+[80 0] 
+
+crc32 of partiton array
+[bb73 5108] 
+
+reserved (zeroes for rest of block)
+0 0
+
+ATA driver should come first
+
+-really need std::list and std::queue implementations

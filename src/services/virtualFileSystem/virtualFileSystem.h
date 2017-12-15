@@ -6,39 +6,11 @@
 #include <string_view>
 #include <stack>
 #include <vector>
+#include <list>
 #include "cache.h"
 #include "messages.h"
 
 namespace VirtualFileSystem {
-
-    class VirtualFileSystem {
-    public:
-
-        void messageLoop();
-
-    private:
-        
-        void handleMountRequest(MountRequest& request);
-        void handleGetDirectoryEntriesResult(GetDirectoryEntriesResult& result);
-        void handleOpenRequest(OpenRequest& request);
-        bool tryOpen(Cache::Entry* entry, PendingRequest& pendingRequest);
-        void handleOpenResult(OpenResult& result);
-        void handleCreateRequest(CreateRequest& request);
-        bool tryCreate(Cache::Entry* entry, PendingRequest& pendingRequest);
-        void handleCreateResult(CreateResult& result);
-        void handleReadRequest(ReadRequest& request);
-        void handleReadResult(ReadResult& result);
-        void handleWriteRequest(WriteRequest& request);
-        void handleWriteResult(WriteResult& result);
-        void handleCloseRequest(CloseRequest& request);
-
-        Cache::Union root;
-        std::vector<PendingRequest> pendingRequests;
-        uint32_t nextRequestId;
-        std::vector<FileDescriptor> openFileDescriptors;
-    };
-
-    void service();
 
     struct PendingOpen {
         Cache::Entry* entry;
@@ -81,4 +53,47 @@ namespace VirtualFileSystem {
         RequestType type;
     };
 
+    struct VirtualFileDescriptor {
+        uint32_t descriptor;
+        uint32_t mountTaskId;
+
+        bool isOpen() const {
+            return mountTaskId != 0;
+        }
+
+        void close() {
+            descriptor = 0;
+            mountTaskId = 0;
+        }
+    };
+
+    class VirtualFileSystem {
+    public:
+
+        VirtualFileSystem();
+        void messageLoop();
+
+    private:
+        
+        void handleMountRequest(MountRequest& request);
+        void handleGetDirectoryEntriesResult(GetDirectoryEntriesResult& result);
+        void handleOpenRequest(OpenRequest& request);
+        bool tryOpen(Cache::Entry* entry, PendingRequest& pendingRequest);
+        void handleOpenResult(OpenResult& result);
+        void handleCreateRequest(CreateRequest& request);
+        bool tryCreate(Cache::Entry* entry, PendingRequest& pendingRequest);
+        void handleCreateResult(CreateResult& result);
+        void handleReadRequest(ReadRequest& request);
+        void handleReadResult(ReadResult& result);
+        void handleWriteRequest(WriteRequest& request);
+        void handleWriteResult(WriteResult& result);
+        void handleCloseRequest(CloseRequest& request);
+
+        Cache::Union root;
+        std::list<PendingRequest> pendingRequests;
+        uint32_t nextRequestId;
+        std::vector<VirtualFileDescriptor> openFileDescriptors;
+    };
+
+    void service();
 }

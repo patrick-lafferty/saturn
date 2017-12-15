@@ -49,21 +49,12 @@ namespace VirtualFileSystem {
         }
     };
 
-    struct FileDescriptor {
-        uint32_t descriptor;
-        uint32_t mountTaskId;
+    VirtualFileSystem::VirtualFileSystem() {
+        root.path[0] = '/';
+        root.path[1] = '\0';
+    }
 
-        bool isOpen() const {
-            return mountTaskId != 0;
-        }
-
-        void close() {
-            descriptor = 0;
-            mountTaskId = 0;
-        }
-    };
-
-    int findEmptyDescriptor(std::vector<FileDescriptor>& descriptors) {
+    int findEmptyDescriptor(std::vector<VirtualFileDescriptor>& descriptors) {
         if (descriptors.empty()) {
             return -1;
         }
@@ -97,28 +88,17 @@ namespace VirtualFileSystem {
         return false;
     }
 
-    /*struct PendingRequest {
-        uint32_t id;
-        uint32_t requesterTaskId;
-    };*/
-
-    PendingRequest* getPendingRequest(uint32_t requestId, std::vector<PendingRequest>& requests) {
-        //PendingRequest result;
-
-        for (auto& request : requests) {
-            if (request.id == requestId) {
-                //result = request;
-                return &request;
-                //requests.erase(&request);
-                //break;
+    std::list<PendingRequest>::iterator getPendingRequest(uint32_t requestId, std::list<PendingRequest>& requests) {
+        for(auto it = requests.begin(); it != requests.end(); ++it) {
+            if (it->id == requestId) {
+                return it;
             }
         }
 
-        //return result;
-        return nullptr;
+        return requests.end();
     }
 
-    Cache::Directory* createDummyDirectory(MountRequest& request, std::string_view path) {
+    Cache::Directory* createDummyMountDirectory(MountRequest& request, std::string_view path) {
         auto directory = new Cache::Directory();
         directory->mount = request.senderTaskId;
         directory->cacheable = request.cacheable;
@@ -130,14 +110,35 @@ namespace VirtualFileSystem {
         return directory;
     }
 
+    Cache::Directory* createDummyDirectory(MountRequest& request, std::string_view path) {
+        auto directory = new Cache::Directory();
+        directory->mount = request.senderTaskId;
+        directory->cacheable = true;
+        directory->needsRead = false;
+        directory->writeable = true;
+        path.copy(directory->path, path.length());
+        directory->path[path.length()] = '\0';
+
+        return directory;
+    }
+
     void VirtualFileSystem::handleMountRequest(MountRequest& request) {
         std::string_view path {request.path, strlen(request.path)};
-        auto subpaths = split(path, '/');
+        auto subpaths = split(path, '/', true);
         Cache::Entry* currentDirectory = &root;
         auto lastPath = subpaths.size();
 
-        auto makeDummyDirectory = [&](auto entry, auto subpath) {
-            auto directory = createDummyDirectory(request, subpath);
+        auto makeDummyDirectory = [&](auto entry, auto subpath, bool forMount) {
+            Cache::Directory* directory;
+
+            if (forMount) {
+                directory = createDummyMountDirectory(request, subpath);
+            }
+            else {
+                directory = createDummyDirectory(request, subpath);
+
+            }
+
             entry->children.push_back(directory);
             currentDirectory = directory;
         };
@@ -145,6 +146,10 @@ namespace VirtualFileSystem {
         for(auto i = 0u; i < lastPath; i++) {
             auto subpath = subpaths[i];
             bool isLast = i == (lastPath - 1);
+
+            if (i > 0 && subpath.compare("/") == 0) {
+                continue;
+            }
 
             switch (currentDirectory->type) {
                 case Cache::Type::Directory: {
@@ -161,23 +166,23 @@ namespace VirtualFileSystem {
                     auto entry = static_cast<Cache::Directory*>(currentDirectory);
 
                     if (entry->children.empty()) {
-                        makeDummyDirectory(entry, subpath);
+                        makeDummyDirectory(entry, subpath, isLast);
                     }
                     else {
                         bool found {false};
 
-                        for (auto j = 0; j < entry->children.size(); j++) {
+                        for (auto j = 0u; j < entry->children.size(); j++) {
                             auto child = entry->children[j];
 
                             if (subpath.compare(child->path) == 0) {
                                 if (isLast) {
                                     if (child->type == Cache::Type::Union) {
-                                        makeDummyDirectory(static_cast<Cache::Union*>(child), subpath);
+                                        makeDummyDirectory(static_cast<Cache::Union*>(child), subpath, isLast);
                                     }
                                     else if (child->type == Cache::Type::Directory) {
                                         auto replacementUnion = new Cache::Union();
                                         replacementUnion->children.push_back(static_cast<Cache::Directory*>(child));
-                                        makeDummyDirectory(replacementUnion, subpath);
+                                        makeDummyDirectory(replacementUnion, subpath, isLast);
                                         entry->children[j] = replacementUnion;
                                         found = true;
                                     }
@@ -194,7 +199,7 @@ namespace VirtualFileSystem {
                         }
 
                         if (!found) {
-                            makeDummyDirectory(entry, subpath);
+                            makeDummyDirectory(entry, subpath, isLast);
                         }
                     }
 
@@ -202,7 +207,17 @@ namespace VirtualFileSystem {
                 }
                 case Cache::Type::Union: {
                     auto entry = static_cast<Cache::Union*>(currentDirectory);
-                    makeDummyDirectory(entry, subpath);
+
+                    if (entry->children.empty()) {
+                        makeDummyDirectory(entry, subpath, isLast);
+                    }
+                    else if (subpath.compare(entry->path) == 0) {
+                        //TODO: does the exact child dir matter, since its just fake?
+                        currentDirectory = entry->children[0];
+                    }
+                    else {
+                        //TODO: error?
+                    }
 
                     break;
                 }
@@ -229,9 +244,6 @@ namespace VirtualFileSystem {
             auto pathLength = strlen(path);
 
             Cache::Entry* entry;
-            entry->cacheable = directory->cacheable;
-            entry->needsRead = directory->cacheable;
-            entry->writeable = directory->writeable;
 
             switch(type) {
                 case Cache::Type::File: {
@@ -244,7 +256,16 @@ namespace VirtualFileSystem {
                     entry = dir;
                     break;
                 }
+                case Cache::Type::Union: {
+                    auto unionDir = new Cache::Union();
+                    entry = unionDir;
+                    break;
+                }
             }
+            
+            entry->cacheable = directory->cacheable;
+            entry->needsRead = directory->cacheable;
+            entry->writeable = directory->writeable;
             
             entry->type = static_cast<Cache::Type>(type);
             memcpy(entry->path, path, pathLength);
@@ -295,7 +316,7 @@ namespace VirtualFileSystem {
 
     DiscoverResult discoverPath(Cache::Entry* currentDirectory, PendingOpen& pending, bool skipLast = false) {
 
-        auto subpaths = split(pending.remainingPath, '/');
+        auto subpaths = split(pending.remainingPath, '/', true);
         auto lastPath = subpaths.size();
 
         if (skipLast) {
@@ -305,6 +326,11 @@ namespace VirtualFileSystem {
         for (auto i = 0u; i < lastPath; i++) {
             auto subpath = subpaths[i];
             bool isLast = i == (lastPath - 1);
+
+            if (i > 0 && subpath.compare("/") == 0) {
+                pending.remainingPath.remove_prefix(1);
+                continue;
+            }
 
             switch(currentDirectory->type) {
                 case Cache::Type::File: {
@@ -336,22 +362,38 @@ namespace VirtualFileSystem {
                     }
                     else if (dir->cacheable) {
 
+                        bool canContinue {false};
+
                         for (auto child : dir->children) {
                             if (subpath.compare(child->path) == 0) {
                                 if (isLast) {
                                     pending.entry = child;
                                     return DiscoverResult::Succeeded;
                                 }
+                                else if (!child->cacheable) {
+                                    pending.entry = child;
+
+                                    if (child->type == Cache::Type::Directory) {
+                                        pending.parent = static_cast<Cache::Directory*>(child);
+                                    }
+
+                                    pending.remainingPath.remove_prefix(subpath.length());
+                                    return DiscoverResult::DependsOnMount;
+                                }
                                 else {
                                     currentDirectory = child;
                                     pending.parent = dir;
-                                    continue;
+                                    pending.remainingPath.remove_prefix(subpath.length());
+                                    canContinue = true;
+                                    break;
                                 }
                             }
                         }
 
                         //if we got here then there is no such file
-                        return DiscoverResult::Failed;
+                        if (!canContinue) {
+                            return DiscoverResult::Failed;
+                        }
                     }
                     else {
                         /*
@@ -366,10 +408,35 @@ namespace VirtualFileSystem {
                     break;
                 }
                 case Cache::Type::Union: {
+                    auto unionDir = static_cast<Cache::Union*>(currentDirectory);
 
-                    
+                    if (unionDir->children.empty() || subpath.compare(unionDir->path) != 0) {
+                        return DiscoverResult::Failed;
+                    }
 
-                    break;
+                    auto subpending = pending;
+                    subpending.remainingPath.remove_prefix(subpath.length());
+
+                    for (auto childIndex = unionDir->children.size(); childIndex != 0; childIndex--) {
+
+                        auto childDir = unionDir->children[childIndex - 1];
+                        pending.breadcrumbs.push(childDir);
+                    }
+
+                    while (!pending.breadcrumbs.empty()) {
+                        auto childDir = static_cast<Cache::Directory*>(pending.breadcrumbs.top());
+                        pending.breadcrumbs.pop();
+
+                        auto result = discoverPath(childDir, subpending, skipLast);
+
+                        if (result != DiscoverResult::Failed) {
+                            pending = subpending;
+                            return result;
+                        }
+
+                    }
+
+                    return DiscoverResult::Failed;
                 }
             }
         } 
@@ -381,7 +448,7 @@ namespace VirtualFileSystem {
         std::string_view path {request.path, strlen(request.path)};
         Cache::Entry* currentDirectory = &root;
 
-        PendingOpen pendingOpen{};
+        PendingOpen pendingOpen;
         pendingOpen.remainingPath = path;
         pendingOpen.fullPath = nullptr;
 
@@ -417,7 +484,8 @@ namespace VirtualFileSystem {
             pendingOpen.fullPath = new char[path.length()];
             path.copy(pendingOpen.fullPath, path.length());
             auto offset = pendingOpen.remainingPath.data() - pathStart;
-            pendingOpen.remainingPath = std::string_view{pendingOpen.fullPath + offset, pendingOpen.remainingPath.length()};
+            //pendingOpen.remainingPath = std::string_view{pendingOpen.fullPath + offset, pendingOpen.remainingPath.length()};
+            pendingOpen.remainingPath = std::string_view{pendingOpen.fullPath, path.length()};
         };
 
         switch(result) {
@@ -426,6 +494,7 @@ namespace VirtualFileSystem {
                 OpenRequest request;
                 request.recipientId = pendingOpen.parent->mount;
                 request.requestId = pendingRequest.id; 
+                pendingOpen.remainingPath.copy(request.path, pendingOpen.remainingPath.length());
 
                 send(IPC::RecipientType::TaskId, &request);                
 
@@ -453,6 +522,7 @@ namespace VirtualFileSystem {
                 OpenRequest request;
                 request.recipientId = directory->mount;
                 request.requestId = requestId;
+                pendingOpen.remainingPath.copy(request.path, pendingOpen.remainingPath.length());
 
                 send(IPC::RecipientType::TaskId, &request);   
                 break;
@@ -473,22 +543,22 @@ namespace VirtualFileSystem {
         auto& pendingRequest = *request;
 
         if (result.success) {
-            auto processFileDescriptor = findEmptyDescriptor(openFileDescriptors);
-            if (processFileDescriptor >= 0) {                            
-                openFileDescriptors[processFileDescriptor] = {
+            auto processVirtualFileDescriptor = findEmptyDescriptor(openFileDescriptors);
+            if (processVirtualFileDescriptor >= 0) {                            
+                openFileDescriptors[processVirtualFileDescriptor] = {
                     result.fileDescriptor,
                     pendingRequest.open.parent->mount
                 };
             }
             else {
-                processFileDescriptor = openFileDescriptors.size();
+                processVirtualFileDescriptor = openFileDescriptors.size();
                 openFileDescriptors.push_back({
                     result.fileDescriptor,
                     pendingRequest.open.parent->mount
                 });
             }
 
-            result.fileDescriptor = processFileDescriptor;
+            result.fileDescriptor = processVirtualFileDescriptor;
             result.recipientId = pendingRequest.requesterTaskId;
 
             pendingRequests.erase(request);
@@ -536,7 +606,8 @@ namespace VirtualFileSystem {
             pendingCreate.fullPath = new char[path.length()];
             path.copy(pendingCreate.fullPath, path.length());
             auto offset = pendingCreate.remainingPath.data() - pathStart;
-            pendingCreate.remainingPath = std::string_view{pendingCreate.fullPath + offset, pendingCreate.remainingPath.length()};
+            //pendingCreate.remainingPath = std::string_view{pendingCreate.fullPath + offset, pendingCreate.remainingPath.length()};
+            pendingCreate.remainingPath = std::string_view{pendingCreate.fullPath, path.length()};
         };
 
         if (pendingCreate.entry->type != Cache::Type::Directory) {
@@ -551,6 +622,7 @@ namespace VirtualFileSystem {
                 CreateRequest request;
                 request.recipientId = parentDirectory->mount;
                 request.requestId = pendingRequest.id; 
+                pendingCreate.remainingPath.copy(request.path, pendingCreate.remainingPath.length());
 
                 send(IPC::RecipientType::TaskId, &request);                
 
@@ -578,6 +650,7 @@ namespace VirtualFileSystem {
                 CreateRequest request;
                 request.recipientId = directory->mount;
                 request.requestId = requestId;
+                pendingCreate.remainingPath.copy(request.path, pendingCreate.remainingPath.length());
 
                 send(IPC::RecipientType::TaskId, &request);   
                 break;
@@ -597,7 +670,7 @@ namespace VirtualFileSystem {
         std::string_view path {request.path, strlen(request.path)};
         Cache::Entry* currentDirectory = &root;
 
-        PendingOpen pendingCreate{};
+        PendingOpen pendingCreate;
         pendingCreate.remainingPath = path;
         pendingCreate.fullPath = nullptr;
 
@@ -681,8 +754,14 @@ namespace VirtualFileSystem {
 
     void VirtualFileSystem::handleReadResult(ReadResult& result) {
         auto pendingRequest = getPendingRequest(result.requestId, pendingRequests);
+
+        if (pendingRequest == pendingRequests.end()) {
+            printf("[VFS] Invalid pending request, handleReadResult\n");
+            return;
+        }
+
         result.recipientId = pendingRequest->requesterTaskId;
-        pendingRequests.erase(pendingRequest);
+        //pendingRequests.erase(pendingRequest);
         send(IPC::RecipientType::TaskId, &result);
     }
 
@@ -729,6 +808,8 @@ namespace VirtualFileSystem {
     void VirtualFileSystem::handleCloseRequest(CloseRequest& request) {
         bool failed {false};
 
+        auto sender = request.senderTaskId;
+
         if (request.fileDescriptor < openFileDescriptors.size()) {
             auto& descriptor = openFileDescriptors[request.fileDescriptor];
 
@@ -741,7 +822,7 @@ namespace VirtualFileSystem {
 
                 CloseResult result;
                 result.success = true;
-                result.recipientId = request.senderTaskId;
+                result.recipientId = sender;
                 send(IPC::RecipientType::TaskId, &result);
             }
             else {
@@ -755,135 +836,42 @@ namespace VirtualFileSystem {
         if (failed) {
             CloseResult result;
             result.success = false;
-            result.recipientId = request.senderTaskId;
+            result.recipientId = sender;
             send(IPC::RecipientType::TaskId, &result);
         }
     }
 
     void VirtualFileSystem::messageLoop() {
-        /*
-        TODO: Replace with a trie where the leaf node values are services 
-        */
-        /*std::vector<Mount> mounts;
-        std::vector<FileDescriptor> openFileDescriptors;
-        std::vector<PendingRequest> pendingRequests;
-        uint32_t nextRequestId {0};
-        Cache::Union root;*/
 
         while (true) {
             IPC::MaximumMessageBuffer buffer;
             receive(&buffer);
 
             if (buffer.messageId == MountRequest::MessageId) {
-                //TODO: for now only support top level mounts to /
                 auto request = IPC::extractMessage<MountRequest>(buffer);
-                /*auto pathLength = strlen(request.path) + 1;
-                mounts.push_back({nullptr, pathLength - 1, request.senderTaskId});
-                auto& mount = mounts[mounts.size() - 1];
-                mount.path = new char[pathLength];
-                memcpy(mount.path, request.path, pathLength);*/
                 handleMountRequest(request);
-
             }
             else if (buffer.messageId == GetDirectoryEntriesResult::MessageId) {
-                auto result = IPC::extractMessage<GetDirectoryEntries>(buffer);
-                handleGetDirectoryEntriesResult
+                auto result = IPC::extractMessage<GetDirectoryEntriesResult>(buffer);
+                handleGetDirectoryEntriesResult(result);
             }
             else if (buffer.messageId == OpenRequest::MessageId) {
-                //TODO: search the trie for the appropriate mount point
-                //since this is just an experiment to see if this design works, hardcode mount
                 auto request = IPC::extractMessage<OpenRequest>(buffer);
-                /*Mount mount;
-                auto foundMount = findMount(mounts, request.path, mount);
-
-                if (foundMount) {
-                    request.recipientId = mount.serviceId;
-                    request.requestId = nextRequestId++;
-                    pendingRequests.push_back({request.requestId, buffer.senderTaskId});
-                    send(IPC::RecipientType::TaskId, &request);   
-                }
-                else {
-                    OpenResult result;
-                    result.recipientId = buffer.senderTaskId;
-                    result.success = false;
-                    send(IPC::RecipientType::TaskId, &result); 
-                }*/
                 handleOpenRequest(request);
             }
             else if (buffer.messageId == OpenResult::MessageId) {
 
                 auto result = IPC::extractMessage<OpenResult>(buffer);
                 handleOpenResult(result); 
-
-                /*for (auto& mount : mounts) {
-
-                    if (!mount.exists()) {
-                        continue;
-                    }
-
-                    if (buffer.senderTaskId == mount.serviceId) {
-                        auto result = IPC::extractMessage<OpenResult>(buffer);
-
-                        if (result.success) {
-                            /*
-                            mount services have their own local file descriptors,
-                            VFS has its own that encompases all mounts
-                            */
-                            /*auto processFileDescriptor = findEmptyDescriptor(openFileDescriptors);
-                            if (processFileDescriptor >= 0) {                            
-                                openFileDescriptors[processFileDescriptor] = {
-                                    result.fileDescriptor,
-                                    mount.serviceId
-                                };
-                            }
-                            else {
-                                processFileDescriptor = openFileDescriptors.size();
-                                openFileDescriptors.push_back({
-                                    result.fileDescriptor,
-                                    mount.serviceId
-                                });
-                            }
-
-                            result.fileDescriptor = processFileDescriptor;
-                            auto pendingRequest = getPendingRequest(result.requestId, pendingRequests);
-                            result.recipientId = pendingRequest.requesterTaskId;
-                            send(IPC::RecipientType::TaskId, &result);
-                        }
-                        else {
-                            auto pendingRequest = getPendingRequest(result.requestId, pendingRequests);
-                            result.recipientId = pendingRequest.requesterTaskId;
-                            send(IPC::RecipientType::TaskId, &result);
-                        }
-
-                        break;
-                    }
-                }*/
+                
             }
             else if (buffer.messageId == CreateRequest::MessageId) {
                 auto request = IPC::extractMessage<CreateRequest>(buffer);
                 handleCreateRequest(request);
-                /*Mount mount;
-                auto foundMount = findMount(mounts, request.path, mount);
-
-                if (foundMount) {
-                    request.recipientId = mount.serviceId;
-                    request.requestId = nextRequestId++;
-                    send(IPC::RecipientType::TaskId, &request);
-                    pendingRequests.push_back({request.requestId, buffer.senderTaskId});
-                }
-                else {
-                    CreateResult result;
-                    result.recipientId = request.senderTaskId;
-                    result.success = false;
-                    send(IPC::RecipientType::TaskId, &result);
-                }*/
             }
             else if (buffer.messageId == CreateResult::MessageId) {
                 auto result = IPC::extractMessage<CreateResult>(buffer);
                 handleCreateResult(result);
-                /*auto pendingRequest = getPendingRequest(result.requestId, pendingRequests);
-                result.recipientId = pendingRequest.requesterTaskId;
-                send(IPC::RecipientType::TaskId, &result);*/
             }
             else if (buffer.messageId == ReadRequest::MessageId) {
                 auto request = IPC::extractMessage<ReadRequest>(buffer);
@@ -893,113 +881,22 @@ namespace VirtualFileSystem {
                 1) message forwarding (could be insecure)
                 2) a separate ReadRequestForwarded message
                 */
-                /*bool failed {false};
-                if (request.fileDescriptor < openFileDescriptors.size()) {
-                    auto descriptor = openFileDescriptors[request.fileDescriptor];
-
-                    if (descriptor.isOpen()) {
-                        request.requestId = nextRequestId++;
-                        pendingRequests.push_back({request.requestId, buffer.senderTaskId});
-                        request.recipientId = descriptor.mountTaskId;
-                        request.fileDescriptor = descriptor.descriptor;
-                        send(IPC::RecipientType::TaskId, &request);
-                    }
-                    else {
-                        failed = true;
-                    }
-                }
-                else {
-                    failed = true;
-                }
-
-                if (failed) {
-                    ReadResult result;
-                    result.success = false;
-                    result.recipientId = request.senderTaskId;
-                    send(IPC::RecipientType::TaskId, &result);
-                }*/
-                
             }
             else if (buffer.messageId == ReadResult::MessageId) {
                 auto result = IPC::extractMessage<ReadResult>(buffer);
                 handleReadResult(result);
-                /*auto pendingRequest = getPendingRequest(result.requestId, pendingRequests);
-                result.recipientId = pendingRequest.requesterTaskId;
-                send(IPC::RecipientType::TaskId, &result);*/
             }
             else if (buffer.messageId == WriteRequest::MessageId) {
                 auto request = IPC::extractMessage<WriteRequest>(buffer);
                 handleWriteRequest(request);
-
-                /*bool failed {false};
-
-                if (request.fileDescriptor < openFileDescriptors.size()) {
-                    auto descriptor = openFileDescriptors[request.fileDescriptor];
-
-                    if (descriptor.isOpen()) {
-                        request.requestId = nextRequestId++;
-                        pendingRequests.push_back({request.requestId, buffer.senderTaskId});
-                        request.recipientId = descriptor.mountTaskId;
-                        request.fileDescriptor = descriptor.descriptor;
-                        send(IPC::RecipientType::TaskId, &request);
-                    }
-                    else {
-                        failed = true;
-                    }
-                }
-                else {
-                    failed = true;
-                }
-
-                if (failed) {
-                    WriteResult result;
-                    result.success = false;
-                    result.recipientId = request.senderTaskId;
-                    send(IPC::RecipientType::TaskId, &result);
-                }*/
             }
             else if (buffer.messageId == WriteResult::MessageId) {
                 auto result = IPC::extractMessage<WriteResult>(buffer);
                 handleWriteResult(result);
-                /*auto pendingRequest = getPendingRequest(result.requestId, pendingRequests);
-                result.recipientId = pendingRequest.requesterTaskId;
-                send(IPC::RecipientType::TaskId, &result);*/
             }
             else if (buffer.messageId == CloseRequest::MessageId) {
                 auto request = IPC::extractMessage<CloseRequest>(buffer);
                 handleCloseRequest(request);
-
-                /*bool failed {false};
-
-                if (request.fileDescriptor < openFileDescriptors.size()) {
-                    auto& descriptor = openFileDescriptors[request.fileDescriptor];
-
-                    if (descriptor.isOpen()) {
-                        request.fileDescriptor = descriptor.descriptor;
-                        request.recipientId = descriptor.mountTaskId;
-                        send(IPC::RecipientType::TaskId, &request);
-
-                        descriptor.close();
-
-                        CloseResult result;
-                        result.success = true;
-                        result.recipientId = buffer.senderTaskId;
-                        send(IPC::RecipientType::TaskId, &result);
-                    }
-                    else {
-                        failed = true;
-                    }
-                }
-                else {
-                    failed = true;
-                }
-
-                if (failed) {
-                    CloseResult result;
-                    result.success = false;
-                    result.recipientId = buffer.senderTaskId;
-                    send(IPC::RecipientType::TaskId, &result);
-                }*/
             }
 
         }

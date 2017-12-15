@@ -5,6 +5,8 @@
         "string": "cpp",
         "string_view": "cpp",
         "vector": "cpp",
-        "type_traits": "cpp"
+        "type_traits": "cpp",
+        "list": "cpp",
+        "iterator": "cpp"
     }
 }
