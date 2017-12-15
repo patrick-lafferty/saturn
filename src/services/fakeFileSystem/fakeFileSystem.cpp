@@ -55,28 +55,28 @@ namespace FakeFileSystem {
 
                 uintptr_t entryPoint {0};
 
-                if (strcmp(request.path, "/bin/vga.service") == 0) {
+                if (strcmp(request.path, "/vga.service") == 0) {
                     entryPoint = reinterpret_cast<uintptr_t>(VGA::service);
                 }
-                else if (strcmp(request.path, "/bin/terminal.service") == 0) {
+                else if (strcmp(request.path, "/terminal.service") == 0) {
                     entryPoint = reinterpret_cast<uintptr_t>(Terminal::service);
                 }
-                else if (strcmp(request.path, "/bin/ps2.service") == 0) {
+                else if (strcmp(request.path, "/ps2.service") == 0) {
                     entryPoint = reinterpret_cast<uintptr_t>(PS2::service);
                 }
-                else if (strcmp(request.path, "/bin/keyboard.service") == 0) {
+                else if (strcmp(request.path, "/keyboard.service") == 0) {
                     entryPoint = reinterpret_cast<uintptr_t>(Keyboard::service);
                 }
-                else if (strcmp(request.path, "/bin/splash.service") == 0) {
+                else if (strcmp(request.path, "/splash.service") == 0) {
                     entryPoint = reinterpret_cast<uintptr_t>(Splash::service);
                 }
-                else if (strcmp(request.path, "/bin/shell") == 0) {
+                else if (strcmp(request.path, "/shell") == 0) {
                     entryPoint = reinterpret_cast<uintptr_t>(Shell::main);
                 }
-                else if (strcmp(request.path, "/bin/bochsGraphicsAdaptor.service") == 0) {
+                else if (strcmp(request.path, "/bochsGraphicsAdaptor.service") == 0) {
                     entryPoint = reinterpret_cast<uintptr_t>(BGA::service);
                 }
-                else if (strcmp(request.path, "/bin/massStorage.service") == 0) {
+                else if (strcmp(request.path, "/massStorage.service") == 0) {
                     entryPoint = reinterpret_cast<uintptr_t>(MassStorageFileSystem::service);
                 }
                 else {

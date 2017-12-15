@@ -40,42 +40,40 @@ namespace PFS {
         };
 
         auto words = split({request.path, strlen(request.path)}, '/');
-        if (!words.empty() && words[0].compare("process") == 0) {
 
-            if (words.size() > 1) {
-                char pidString[11];
-                memset(pidString, '\0', sizeof(pidString));
-                words[1].copy(pidString, words[1].length());
-                uint32_t pid = strtol(pidString, nullptr, 10);
-                ProcessObject* process;
-                auto found = findObject(processes, pid, &process);
+        if (words.size() > 0) {
+            char pidString[11];
+            memset(pidString, '\0', sizeof(pidString));
+            words[0].copy(pidString, words[1].length());
+            uint32_t pid = strtol(pidString, nullptr, 10);
+            ProcessObject* process;
+            auto found = findObject(processes, pid, &process);
 
-                if (found) {
+            if (found) {
 
-                    if (words.size() > 2) {
-                        //path is /process/<pid>/<function or property>
-                        auto functionId = process->getFunction(words[2]);
+                if (words.size() > 1) {
+                    //path is /process/<pid>/<function or property>
+                    auto functionId = process->getFunction(words[1]);
 
-                        if (functionId >= 0) {
-                            addDescriptor(process, functionId, DescriptorType::Function);
-                        }
-                        else {
-                            auto propertyId = process->getProperty(words[2]);
-
-                            if (propertyId >= 0) {
-                                addDescriptor(process, propertyId, DescriptorType::Property);
-                            }
-                        }
+                    if (functionId >= 0) {
+                        addDescriptor(process, functionId, DescriptorType::Function);
                     }
                     else {
-                        //its the process object itself
-                        addDescriptor(process, 0, DescriptorType::Object);
+                        auto propertyId = process->getProperty(words[1]);
+
+                        if (propertyId >= 0) {
+                            addDescriptor(process, propertyId, DescriptorType::Property);
+                        }
                     }
                 }
+                else {
+                    //its the process object itself
+                    addDescriptor(process, 0, DescriptorType::Object);
+                }
             }
-            else {
-                addDescriptor(nullptr, 0, DescriptorType::Object);
-            }
+        }
+        else {
+            addDescriptor(nullptr, 0, DescriptorType::Object);
         }
 
         if (failed) {
@@ -93,21 +91,18 @@ namespace PFS {
 
         auto words = split({request.path, strlen(request.path)}, '/');
 
-        if (words.size() == 2 && words[0].compare("process") == 0) {
+        char pidString[11];
+        memset(pidString, '\0', sizeof(pidString));
+        words[0].copy(pidString, words[0].length());
+        uint32_t pid = strtol(pidString, nullptr, 10);
+        ProcessObject* process;
+        auto found = findObject(processes, pid, &process);
 
-            char pidString[11];
-            memset(pidString, '\0', sizeof(pidString));
-            words[1].copy(pidString, words[1].length());
-            uint32_t pid = strtol(pidString, nullptr, 10);
-            ProcessObject* process;
-            auto found = findObject(processes, pid, &process);
-
-            if (!found) {
-                ProcessObject p {pid};
-                processes.push_back(p);
-                failed = false;
-                result.success = true;
-            }
+        if (!found) {
+            ProcessObject p {pid};
+            processes.push_back(p);
+            failed = false;
+            result.success = true;
         }
 
         if (failed) {
