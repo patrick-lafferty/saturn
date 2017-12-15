@@ -71,37 +71,33 @@ namespace HardwareFileSystem {
         };
 
         auto words = split({request.path, strlen(request.path)}, '/');
-        if (words.size() >= 2
-            && words[0].compare("system") == 0
-            && words[1].compare("hardware") == 0) {
 
-            if (words.size() > 2) {
-                Object* object;
-                auto found = findObject(objects, words[2], &object);
+        if (words.size() > 0) {
+            Object* object;
+            auto found = findObject(objects, words[0], &object);
 
-                if (found) {
-                    
-                    uint32_t lastObjectWord {2};
-                    for (auto i = 3u; i < words.size(); i++) {
-                        auto nestedObject = object->getNestedObject(words[i]);
+            if (found) {
+                
+                uint32_t lastObjectWord {0};
+                for (auto i = 1u; i < words.size(); i++) {
+                    auto nestedObject = object->getNestedObject(words[i]);
 
-                        if (nestedObject != nullptr) {
-                            object = nestedObject;
-                            lastObjectWord = i;
-                        }
+                    if (nestedObject != nullptr) {
+                        object = nestedObject;
+                        lastObjectWord = i;
                     }
+                }
 
-                    if (!tryOpenObject(object, words[words.size() - 1])) {
-                        if (lastObjectWord == (words.size() - 1)) {
-                            addDescriptor(object, 0, DescriptorType::Object);
-                        }
+                if (!tryOpenObject(object, words[words.size() - 1])) {
+                    if (lastObjectWord == (words.size() - 1)) {
+                        addDescriptor(object, 0, DescriptorType::Object);
                     }
                 }
             }
-            else {
-                //its the hardware toplevel
-                addDescriptor(nullptr, 0, DescriptorType::Object);
-            }
+        }
+        else {
+            //its the hardware toplevel
+            addDescriptor(nullptr, 0, DescriptorType::Object);
         }
 
         if (failed) {
@@ -129,37 +125,38 @@ namespace HardwareFileSystem {
         result.serviceType = ServiceType::VFS;
 
         auto words = split({request.path, strlen(request.path)}, '/');
-        if (words.size() >= 3
-            && words[0].compare("system") == 0
-            && words[1].compare("hardware") == 0) {
 
-            if (words.size() == 3) {
-                bool alreadyExists {false};
+        /*
+        when the VFS forwards this request, it strips off /system/hardware, leaving / and the path
+        for example /cpu, /pci
+        */
+        if (words.size() == 1) {
+            bool alreadyExists {false};
 
-                for (auto& object : objects) {
-                    if (words[2].compare(object.name) == 0) {
-                        alreadyExists = true;
-                        break;
-                    }
-                }
-
-                if (!alreadyExists) {
-                    auto object = createObject(words[2]);
-                    if (object != nullptr) {
-                        objects.push_back({});
-                        auto& namedObject = objects[objects.size() - 1];
-                        words[2].copy(namedObject.name, words[2].length());
-                        namedObject.instance = object;
-
-                        failed = false;
-                        result.success = true;
-                    }
+            for (auto& object : objects) {
+                if (words[0].compare(object.name) == 0) {
+                    alreadyExists = true;
+                    break;
                 }
             }
-            else {
-                //TODO: its a subobject
+
+            if (!alreadyExists) {
+                auto object = createObject(words[0]);
+                if (object != nullptr) {
+                    objects.push_back({});
+                    auto& namedObject = objects[objects.size() - 1];
+                    words[0].copy(namedObject.name, words[0].length());
+                    namedObject.instance = object;
+
+                    failed = false;
+                    result.success = true;
+                }
             }
-        } 
+        }
+        else {
+            //TODO: its a subobject
+        }
+        
 
         if (failed) {
             result.success = false;

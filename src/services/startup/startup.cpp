@@ -58,8 +58,8 @@ namespace Startup {
         IPC::MaximumMessageBuffer buffer;
         receive(&buffer);
 
-        if (buffer.messageId == VirtualFileSystem::CreateResult::MessageId) {
-            auto result = IPC::extractMessage<VirtualFileSystem::CreateResult>(buffer);
+        if (buffer.messageId == CreateResult::MessageId) {
+            auto result = IPC::extractMessage<CreateResult>(buffer);
             return result.success;
         }
         else {

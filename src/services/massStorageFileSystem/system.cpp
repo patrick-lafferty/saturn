@@ -119,11 +119,11 @@ namespace MassStorageFileSystem {
         IPC::MaximumMessageBuffer buffer;
         receive(&buffer);
 
-        if (buffer.messageId != VirtualFileSystem::ReadResult::MessageId) {
+        if (buffer.messageId != ReadResult::MessageId) {
             return nullptr;
         }
 
-        auto callResult = IPC::extractMessage<VirtualFileSystem::ReadResult>(buffer);
+        auto callResult = IPC::extractMessage<ReadResult>(buffer);
         auto args = Vostok::ArgBuffer{callResult.buffer, sizeof(callResult.buffer)};
         auto type = args.readType();
 
