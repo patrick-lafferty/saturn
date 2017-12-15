@@ -11,17 +11,53 @@ namespace std {
     class vector {
     public:
 
-        typedef size_t size_type; 
-        typedef T value_type;
-        typedef value_type& reference;
+        //types:
+        using size_type = size_t;
+        using value_type = T;
+        using reference = value_type&;
+        using const_reference = const value_type&;
         //TODO: this should be RandomAccessIterator, but iterators don't exist yet
-        typedef value_type* iterator;
+        using iterator = value_type*;
         
+        //construct/copy/destroy
         vector() {
             maxItems = 10;
             data = new T[maxItems];
         }
-        
+
+        //iterators:
+        iterator begin() noexcept {
+            return data;
+        }
+
+        iterator end() noexcept {
+            return data + items;
+        }
+
+        //capacity
+        [[nodiscard]]
+        bool empty() const noexcept {
+            return items == 0;
+        }
+
+        size_type size() const noexcept {
+            return items;
+        }
+
+        //element access:
+        reference operator[](size_type pos) {
+            return data[pos];
+        }
+
+        reference back() {
+            return data[items - 1];
+        }
+
+        const_reference back() const {
+            return data[items - 1];
+        }
+
+        //modifiers
         void push_back(const T& item) {
             if (items >= maxItems) {
                 auto oldSize = maxItems;
@@ -40,30 +76,9 @@ namespace std {
             items++;
         }
 
-        iterator begin() noexcept {
-            return data;
-        }
-
-        iterator end() noexcept {
-            return data + items;
-        }
-
-        reference operator[](size_type pos) {
-            return data[pos];
-        }
-
-        [[nodiscard]]
-        bool empty() const noexcept {
-            return items == 0;
-        }
-
-        size_type size() const noexcept {
-            return items;
-        }
-
-        void clear() noexcept {
-            items = 0;
-        }
+        void pop_back() {
+            items--;
+        } 
 
         iterator erase(iterator pos) {
 
@@ -80,6 +95,10 @@ namespace std {
 
 
             return pos + 1;
+        }
+
+        void clear() noexcept {
+            items = 0;
         }
 
     private:

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <iterator>
 
 namespace std {
 
@@ -9,6 +10,70 @@ namespace std {
 
     template<class T, class Allocator = std::allocator<T>>
     class list {
+    private:
+
+        struct Node {
+            Node* previous;
+            Node* next;
+
+            T value;
+        };
+
+        template<class ValueType>
+        class ListIteratorBase {
+        public:
+
+            using difference_type = ptrdiff_t;
+            using value_type = ValueType;
+            using pointer = ValueType*;
+            using reference = ValueType&;
+            using iterator_category = forward_iterator_tag;
+
+            ListIteratorBase() {
+                value = nullptr;
+            }
+
+            ListIteratorBase(Node* node) {
+                value = node;
+            }
+
+            bool operator==(const ListIteratorBase& other) const {
+                return value == other.value;
+            }
+
+            bool operator!=(const ListIteratorBase& other) const {
+                return !(value == other.value);
+            }
+
+            ListIteratorBase& operator++() {
+                value = value->next;
+                return *this;
+            }
+
+            reference operator*() const {
+                return value->value;
+            }
+
+            pointer operator->() const {
+                return &value->value;
+            }
+
+        protected:
+            
+            Node* value; 
+
+            friend class list;
+        };
+
+        class ListIterator : public ListIteratorBase<T> {};
+        class ConstListIterator : public ListIteratorBase<const T> {
+        public:
+
+            ConstListIterator(const ListIterator& other)
+                : ListIteratorBase<const T>(other.value) {}
+
+        };
+
     public:
 
         using value_type = T;
@@ -16,6 +81,36 @@ namespace std {
         using reference = value_type&;
         using const_reference = const value_type&;
         using size_type = size_t;
+        //diference_type
+        using iterator = ListIterator;
+        using const_iterator = ConstListIterator;
+
+        //iterators:
+        iterator begin() noexcept {
+            return iterator{head};
+        }
+
+        const_iterator begin() const noexcept {
+            return const_iterator{head};
+        }
+
+        iterator end() noexcept {
+            if (tail != nullptr) {
+                return iterator{tail->next};
+            }
+            else {
+                return iterator{nullptr};
+            }
+        }
+
+        const_iterator end() const noexcept {
+            if (tail != nullptr) {
+                return const_iterator{tail->next};
+            }
+            else {
+                return const_iterator{nullptr};
+            }
+        }
 
         //capacity
         bool empty() const noexcept {
@@ -95,14 +190,32 @@ namespace std {
             }
         }
 
+        iterator erase(const_iterator position) {
+            auto current = position.value;
+            auto previous = current->previous;
+            auto next = current->next;
+
+            if (current == head) {
+                head = next;
+            }
+            else if (current == tail) {
+                tail = previous;
+            }
+
+            if (previous != nullptr) {
+                previous->next = next;
+            }
+
+            if (next != nullptr) {
+                next->previous = previous;
+            }
+
+            delete current;
+
+            return iterator{next};
+        }
+
     private:
-
-        struct Node {
-            Node* previous;
-            Node* next;
-
-            value_type value;
-        };
 
         Node* head {nullptr};
         Node* tail {nullptr};
