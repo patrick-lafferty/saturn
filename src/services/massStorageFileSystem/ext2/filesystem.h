@@ -2,6 +2,8 @@
 
 #include "../filesystem.h"
 #include <vector>
+#include <queue>
+#include <list>
 
 namespace MassStorageFileSystem::Ext2 {
     
@@ -142,31 +144,25 @@ namespace MassStorageFileSystem::Ext2 {
     -
 
     */
-    
-    struct ReadDirectory {
-        struct ReadInodes {
 
-        };
-
-        struct ReadEntry {
-
-        };
-        
-        union {
-            ReadInodes inodes;
-            ReadEntry entry;
-        };
-
-        enum class State {
-            Inodes,
-            Entry
-        };
-
-        State state;
+    struct ReadRequest {
+        uint32_t inode;
+        uint32_t remainingBlocks;
+        bool finishedReadingInode;
+        bool finishedReadingBlocks;
+        uint32_t requestId;
     };
 
-    struct Closure {
+    enum class RequestType {
+        ReadSuperblock,
+        ReadBlockGroupDescriptorTable,
+        ReadDirectory
+    };
 
+    struct Request {
+        ReadRequest read;
+
+        RequestType type;
     };
 
     class Ext2FileSystem : public FileSystem {
@@ -183,7 +179,11 @@ namespace MassStorageFileSystem::Ext2 {
         void setupSuperBlock();
         void setupBlockDescriptorTable(uint16_t* buffer);
         void readInode(uint32_t id);
-        void readDirectory(Inode& inode);
+        uint32_t readDirectory(Inode& inode);
+
+        void handleRequest(Request& request);    
+        void finishRequest();
+        void handleReadDirectoryRequest(ReadRequest& request);
 
         SuperBlock superBlock;
         ReadState readState;
@@ -199,5 +199,6 @@ namespace MassStorageFileSystem::Ext2 {
         */
         std::vector<BlockGroupDescriptor> blockGroupDescriptorTable;
         uint16_t* buffer;
+        std::queue<Request, std::list<Request>> queuedRequests;
     };
 }
