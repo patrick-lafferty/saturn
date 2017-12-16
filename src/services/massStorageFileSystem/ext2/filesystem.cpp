@@ -88,9 +88,9 @@ namespace MassStorageFileSystem::Ext2 {
     }
 
     uint32_t Ext2FileSystem::readDirectory(Inode& inode) {
-        auto blocksToRead = inode.sizeLower32Bits / blockSize;
+        auto blocksToRead = 1 + inode.sizeLower32Bits / blockSize;
         
-        for (int i = 0; i < blocksToRead; i++) {
+        for (auto i = 0u; i < blocksToRead; i++) {
             auto lba = blockIdToLba(inode.directBlock[i]);
             blockDevice->queueReadSector(lba, 1);
         }
@@ -148,6 +148,8 @@ namespace MassStorageFileSystem::Ext2 {
             bool needToSend;
             request.remainingBlocks--;
 
+            result.expectMore = request.remainingBlocks > 0;
+
             for (int i = 0; i < 512; i++) {
                 ptr += sizeof(DirectoryEntry);
                 i += sizeof(DirectoryEntry);
@@ -196,12 +198,12 @@ namespace MassStorageFileSystem::Ext2 {
             }
 
             if (needToSend) {
-                result.expectMore = false;
+                result.expectMore = request.remainingBlocks > 0;
                 send(IPC::RecipientType::ServiceName, &result);
             }
             else if (result.expectMore) {
                 //nothing more to send, but we said to expect more, so send one more saying done
-                result.expectMore = false;
+                result.expectMore = request.remainingBlocks > 0;
                 send(IPC::RecipientType::ServiceName, &result);
             }
 
@@ -232,7 +234,12 @@ namespace MassStorageFileSystem::Ext2 {
         3 - for each block, extract the directory entries, send response message
         */
         Request request{};
-        request.read.inode = index + 2;
+        request.read.inode = index;
+        
+        if (index == 0) {
+            request.read.inode = 2;
+        }
+
         request.read.requestId = requestId;
         request.type = RequestType::ReadDirectory;
 
