@@ -610,6 +610,11 @@ namespace VirtualFileSystem {
             pendingCreate.remainingPath = std::string_view{pendingCreate.fullPath, path.length()};
         };
 
+        if (pendingCreate.entry == nullptr || result == DiscoverResult::Failed) {
+            printf("[VFS] tryCreate failed, pendingCreate.entry is null\n");
+            return false;
+        }
+
         if (pendingCreate.entry->type != Cache::Type::Directory) {
             return false;
         }
@@ -756,7 +761,7 @@ namespace VirtualFileSystem {
         auto pendingRequest = getPendingRequest(result.requestId, pendingRequests);
 
         if (pendingRequest == pendingRequests.end()) {
-            printf("[VFS] Invalid pending request, handleReadResult\n");
+            printf("[VFS] Invalid pending request %d, handleReadResult\n", result.requestId);
             return;
         }
 
@@ -801,7 +806,11 @@ namespace VirtualFileSystem {
     void VirtualFileSystem::handleWriteResult(WriteResult& result) {
         auto pendingRequest = getPendingRequest(result.requestId, pendingRequests);
         result.recipientId = pendingRequest->requesterTaskId;
-        pendingRequests.erase(pendingRequest);
+
+        if (!result.expectReadResult) {
+            pendingRequests.erase(pendingRequest);
+        }
+
         send(IPC::RecipientType::TaskId, &result);
     }
 

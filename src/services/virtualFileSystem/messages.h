@@ -170,11 +170,13 @@ namespace VirtualFileSystem {
         WriteResult() {
             messageId = MessageId;
             length = sizeof(WriteResult);
+            expectReadResult = false;
         }
 
         static uint32_t MessageId;
         uint32_t requestId;
         bool success;
+        bool expectReadResult;
     };
 
     struct CloseRequest : IPC::Message {

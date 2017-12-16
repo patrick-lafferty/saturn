@@ -5,11 +5,12 @@ using namespace VirtualFileSystem;
 using namespace Vostok;
 
 namespace HardwareFileSystem {
-    void replyWriteSucceeded(uint32_t requesterTaskId, uint32_t requestId, bool success) {
+    void replyWriteSucceeded(uint32_t requesterTaskId, uint32_t requestId, bool success, bool expectReadResult) {
         WriteResult result;
         result.requestId = requestId;
         result.success = success;
         result.recipientId = requesterTaskId;
+        result.expectReadResult = expectReadResult;
         send(IPC::RecipientType::TaskId, &result);
     }
 

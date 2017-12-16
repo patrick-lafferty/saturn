@@ -140,7 +140,7 @@ namespace HardwareFileSystem::PCI {
     }
 
     void Object::find(uint32_t requesterTaskId, uint32_t requestId, uint32_t classCode, uint32_t subclassCode) {
-        replyWriteSucceeded(requesterTaskId, requestId, true);
+        replyWriteSucceeded(requesterTaskId, requestId, true, true);
 
         ReadResult result;
         result.success = true;

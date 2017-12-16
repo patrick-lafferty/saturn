@@ -18,7 +18,7 @@ namespace HardwareFileSystem {
         virtual const char* getName() = 0;
     };
 
-    void replyWriteSucceeded(uint32_t requesterTaskId, uint32_t requestId, bool success);
+    void replyWriteSucceeded(uint32_t requesterTaskId, uint32_t requestId, bool success, bool expectReadResult = false);
 
     template<typename Arg>
     void writeTransaction(const char* path, Arg value, Vostok::ArgTypes argType) {
