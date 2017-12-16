@@ -5,7 +5,7 @@
 
 namespace VirtualFileSystem::Cache {
 
-    enum class Type {
+    enum class Type : uint8_t {
         File,
         Directory,
         Union
@@ -18,6 +18,7 @@ namespace VirtualFileSystem::Cache {
         bool writeable {true};
         char path[256];
         uint32_t index;
+        uint32_t pathLength;
     };
 
     /*

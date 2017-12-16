@@ -541,3 +541,16 @@ reserved (zeroes for rest of block)
 ATA driver should come first
 
 -really need std::list and std::queue implementations
+
+aside: messageid becomes (int serviceId, int serviceSpecificMessageId), so they don't have to be reserved
+
+tracking down request 393:
+-its not from an openRequest
+-its not from a createRequest
+-its not from a readRequest
+-its from a writeRequest on fileDescriptor 0
+-from taskId 15 [massStorage.service] to 6 [hardwareFileSystem::detectHardware]
+
+the problem was MassStorage was calling (wrote to) pci/find, find sends
+a readresult sharing the same requestId as the writeResult, but VFS
+closes the pendingRequest upon receiving the writeResult

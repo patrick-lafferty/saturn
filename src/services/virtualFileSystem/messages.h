@@ -144,12 +144,14 @@ namespace VirtualFileSystem {
             messageId = MessageId;
             length = sizeof(ReadResult);
             memset(buffer, 0, sizeof(buffer));
+            bytesWritten = 0;
         }
 
         static uint32_t MessageId;
         uint32_t requestId;
         bool success;
         uint8_t buffer[256];
+        uint32_t bytesWritten;
     };
 
     struct WriteRequest : IPC::Message {

@@ -236,6 +236,12 @@ namespace VirtualFileSystem {
 
         for (auto i = 0u; i < sizeof(result.data); i++) {
             auto index = *reinterpret_cast<uint32_t*>(ptr);
+
+            if (index == 0) {
+                //this result is empty
+                break;
+            }
+
             ptr += 4;
             auto type = static_cast<Cache::Type>(*ptr);
             ptr++;
@@ -270,16 +276,19 @@ namespace VirtualFileSystem {
             entry->type = static_cast<Cache::Type>(type);
             memcpy(entry->path, path, pathLength);
             entry->index = index;
+            entry->pathLength = pathLength;
 
             directory->children.push_back(entry);
 
-            ptr += pathLength;
-            i += pathLength;
+            ptr += pathLength + 1;
+            i += pathLength + 1;
         }
 
         if (result.expectMore) {
             return;
         }
+
+        directory->needsRead = false;
                 
         switch(pendingRequest->type) {
             case RequestType::Open: {
@@ -362,12 +371,32 @@ namespace VirtualFileSystem {
                     }
                     else if (dir->cacheable) {
 
+                        if (isLast && subpath.compare(dir->path) == 0) {
+                            pending.entry = dir;
+                            pending.parent = dir;
+                            return DiscoverResult::Succeeded;
+                        }
+
                         bool canContinue {false};
 
                         for (auto child : dir->children) {
                             if (subpath.compare(child->path) == 0) {
                                 if (isLast) {
                                     pending.entry = child;
+
+                                    if (child->type == Cache::Type::Directory
+                                        && !child->cacheable) {
+                                        return DiscoverResult::DependsOnMount;
+                                    }
+
+                                    if (child->type == Cache::Type::Directory) {
+                                        pending.parent = static_cast<Cache::Directory*>(child);
+                                        
+                                        if (pending.parent->needsRead) {
+                                            return DiscoverResult::DependsOnRead;
+                                        }
+                                    }
+
                                     return DiscoverResult::Succeeded;
                                 }
                                 else if (!child->cacheable) {
@@ -547,14 +576,16 @@ namespace VirtualFileSystem {
             if (processVirtualFileDescriptor >= 0) {                            
                 openFileDescriptors[processVirtualFileDescriptor] = {
                     result.fileDescriptor,
-                    pendingRequest.open.parent->mount
+                    pendingRequest.open.parent->mount,
+                    pendingRequest.open.entry
                 };
             }
             else {
                 processVirtualFileDescriptor = openFileDescriptors.size();
                 openFileDescriptors.push_back({
                     result.fileDescriptor,
-                    pendingRequest.open.parent->mount
+                    pendingRequest.open.parent->mount,
+                    pendingRequest.open.entry
                 });
             }
 
@@ -728,18 +759,30 @@ namespace VirtualFileSystem {
     void VirtualFileSystem::handleReadRequest(ReadRequest& request) {
         bool failed {false};
         if (request.fileDescriptor < openFileDescriptors.size()) {
-            auto descriptor = openFileDescriptors[request.fileDescriptor];
+            auto& descriptor = openFileDescriptors[request.fileDescriptor];
 
             if (descriptor.isOpen()) {
-                request.requestId = nextRequestId++;
-                PendingRequest pending;
-                pending.type = RequestType::Read;
-                pending.id = request.requestId;
-                pending.requesterTaskId = request.senderTaskId;
-                pendingRequests.push_back(pending);
-                request.recipientId = descriptor.mountTaskId;
-                request.fileDescriptor = descriptor.descriptor;
-                send(IPC::RecipientType::TaskId, &request);
+                bool usedCache {false};
+
+                if (descriptor.entry->cacheable) {
+                    if (descriptor.entry->type == Cache::Type::Directory
+                        && !descriptor.entry->needsRead) {
+                        usedCache = true;
+                        readDirectoryFromCache(request, descriptor);
+                    }
+                }
+
+                if (!usedCache) {
+                    request.requestId = nextRequestId++;
+                    PendingRequest pending;
+                    pending.type = RequestType::Read;
+                    pending.id = request.requestId;
+                    pending.requesterTaskId = request.senderTaskId;
+                    pendingRequests.push_back(pending);
+                    request.recipientId = descriptor.mountTaskId;
+                    request.fileDescriptor = descriptor.descriptor;
+                    send(IPC::RecipientType::TaskId, &request);
+                }
             }
             else {
                 failed = true;
@@ -848,6 +891,48 @@ namespace VirtualFileSystem {
             result.recipientId = sender;
             send(IPC::RecipientType::TaskId, &result);
         }
+    }
+
+    void VirtualFileSystem::readDirectoryFromCache(ReadRequest& request, VirtualFileDescriptor& descriptor) {
+        ReadResult result;
+        result.requestId = request.requestId;
+        result.success = true;
+        result.recipientId = request.senderTaskId;
+
+        /*
+        for directories, VirtualFileDescriptor::filePosition refers to the 
+        current index of the children vector
+        */
+        auto directory = static_cast<Cache::Directory*>(descriptor.entry);
+        auto numberOfChildren = directory->children.size();
+
+        if (descriptor.filePosition < numberOfChildren) {
+            uint32_t writeIndex = 0;
+            uint32_t bytesRemaining = sizeof(result.buffer);
+            
+            for (auto i = descriptor.filePosition; i < numberOfChildren; i++) {
+                auto entry = directory->children[i];
+
+                if (bytesRemaining >= (5 + entry->pathLength + 1)) {
+                    memcpy(result.buffer + writeIndex, &entry->index, sizeof(entry->index));
+                    writeIndex += 4;
+                    memcpy(result.buffer + writeIndex, &entry->type, sizeof(entry->type));
+                    writeIndex += 1;
+                    memcpy(result.buffer + writeIndex, entry->path, entry->pathLength);
+                    writeIndex += entry->pathLength;
+                    result.buffer[writeIndex] = '\0';
+                    writeIndex++;
+                    descriptor.filePosition++;
+                }
+                else {
+                    break;
+                }
+            }
+
+            result.bytesWritten = writeIndex;
+        }
+
+        send(IPC::RecipientType::TaskId, &result);
     }
 
     void VirtualFileSystem::messageLoop() {

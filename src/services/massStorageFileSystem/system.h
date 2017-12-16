@@ -5,6 +5,7 @@
 #include <queue>
 #include <list>
 #include "filesystem.h"
+#include <services/virtualFileSystem/messages.h>
 
 namespace ATA {
     class Driver;
@@ -58,6 +59,8 @@ namespace MassStorageFileSystem {
 
         void queueReadSectorRequest(uint32_t lba, uint32_t sectorCount, uint32_t requesterId);
         void queueReadSector(Request request);
+
+        void handleGetDirectoryEntries(VirtualFileSystem::GetDirectoryEntries& request);
 
         ATA::Driver* driver;
         GPTHeader gptHeader;

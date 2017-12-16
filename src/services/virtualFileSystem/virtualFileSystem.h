@@ -56,6 +56,8 @@ namespace VirtualFileSystem {
     struct VirtualFileDescriptor {
         uint32_t descriptor;
         uint32_t mountTaskId;
+        Cache::Entry* entry;
+        uint32_t filePosition;
 
         bool isOpen() const {
             return mountTaskId != 0;
@@ -88,6 +90,8 @@ namespace VirtualFileSystem {
         void handleWriteRequest(WriteRequest& request);
         void handleWriteResult(WriteResult& result);
         void handleCloseRequest(CloseRequest& request);
+
+        void readDirectoryFromCache(ReadRequest& request, VirtualFileDescriptor& descriptor);
 
         Cache::Union root;
         std::list<PendingRequest> pendingRequests;

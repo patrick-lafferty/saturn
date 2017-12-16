@@ -157,11 +157,68 @@ namespace Shell {
         }
     }
 
-    void doRead(uint32_t descriptor) {
+    void doReadVostok(uint32_t descriptor) {
         bool success {false};
         auto r = readSignature(descriptor, success); 
         Vostok::ArgBuffer args{r.buffer, sizeof(r.buffer)};
         printResult(args);        
+    }
+
+    void doReadDirectory(uint32_t descriptor) {
+        while (true) {
+            read(descriptor, 0);
+            IPC::MaximumMessageBuffer buffer;
+            receive(&buffer);
+
+            if (buffer.messageId == VirtualFileSystem::ReadResult::MessageId) {
+                auto result = IPC::extractMessage<VirtualFileSystem::ReadResult>(buffer);
+
+                if (!result.success || result.bytesWritten == 0) {
+                    return;
+                }
+
+                auto ptr = result.buffer;
+
+                for (auto i = 0u; i < sizeof(result.buffer); i++) { 
+                    auto index = *reinterpret_cast<uint32_t*>(ptr);
+
+                    if (index == 0) {
+                        return;
+                    }
+
+                    ptr += 4;
+                    auto type = *ptr;
+                    ptr++;
+                    auto name = reinterpret_cast<char*>(ptr);
+                    printf("%s\n", name);
+                    ptr += strlen(name) + 1;
+                }
+            }
+            else {
+                return;
+            }
+        }
+    }
+
+    void doReadFile(uint32_t descriptor) {
+         while (true) {
+            read(descriptor, 0);
+            IPC::MaximumMessageBuffer buffer;
+            receive(&buffer);
+
+            if (buffer.messageId == VirtualFileSystem::ReadResult::MessageId) {
+                auto result = IPC::extractMessage<VirtualFileSystem::ReadResult>(buffer);
+
+                if (!result.success || result.bytesWritten == 0) {
+                    return;
+                }
+
+                
+            }
+            else {
+                return;
+            }
+         }
     }
 
     void doWriteFunction_impl(uint32_t descriptor, VirtualFileSystem::ReadResult& sig) {
@@ -212,7 +269,7 @@ namespace Shell {
         }
     }
 
-    void doWrite(uint32_t descriptor) {
+    void doWriteVostok(uint32_t descriptor) {
         bool success {false};
         auto sig = readSignature(descriptor, success);
         Vostok::ArgBuffer args{sig.buffer, sizeof(sig.buffer)};
@@ -234,7 +291,7 @@ namespace Shell {
         }
     }
 
-    void doWrite(uint32_t descriptor, std::vector<string_view> arg, int startIndex) {
+    void doWriteVostok(uint32_t descriptor, std::vector<string_view> arg, int startIndex) {
         bool success {false};
         auto sig = readSignature(descriptor, success);
         Vostok::ArgBuffer args{sig.buffer, sizeof(sig.buffer)};
@@ -306,7 +363,7 @@ namespace Shell {
         else if (words[0].compare("version") == 0) {
             printf("Saturn 0.1.0\n");
         }
-        else if (words[0].compare("read") == 0) {
+        else if (words[0].compare("get") == 0) {
 
             if (words.size() < 2) {
                 return false;
@@ -314,7 +371,7 @@ namespace Shell {
 
             uint32_t descriptor {0};
             if (doOpen(words[1], descriptor)) {
-                doRead(descriptor); 
+                doReadVostok(descriptor); 
             }
             else {
                 printf("open failed\n");
@@ -329,14 +386,36 @@ namespace Shell {
             uint32_t descriptor {0};
             if (doOpen(words[1], descriptor)) {
                 if (words.size() > 2) {
-                    doWrite(descriptor, words, 2); 
+                    doWriteVostok(descriptor, words, 2); 
                 }
                 else {
-                    doWrite(descriptor);
+                    doWriteVostok(descriptor);
                 }
             }
             else {
                 printf("open failed\n");
+            }
+        }
+        else if (words[0].compare("list") == 0) {
+            if (words.size() < 2) {
+                return false;
+            }
+
+            uint32_t descriptor {0};
+
+            if (doOpen(words[1], descriptor)) {
+                doReadDirectory(descriptor);
+            }
+        }
+        else if (words[0].compare("read") == 0) {
+            if (words.size() < 2) {
+                return false;
+            }
+
+            uint32_t descriptor {0};
+
+            if (doOpen(words[1], descriptor)) {
+                doReadFile(descriptor);
             }
         }
         else {

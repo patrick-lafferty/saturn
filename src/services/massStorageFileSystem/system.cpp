@@ -70,6 +70,7 @@ namespace MassStorageFileSystem {
         const char* path = "/test";
         memcpy(request.path, path, strlen(path) + 1);
         request.serviceType = ServiceType::VFS;
+        request.cacheable = true;
 
         send(IPC::RecipientType::ServiceName, &request);
     }
@@ -164,6 +165,19 @@ namespace MassStorageFileSystem {
                         }
                     }
                 }
+            }
+            else if (buffer.messageId == GetDirectoryEntries::MessageId) {
+                auto request = IPC::extractMessage<GetDirectoryEntries>(buffer);
+                handleGetDirectoryEntries(request);
+            }
+            else if (buffer.messageId == OpenRequest::MessageId) {
+                auto request = IPC::extractMessage<OpenRequest>(buffer);
+                OpenResult result;
+                result.success = true;
+                result.serviceType = ServiceType::VFS;
+                result.fileDescriptor = 0;
+                result.requestId = request.requestId;
+                send(IPC::RecipientType::ServiceName, &result);
             }
         }
     }
@@ -271,6 +285,14 @@ namespace MassStorageFileSystem {
     void MassStorageController::queueReadSector(Request request) {
         pendingCommand = PendingDiskCommand::Read;
         driver->queueReadSector(request.lba, request.sectorCount);
+    }
+
+    void MassStorageController::handleGetDirectoryEntries(GetDirectoryEntries& request) {
+        /*
+        TODO: for now assume fileSystems[0] is the only mount
+        */
+
+        fileSystems[0]->readDirectory(request.index, request.requestId);
     }
 
     void service() {
