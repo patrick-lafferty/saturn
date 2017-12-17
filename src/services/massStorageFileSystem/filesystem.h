@@ -101,6 +101,7 @@ namespace MassStorageFileSystem {
 
         virtual void receiveSector() = 0;
         virtual void readDirectory(uint32_t index, uint32_t requestId) = 0;
+        virtual void readFile(uint32_t index, uint32_t requestId) = 0;
 
     protected: 
         IBlockDevice* blockDevice;

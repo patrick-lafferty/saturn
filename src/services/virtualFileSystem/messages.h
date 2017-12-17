@@ -79,6 +79,7 @@ namespace VirtualFileSystem {
         static uint32_t MessageId;
         uint32_t requestId;
         char path[64];
+        uint32_t index;
 
         //TODO: read/write, permissions
     };
@@ -151,6 +152,21 @@ namespace VirtualFileSystem {
         uint32_t requestId;
         bool success;
         uint8_t buffer[256];
+        uint32_t bytesWritten;
+    };
+
+    struct Read512Result : IPC::Message {
+        Read512Result() {
+            messageId = MessageId;
+            length = sizeof(Read512Result);
+            memset(buffer, 0, sizeof(buffer));
+            bytesWritten = 0;
+        }
+
+        static uint32_t MessageId;
+        uint32_t requestId;
+        bool success;
+        uint8_t buffer[512];
         uint32_t bytesWritten;
     };
 

@@ -7,6 +7,15 @@
         "vector": "cpp",
         "type_traits": "cpp",
         "list": "cpp",
-        "iterator": "cpp"
+        "iterator": "cpp",
+        "algorithm": "cpp",
+        "cstddef": "cpp",
+        "cwchar": "cpp",
+        "ios": "cpp",
+        "iosfwd": "cpp",
+        "new": "cpp",
+        "queue": "cpp",
+        "stack": "cpp",
+        "utility": "cpp"
     }
 }

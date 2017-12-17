@@ -4,6 +4,7 @@
 #include <services/virtualFileSystem/messages.h>
 #include <services.h>
 #include <system_calls.h>
+#include <algorithm>
 
 namespace MassStorageFileSystem::Ext2 {
 
@@ -60,6 +61,7 @@ namespace MassStorageFileSystem::Ext2 {
         }
 
         blockSize = 1024 << superBlock.log2BlockSize;
+        inodesPerBlock = blockSize / superBlock.inodeSize;
 
         blockDevice->queueReadSector(blockIdToLba(blockGroupDescriptorTableId), 1);
         queuedRequests.pop();
@@ -87,7 +89,7 @@ namespace MassStorageFileSystem::Ext2 {
         blockDevice->queueReadSector(lba, 1);
     }
 
-    uint32_t Ext2FileSystem::readDirectory(Inode& inode) {
+    uint32_t Ext2FileSystem::readInodeBlocks(Inode& inode) {
         auto blocksToRead = 1 + inode.sizeLower32Bits / blockSize;
         
         for (auto i = 0u; i < blocksToRead; i++) {
@@ -112,6 +114,10 @@ namespace MassStorageFileSystem::Ext2 {
                 handleReadDirectoryRequest(request.read);
                 break;
             }
+            case RequestType::ReadFile: {
+                handleReadFileRequest(request.read);
+                break;
+            }
         }
     }
 
@@ -130,9 +136,9 @@ namespace MassStorageFileSystem::Ext2 {
         }
         else if (!request.finishedReadingBlocks) {
             auto inodes = reinterpret_cast<Inode*>(buffer);
-            auto inode = inodes[(request.inode - 1) % superBlock.inodesPerGroup];
+            auto inode = inodes[(request.inode - 1) % inodesPerBlock];
 
-            request.remainingBlocks = readDirectory(inode);
+            request.remainingBlocks = readInodeBlocks(inode);
             request.finishedReadingBlocks = true;
         }
         else {
@@ -213,6 +219,41 @@ namespace MassStorageFileSystem::Ext2 {
         }
     }
 
+    void Ext2FileSystem::handleReadFileRequest(ReadRequest& request) {
+        if (!request.finishedReadingInode) {
+            readInode(request.inode);
+            request.finishedReadingInode = true;
+        }
+        else if (!request.finishedReadingBlocks) {
+            auto inodes = reinterpret_cast<Inode*>(buffer);
+            auto inode = inodes[(request.inode - 1) % inodesPerBlock];
+
+            request.remainingBlocks = readInodeBlocks(inode);
+            request.finishedReadingBlocks = true;
+            request.remainingBytes = inode.sizeLower32Bits;
+        }
+        else {
+            request.remainingBlocks--;
+
+            VirtualFileSystem::Read512Result result;
+            result.requestId = request.requestId;
+            result.serviceType = Kernel::ServiceType::VFS;
+            result.success = true;
+
+            auto count = std::min(static_cast<uint32_t>(sizeof(result.buffer)), request.remainingBytes);
+
+            memcpy(result.buffer, buffer, count);
+            result.bytesWritten = count;
+            send(IPC::RecipientType::ServiceName, &result);
+
+            request.remainingBytes -= count;
+
+            if (request.remainingBlocks == 0 || request.remainingBytes == 0) {
+                finishRequest();
+            }
+        }
+    }
+
     void Ext2FileSystem::receiveSector() {
 
         memset(buffer, 0, 512);
@@ -226,13 +267,7 @@ namespace MassStorageFileSystem::Ext2 {
     }
 
     void Ext2FileSystem::readDirectory(uint32_t index, uint32_t requestId) {
-        /*
-        Steps:
-
-        1 - read the inode, 1 queueReadSector
-        2 - read the blocks of the inode, x queueReadSectors
-        3 - for each block, extract the directory entries, send response message
-        */
+        
         Request request{};
         request.read.inode = index;
         
@@ -242,6 +277,20 @@ namespace MassStorageFileSystem::Ext2 {
 
         request.read.requestId = requestId;
         request.type = RequestType::ReadDirectory;
+
+        if (queuedRequests.empty()) {
+            handleRequest(request);
+        }
+
+        queuedRequests.push(request);
+    }
+
+    void Ext2FileSystem::readFile(uint32_t index, uint32_t requestId) {
+        
+        Request request{};
+        request.read.inode = index;
+        request.read.requestId = requestId;
+        request.type = RequestType::ReadFile;
 
         if (queuedRequests.empty()) {
             handleRequest(request);

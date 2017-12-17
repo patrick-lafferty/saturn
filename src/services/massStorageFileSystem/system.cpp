@@ -175,9 +175,13 @@ namespace MassStorageFileSystem {
                 OpenResult result;
                 result.success = true;
                 result.serviceType = ServiceType::VFS;
-                result.fileDescriptor = 0;
+                result.fileDescriptor = request.index;
                 result.requestId = request.requestId;
                 send(IPC::RecipientType::ServiceName, &result);
+            }
+            else if (buffer.messageId == ::VirtualFileSystem::ReadRequest::MessageId) {
+                auto request = IPC::extractMessage<::VirtualFileSystem::ReadRequest>(buffer);
+                handleReadRequest(request);
             }
         }
     }
@@ -293,6 +297,13 @@ namespace MassStorageFileSystem {
         */
 
         fileSystems[0]->readDirectory(request.index, request.requestId);
+    }
+
+    void MassStorageController::handleReadRequest(::VirtualFileSystem::ReadRequest& request) {
+        /*
+        TODO: for now assume fileSystems[0] is the only mount
+        */
+        fileSystems[0]->readFile(request.fileDescriptor, request.requestId);
     }
 
     void service() {

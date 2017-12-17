@@ -148,6 +148,7 @@ namespace MassStorageFileSystem::Ext2 {
     struct ReadRequest {
         uint32_t inode;
         uint32_t remainingBlocks;
+        uint32_t remainingBytes;
         bool finishedReadingInode;
         bool finishedReadingBlocks;
         uint32_t requestId;
@@ -156,7 +157,8 @@ namespace MassStorageFileSystem::Ext2 {
     enum class RequestType {
         ReadSuperblock,
         ReadBlockGroupDescriptorTable,
-        ReadDirectory
+        ReadDirectory,
+        ReadFile
     };
 
     struct Request {
@@ -171,6 +173,7 @@ namespace MassStorageFileSystem::Ext2 {
         void receiveSector() override;
 
         void readDirectory(uint32_t index, uint32_t requestId) override;
+        void readFile(uint32_t index, uint32_t requestId) override;
 
     private:
 
@@ -179,17 +182,19 @@ namespace MassStorageFileSystem::Ext2 {
         void setupSuperBlock();
         void setupBlockDescriptorTable(uint16_t* buffer);
         void readInode(uint32_t id);
-        uint32_t readDirectory(Inode& inode);
+        uint32_t readInodeBlocks(Inode& inode);
 
         void handleRequest(Request& request);    
         void finishRequest();
         void handleReadDirectoryRequest(ReadRequest& request);
+        void handleReadFileRequest(ReadRequest& request);
 
         SuperBlock superBlock;
         ReadState readState;
         uint32_t blockGroupCount;
         uint32_t blockSize;
         uint32_t blockGroupDescriptorTableId;
+        uint32_t inodesPerBlock;
         /*
         cache the whole block group descriptor table here, its only
         max 8 megs

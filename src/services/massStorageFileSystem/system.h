@@ -61,6 +61,7 @@ namespace MassStorageFileSystem {
         void queueReadSector(Request request);
 
         void handleGetDirectoryEntries(VirtualFileSystem::GetDirectoryEntries& request);
+        void handleReadRequest(VirtualFileSystem::ReadRequest& request);
 
         ATA::Driver* driver;
         GPTHeader gptHeader;

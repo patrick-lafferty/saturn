@@ -206,13 +206,18 @@ namespace Shell {
             IPC::MaximumMessageBuffer buffer;
             receive(&buffer);
 
-            if (buffer.messageId == VirtualFileSystem::ReadResult::MessageId) {
-                auto result = IPC::extractMessage<VirtualFileSystem::ReadResult>(buffer);
+            if (buffer.messageId == VirtualFileSystem::Read512Result::MessageId) {
+                auto result = IPC::extractMessage<VirtualFileSystem::Read512Result>(buffer);
 
                 if (!result.success || result.bytesWritten == 0) {
                     return;
                 }
 
+                char* buffer = new char[result.bytesWritten + 1];
+                memcpy(buffer, result.buffer, result.bytesWritten);
+                buffer[result.bytesWritten] = '\0';
+
+                printf("%s", buffer);
                 
             }
             else {
