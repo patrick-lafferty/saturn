@@ -175,7 +175,8 @@ namespace MassStorageFileSystem {
                 OpenResult result;
                 result.success = true;
                 result.serviceType = ServiceType::VFS;
-                result.fileDescriptor = request.index;
+                //result.fileDescriptor = request.index;
+                result.fileDescriptor = fileSystems[0]->openFile(request.index, request.requestId);
                 result.requestId = request.requestId;
                 send(IPC::RecipientType::ServiceName, &result);
             }

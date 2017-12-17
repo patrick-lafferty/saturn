@@ -158,20 +158,30 @@ namespace MassStorageFileSystem::Ext2 {
         ReadSuperblock,
         ReadBlockGroupDescriptorTable,
         ReadDirectory,
-        ReadFile
+        ReadFile,
+        ReadInode
     };
 
     struct Request {
         ReadRequest read;
-
         RequestType type;
+
+        uint32_t descriptor;
+        uint32_t length;
+    };
+
+    struct FileDescriptor {
+        Inode inode;
+        uint32_t id;
+        uint32_t filePosition;
+        uint32_t requestId;
     };
 
     class Ext2FileSystem : public FileSystem {
     public:
         Ext2FileSystem(IBlockDevice* device); 
         void receiveSector() override;
-
+        uint32_t openFile(uint32_t index, uint32_t requestId) override;
         void readDirectory(uint32_t index, uint32_t requestId) override;
         void readFile(uint32_t index, uint32_t requestId) override;
 
@@ -187,7 +197,8 @@ namespace MassStorageFileSystem::Ext2 {
         void handleRequest(Request& request);    
         void finishRequest();
         void handleReadDirectoryRequest(ReadRequest& request);
-        void handleReadFileRequest(ReadRequest& request);
+        void handleReadFileRequest(Request& request);
+        void handleReadInodeRequest(Request& request);
 
         SuperBlock superBlock;
         ReadState readState;
@@ -205,5 +216,6 @@ namespace MassStorageFileSystem::Ext2 {
         std::vector<BlockGroupDescriptor> blockGroupDescriptorTable;
         uint16_t* buffer;
         std::queue<Request, std::list<Request>> queuedRequests;
+        std::vector<FileDescriptor> openFileDescriptors;
     };
 }

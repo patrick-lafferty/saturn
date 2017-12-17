@@ -115,7 +115,11 @@ namespace MassStorageFileSystem::Ext2 {
                 break;
             }
             case RequestType::ReadFile: {
-                handleReadFileRequest(request.read);
+                handleReadFileRequest(request);
+                break;
+            }
+            case RequestType::ReadInode: {
+                handleReadInodeRequest(request);
                 break;
             }
         }
@@ -219,8 +223,86 @@ namespace MassStorageFileSystem::Ext2 {
         }
     }
 
-    void Ext2FileSystem::handleReadFileRequest(ReadRequest& request) {
-        if (!request.finishedReadingInode) {
+    FileDescriptor* findDescriptor(uint32_t id, std::vector<FileDescriptor>& descriptors) {
+        for (auto& descriptor : descriptors) {
+            if (descriptor.id == id) {
+                return &descriptor;
+            }
+        }
+
+        return nullptr;
+    }
+
+    void Ext2FileSystem::handleReadFileRequest(Request& request) {
+        auto descriptor = findDescriptor(request.descriptor, openFileDescriptors);
+
+        if (descriptor == nullptr) {
+            finishRequest();
+            return;
+        }
+        
+        if (!request.read.finishedReadingBlocks) {
+            request.read.finishedReadingBlocks = true;
+
+            auto blocksToRead = 1 + request.length / blockSize;
+            auto startingBlock = descriptor->filePosition / blockSize;
+        
+            for (auto i = 0u; i < blocksToRead; i++) {
+                auto blockId = startingBlock + i;
+
+                if (blockId < sizeof(Inode::directBlock)) {
+                    auto lba = blockIdToLba(descriptor->inode.directBlock[blockId]);
+                    blockDevice->queueReadSector(lba, 1);
+                }
+                else {
+                    printf("[Ext2] Stub: Ext2FileSystem::handleReadRequest doesn't suppory indirect blocks yet\n");
+                }
+            }
+
+            request.read.remainingBlocks = blocksToRead;
+        }
+        else {
+            request.read.remainingBlocks--;
+
+            VirtualFileSystem::Read512Result result;
+            result.requestId = request.read.requestId;
+            result.serviceType = Kernel::ServiceType::VFS;
+            result.success = true;
+
+            auto count = std::min(static_cast<uint32_t>(sizeof(result.buffer)), descriptor->inode.sizeLower32Bits - descriptor->filePosition);
+
+            memcpy(result.buffer, buffer, count);
+            result.bytesWritten = count;
+            descriptor->filePosition += count; 
+            send(IPC::RecipientType::ServiceName, &result);
+
+            if (request.read.remainingBlocks == 0) {// || request.remainingBytes == 0) {
+                finishRequest();
+            }
+        }
+    }
+
+    void Ext2FileSystem::handleReadInodeRequest(Request& request) {
+
+        if (!request.read.finishedReadingInode) {
+            readInode(request.read.inode);
+            request.read.finishedReadingInode = true;
+        }
+        else {
+            auto inodes = reinterpret_cast<Inode*>(buffer);
+            auto& inode = inodes[(request.read.inode - 1) % inodesPerBlock];
+
+            for (auto& descriptor : openFileDescriptors) {
+                if (descriptor.id == request.descriptor) {
+                    descriptor.inode = inode;
+
+                    finishRequest();
+                    return;
+                }
+            }
+        }
+
+        /*if (!request.finishedReadingInode) {
             readInode(request.inode);
             request.finishedReadingInode = true;
         }
@@ -251,7 +333,7 @@ namespace MassStorageFileSystem::Ext2 {
             if (request.remainingBlocks == 0 || request.remainingBytes == 0) {
                 finishRequest();
             }
-        }
+        }*/
     }
 
     void Ext2FileSystem::receiveSector() {
@@ -264,6 +346,30 @@ namespace MassStorageFileSystem::Ext2 {
         }
 
         handleRequest(queuedRequests.front());
+    }
+
+    uint32_t Ext2FileSystem::openFile(uint32_t index, uint32_t requestId) {
+        static uint32_t nextFileDescriptor = 0;
+
+        FileDescriptor descriptor;
+        descriptor.filePosition = 0;
+        descriptor.requestId = requestId;
+        descriptor.id = nextFileDescriptor++;
+
+        openFileDescriptors.push_back(descriptor);
+
+        Request request{};
+        request.read.inode = index;
+        request.type = RequestType::ReadInode;
+        request.descriptor = descriptor.id;
+
+        if (queuedRequests.empty()) {
+            handleRequest(request);
+        }
+
+        queuedRequests.push(request);
+
+        return descriptor.id;
     }
 
     void Ext2FileSystem::readDirectory(uint32_t index, uint32_t requestId) {
@@ -288,9 +394,10 @@ namespace MassStorageFileSystem::Ext2 {
     void Ext2FileSystem::readFile(uint32_t index, uint32_t requestId) {
         
         Request request{};
-        request.read.inode = index;
+        //request.read.inode = index;
         request.read.requestId = requestId;
         request.type = RequestType::ReadFile;
+        request.descriptor = index;
 
         if (queuedRequests.empty()) {
             handleRequest(request);
