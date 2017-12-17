@@ -18,6 +18,7 @@ namespace VirtualFileSystem {
     uint32_t CreateResult::MessageId;
     uint32_t ReadRequest::MessageId;
     uint32_t ReadResult::MessageId;
+    uint32_t Read512Result::MessageId;
     uint32_t WriteRequest::MessageId;
     uint32_t WriteResult::MessageId;
     uint32_t CloseRequest::MessageId;
@@ -33,6 +34,7 @@ namespace VirtualFileSystem {
         IPC::registerMessage<CreateResult>();
         IPC::registerMessage<ReadRequest>();
         IPC::registerMessage<ReadResult>();
+        IPC::registerMessage<Read512Result>();
         IPC::registerMessage<WriteRequest>();
         IPC::registerMessage<WriteResult>();
         IPC::registerMessage<CloseRequest>();
@@ -383,6 +385,7 @@ namespace VirtualFileSystem {
                             if (subpath.compare(child->path) == 0) {
                                 if (isLast) {
                                     pending.entry = child;
+                                    pending.parent = dir;
 
                                     if (child->type == Cache::Type::Directory
                                         && !child->cacheable) {
@@ -523,6 +526,7 @@ namespace VirtualFileSystem {
                 OpenRequest request;
                 request.recipientId = pendingOpen.parent->mount;
                 request.requestId = pendingRequest.id; 
+                request.index = pendingOpen.entry->index;
                 pendingOpen.remainingPath.copy(request.path, pendingOpen.remainingPath.length());
 
                 send(IPC::RecipientType::TaskId, &request);                
@@ -778,6 +782,7 @@ namespace VirtualFileSystem {
                     pending.type = RequestType::Read;
                     pending.id = request.requestId;
                     pending.requesterTaskId = request.senderTaskId;
+                    pending.virtualFileDescriptor = request.fileDescriptor;
                     pendingRequests.push_back(pending);
                     request.recipientId = descriptor.mountTaskId;
                     request.fileDescriptor = descriptor.descriptor;
@@ -810,6 +815,21 @@ namespace VirtualFileSystem {
 
         result.recipientId = pendingRequest->requesterTaskId;
         //pendingRequests.erase(pendingRequest);
+        send(IPC::RecipientType::TaskId, &result);
+    }
+
+    void VirtualFileSystem::handleRead512Result(Read512Result& result) {
+        auto pendingRequest = getPendingRequest(result.requestId, pendingRequests);
+
+        if (pendingRequest == pendingRequests.end()) {
+            printf("[VFS] Invalid pending request %d, handleRead512Result\n", result.requestId);
+            return;
+        }
+
+        openFileDescriptors[pendingRequest->virtualFileDescriptor].filePosition += result.bytesWritten;
+
+        result.recipientId = pendingRequest->requesterTaskId;
+        pendingRequests.erase(pendingRequest);
         send(IPC::RecipientType::TaskId, &result);
     }
 
@@ -954,10 +974,8 @@ namespace VirtualFileSystem {
                 handleOpenRequest(request);
             }
             else if (buffer.messageId == OpenResult::MessageId) {
-
                 auto result = IPC::extractMessage<OpenResult>(buffer);
                 handleOpenResult(result); 
-                
             }
             else if (buffer.messageId == CreateRequest::MessageId) {
                 auto request = IPC::extractMessage<CreateRequest>(buffer);
@@ -979,6 +997,10 @@ namespace VirtualFileSystem {
             else if (buffer.messageId == ReadResult::MessageId) {
                 auto result = IPC::extractMessage<ReadResult>(buffer);
                 handleReadResult(result);
+            }
+            else if (buffer.messageId == Read512Result::MessageId) {
+                auto result = IPC::extractMessage<Read512Result>(buffer);
+                handleRead512Result(result);
             }
             else if (buffer.messageId == WriteRequest::MessageId) {
                 auto request = IPC::extractMessage<WriteRequest>(buffer);

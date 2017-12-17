@@ -51,6 +51,7 @@ namespace VirtualFileSystem {
         uint32_t id;
         uint32_t requesterTaskId;
         RequestType type;
+        uint32_t virtualFileDescriptor;
     };
 
     struct VirtualFileDescriptor {
@@ -87,6 +88,7 @@ namespace VirtualFileSystem {
         void handleCreateResult(CreateResult& result);
         void handleReadRequest(ReadRequest& request);
         void handleReadResult(ReadResult& result);
+        void handleRead512Result(Read512Result& result);
         void handleWriteRequest(WriteRequest& request);
         void handleWriteResult(WriteResult& result);
         void handleCloseRequest(CloseRequest& request);
