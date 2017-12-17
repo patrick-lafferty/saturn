@@ -90,7 +90,7 @@ namespace MassStorageFileSystem::Ext2 {
     }
 
     uint32_t Ext2FileSystem::readInodeBlocks(Inode& inode) {
-        auto blocksToRead = 1 + inode.sizeLower32Bits / blockSize;
+        auto blocksToRead = ceil((double)inode.sizeLower32Bits / blockSize);
         
         for (auto i = 0u; i < blocksToRead; i++) {
             auto lba = blockIdToLba(inode.directBlock[i]);
@@ -159,6 +159,7 @@ namespace MassStorageFileSystem::Ext2 {
             request.remainingBlocks--;
 
             result.expectMore = request.remainingBlocks > 0;
+            auto entrySize = static_cast<uint32_t>(sizeof(DirectoryEntry));
 
             for (int i = 0; i < 512; i++) {
                 ptr += sizeof(DirectoryEntry);
@@ -202,8 +203,10 @@ namespace MassStorageFileSystem::Ext2 {
                     needToSend = true;
                 }
 
-                ptr += entry.size - sizeof(DirectoryEntry);
-                i += entry.size - sizeof(DirectoryEntry);
+                auto skipBytes = entry.size > entrySize ? (entry.size - entrySize) : entrySize;
+
+                ptr += skipBytes;
+                i += skipBytes;
                 entry = *reinterpret_cast<DirectoryEntry*>(ptr);
             }
 
@@ -276,7 +279,7 @@ namespace MassStorageFileSystem::Ext2 {
             descriptor->filePosition += count; 
             send(IPC::RecipientType::ServiceName, &result);
 
-            if (request.read.remainingBlocks == 0) {// || request.remainingBytes == 0) {
+            if (request.read.remainingBlocks == 0) {
                 finishRequest();
             }
         }
@@ -301,39 +304,6 @@ namespace MassStorageFileSystem::Ext2 {
                 }
             }
         }
-
-        /*if (!request.finishedReadingInode) {
-            readInode(request.inode);
-            request.finishedReadingInode = true;
-        }
-        else if (!request.finishedReadingBlocks) {
-            auto inodes = reinterpret_cast<Inode*>(buffer);
-            auto inode = inodes[(request.inode - 1) % inodesPerBlock];
-
-            request.remainingBlocks = readInodeBlocks(inode);
-            request.finishedReadingBlocks = true;
-            request.remainingBytes = inode.sizeLower32Bits;
-        }
-        else {
-            request.remainingBlocks--;
-
-            VirtualFileSystem::Read512Result result;
-            result.requestId = request.requestId;
-            result.serviceType = Kernel::ServiceType::VFS;
-            result.success = true;
-
-            auto count = std::min(static_cast<uint32_t>(sizeof(result.buffer)), request.remainingBytes);
-
-            memcpy(result.buffer, buffer, count);
-            result.bytesWritten = count;
-            send(IPC::RecipientType::ServiceName, &result);
-
-            request.remainingBytes -= count;
-
-            if (request.remainingBlocks == 0 || request.remainingBytes == 0) {
-                finishRequest();
-            }
-        }*/
     }
 
     void Ext2FileSystem::receiveSector() {
@@ -360,6 +330,11 @@ namespace MassStorageFileSystem::Ext2 {
 
         Request request{};
         request.read.inode = index;
+        
+        if (index == 0) {
+            request.read.inode = 2;
+        }
+
         request.type = RequestType::ReadInode;
         request.descriptor = descriptor.id;
 
@@ -394,7 +369,6 @@ namespace MassStorageFileSystem::Ext2 {
     void Ext2FileSystem::readFile(uint32_t index, uint32_t requestId) {
         
         Request request{};
-        //request.read.inode = index;
         request.read.requestId = requestId;
         request.type = RequestType::ReadFile;
         request.descriptor = index;
