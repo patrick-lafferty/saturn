@@ -143,5 +143,6 @@ namespace Startup {
         runProgram("/bin/keyboard.service");
         runProgram("/bin/splash.service");
         runProgram("/bin/shell");
+        runProgram("/bin/testWin");
     }
 }

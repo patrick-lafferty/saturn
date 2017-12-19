@@ -1,24 +1,25 @@
 DEPENDENCYDIR := .d
 DEPENDENCYFLAGS = -MT $@ -MMD -MP -MF $(DEPENDENCYDIR)/$*.Td
 
-CROSS_COMPILER_PATH = ~/projects/saturn-cross-compiler/bin
+CROSS_COMPILER_PATH = ~/projects/saturn-cross-compiler/bin/i686-saturn/bin
 
-AR = $(CROSS_COMPILER_PATH)/i686-elf-ar
-AS = $(CROSS_COMPILER_PATH)/i686-elf-as
+AR = $(CROSS_COMPILER_PATH)/ar
+AS = $(CROSS_COMPILER_PATH)/as
 AS = yasm
 ASFLAGS = -msyntax=intel -mmnemonic=intel -mnaked-reg -g
 ASFLAGS = -felf32
 
 CXX = clang++-5.0
-MARCH = "--target=i686-pc-none-elf -march=i686"
+#MARCH = "--target=i686-pc-none-elf -march=i686"
+MARCH = "--target=i686-saturn -march=i686"
 WARNINGS = -Wall -Wextra 
-CXXPATHS = -isysroot sysroot/ -iwithsysroot /system/include -I src -I src/libc/include -I src/libc++/include -I src/kernel -I src/kernel/arch/i386 -I .
+CXXPATHS = -isysroot sysroot/ -iwithsysroot /system/include -iwithsysroot /libraries/include/freetype2 -I src -I src/libc/include -I src/libc++/include -I src/kernel -I src/kernel/arch/i386 -I .
 	
 FLAGS = -fno-omit-frame-pointer -ffreestanding -fno-exceptions -fno-rtti -fno-builtin -nostdinc 
 CXXFLAGS = -O0 $(FLAGS) -g $(MARCH) $(DEPENDENCYFLAGS) $(WARNINGS) -std=c++1z  $(CXXPATHS) -masm=intel -Drestrict=__restrict
 
-LD = $(CROSS_COMPILER_PATH)/i686-elf-ld
-LDFLAGS = -L=system/lib --sysroot=sysroot/ -g
+LD = $(CROSS_COMPILER_PATH)/ld
+LDFLAGS = -L=system/lib -L=libraries/lib --sysroot=sysroot/ -g
 
 MKDIR = mkdir -p
 
@@ -87,7 +88,7 @@ include test/libc++/make.config
 
 $(shell mkdir -p $(dir $(DEPS)) >/dev/null)
 
-LIBS = -luserland -lc_test_freestanding -lc++_test_freestanding -lc++_freestanding -lc_freestanding 
+LIBS = -lfreetype -luserland -lc_test_freestanding -lc++_test_freestanding -lc++_freestanding -lc_freestanding 
 
 LINK_LIST = \
 	$(LDFLAGS) \
@@ -160,7 +161,9 @@ $(DEPENDENCYDIR)/%.d: ;
 .PRECIOUS: $(DEPENDENCYDIR)/%.d
 
 clean:
-	$(RM) sysroot/ -rf
+	$(RM) sysroot/system/lib -rf
+	$(RM) sysroot/system/include -rf
+	$(RM) sysroot/system/boot -rf
 	$(RM) $(OBJS_WITHOUT_CRT) $(LIBC_FREE_OBJS)
 	$(RM) src/libc/libc_freestanding.a
 	$(RM) test/libc/libc_test_freestanding.a

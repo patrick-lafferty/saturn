@@ -554,3 +554,22 @@ tracking down request 393:
 the problem was MassStorage was calling (wrote to) pci/find, find sends
 a readresult sharing the same requestId as the writeResult, but VFS
 closes the pendingRequest upon receiving the writeResult
+
+
+*
+
+* Step 13: Porting Freetype
+
+missing libc funcs:
+
+qsort - declared, implemented
+strstr - declared, implemented
+memchr - declared, implemented
+_setjmp
+strcpy - declared, implemented
+realloc - declared
+fopen - declared, implemented
+fseek -declared, implemented
+ftell - declared
+fclose - declared
+fread - declared

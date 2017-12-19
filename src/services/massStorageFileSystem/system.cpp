@@ -67,7 +67,7 @@ namespace MassStorageFileSystem {
 
     void registerService() {
         MountRequest request;
-        const char* path = "/test";
+        const char* path = "/";
         memcpy(request.path, path, strlen(path) + 1);
         request.serviceType = ServiceType::VFS;
         request.cacheable = true;
