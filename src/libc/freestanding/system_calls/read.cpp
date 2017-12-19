@@ -90,3 +90,27 @@ void close(uint32_t fileDescriptor) {
     request.serviceType = Kernel::ServiceType::VFS;
     send(IPC::RecipientType::ServiceName, &request);
 }
+
+void seek(uint32_t fileDescriptor, uint32_t offset, uint32_t origin) {
+    SeekRequest request;
+    request.serviceType = Kernel::ServiceType::VFS;
+    request.fileDescriptor = fileDescriptor;
+    request.offset = offset;
+    request.origin = static_cast<Origin>(origin);
+    send(IPC::RecipientType::ServiceName, &request);
+}
+
+VirtualFileSystem::SeekResult seekSynchronous(uint32_t fileDescriptor, uint32_t offset, uint32_t origin) {
+    seek(fileDescriptor, offset, origin);
+
+    IPC::MaximumMessageBuffer buffer;
+    receive(&buffer);
+
+    if (buffer.messageId == SeekResult::MessageId) {
+        return IPC::extractMessage<SeekResult>(buffer);
+    }
+    else {
+        asm ("hlt");
+        return {};
+    }
+}
