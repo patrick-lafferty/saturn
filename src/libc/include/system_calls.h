@@ -37,6 +37,9 @@ void write(uint32_t fileDescriptor, const void* data, uint32_t length);
 VirtualFileSystem::WriteResult writeSynchronous(uint32_t fileDescriptor, const void* data, uint32_t length);
 void close(uint32_t fileDescriptor);
 
+void seek(uint32_t fileDescriptor, uint32_t offset, uint32_t origin);
+VirtualFileSystem::SeekResult seekSynchronous(uint32_t fileDescriptor, uint32_t offset, uint32_t origin);
+
 void waitForServiceRegistered(Kernel::ServiceType type);
 
 uint32_t run(uintptr_t entryPoint);

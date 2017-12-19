@@ -217,4 +217,32 @@ namespace VirtualFileSystem {
         bool success;
     };
 
+    enum class Origin {
+        Beginning,
+        Current,
+        End
+    };
+
+    struct SeekRequest : IPC::Message {
+        SeekRequest() {
+            messageId = MessageId;
+            length = sizeof(SeekRequest);
+        }
+
+        static uint32_t MessageId;
+        uint32_t fileDescriptor;
+        uint32_t offset;
+        Origin origin;
+    };
+
+    struct SeekResult : IPC::Message {
+        SeekResult() {
+            messageId = MessageId;
+            length = sizeof(SeekResult);
+        }
+
+        static uint32_t MessageId;
+        bool success;
+    };
+
 }

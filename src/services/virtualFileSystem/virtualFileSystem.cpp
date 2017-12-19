@@ -23,6 +23,8 @@ namespace VirtualFileSystem {
     uint32_t WriteResult::MessageId;
     uint32_t CloseRequest::MessageId;
     uint32_t CloseResult::MessageId;
+    uint32_t SeekRequest::MessageId;
+    uint32_t SeekResult::MessageId;
 
     void registerMessages() {
         IPC::registerMessage<MountRequest>();
@@ -39,6 +41,8 @@ namespace VirtualFileSystem {
         IPC::registerMessage<WriteResult>();
         IPC::registerMessage<CloseRequest>();
         IPC::registerMessage<CloseResult>();
+        IPC::registerMessage<SeekRequest>();
+        IPC::registerMessage<SeekResult>();
     }
 
     struct Mount {
@@ -1013,6 +1017,9 @@ namespace VirtualFileSystem {
             else if (buffer.messageId == CloseRequest::MessageId) {
                 auto request = IPC::extractMessage<CloseRequest>(buffer);
                 handleCloseRequest(request);
+            }
+            else if (buffer.messageId == SeekRequest::MessageId) {
+                printf("[VFS] Stub: SeekRequest\n");
             }
 
         }
