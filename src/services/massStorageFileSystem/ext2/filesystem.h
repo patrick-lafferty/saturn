@@ -82,6 +82,8 @@ namespace MassStorageFileSystem::Ext2 {
         uint16_t unallocatedBlocks;
         uint16_t unallocatedInodes;
         uint16_t directories;
+        uint16_t pad;
+        uint8_t reserved[12];
     };
 
     struct Inode {

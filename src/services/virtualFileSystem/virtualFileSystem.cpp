@@ -220,6 +220,10 @@ namespace VirtualFileSystem {
                     else if (subpath.compare(entry->path) == 0) {
                         //TODO: does the exact child dir matter, since its just fake?
                         currentDirectory = entry->children[0];
+
+                        if (isLast) {
+                            makeDummyDirectory(entry, subpath, isLast);
+                        }
                     }
                     else {
                         //TODO: error?
@@ -462,11 +466,12 @@ namespace VirtualFileSystem {
                     while (!pending.breadcrumbs.empty()) {
                         auto childDir = static_cast<Cache::Directory*>(pending.breadcrumbs.top());
                         pending.breadcrumbs.pop();
+                        auto tempPending = subpending;
 
-                        auto result = discoverPath(childDir, subpending, skipLast);
+                        auto result = discoverPath(childDir, tempPending, skipLast);
 
                         if (result != DiscoverResult::Failed) {
-                            pending = subpending;
+                            pending = tempPending;
                             return result;
                         }
 

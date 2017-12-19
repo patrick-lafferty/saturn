@@ -1,5 +1,6 @@
 #include <system_calls.h>
 #include <services.h>
+#include <stdio.h>
 
 using namespace VirtualFileSystem;
 
@@ -22,6 +23,9 @@ OpenResult openSynchronous(const char* path) {
         return IPC::extractMessage<OpenResult>(buffer);
     }
     else {
+        printf("[Syscall] openSynchronous: unexpected messageId: %d, expected: %d\n", buffer.messageId, OpenResult::MessageId);
+        printf("    while opening path: %s\n", path);
+        sleep(1000);
         asm ("hlt");
         return {};
     }
