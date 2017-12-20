@@ -64,6 +64,21 @@ ReadResult readSynchronous(uint32_t fileDescriptor, uint32_t length) {
     }
 }
 
+Read512Result read512Synchronous(uint32_t fileDescriptor, uint32_t length) {
+    read(fileDescriptor, length);
+
+    IPC::MaximumMessageBuffer buffer;
+    receive(&buffer);
+
+    if (buffer.messageId == Read512Result::MessageId) {
+        return IPC::extractMessage<Read512Result>(buffer);
+    }
+    else {
+        asm ("hlt");
+        return {};
+    }
+}
+
 void write(uint32_t fileDescriptor, const void* data, uint32_t length) {
     WriteRequest request;
     request.fileDescriptor = fileDescriptor;

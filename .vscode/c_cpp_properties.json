@@ -53,7 +53,7 @@
                 "${workspaceRoot}/src/libc++/include",
                 "${workspaceRoot}/src/kernel/arch/i386",
                 "${workspaceRoot}/sysroot/system/include",
-                "${workspaceRoot}/sysroot/libraries/include"
+                "${workspaceRoot}/sysroot/libraries/include/freetype2"
             ],
             "defines": [
                 "__STDC_HOSTED__=0",
@@ -83,7 +83,7 @@
                     "${workspaceRoot}/src/libc++/include",
                     "${workspaceRoot}/src/kernel/arch/i386",
                     "${workspaceRoot}/sysroot/system/include",
-                    "${workspaceRoot}/sysroot/libraries/include"
+                    "${workspaceRoot}/sysroot/libraries/include/freetype2"
                 ],
                 "limitSymbolsToIncludedHeaders": true,
                 "databaseFilename": ""

@@ -13,20 +13,7 @@ int fseek(FILE* stream, long int offset, int whence) {
 
     if (result.success) {
         
-        switch(static_cast<Origin>(whence)) {
-            case Origin::Current: {
-                stream->position += offset;
-                break;
-            }
-            case Origin::End: {
-                stream->position = stream->length - offset;
-                break;
-            }
-            case Origin::Set: {
-                stream->position = offset;
-                break;
-            }
-        }
+        stream->position = result.filePosition;
 
         return 0;
     }

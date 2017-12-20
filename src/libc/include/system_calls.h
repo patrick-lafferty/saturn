@@ -32,6 +32,7 @@ VirtualFileSystem::OpenResult openSynchronous(const char* path);
 void create(const char* path);
 void read(uint32_t fileDescriptor, uint32_t length);
 VirtualFileSystem::ReadResult readSynchronous(uint32_t fileDescriptor, uint32_t length);
+VirtualFileSystem::Read512Result read512Synchronous(uint32_t fileDescriptor, uint32_t length);
 
 void write(uint32_t fileDescriptor, const void* data, uint32_t length);
 VirtualFileSystem::WriteResult writeSynchronous(uint32_t fileDescriptor, const void* data, uint32_t length);
