@@ -1,6 +1,7 @@
 #include "test.h"
 
 #include <stdio.h>
+#include <system_calls.h>
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -21,22 +22,22 @@ namespace win {
         FT_Face face;
 
         auto error = FT_Init_FreeType(&library);
-        printf("[TWIN] %d\n", error);
+
+        if (error != 0) {
+            printf("[TWIN] %d\n", error);
+
+        }
+
+        sleep(600);
 
         error = FT_New_Face(library,
             "/system/fonts/Inconsolata.ttf",
             0,
             &face);
-
-        printf("[TWIN] %d\n", error);
-
-        int ints[] = {-2, 99, 4, 0, -743, 0, 2, 69, 4};
-        auto size = sizeof(ints) / sizeof(*ints);
-        qsort(ints, size, sizeof(int), compare);
-
-        for (auto i : ints) {
-            printf("[TWIN] %d\n", i);
+        if (error != 0) {
+            printf("[TWIN] %d\n", error);
         }
 
+        while (true) {}
     }
 }
