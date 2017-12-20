@@ -8,7 +8,7 @@ size_t fread(void* restrict ptr, size_t size, size_t count, FILE* restrict strea
         return 0;
     }
 
-    auto maxSizePerRequest = sizeof(VirtualFileSystem::ReadResult::buffer);
+    auto maxSizePerRequest = sizeof(VirtualFileSystem::Read512Result::buffer);
     auto bytesRead = 0;
     auto remainingBytes = size * count;
     auto buffer = static_cast<unsigned char*>(ptr);
@@ -23,12 +23,29 @@ size_t fread(void* restrict ptr, size_t size, size_t count, FILE* restrict strea
             length = remainingBytes;
         }
 
-        auto result = readSynchronous(stream->descriptor, length);
+        auto result = read512Synchronous(stream->descriptor, length);
 
         if (result.success) {
-            memcpy(buffer + bytesRead, result.buffer, result.bytesWritten);
-            bytesRead += result.bytesWritten;
-            remainingBytes -= length;
+            
+            for (int i = 0; i < 2; i++) {
+
+                memcpy(buffer + bytesRead, result.buffer, result.bytesWritten);
+                bytesRead += result.bytesWritten;
+                remainingBytes -= length;
+                stream->position += result.bytesWritten;
+
+                if (result.expectMore) {
+                    IPC::MaximumMessageBuffer messageBuffer;
+                    receive(&messageBuffer);
+
+                    if (messageBuffer.messageId == VirtualFileSystem::Read512Result::MessageId) {
+                        result = IPC::extractMessage<VirtualFileSystem::Read512Result>(messageBuffer);
+                    }
+                }
+                else {
+                    break;
+                }
+            }
         }
         else {
             break;
