@@ -147,17 +147,21 @@ namespace MassStorageFileSystem {
 
             if (buffer.messageId == DriverIrqReceived::MessageId) {
                 if (queuedRequests.empty()) {
+                    printf("[MassStorageController] Received DriverIrq but have no queuedRequests\n");
                     continue;
                 }
 
                 if (pendingCommand == PendingDiskCommand::Read) {
-                    auto request = queuedRequests.front();
+                    auto& request = queuedRequests.front();
 
                     fileSystems[request.requesterId]->receiveSector();
+                    //if (!fileSystems[request.requesterId]->receiveSector()) {
+                    //    continue;
+                   // }
                     request.sectorCount--;
-                    pendingCommand = PendingDiskCommand::None;
 
                     if (request.sectorCount == 0) {
+                        pendingCommand = PendingDiskCommand::None;
                         queuedRequests.pop();
 
                         if (!queuedRequests.empty()) {
@@ -175,7 +179,6 @@ namespace MassStorageFileSystem {
                 OpenResult result;
                 result.success = true;
                 result.serviceType = ServiceType::VFS;
-                //result.fileDescriptor = request.index;
                 result.fileDescriptor = fileSystems[0]->openFile(request.index, request.requestId);
                 result.requestId = request.requestId;
                 send(IPC::RecipientType::ServiceName, &result);
@@ -183,6 +186,10 @@ namespace MassStorageFileSystem {
             else if (buffer.messageId == ::VirtualFileSystem::ReadRequest::MessageId) {
                 auto request = IPC::extractMessage<::VirtualFileSystem::ReadRequest>(buffer);
                 handleReadRequest(request);
+            }
+            else if (buffer.messageId == ::VirtualFileSystem::SeekRequest::MessageId) {
+                auto request = IPC::extractMessage<::VirtualFileSystem::SeekRequest>(buffer);
+                handleSeekRequest(request);
             }
         }
     }
@@ -249,7 +256,7 @@ namespace MassStorageFileSystem {
 
                             auto transfer = makeTransfer(
                                 [this](auto buffer) {
-                                    driver->receiveSector(buffer);
+                                    return driver->receiveSector(buffer);
                                 },
                                 []() {return;}
                             );
@@ -279,12 +286,11 @@ namespace MassStorageFileSystem {
 
     void MassStorageController::queueReadSectorRequest(uint32_t lba, uint32_t sectorCount, uint32_t requesterId) {
         Request request{lba, sectorCount, requesterId};
+        queuedRequests.push(request);
 
         if (pendingCommand == PendingDiskCommand::None) {
             queueReadSector(request);
         }
-
-        queuedRequests.push(request);
     }
 
     void MassStorageController::queueReadSector(Request request) {
@@ -304,7 +310,14 @@ namespace MassStorageFileSystem {
         /*
         TODO: for now assume fileSystems[0] is the only mount
         */
-        fileSystems[0]->readFile(request.fileDescriptor, request.requestId);
+        fileSystems[0]->readFile(request.fileDescriptor, request.requestId, request.readLength);
+    }
+
+    void MassStorageController::handleSeekRequest(::VirtualFileSystem::SeekRequest& request) {
+        /*
+        TODO: for now assume fileSystems[0] is the only mount
+        */
+        fileSystems[0]->seekFile(request.fileDescriptor, request.requestId, request.offset, static_cast<Origin>(request.origin));
     }
 
     void service() {
