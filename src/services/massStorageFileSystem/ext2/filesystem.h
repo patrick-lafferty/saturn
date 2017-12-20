@@ -147,6 +147,13 @@ namespace MassStorageFileSystem::Ext2 {
 
     */
 
+    enum class ReadProgress {
+        Inode,
+        DirectBlock,
+        IndirectBlockList,
+        IndirectBlock
+    };
+
     struct ReadRequest {
         uint32_t inode;
         uint32_t remainingBlocks;
@@ -154,6 +161,11 @@ namespace MassStorageFileSystem::Ext2 {
         bool finishedReadingInode;
         bool finishedReadingBlocks;
         uint32_t requestId;
+        uint32_t totalRemainingSectors;
+        uint32_t remainingSectorsInBlock;
+        ReadProgress state;
+        uint32_t currentBlockId;
+        uint32_t indirectSectorsRemaining;
     };
 
     enum class RequestType {
@@ -177,15 +189,17 @@ namespace MassStorageFileSystem::Ext2 {
         uint32_t id;
         uint32_t filePosition;
         uint32_t requestId;
+        uint32_t length;
     };
 
     class Ext2FileSystem : public FileSystem {
     public:
         Ext2FileSystem(IBlockDevice* device); 
-        void receiveSector() override;
+        bool receiveSector() override;
         uint32_t openFile(uint32_t index, uint32_t requestId) override;
         void readDirectory(uint32_t index, uint32_t requestId) override;
-        void readFile(uint32_t index, uint32_t requestId) override;
+        void readFile(uint32_t index, uint32_t requestId, uint32_t byteCount) override;
+        void seekFile(uint32_t index, uint32_t requestId, uint32_t offset, Origin origin) override;
 
     private:
 
@@ -208,6 +222,8 @@ namespace MassStorageFileSystem::Ext2 {
         uint32_t blockSize;
         uint32_t blockGroupDescriptorTableId;
         uint32_t inodesPerBlock;
+        uint32_t sectorsPerBlock;
+        uint32_t sectorSize;
         /*
         cache the whole block group descriptor table here, its only
         max 8 megs
