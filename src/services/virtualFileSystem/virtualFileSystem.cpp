@@ -838,7 +838,11 @@ namespace VirtualFileSystem {
         openFileDescriptors[pendingRequest->virtualFileDescriptor].filePosition += result.bytesWritten;
 
         result.recipientId = pendingRequest->requesterTaskId;
-        pendingRequests.erase(pendingRequest);
+        
+        if (!result.expectMore) {
+            pendingRequests.erase(pendingRequest);
+        }
+
         send(IPC::RecipientType::TaskId, &result);
     }
 
@@ -920,6 +924,49 @@ namespace VirtualFileSystem {
             result.recipientId = sender;
             send(IPC::RecipientType::TaskId, &result);
         }
+    }
+
+    void VirtualFileSystem::handleSeekRequest(SeekRequest& request) {
+        bool failed {false};
+        if (request.fileDescriptor < openFileDescriptors.size()) {
+            auto& descriptor = openFileDescriptors[request.fileDescriptor];
+
+            if (descriptor.isOpen()) {
+                request.requestId = nextRequestId++;
+                PendingRequest pending;
+                pending.type = RequestType::Seek;
+                pending.id = request.requestId;
+                pending.requesterTaskId = request.senderTaskId;
+                pending.virtualFileDescriptor = request.fileDescriptor;
+                pendingRequests.push_back(pending);
+                request.recipientId = descriptor.mountTaskId;
+                request.fileDescriptor = descriptor.descriptor;
+                send(IPC::RecipientType::TaskId, &request);
+                
+            }
+            else {
+                failed = true;
+            }
+        }
+        else {
+            failed = true;
+        }
+
+        if (failed) {
+            SeekResult result;
+            result.success = false;
+            result.recipientId = request.senderTaskId;
+            send(IPC::RecipientType::TaskId, &result);
+        }
+    }
+
+    void VirtualFileSystem::handleSeekResult(SeekResult& result) {
+        auto pendingRequest = getPendingRequest(result.requestId, pendingRequests);
+        result.recipientId = pendingRequest->requesterTaskId;
+
+        pendingRequests.erase(pendingRequest);
+
+        send(IPC::RecipientType::TaskId, &result);
     }
 
     void VirtualFileSystem::readDirectoryFromCache(ReadRequest& request, VirtualFileDescriptor& descriptor) {
@@ -1024,7 +1071,12 @@ namespace VirtualFileSystem {
                 handleCloseRequest(request);
             }
             else if (buffer.messageId == SeekRequest::MessageId) {
-                printf("[VFS] Stub: SeekRequest\n");
+                auto request = IPC::extractMessage<SeekRequest>(buffer);
+                handleSeekRequest(request);
+            }
+            else if (buffer.messageId == SeekResult::MessageId) {
+                auto result = IPC::extractMessage<SeekResult>(buffer);
+                handleSeekResult(result);
             }
 
         }

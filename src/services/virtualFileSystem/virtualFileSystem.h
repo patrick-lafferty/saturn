@@ -34,7 +34,8 @@ namespace VirtualFileSystem {
         Open,
         Create,
         Read,
-        Write
+        Write,
+        Seek
     };
 
     struct PendingRequest {
@@ -92,6 +93,8 @@ namespace VirtualFileSystem {
         void handleWriteRequest(WriteRequest& request);
         void handleWriteResult(WriteResult& result);
         void handleCloseRequest(CloseRequest& request);
+        void handleSeekRequest(SeekRequest& request);
+        void handleSeekResult(SeekResult& request);
 
         void readDirectoryFromCache(ReadRequest& request, VirtualFileDescriptor& descriptor);
 
