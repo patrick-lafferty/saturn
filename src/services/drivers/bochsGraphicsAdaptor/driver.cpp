@@ -101,7 +101,7 @@ namespace BGA {
         auto bufferSize = 800 * 600 * 4;
 
         //memset(linearFrameBuffer, colour, bufferSize);
-        /*for (int y = 0; y < 600; y++) {
+        for (int y = 0; y < 600; y++) {
             for (int x = 0; x < 800; x++) {
                 linearFrameBuffer[x + y * 800] = colour;
             }
@@ -111,14 +111,6 @@ namespace BGA {
             if (y == 300) colour = 0x00'00'2F'00;
             if (y == 400) colour = 0x00'00'00'FF;
             if (y == 500) colour = 0x00'00'00'2F;
-        }*/
-        auto asPerWidth = 800 / 8;
-        auto ysPerWidth = 600/8;
-
-        for (int y = 0; y < 600; y+= 16) {
-            for (int x = 0; x < 800; x+= 16) {
-                drawA(linearFrameBuffer + x + y * 800, x > 400 ? 5 : 4);
-            }
         }
 
         while (true) {
@@ -180,7 +172,37 @@ namespace BGA {
             : "a" (value), "d" (dataPort));
     }
 
+    uint16_t readRegister(BGAIndex bgaIndex) {
+        uint16_t ioPort {0x01CE};
+        uint16_t dataPort {0x01CF};
+       
+        auto index = static_cast<uint16_t>(bgaIndex);
+        asm volatile("outw %%ax, %%dx"
+            : //no output
+            : "a" (index), "d" (ioPort));
+
+        uint16_t result {0};
+
+        asm volatile("inw %1, %0"
+            : "=a" (result)
+            : "Nd" (dataPort));
+
+        return result;
+    }
+
+    void discover() {
+        auto id = readRegister(BGAIndex::Id);
+
+        /*
+        QEMU reports 0xB0C0
+        VirtualBox reports 0xB0C4
+        */
+        printf("[BGA] Id: %d\n", id);
+    }
+
     void setupAdaptor() {
+        discover();
+
         writeRegister(BGAIndex::Enable, 0);
 
         writeRegister(BGAIndex::XRes, 800);

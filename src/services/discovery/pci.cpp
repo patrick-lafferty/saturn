@@ -135,11 +135,14 @@ namespace Discovery::PCI {
                 performHardwareTransaction("%s/subclassCode", functionName, classReg.subclass, Vostok::ArgTypes::Uint32);
                 performHardwareTransaction("%s/interface", functionName, classReg.programmingInterface, Vostok::ArgTypes::Uint32);
                 
+                Device device {id, classReg, deviceId, functionId};
+
                 for (auto offset = 0x10u; offset < 0x28; offset += 4) {
                     char barName[100];
                     memset(barName, '\0', sizeof(barName));
                     sprintf(barName, "%s/bar%d", functionName, (offset - 0x10) / 4);
                     auto bar = readRegister(getAddress(bus, deviceId, functionId, offset));// & 0xFFFFFFF0;
+                    device.bars[offset / 4 - 4] = bar;
                     HardwareFileSystem::writeTransaction(barName, bar, Vostok::ArgTypes::Uint32);
                 }
 
@@ -148,7 +151,7 @@ namespace Discovery::PCI {
                 performHardwareTransaction("%s/interruptLine", functionName, interrupt.interruptLine, Vostok::ArgTypes::Uint32);
                 performHardwareTransaction("%s/interruptPin", functionName, interrupt.interruptPin, Vostok::ArgTypes::Uint32);
 
-                devices.push_back({id, classReg, deviceId, functionId});
+                devices.push_back(device);//{id, classReg, deviceId, functionId});
             }
         }
 
@@ -175,6 +178,10 @@ namespace Discovery::PCI {
         if (device.id.vendorId == 0x1234 && device.id.deviceId == 0x1111) {
             return KnownDevices::BochsVBE;
         }
+        else if (device.id.vendorId == 0x80EE && device.id.deviceId == 0xBEEF) {
+            //virtual box graphics adaptor, supposedly compatible with bochs vbe
+            return KnownDevices::BochsVBE;
+        }
         else if (device.classCode.classCode == static_cast<int>(ClassCode::MassStorageController)) {
             return KnownDevices::ATADrive;
         }
@@ -186,18 +193,13 @@ namespace Discovery::PCI {
 
         switch(type) {
             case KnownDevices::BochsVBE: {
-                /*Kernel::LinearFrameBufferFound found;
-                found.address = 0xfd000008;
+                Kernel::LinearFrameBufferFound found;
+                found.address = device.bars[0];
                 send(IPC::RecipientType::ServiceRegistryMailbox, &found);
                 Startup::runProgram("/bin/bochsGraphicsAdaptor.service");
-                */
                 break;
             }
             case KnownDevices::ATADrive: {
-                /*device.classCode.programmingInterface |= 1;
-                auto value = device.classCode.getWord();
-                writeRegister(getAddress(0, device.id.deviceId, device.functionId, 0x08), value);
-                */
                 Startup::runProgram("/bin/massStorage.service");
                 break;
             }

@@ -161,6 +161,7 @@ namespace Discovery::PCI {
         StandardConfiguration::Class classCode;
         uint8_t index;
         uint8_t functionId;
+        uint32_t bars[6];
     };
 
     enum class KnownDevices {
