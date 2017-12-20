@@ -1,18 +1,19 @@
 global setjmp
 setjmp:
-    mov ecx, [ebp + 8]
+    mov ecx, [esp + 4]
     mov [ecx], ebx
     mov [ecx + 4], esi
     mov [ecx + 8], edi
     mov [ecx + 12], ebp
-    mov edx, [ecx + 16]
-    lea edx, [ebp + 8]
-    mov [ecx + 20], eax
+    lea edx, [esp + 4] 
+    mov [ecx + 16], edx
+    mov eax, [esp]
+    mov [ecx + 20], eax ;eax
     xor eax, eax
 
 global longjmp
 longjmp:
-    mov ecx, [ebp + 8]
+    mov ecx, [esp + 4] 
     inc eax
     mov ebx, [ecx]
     mov esi, [ecx + 4]
