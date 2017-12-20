@@ -168,6 +168,7 @@ namespace VirtualFileSystem {
         bool success;
         uint8_t buffer[512];
         uint32_t bytesWritten;
+        bool expectMore;
     };
 
     struct WriteRequest : IPC::Message {
@@ -230,6 +231,7 @@ namespace VirtualFileSystem {
         }
 
         static uint32_t MessageId;
+        uint32_t requestId;
         uint32_t fileDescriptor;
         uint32_t offset;
         Origin origin;
@@ -242,7 +244,9 @@ namespace VirtualFileSystem {
         }
 
         static uint32_t MessageId;
+        uint32_t requestId;
         bool success;
+        uint32_t filePosition;
     };
 
 }
