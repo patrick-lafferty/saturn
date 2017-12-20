@@ -132,25 +132,34 @@ namespace ATA {
         writeRegister(Register::LBAMid, (lba >> 8) & 0xFF);
         writeRegister(Register::LBAHigh, (lba >> 16) & 0xFF);
         writeRegister(Register::Command, static_cast<uint8_t>(Command::ReadSectors));
+
+        auto result = readRegister8(Register::Control);
+
+        while (isBusy(result)) {
+            result = readRegister8(Register::Control);
+        }
     }
 
-    void Driver::receiveSector(uint16_t* buffer) {
+    bool Driver::receiveSector(uint16_t* buffer) {
         auto result = readRegister8(Register::Command);
 
         if (isBusy(result)) {
-            printf("[ATA] receiveSector failed: busy\n");
-            return;
+            auto result = readRegister8(Register::Features);
+            printf("[ATA] receiveSector failed: busy %d\n", result);
+            return false;
         }
 
         if (hasError(result)) {
-            printf("[ATA] receiveSector failed: error\n");
-            return;
+            auto result = readRegister8(Register::Features);
+            printf("[ATA] receiveSector failed: error %d\n", result);
+            return false;
         }
 
         for(int i = 0; i < 256; i++) {
-            //*buffer++ = readRegister16(Register::Data);
             buffer[i] = readRegister16(Register::Data);
         }
+
+        return true;
     }
 
     void Driver::selectDevice(Device device) {
@@ -181,5 +190,10 @@ namespace ATA {
 
         writeRegister(Register::Control, 0);
         wait();
+
+        auto result = readRegister8(Register::Control);
+        while (isBusy(result)) {
+            result = readRegister8(Register::Control);
+        }
     }
 }
