@@ -20,6 +20,7 @@ namespace MassStorageFileSystem::Ext2 {
         buffer = new uint16_t[256];
         blockDevice->queueReadSector(2, 1);
         queuedRequests.push({{}, RequestType::ReadSuperblock});
+        sectorSize = 512;
     }
 
     /*
@@ -62,6 +63,7 @@ namespace MassStorageFileSystem::Ext2 {
 
         blockSize = 1024 << superBlock.log2BlockSize;
         inodesPerBlock = blockSize / superBlock.inodeSize;
+        sectorsPerBlock = blockSize / 512;
 
         blockDevice->queueReadSector(blockIdToLba(blockGroupDescriptorTableId), 1);
         queuedRequests.pop();
@@ -86,15 +88,23 @@ namespace MassStorageFileSystem::Ext2 {
         auto inodeIndex = (id - 1) % superBlock.inodesPerGroup;
         auto blockId = descriptor.inodeTableId + (inodeIndex * superBlock.inodeSize) / blockSize;
         auto lba = blockIdToLba(blockId);
+
+        if (inodeIndex > 3) {
+            lba++;
+        }
+
         blockDevice->queueReadSector(lba, 1);
     }
 
     uint32_t Ext2FileSystem::readInodeBlocks(Inode& inode) {
         auto blocksToRead = ceil((double)inode.sizeLower32Bits / blockSize);
+        auto sectorsToRead = 1 + inode.sizeLower32Bits / sectorSize;
         
         for (auto i = 0u; i < blocksToRead; i++) {
             auto lba = blockIdToLba(inode.directBlock[i]);
-            blockDevice->queueReadSector(lba, 1);
+            auto sectorCount = std::min(sectorsPerBlock, sectorsToRead);
+            sectorsToRead -= sectorCount;
+            blockDevice->queueReadSector(lba, sectorCount);
         }
 
         return blocksToRead;
@@ -140,7 +150,13 @@ namespace MassStorageFileSystem::Ext2 {
         }
         else if (!request.finishedReadingBlocks) {
             auto inodes = reinterpret_cast<Inode*>(buffer);
-            auto inode = inodes[(request.inode - 1) % inodesPerBlock];
+            auto inodeIndex = (request.inode - 1) % inodesPerBlock;
+
+            if (inodeIndex > 3) {
+                inodeIndex -= 4;
+            }
+            
+            auto inode = inodes[inodeIndex];
 
             request.remainingBlocks = readInodeBlocks(inode);
             request.finishedReadingBlocks = true;
@@ -247,39 +263,116 @@ namespace MassStorageFileSystem::Ext2 {
         if (!request.read.finishedReadingBlocks) {
             request.read.finishedReadingBlocks = true;
 
-            auto blocksToRead = 1 + request.length / blockSize;
+            auto blocksToRead = ceil((double)request.length / blockSize);//1 + request.length / blockSize;
             auto startingBlock = descriptor->filePosition / blockSize;
+            auto sectorsToRead = ceil((double)request.length / sectorSize);//1 + request.length / sectorSize;
         
             for (auto i = 0u; i < blocksToRead; i++) {
                 auto blockId = startingBlock + i;
+                auto sectorCount = std::min(sectorsPerBlock, sectorsToRead);
+                bool isHigh = (descriptor->filePosition % blockSize) > sectorSize;
+                sectorsToRead -= sectorCount;
 
-                if (blockId < sizeof(Inode::directBlock)) {
+                if (blockId < 12) {
                     auto lba = blockIdToLba(descriptor->inode.directBlock[blockId]);
-                    blockDevice->queueReadSector(lba, 1);
+                    if (isHigh) lba++;                    
+                    blockDevice->queueReadSector(lba, sectorCount);
+                }
+                else if (blockId > 11 && blockId < 266) {
+                    //singly indirect block
+                    auto lba = blockIdToLba(descriptor->inode.singlyIndirectBlock);
+                    blockDevice->queueReadSector(lba, sectorCount);
+                    request.read.indirectSectorsRemaining = sectorCount;
+                    break;
                 }
                 else {
-                    printf("[Ext2] Stub: Ext2FileSystem::handleReadRequest doesn't suppory indirect blocks yet\n");
+                    printf("[Ext2] Stub: Ext2FileSystem::handleReadRequest doesn't support double/triple indirect blocks yet\n");
+                    break;
                 }
             }
 
             request.read.remainingBlocks = blocksToRead;
+            request.read.totalRemainingSectors = ceil((double)request.length / sectorSize);//1 + (request.length / sectorSize);
+            request.read.remainingSectorsInBlock = std::min(sectorsPerBlock, request.read.totalRemainingSectors);
+
+            if (startingBlock < 12) {
+                request.read.state = ReadProgress::DirectBlock;
+            }
+            else {
+                request.read.state = ReadProgress::IndirectBlockList;
+            }
+
+            request.read.remainingBytes = request.length;
         }
         else {
-            request.read.remainingBlocks--;
 
-            VirtualFileSystem::Read512Result result;
-            result.requestId = request.read.requestId;
-            result.serviceType = Kernel::ServiceType::VFS;
-            result.success = true;
+            switch (request.read.state) {
+                case ReadProgress::DirectBlock:
+                case ReadProgress::IndirectBlock: {
+                    VirtualFileSystem::Read512Result result;
+                    result.requestId = request.read.requestId;
+                    result.serviceType = Kernel::ServiceType::VFS;
+                    result.success = true;
 
-            auto count = std::min(static_cast<uint32_t>(sizeof(result.buffer)), descriptor->inode.sizeLower32Bits - descriptor->filePosition);
+                    auto count = std::min(static_cast<uint32_t>(sizeof(result.buffer)), request.read.remainingBytes);//descriptor->inode.sizeLower32Bits - descriptor->filePosition);
+                    auto offset = descriptor->filePosition % sectorSize;
+                    auto buff = reinterpret_cast<uint8_t*>(buffer);
+                    memcpy(result.buffer, buff + offset, count);
+                    result.bytesWritten = count;
+                    result.expectMore = request.read.totalRemainingSectors > 1;
+                    descriptor->filePosition += count; 
+                    request.read.remainingBytes -= count;
+                    send(IPC::RecipientType::ServiceName, &result);
+                    break;
+                }
+                case ReadProgress::IndirectBlockList: {
+                    request.read.indirectSectorsRemaining--;
 
-            memcpy(result.buffer, buffer, count);
-            result.bytesWritten = count;
-            descriptor->filePosition += count; 
-            send(IPC::RecipientType::ServiceName, &result);
+                    if (request.read.indirectSectorsRemaining == 0) {
+                        request.read.state = ReadProgress::IndirectBlock;
+                    }
 
-            if (request.read.remainingBlocks == 0) {
+                    auto blockIds = reinterpret_cast<uint32_t*>(buffer);
+                    auto blocksToRead = ceil((double)request.read.remainingBytes / blockSize);//1 + request.read.remainingBytes / blockSize;
+                    auto sectorsToRead = ceil((double)request.read.remainingBytes / sectorSize);//1 + request.read.remainingBytes / sectorSize;
+                    auto startingId = descriptor->filePosition / blockSize - 12;
+
+                    for (auto i = 0u; i < blocksToRead; i++) {
+                        auto blockId = startingId + i;
+                        auto id = *(blockIds + blockId);
+
+                        if (id == 0) {
+                            break;
+                        }
+
+                        auto sectorCount = std::min(sectorsPerBlock, sectorsToRead);
+                        auto lba = blockIdToLba(id);
+                        blockDevice->queueReadSector(lba, sectorCount);
+                        sectorsToRead -= sectorCount;
+
+                        request.read.remainingBlocks++;
+                        request.read.totalRemainingSectors += sectorCount;
+                    }
+
+                    break;
+                }
+            }
+
+            request.read.totalRemainingSectors--;
+            request.read.remainingSectorsInBlock--;
+
+            if (request.read.remainingSectorsInBlock == 0) {
+                request.read.currentBlockId++;
+                request.read.remainingSectorsInBlock = std::min(sectorsPerBlock, request.read.remainingSectorsInBlock);
+
+                if (request.read.state == ReadProgress::DirectBlock
+                    && request.read.currentBlockId == 12) {
+                    request.read.state = ReadProgress::IndirectBlockList;
+                }
+                //todo: doubly indirect block list
+            }      
+
+            if (request.read.totalRemainingSectors == 0) {
                 finishRequest();
             }
         }
@@ -293,11 +386,18 @@ namespace MassStorageFileSystem::Ext2 {
         }
         else {
             auto inodes = reinterpret_cast<Inode*>(buffer);
-            auto& inode = inodes[(request.read.inode - 1) % inodesPerBlock];
+            auto inodeIndex = (request.read.inode - 1) % inodesPerBlock;
+
+            if (inodeIndex > 3) {
+                inodeIndex -= 4;
+            }
+            
+            auto& inode = inodes[inodeIndex];
 
             for (auto& descriptor : openFileDescriptors) {
                 if (descriptor.id == request.descriptor) {
                     descriptor.inode = inode;
+                    descriptor.length = inode.sizeLower32Bits;
 
                     finishRequest();
                     return;
@@ -306,16 +406,20 @@ namespace MassStorageFileSystem::Ext2 {
         }
     }
 
-    void Ext2FileSystem::receiveSector() {
+    bool Ext2FileSystem::receiveSector() {
 
         memset(buffer, 0, 512);
-        blockDevice->receiveSector(buffer);
+        if (!blockDevice->receiveSector(buffer)) {
+            return false;
+        }
 
         if (queuedRequests.empty()) {
-            return;
+            return false;
         }
 
         handleRequest(queuedRequests.front());
+
+        return true;
     }
 
     uint32_t Ext2FileSystem::openFile(uint32_t index, uint32_t requestId) {
@@ -366,17 +470,48 @@ namespace MassStorageFileSystem::Ext2 {
         queuedRequests.push(request);
     }
 
-    void Ext2FileSystem::readFile(uint32_t index, uint32_t requestId) {
+    void Ext2FileSystem::readFile(uint32_t index, uint32_t requestId, uint32_t byteCount) {
         
         Request request{};
         request.read.requestId = requestId;
         request.type = RequestType::ReadFile;
         request.descriptor = index;
+        request.length = byteCount;
 
         if (queuedRequests.empty()) {
             handleRequest(request);
         }
 
         queuedRequests.push(request);
+    }
+
+    void Ext2FileSystem::seekFile(uint32_t index, uint32_t requestId, uint32_t offset, Origin origin) {
+        auto descriptor = findDescriptor(index, openFileDescriptors);
+        VirtualFileSystem::SeekResult result;
+        result.requestId = requestId;
+        result.serviceType = Kernel::ServiceType::VFS;
+        result.success = false;
+
+        if (descriptor != nullptr) {
+            switch(origin) {
+                case Origin::Current: {
+                    descriptor->filePosition += offset;
+                    break;
+                }
+                case Origin::End: {
+                    descriptor->filePosition = descriptor->length - offset;
+                    break;
+                }
+                case Origin::Beginning: {
+                    descriptor->filePosition = offset;
+                    break;
+                }
+            }
+
+            result.filePosition = descriptor->filePosition;
+            result.success = true;
+        }
+
+        send(IPC::RecipientType::ServiceName, &result);
     }
 }

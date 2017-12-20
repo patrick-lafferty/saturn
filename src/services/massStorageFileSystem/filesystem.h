@@ -33,7 +33,7 @@ namespace MassStorageFileSystem {
         IBlockDevice(Partition partition) : partition{partition} {}
 
         virtual void queueReadSector(uint32_t lba, uint32_t sectorCount) = 0;
-        virtual void receiveSector(uint16_t* buffer) = 0;
+        virtual bool receiveSector(uint16_t* buffer) = 0;
 
     protected:
 
@@ -83,8 +83,8 @@ namespace MassStorageFileSystem {
             requester.read(partition.firstLBA + lba, sectorCount);
         }
 
-        virtual void receiveSector(uint16_t* buffer) override {
-            transfer.read(buffer);
+        virtual bool receiveSector(uint16_t* buffer) override {
+            return transfer.read(buffer);
         }
     
     private:
@@ -93,16 +93,23 @@ namespace MassStorageFileSystem {
         Transfer transfer;
     };
 
+    enum class Origin {
+        Current = 1,
+        End = 2,
+        Beginning = 3,
+    };
+
     class FileSystem {
     public: 
 
         FileSystem(IBlockDevice* device) : blockDevice{device} {}
         virtual ~FileSystem() {}
 
-        virtual void receiveSector() = 0;
+        virtual bool receiveSector() = 0;
         virtual uint32_t openFile(uint32_t index, uint32_t requestId) = 0;
         virtual void readDirectory(uint32_t index, uint32_t requestId) = 0;
-        virtual void readFile(uint32_t index, uint32_t requestId) = 0;
+        virtual void readFile(uint32_t index, uint32_t requestId, uint32_t byteCount) = 0;
+        virtual void seekFile(uint32_t index, uint32_t requestId, uint32_t offset, Origin origin) = 0;
 
     protected: 
         IBlockDevice* blockDevice;
