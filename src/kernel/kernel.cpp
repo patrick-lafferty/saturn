@@ -103,7 +103,7 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     //NOTE: if we actually do, copy them before this line to a new address space
     //virtualMemManager.unmap(0x7fe0000, (0x8fe0000 - 0x7fe0000) / 0x1000);
 
-    LibC_Implementation::createHeap(PageSize * PageSize);
+    LibC_Implementation::createHeap(PageSize * PageSize * 10);
 
     Kernel::Scheduler scheduler{tss};
 
