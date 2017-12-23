@@ -35,7 +35,7 @@ namespace Kernel {
         currentScheduler->exitKernelTask();
     }
 
-    struct alignas(0x1000) Stack {
+    struct alignas(0x100000) Stack {
 
     };
 

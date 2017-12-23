@@ -31,7 +31,7 @@ size_t fread(void* restrict ptr, size_t size, size_t count, FILE* restrict strea
 
                 memcpy(buffer + bytesRead, result.buffer, result.bytesWritten);
                 bytesRead += result.bytesWritten;
-                remainingBytes -= length;
+                remainingBytes -= result.bytesWritten;
                 stream->position += result.bytesWritten;
 
                 if (result.expectMore) {

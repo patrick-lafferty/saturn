@@ -202,7 +202,7 @@ namespace Shell {
 
     void doReadFile(uint32_t descriptor) {
          while (true) {
-            read(descriptor, 0);
+            read(descriptor, 256);
             IPC::MaximumMessageBuffer buffer;
             receive(&buffer);
 
