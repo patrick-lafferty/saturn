@@ -11,7 +11,6 @@
 #include <userland/shell/shell.h>
 #include <services/drivers/bochsGraphicsAdaptor/driver.h>
 #include <services/massStorageFileSystem/system.h>
-#include <services/tempWin/test.h>
 
 using namespace Kernel;
 using namespace VirtualFileSystem;
@@ -79,9 +78,6 @@ namespace FakeFileSystem {
                 }
                 else if (strcmp(request.path, "/massStorage.service") == 0) {
                     entryPoint = reinterpret_cast<uintptr_t>(MassStorageFileSystem::service);
-                }
-                else if (strcmp(request.path, "/testWin") == 0) {
-                    entryPoint = reinterpret_cast<uintptr_t>(win::service);
                 }
                 else {
                     result.success = false;
