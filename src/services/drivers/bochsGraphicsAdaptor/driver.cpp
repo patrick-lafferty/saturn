@@ -1,6 +1,9 @@
 #include "driver.h"
 #include <services.h>
 #include <system_calls.h>
+#include <ft2build.h>
+#include FT_FREETYPE_H
+#include FT_GLYPH_H
 
 using namespace Kernel;
 
@@ -10,98 +13,19 @@ namespace BGA {
 
     }
 
-    uint8_t glyphs[][8] = { 
-        //a
-        {
-            0b00011000,
-            0b00100100,
-            0b01000010,
-            0b11111111,
-            0b10000001,
-            0b10000001,
-            0b10000001,
-            0b00000000,
-        },
-        //B
-        {
-            0b11111000,
-            0b10000110,
-            0b10000010,
-            0b11111000,
-            0b10000100,
-            0b10000010,
-            0b10000110,
-            0b11111000,
-        }, 
-        //C
-        {
-            0b11111111,
-            0b10000000,
-            0b10000000,
-            0b10000000,
-            0b10000000,
-            0b10000000,
-            0b10000000,
-            0b11111111,
-        }, 
-        //D
-        {
-            0b11111000,
-            0b10000100,
-            0b10000100,
-            0b10000100,
-            0b10000100,
-            0b10000100,
-            0b10000100,
-            0b11111000,
-        }, 
-        //E
-        {
-            0b11111100,
-            0b10000000,
-            0b10000000,
-            0b11111100,
-            0b10000000,
-            0b10000000,
-            0b10000000,
-            0b11111100,
-        }, 
-        //F
-        {
-            0b11111100,
-            0b10000000,
-            0b10000000,
-            0b11111100,
-            0b10000000,
-            0b10000000,
-            0b10000000,
-            0b10000000,
-        }, 
+    struct FreeTypeConfig {
+        FT_Library library;
+        FT_Face face;
     };
 
-    void drawA(uint32_t volatile* lfb, uint8_t glyph) {
-        /*
-        8pixels by 8 pixels
-
-        1 row is 8 pixels is 32 bytes
-        */
-        for (int y = 0; y < 8; y++) {
-            for (int x = 0; x < 8; x++) {
-                if (glyphs[glyph][y] & (1 << (7 - x))) {
-                    lfb[x + y * 800] = 0x00'00'00'FF;
-                }
-            }
-        }
-    }
-
-    void messageLoop(uint32_t address) {
+    void messageLoop(uint32_t address, FreeTypeConfig config) {
         auto linearFrameBuffer = reinterpret_cast<uint32_t volatile*>(address);
 
         auto colour = 0x00'FF'00'00u;
         auto bufferSize = 800 * 600 * 4;
 
         //memset(linearFrameBuffer, colour, bufferSize);
-        for (int y = 0; y < 600; y++) {
+        /*for (int y = 0; y < 600; y++) {
             for (int x = 0; x < 800; x++) {
                 linearFrameBuffer[x + y * 800] = colour;
             }
@@ -111,6 +35,67 @@ namespace BGA {
             if (y == 300) colour = 0x00'00'2F'00;
             if (y == 400) colour = 0x00'00'00'FF;
             if (y == 500) colour = 0x00'00'00'2F;
+        }*/
+
+        //auto error = FT_Set_Charmap(config.face, *config.face->charmaps);
+        //auto error = FT_Select_Charmap(config.face, FT_ENCODING_APPLE_ROMAN);
+auto theta = 0.f;
+        while (true) {
+        char* name = "pat";
+        auto index = 0;
+        auto it = name;
+        auto lastPitch = 0;
+        FT_Matrix  matrix;
+        while (*it != '\0') {
+            auto glyphIndex = FT_Get_Char_Index(config.face, *it); 
+            auto error = FT_Load_Glyph(
+                config.face,
+                glyphIndex,
+                0
+            );
+            theta++;
+            auto rad = theta * 3.14159 / 180;
+float sinangle;
+float cosangle;
+asm("fsin" : "=t" (sinangle) : "0" (rad));
+asm("fcos" : "=t" (cosangle) : "0" (rad));
+
+            matrix.xx = cosangle * 3 * 0x10000L ;
+matrix.xy = -sinangle * 0.12 * index * 0x10000L;
+matrix.yx = sinangle + 0;
+matrix.yy = cosangle * 3 * 0x10000L;
+
+
+FT_Glyph glyph;
+FT_Get_Glyph( config.face->glyph, &glyph );
+FT_Glyph_Transform( glyph, &matrix, 0 );
+            //printf("[BGA] fuck you error: %d\n", error);
+FT_Vector  origin;
+
+
+origin.x = 32; /* 1/2 pixel in 26.6 format */
+origin.y = 0;
+            error = FT_Render_Glyph(config.face->glyph, FT_RENDER_MODE_NORMAL);
+            FT_Glyph_To_Bitmap(
+          &glyph,
+          FT_RENDER_MODE_NORMAL,
+          &origin,
+          1 );
+            //printf("[BGA] fuck you error: %d\n", error);
+            auto slot = config.face->glyph;
+            //printf("[BGA] bitmap: %d\n", slot->bitmap);
+FT_BitmapGlyph  bit = (FT_BitmapGlyph)glyph;
+            for (int y = 0; y < bit->bitmap.rows; y++) {
+                for (int x = 0; x < bit->bitmap.pitch; x++) {
+                    linearFrameBuffer[x + lastPitch + y * 800] = *bit->bitmap.buffer++;
+                }
+            }
+
+            lastPitch += slot->bitmap.pitch + 100;
+
+            index++;
+            it++;
+        }
         }
 
         while (true) {
@@ -200,9 +185,9 @@ namespace BGA {
         printf("[BGA] Id: %d\n", id);
     }
 
-    void setupAdaptor() {
-        discover();
-
+    FreeTypeConfig setupAdaptor() {
+//if (false) {
+        //discover();
         writeRegister(BGAIndex::Enable, 0);
 
         writeRegister(BGAIndex::XRes, 800);
@@ -210,11 +195,58 @@ namespace BGA {
         writeRegister(BGAIndex::BPP, 32);
 
         writeRegister(BGAIndex::Enable, 1 | 0x40);
+
+//}
+        FreeTypeConfig config;
+
+        auto error = FT_Init_FreeType(&config.library);
+
+        if (error != 0) {
+            printf("[BGA] Error initializing FreeType: %d\n", error);
+            return {nullptr, nullptr};
+        }
+
+        error = FT_New_Face(config.library,
+            "/system/fonts/OxygenMono-Regular.ttf",
+            //"/system/fonts/Inconsolata.ttf",
+            0,
+            &config.face);
+
+        if (error != 0) {
+            printf("[BGA] Error creating font face: %d\n", error);
+            return {nullptr, nullptr};
+        }
+
+        error = FT_Set_Char_Size(
+            config.face,
+            0,
+            16 * 64,
+            300,
+            300
+        );
+
+        if (error != 0) {
+            printf("[BGA] Error setting character size: %d\n", error);
+            return {nullptr, nullptr};
+        }
+
+        return config;
     }
 
     void service() {
+        //return;
         auto bgaAddress = registerService();
-        setupAdaptor();
-        messageLoop(bgaAddress);
+        sleep(600);
+        auto freetypeConfig = setupAdaptor();
+
+        if (freetypeConfig.library == nullptr) {
+            printf("[BGA] Error while setting up freetype, shutting down BGA driver\n");
+            return;
+        }
+        else {
+            printf("[BGA] setup freetype\n");
+        }
+
+        messageLoop(bgaAddress, freetypeConfig);
     }
 }

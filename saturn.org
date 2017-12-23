@@ -570,6 +570,10 @@ strcpy - declared, implemented
 realloc - declared
 fopen - declared, implemented
 fseek -declared, implemented
-ftell - declared
-fclose - declared
+ftell - declared, implemented
+fclose - declared, implemented
 fread - declared
+
+tt_loader_init returns 128
+because tt_size_ready_bytecode returns 128
+because tt_size_run_fpgm returns 128
