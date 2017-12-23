@@ -10,6 +10,7 @@ setjmp:
     mov eax, [esp]
     mov [ecx + 20], eax ;eax
     xor eax, eax
+    ret
 
 global longjmp
 longjmp:
@@ -21,3 +22,4 @@ longjmp:
     mov ebp, [ecx  +12]
     mov esp, [ecx + 16]
     jmp [ecx + 20]
+    ret
