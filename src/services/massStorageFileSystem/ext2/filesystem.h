@@ -192,6 +192,13 @@ namespace MassStorageFileSystem::Ext2 {
         uint32_t length;
     };
 
+    struct RequestMeta {
+        uint32_t startingBlock;
+        uint32_t startingPosition;
+        uint32_t remainingSectors;
+        uint32_t blocksToRead;
+    };
+
     class Ext2FileSystem : public FileSystem {
     public:
         Ext2FileSystem(IBlockDevice* device); 
@@ -210,6 +217,7 @@ namespace MassStorageFileSystem::Ext2 {
         void readInode(uint32_t id);
         uint32_t readInodeBlocks(Inode& inode);
 
+        RequestMeta prepareFileReadRequest(FileDescriptor* descriptor, uint32_t length);
         void handleRequest(Request& request);    
         void finishRequest();
         void handleReadDirectoryRequest(ReadRequest& request);
