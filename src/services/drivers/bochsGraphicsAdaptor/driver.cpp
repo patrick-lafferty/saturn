@@ -69,7 +69,6 @@ matrix.yy = cosangle * 3 * 0x10000L;
 FT_Glyph glyph;
 FT_Get_Glyph( config.face->glyph, &glyph );
 FT_Glyph_Transform( glyph, &matrix, 0 );
-            //printf("[BGA] fuck you error: %d\n", error);
 FT_Vector  origin;
 
 
@@ -81,9 +80,7 @@ origin.y = 0;
           FT_RENDER_MODE_NORMAL,
           &origin,
           1 );
-            //printf("[BGA] fuck you error: %d\n", error);
             auto slot = config.face->glyph;
-            //printf("[BGA] bitmap: %d\n", slot->bitmap);
 FT_BitmapGlyph  bit = (FT_BitmapGlyph)glyph;
             for (int y = 0; y < bit->bitmap.rows; y++) {
                 for (int x = 0; x < bit->bitmap.pitch; x++) {
@@ -208,7 +205,6 @@ FT_BitmapGlyph  bit = (FT_BitmapGlyph)glyph;
 
         error = FT_New_Face(config.library,
             "/system/fonts/OxygenMono-Regular.ttf",
-            //"/system/fonts/Inconsolata.ttf",
             0,
             &config.face);
 

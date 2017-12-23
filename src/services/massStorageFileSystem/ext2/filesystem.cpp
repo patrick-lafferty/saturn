@@ -98,7 +98,6 @@ namespace MassStorageFileSystem::Ext2 {
 
     uint32_t Ext2FileSystem::readInodeBlocks(Inode& inode) {
         auto blocksToRead = ceil((double)inode.sizeLower32Bits / blockSize);
-        //auto sectorsToRead = 1 + inode.sizeLower32Bits / sectorSize;
         auto sectorsToRead = ceil((double)inode.sizeLower32Bits / sectorSize);//1 + request.length / sectorSize;
         
         for (auto i = 0u; i < blocksToRead; i++) {
@@ -268,21 +267,16 @@ namespace MassStorageFileSystem::Ext2 {
             The request might overlap two blocks
             */
 
-            //auto blocksToRead = ceil((double)request.length / blockSize);//1 + request.length / blockSize;
             auto startingBlock = descriptor->filePosition / blockSize;
             auto endPosition = descriptor->filePosition + request.length;
             auto endingBlock = endPosition / blockSize;
 
-            /*if (startingBlock != endingBlock) {
-                blocksToRead++;
-            }*/
             auto blocksToRead = 1 + (endingBlock - startingBlock);
             if (endingBlock != startingBlock
                 && ((endPosition % blockSize) == 0)) {
                 blocksToRead--;
             }
 
-            //auto sectorsToRead = ceil((double)request.length / sectorSize);//1 + request.length / sectorSize;
             auto startingSector = descriptor->filePosition / sectorSize;
             auto endingSector = endPosition / sectorSize;
             auto sectorsToRead = 1 + (endingSector - startingSector);
@@ -295,9 +289,9 @@ namespace MassStorageFileSystem::Ext2 {
             auto remainingSectors = sectorsToRead;
             auto startingPosition = descriptor->filePosition;
             
-            request.read.totalRemainingSectors = sectorsToRead;//ceil((double)request.length / sectorSize);//1 + (request.length / sectorSize);
+            request.read.totalRemainingSectors = sectorsToRead;
             request.read.remainingBlocks = blocksToRead;
-            request.read.remainingSectorsInBlock = sectorsPerBlock - (descriptor->filePosition % blockSize) / sectorSize;//std::min(sectorsPerBlock, request.read.totalRemainingSectors);
+            request.read.remainingSectorsInBlock = sectorsPerBlock - (descriptor->filePosition % blockSize) / sectorSize;
 
             for (auto i = 0u; i < blocksToRead; i++) {
                 auto blockId = startingBlock + i;
@@ -307,14 +301,14 @@ namespace MassStorageFileSystem::Ext2 {
 
                 if (blockId < 12) {
                     auto lba = blockIdToLba(descriptor->inode.directBlock[blockId]);
-                    lba += (sectorsPerBlock - remainingSectorsInBlock); //(sectorsPerBlock - remainingSectorsInBlock);
+                    lba += (sectorsPerBlock - remainingSectorsInBlock); 
                     blockDevice->queueReadSector(lba, sectorCount);
                 }
                 else if (blockId > 11 && blockId < 266) {
                     auto lba = blockIdToLba(descriptor->inode.singlyIndirectBlock);
-                    blockDevice->queueReadSector(lba, sectorsPerBlock);//sectorCount);
-                    request.read.indirectSectorsRemaining = sectorsPerBlock;//remainingSectors;
-                    request.read.totalRemainingSectors += sectorsPerBlock;//ceil((double)request.length / sectorSize);//1 + (request.length / sectorSize);
+                    blockDevice->queueReadSector(lba, sectorsPerBlock);
+                    request.read.indirectSectorsRemaining = sectorsPerBlock;
+                    request.read.totalRemainingSectors += sectorsPerBlock;
                     request.read.remainingSectorsInBlock = 2;
                     break;
                 }
@@ -326,38 +320,11 @@ namespace MassStorageFileSystem::Ext2 {
                 startingPosition = ((startingPosition / blockSize) + 1) * blockSize;
             }
         
-            /*for (auto i = 0u; i < blocksToRead; i++) {
-                auto blockId = startingBlock + i;
-                auto sectorCount = std::min(sectorsPerBlock, sectorsToRead);
-                //bool isHigh = (descriptor->filePosition % blockSize) > sectorSize;
-                bool isHigh = (startingPosition % blockSize) > sectorSize;
-                sectorsToRead -= sectorCount;
-
-                if (blockId < 12) {
-                    auto lba = blockIdToLba(descriptor->inode.directBlock[blockId]);
-                    if (isHigh) lba++;                    
-                    blockDevice->queueReadSector(lba, sectorCount);
-                }
-                else if (blockId > 11 && blockId < 266) {
-                    //singly indirect block
-                    auto lba = blockIdToLba(descriptor->inode.singlyIndirectBlock);
-                    blockDevice->queueReadSector(lba, sectorCount);
-                    request.read.indirectSectorsRemaining = sectorCount;
-                    break;
-                }
-                else {
-                    printf("[Ext2] Stub: Ext2FileSystem::handleReadRequest doesn't support double/triple indirect blocks yet\n");
-                    break;
-                }
-            }*/
-
-
             if (startingBlock < 12) {
                 request.read.state = ReadProgress::DirectBlock;
             }
             else {
                 request.read.state = ReadProgress::IndirectBlockList;
-                //request.read.totalRemainingSectors = 2;
             }
 
             request.read.remainingBytes = request.length;
@@ -384,13 +351,8 @@ namespace MassStorageFileSystem::Ext2 {
                     break;
                 }
                 case ReadProgress::IndirectBlockList: {
-                    
 
                     auto blockIds = reinterpret_cast<uint32_t*>(buffer);
-                    /*auto blocksToRead = ceil((double)request.read.remainingBytes / blockSize);//1 + request.read.remainingBytes / blockSize;
-                    auto sectorsToRead = ceil((double)request.read.remainingBytes / sectorSize);//1 + request.read.remainingBytes / sectorSize;
-                    auto startingId = descriptor->filePosition / blockSize - 12;
-                    */
                     auto endPosition = descriptor->filePosition + request.read.remainingBytes; 
                     auto startingBlock = descriptor->filePosition / blockSize;
                     auto endingBlock = endPosition / blockSize;
@@ -432,7 +394,6 @@ namespace MassStorageFileSystem::Ext2 {
 
                         request.read.remainingBlocks++;
                         startingPosition = ((startingPosition / blockSize) + 1) * blockSize;
-                        //request.read.totalRemainingSectors += sectorCount;
                     }
 
                     request.read.indirectSectorsRemaining--;
