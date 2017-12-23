@@ -23,6 +23,9 @@ char* strrchr(const char* str, int ch);
 void* memchr(const void* s, int c, size_t n);
 char* strstr(const char* s1, const char* s2);
 char* strcpy(char* restrict s1, const char* restrict s2);
+char* strncpy(char* restrict dest, const char* restrict src, size_t count);
+
+char* strcat(char* restrict dest, const char* restrict src);
 
 #ifdef __cplusplus
 }
