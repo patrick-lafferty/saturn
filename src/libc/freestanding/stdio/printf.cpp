@@ -182,13 +182,13 @@ int printf(const char* format, ...) {
     message.stringLength = charactersWritten;
 
     if (charactersWritten < 32) {
-        message.messageId = Terminal::Print32Message::MessageId;
+        message.messageId = static_cast<uint32_t>(Terminal::MessageId::Print32);
     }
     else if (charactersWritten < 64) {
-        message.messageId = Terminal::Print64Message::MessageId;
+        message.messageId = static_cast<uint32_t>(Terminal::MessageId::Print64);
     }
     else if (charactersWritten < 128) {
-        message.messageId = Terminal::Print128Message::MessageId;
+        message.messageId = static_cast<uint32_t>(Terminal::MessageId::Print128);
     }
 
     send(IPC::RecipientType::ServiceName, &message);
