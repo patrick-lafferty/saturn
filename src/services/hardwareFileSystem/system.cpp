@@ -7,7 +7,6 @@
 #include "cpu/cpu.h"
 #include "pci/pci.h"
 
-using namespace Kernel;
 using namespace VirtualFileSystem;
 using namespace Vostok;
 
@@ -17,7 +16,7 @@ namespace HardwareFileSystem {
         MountRequest request;
         const char* path = "/system/hardware";
         memcpy(request.path, path, strlen(path) + 1);
-        request.serviceType = ServiceType::VFS;
+        request.serviceType = Kernel::ServiceType::VFS;
 
         send(IPC::RecipientType::ServiceName, &request);
     }
@@ -42,7 +41,7 @@ namespace HardwareFileSystem {
         bool failed {true};
         OpenResult result;
         result.requestId = request.requestId;
-        result.serviceType = ServiceType::VFS;
+        result.serviceType = Kernel::ServiceType::VFS;
 
         auto addDescriptor = [&](auto instance, auto id, auto type) {
             failed = false;
@@ -122,7 +121,7 @@ namespace HardwareFileSystem {
         bool failed {true};
         CreateResult result;
         result.requestId = request.requestId;
-        result.serviceType = ServiceType::VFS;
+        result.serviceType = Kernel::ServiceType::VFS;
 
         auto words = split({request.path, strlen(request.path)}, '/');
 
@@ -218,37 +217,55 @@ namespace HardwareFileSystem {
             IPC::MaximumMessageBuffer buffer;
             receive(&buffer);
 
-            if (buffer.messageId == OpenRequest::MessageId) {
-                auto request = IPC::extractMessage<OpenRequest>(buffer);
-                handleOpenRequest(request, objects, openDescriptors);
-            }
-            else if (buffer.messageId == CreateRequest::MessageId) {
-                auto request = IPC::extractMessage<CreateRequest>(buffer);
-                handleCreateRequest(request, objects);
-            }
-            else if (buffer.messageId == ReadRequest::MessageId) {
-                auto request = IPC::extractMessage<ReadRequest>(buffer);
-                handleReadRequest(request, objects, openDescriptors);
-            }
-            else if (buffer.messageId == WriteRequest::MessageId) {
-                auto request = IPC::extractMessage<WriteRequest>(buffer);
-                handleWriteRequest(request, openDescriptors);
-            }
-            else if (buffer.messageId == CloseRequest::MessageId) {
-                auto request = IPC::extractMessage<CloseRequest>(buffer);
-                handleCloseRequest(request, openDescriptors);
+            switch (buffer.messageNamespace) {
+                case IPC::MessageNamespace::VFS: {
+
+                    switch (static_cast<MessageId>(buffer.messageId)) {
+                        case MessageId::OpenRequest: {
+                            auto request = IPC::extractMessage<OpenRequest>(buffer);
+                            handleOpenRequest(request, objects, openDescriptors);
+                            break;
+                        }
+                        case MessageId::CreateRequest: {
+                             auto request = IPC::extractMessage<CreateRequest>(buffer);
+                            handleCreateRequest(request, objects);
+                            break;
+                        }
+                        case MessageId::ReadRequest: {
+                            auto request = IPC::extractMessage<ReadRequest>(buffer);
+                            handleReadRequest(request, objects, openDescriptors);
+                            break;
+                        }
+                        case MessageId::WriteRequest: {
+                            auto request = IPC::extractMessage<WriteRequest>(buffer);
+                            handleWriteRequest(request, openDescriptors);
+                            break;
+                        }
+                        case MessageId::CloseRequest: {
+                            auto request = IPC::extractMessage<CloseRequest>(buffer);
+                            handleCloseRequest(request, openDescriptors);
+                            break;
+                        }
+                        default: 
+                            break;
+                    }
+
+                    break;
+                }
+                default:
+                    break;
             }
         }
     }
 
     void service() {
-        waitForServiceRegistered(ServiceType::VFS);
+        waitForServiceRegistered(Kernel::ServiceType::VFS);
         registerService();
         messageLoop();
     }
 
     void detectHardware() {
-        waitForServiceRegistered(ServiceType::VFS);
+        waitForServiceRegistered(Kernel::ServiceType::VFS);
 
         detectCPU();
     }

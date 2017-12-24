@@ -79,7 +79,8 @@ namespace HardwareFileSystem {
         IPC::MaximumMessageBuffer buffer;
         receive(&buffer);
 
-        if (buffer.messageId == CreateResult::MessageId) {
+        if (buffer.messageNamespace == IPC::MessageNamespace::VFS
+            && buffer.messageId == static_cast<uint32_t>(MessageId::CreateResult)) {
             auto result = IPC::extractMessage<CreateResult>(buffer);
             return result.success;
         }
