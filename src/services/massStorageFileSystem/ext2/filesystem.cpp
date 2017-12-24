@@ -89,7 +89,7 @@ namespace MassStorageFileSystem::Ext2 {
         auto blockId = descriptor.inodeTableId + (inodeIndex * superBlock.inodeSize) / blockSize;
         auto lba = blockIdToLba(blockId);
 
-        if (inodeIndex > 3) {
+        if ((inodeIndex % inodesPerBlock) > 3) {
             lba++;
         }
 
