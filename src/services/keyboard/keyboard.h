@@ -7,13 +7,17 @@
 namespace Keyboard {
     void service();
 
+    enum class MessageId {
+        KeyEvent
+    };
+
     struct KeyEvent : IPC::Message {
         KeyEvent() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::KeyEvent);
             length = sizeof(KeyEvent);
+            messageNamespace = IPC::MessageNamespace::Keyboard;
         }
 
-        static uint32_t MessageId;
         PS2::PhysicalKey key;
         PS2::KeyStatus status;
     };

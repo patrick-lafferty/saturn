@@ -133,23 +133,28 @@ namespace PS2 {
     void initializeController();
     void identifyDevices();
 
+    enum class MessageId {
+        KeyboardInput,
+        MouseInput
+    };
+
     struct KeyboardInput : IPC::Message {
         KeyboardInput() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::KeyboardInput);
             length = sizeof(KeyboardInput);
+            messageNamespace = IPC::MessageNamespace::PS2;
         }        
 
-        static uint32_t MessageId;
         uint8_t data;
     };
 
     struct MouseInput : IPC::Message {
         MouseInput() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::MouseInput);
             length = sizeof(MouseInput);
+            messageNamespace = IPC::MessageNamespace::PS2;
         }
 
-        static uint32_t MessageId;
         uint8_t data;
     };
 }

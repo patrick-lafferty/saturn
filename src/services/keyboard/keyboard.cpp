@@ -10,12 +10,6 @@ using namespace PS2;
 
 namespace Keyboard {
 
-    uint32_t KeyEvent::MessageId;
-
-    void registerMessages() {
-        IPC::registerMessage<KeyEvent>();
-    }
-
     struct KeymapEntry {
         uint8_t normal;
         uint8_t shift;
@@ -140,7 +134,8 @@ namespace Keyboard {
             IPC::MaximumMessageBuffer buffer;
             receive(&buffer);
 
-            if (buffer.messageId == KeyEvent::MessageId) {
+            if (buffer.messageNamespace == IPC::MessageNamespace::Keyboard
+                && buffer.messageId == static_cast<uint32_t>(MessageId::KeyEvent)) {
                 auto event = IPC::extractMessage<KeyEvent>(buffer);
 
                 switch (event.key) {
@@ -180,13 +175,6 @@ namespace Keyboard {
 
         send(IPC::RecipientType::ServiceRegistryMailbox, &registerRequest);
         receive(&buffer);
-
-        if (buffer.messageId == RegisterServiceDenied::MessageId) {
-            //can't register keyboard device?
-        }
-        else if (buffer.messageId == GenericServiceMeta::MessageId) {
-            registerMessages();
-        }
     }
 
     void service() {

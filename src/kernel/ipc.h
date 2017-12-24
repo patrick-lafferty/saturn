@@ -14,7 +14,9 @@ namespace IPC {
     enum class MessageNamespace : uint32_t {
         ServiceRegistry,
         VGA,
-        Terminal
+        Terminal,
+        PS2,
+        Keyboard
     };
 
     struct Message {

@@ -27,7 +27,8 @@ namespace Shell {
         while(!done) {
             receive(&buffer);
 
-            if (buffer.messageId == Terminal::CharacterInput::MessageId) {
+            if (buffer.messageNamespace == IPC::MessageNamespace::Terminal
+                && buffer.messageId == static_cast<uint32_t>(Terminal::MessageId::CharacterInput)) {
                 done = true;
                 auto input = IPC::extractMessage<Terminal::CharacterInput>(buffer);
                 return input.character;

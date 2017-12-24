@@ -9,13 +9,6 @@
 using namespace Kernel;
 
 namespace PS2 {
-    uint32_t KeyboardInput::MessageId;
-    uint32_t MouseInput::MessageId;
-
-    void registerMessages() {
-        IPC::registerMessage<KeyboardInput>();
-        IPC::registerMessage<MouseInput>();
-    }
 
     void printDebugString(char* s) {
         Terminal::PrintMessage message {};
@@ -81,12 +74,24 @@ namespace PS2 {
             IPC::MaximumMessageBuffer buffer;
             receive(&buffer);
 
-            if (buffer.messageId == KeyboardInput::MessageId) {
-                auto input = IPC::extractMessage<KeyboardInput>(buffer);
-                keyboardState = transitionKeyboardState(keyboardState, input.data);
-            }
-            else if (buffer.messageId == MouseInput::MessageId) {
+            switch(buffer.messageNamespace) {
+                case IPC::MessageNamespace::PS2: {
 
+                    switch(static_cast<MessageId>(buffer.messageId)) {
+                        case MessageId::KeyboardInput: {
+                            auto input = IPC::extractMessage<KeyboardInput>(buffer);
+                            keyboardState = transitionKeyboardState(keyboardState, input.data);
+
+                            break;
+                        }
+                        case MessageId::MouseInput: {
+                            break;
+                        }
+                    }
+                    break;
+                }
+                default: 
+                    break;
             }
         }
     }
@@ -100,12 +105,14 @@ namespace PS2 {
         send(IPC::RecipientType::ServiceRegistryMailbox, &registerRequest);
         receive(&buffer);
 
-        if (buffer.messageId == RegisterServiceDenied::MessageId) {
-            //can't register ps2 device?
-        }
-        else if (buffer.messageId == GenericServiceMeta::MessageId) {
-            registerMessages();
-            messageLoop();
+        if (buffer.messageNamespace == IPC::MessageNamespace::ServiceRegistry) {
+
+            if (buffer.messageId == static_cast<uint32_t>(Kernel::MessageId::RegisterServiceDenied)) {
+                //can't register ps2 device?
+            }
+            else if (buffer.messageId == static_cast<uint32_t>(Kernel::MessageId::GenericServiceMeta)) {
+                messageLoop();
+            }
         }
     }
 
