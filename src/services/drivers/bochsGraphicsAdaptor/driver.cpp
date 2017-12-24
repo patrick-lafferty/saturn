@@ -110,18 +110,22 @@ FT_BitmapGlyph  bit = (FT_BitmapGlyph)glyph;
         send(IPC::RecipientType::ServiceRegistryMailbox, &registerRequest);
         receive(&buffer);
 
-        if (buffer.messageId == RegisterServiceDenied::MessageId) {
-            //can't print to screen, how to notify?
-        }
-        else if (buffer.messageId == VGAServiceMeta::MessageId) {
-            auto msg = IPC::extractMessage<VGAServiceMeta>(buffer);
+        if (buffer.messageNamespace == IPC::MessageNamespace::ServiceRegistry) {
 
-            registerMessages();
+            if (buffer.messageId == static_cast<uint32_t>(MessageId::RegisterServiceDenied)) {
+                //can't print to screen, how to notify?
+            }
 
-            NotifyServiceReady ready;
-            send(IPC::RecipientType::ServiceRegistryMailbox, &ready);
+            else if (buffer.messageId == static_cast<uint32_t>(MessageId::VGAServiceMeta)) {
+                auto msg = IPC::extractMessage<VGAServiceMeta>(buffer);
 
-            return msg.vgaAddress;
+                registerMessages();
+
+                NotifyServiceReady ready;
+                send(IPC::RecipientType::ServiceRegistryMailbox, &ready);
+
+                return msg.vgaAddress;
+            }
         }
 
         return 0;

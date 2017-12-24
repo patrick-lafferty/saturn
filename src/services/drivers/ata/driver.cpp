@@ -111,7 +111,8 @@ namespace ATA {
         IPC::MaximumMessageBuffer buffer;
         receive(&buffer);
 
-        if (buffer.messageId == Kernel::RegisterDriverResult::MessageId) {
+        if (buffer.messageNamespace == IPC::MessageNamespace::ServiceRegistry
+            && buffer.messageId == static_cast<uint32_t>(Kernel::MessageId::RegisterDriverResult)) {
             auto result = readRegister8(Register::Command);
             resetDevice(Device::Master);
         }

@@ -13,7 +13,8 @@ namespace Startup {
         IPC::MaximumMessageBuffer buffer;
         receive(&buffer);
 
-        if (buffer.messageId == OpenResult::MessageId) {
+        if (buffer.messageNamespace == IPC::MessageNamespace::VFS
+                && buffer.messageId == static_cast<uint32_t>(MessageId::OpenResult)) {
             auto message = IPC::extractMessage<OpenResult>(buffer);
             
             if (message.success) {
@@ -34,7 +35,8 @@ namespace Startup {
         IPC::MaximumMessageBuffer buffer;
         receive(&buffer);
 
-        if (buffer.messageId == ReadResult::MessageId) {
+        if (buffer.messageNamespace == IPC::MessageNamespace::VFS
+                && buffer.messageId == static_cast<uint32_t>(MessageId::ReadResult)) {
             auto msg = IPC::extractMessage<ReadResult>(buffer);
             uintptr_t result {0};
             memcpy(&result, msg.buffer, sizeof(uintptr_t));
@@ -58,7 +60,8 @@ namespace Startup {
         IPC::MaximumMessageBuffer buffer;
         receive(&buffer);
 
-        if (buffer.messageId == CreateResult::MessageId) {
+        if (buffer.messageNamespace == IPC::MessageNamespace::VFS
+                && buffer.messageId == static_cast<uint32_t>(MessageId::CreateResult)) {
             auto result = IPC::extractMessage<CreateResult>(buffer);
             return result.success;
         }
