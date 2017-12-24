@@ -39,7 +39,7 @@ namespace Kernel {
         RegisterService() {
             messageId = static_cast<uint32_t>(MessageId::RegisterService);
             length = sizeof(RegisterService);
-            messageNamespace = static_cast<uint32_t>(IPC::MessageNamespace::ServiceRegistry);
+            messageNamespace = IPC::MessageNamespace::ServiceRegistry;
         }
 
         ServiceType type;
@@ -54,7 +54,7 @@ namespace Kernel {
         RegisterDriver() {
             messageId = static_cast<uint32_t>(MessageId::RegisterService);
             length = sizeof(RegisterDriver);
-            messageNamespace = static_cast<uint32_t>(IPC::MessageNamespace::ServiceRegistry);
+            messageNamespace = IPC::MessageNamespace::ServiceRegistry;
         }
 
         DriverType type;
@@ -64,7 +64,7 @@ namespace Kernel {
         RegisterDriverResult() {
             messageId = static_cast<uint32_t>(MessageId::RegisterDriverResult);
             length = sizeof(RegisterDriverResult);
-            messageNamespace = static_cast<uint32_t>(IPC::MessageNamespace::ServiceRegistry);
+            messageNamespace = IPC::MessageNamespace::ServiceRegistry;
         }
 
         bool success;
@@ -74,7 +74,7 @@ namespace Kernel {
         DriverIrqReceived() {
             messageId = static_cast<uint32_t>(MessageId::DriverIrqReceived);
             length = sizeof(DriverIrqReceived);
-            messageNamespace = static_cast<uint32_t>(IPC::MessageNamespace::ServiceRegistry);
+            messageNamespace = IPC::MessageNamespace::ServiceRegistry;
         }
 
     };
@@ -85,7 +85,7 @@ namespace Kernel {
         RegisterPseudoService() {
             messageId = static_cast<uint32_t>(MessageId::RegisterPseudoService);
             length = sizeof(RegisterPseudoService);
-            messageNamespace = static_cast<uint32_t>(IPC::MessageNamespace::ServiceRegistry);
+            messageNamespace = IPC::MessageNamespace::ServiceRegistry;
         }
 
         ServiceType type;
@@ -96,7 +96,7 @@ namespace Kernel {
         RegisterServiceDenied() {
             messageId = static_cast<uint32_t>(MessageId::RegisterServiceDenied);
             length = sizeof(RegisterServiceDenied);
-            messageNamespace = static_cast<uint32_t>(IPC::MessageNamespace::ServiceRegistry);
+            messageNamespace = IPC::MessageNamespace::ServiceRegistry;
         }
 
         bool success {false};
@@ -106,7 +106,7 @@ namespace Kernel {
         NotifyServiceReady() {
             messageId = static_cast<uint32_t>(MessageId::NotifyServiceReady);
             length = sizeof(NotifyServiceReady);
-            messageNamespace = static_cast<uint32_t>(IPC::MessageNamespace::ServiceRegistry);
+            messageNamespace = IPC::MessageNamespace::ServiceRegistry;
         }
 
     };
@@ -123,7 +123,7 @@ namespace Kernel {
         VGAServiceMeta() { 
             messageId = static_cast<uint32_t>(MessageId::VGAServiceMeta); 
             length = sizeof(VGAServiceMeta);
-            messageNamespace = static_cast<uint32_t>(IPC::MessageNamespace::ServiceRegistry);
+            messageNamespace = IPC::MessageNamespace::ServiceRegistry;
         }
 
         uint32_t vgaAddress {0};
@@ -133,7 +133,7 @@ namespace Kernel {
         GenericServiceMeta() {
             messageId = static_cast<uint32_t>(MessageId::GenericServiceMeta);
             length = sizeof(GenericServiceMeta);
-            messageNamespace = static_cast<uint32_t>(IPC::MessageNamespace::ServiceRegistry);
+            messageNamespace = IPC::MessageNamespace::ServiceRegistry;
         }
 
     };
@@ -142,7 +142,7 @@ namespace Kernel {
         SubscribeServiceRegistered() {
             messageId = static_cast<uint32_t>(MessageId::SubscribeServiceRegistered);
             length = sizeof(SubscribeServiceRegistered);
-            messageNamespace = static_cast<uint32_t>(IPC::MessageNamespace::ServiceRegistry);
+            messageNamespace = IPC::MessageNamespace::ServiceRegistry;
         }
 
         ServiceType type;
@@ -152,7 +152,7 @@ namespace Kernel {
         NotifyServiceRegistered() {
             messageId = static_cast<uint32_t>(MessageId::NotifyServiceRegistered);
             length = sizeof(NotifyServiceRegistered);
-            messageNamespace = static_cast<uint32_t>(IPC::MessageNamespace::ServiceRegistry);
+            messageNamespace = IPC::MessageNamespace::ServiceRegistry;
         }
 
         ServiceType type;
@@ -162,7 +162,7 @@ namespace Kernel {
         RunProgram() {
             messageId = static_cast<uint32_t>(MessageId::RunProgram);
             length = sizeof(RunProgram);
-            messageNamespace = static_cast<uint32_t>(IPC::MessageNamespace::ServiceRegistry);
+            messageNamespace = IPC::MessageNamespace::ServiceRegistry;
         }
 
         uintptr_t entryPoint;
@@ -172,7 +172,7 @@ namespace Kernel {
         RunResult() {
             messageId = static_cast<uint32_t>(MessageId::RunResult);
             length = sizeof(RunResult);
-            messageNamespace = static_cast<uint32_t>(IPC::MessageNamespace::ServiceRegistry);
+            messageNamespace = IPC::MessageNamespace::ServiceRegistry;
         }
 
         bool success;
@@ -183,7 +183,7 @@ namespace Kernel {
         LinearFrameBufferFound() {
             messageId = static_cast<uint32_t>(MessageId::LinearFrameBufferFound);
             length = sizeof(LinearFrameBufferFound);
-            messageNamespace = static_cast<uint32_t>(IPC::MessageNamespace::ServiceRegistry);
+            messageNamespace = IPC::MessageNamespace::ServiceRegistry;
         }
 
         uint32_t address;

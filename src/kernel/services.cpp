@@ -25,7 +25,7 @@ namespace Kernel {
     }
 
     void ServiceRegistry::receiveMessage(IPC::Message* message) {
-        switch(static_cast<IPC::MessageNamespace>(message->messageNamespace)) {
+        switch(message->messageNamespace) {
             case IPC::MessageNamespace::ServiceRegistry: {
                 switch(static_cast<MessageId>(message->messageId)) {
                     case MessageId::RegisterService: {

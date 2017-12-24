@@ -11,9 +11,10 @@ namespace Kernel {
 
 namespace IPC {
 
-    enum class MessageNamespace {
+    enum class MessageNamespace : uint32_t {
         ServiceRegistry,
-        VGA
+        VGA,
+        Terminal
     };
 
     struct Message {
@@ -25,7 +26,7 @@ namespace IPC {
             Kernel::ServiceType serviceType;
         };
 
-        uint32_t messageNamespace;
+        MessageNamespace messageNamespace;
         uint32_t messageId;
     };
 
