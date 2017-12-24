@@ -230,7 +230,7 @@ FT_BitmapGlyph  bit = (FT_BitmapGlyph)glyph;
     }
 
     void service() {
-        //return;
+        return;
         auto bgaAddress = registerService();
         sleep(600);
         auto freetypeConfig = setupAdaptor();
