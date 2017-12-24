@@ -7,14 +7,6 @@ using namespace Kernel;
 
 namespace VGA {
 
-    uint32_t BlitMessage::MessageId;
-    uint32_t ScrollScreen::MessageId;
-
-    void registerMessages() {
-        IPC::registerMessage<BlitMessage>();
-        IPC::registerMessage<ScrollScreen>();
-    }
-
     void messageLoop(uint32_t address) {
         uint16_t* vgaBuffer = reinterpret_cast<uint16_t*>(address);
         memset(vgaBuffer, 0, 4000);
@@ -23,20 +15,33 @@ namespace VGA {
             IPC::MaximumMessageBuffer buffer;
             receive(&buffer);
 
-            if (buffer.messageId == BlitMessage::MessageId) {
-                auto message = IPC::extractMessage<BlitMessage>(buffer);
-                memcpy(vgaBuffer + message.index, message.buffer, sizeof(uint16_t) * message.count);
-            }
-            else if (buffer.messageId == ScrollScreen::MessageId) {
-                auto message = IPC::extractMessage<ScrollScreen>(buffer);
-                auto byteCount = sizeof(uint16_t) * Width * (Height - message.linesToScroll);
-                memcpy(vgaBuffer, vgaBuffer + Width * message.linesToScroll, byteCount);
+            switch(static_cast<IPC::MessageNamespace>(buffer.messageNamespace)) {
+                case IPC::MessageNamespace::VGA: {
 
-                auto row = Height - 1;
+                    switch(static_cast<MessageId>(buffer.messageId)) {
+                        case MessageId::Blit: {
+                            auto message = IPC::extractMessage<BlitMessage>(buffer);
+                            memcpy(vgaBuffer + message.index, message.buffer, sizeof(uint16_t) * message.count);
 
-                for (uint32_t x = 0; x < Width; x++) {
-                    auto index = row * Width + x;
-                    vgaBuffer[index] = 0;
+                            break;
+                        }
+                        case MessageId::Scroll: {
+                            auto message = IPC::extractMessage<ScrollScreen>(buffer);
+                            auto byteCount = sizeof(uint16_t) * Width * (Height - message.linesToScroll);
+                            memcpy(vgaBuffer, vgaBuffer + Width * message.linesToScroll, byteCount);
+
+                            auto row = Height - 1;
+
+                            for (uint32_t x = 0; x < Width; x++) {
+                                auto index = row * Width + x;
+                                vgaBuffer[index] = 0;
+                            }
+
+                            break;
+                        }
+                    }
+
+                    break;
                 }
             }
         }
@@ -51,18 +56,27 @@ namespace VGA {
         send(IPC::RecipientType::ServiceRegistryMailbox, &registerRequest);
         receive(&buffer);
 
-        if (buffer.messageId == RegisterServiceDenied::MessageId) {
-            //can't print to screen, how to notify?
-        }
-        else if (buffer.messageId == VGAServiceMeta::MessageId) {
-            registerMessages();
+        switch(static_cast<IPC::MessageNamespace>(buffer.messageNamespace)) {
+            case IPC::MessageNamespace::ServiceRegistry: {
 
-            NotifyServiceReady ready;
-            send(IPC::RecipientType::ServiceRegistryMailbox, &ready);
+                switch(static_cast<Kernel::MessageId>(buffer.messageId)) {
+                    case Kernel::MessageId::RegisterServiceDenied: {
+                        //TODO: stub
+                        break;
+                    }
+                    case Kernel::MessageId::VGAServiceMeta: {
+                        NotifyServiceReady ready;
+                        send(IPC::RecipientType::ServiceRegistryMailbox, &ready);
 
-            auto vgaMeta = IPC::extractMessage<VGAServiceMeta>(buffer);
+                        auto vgaMeta = IPC::extractMessage<VGAServiceMeta>(buffer);
 
-            return vgaMeta.vgaAddress;
+                        return vgaMeta.vgaAddress;
+                        break;
+                    }
+                }
+
+                break;
+            }
         }
 
         return 0;

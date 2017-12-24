@@ -7,13 +7,17 @@ namespace VGA {
 
     void service();
 
+    enum class MessageId {
+        Blit,
+        Scroll
+    };
+
     struct BlitMessage : IPC::Message {
         BlitMessage() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::Blit);
             length = sizeof(BlitMessage);
         }
 
-        static uint32_t MessageId;
         uint16_t buffer[64];
         uint32_t index {0};
         uint32_t count {0};
@@ -21,11 +25,10 @@ namespace VGA {
 
     struct ScrollScreen : IPC::Message {
         ScrollScreen() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::Scroll);
             length = sizeof(ScrollScreen);
         }
 
-        static uint32_t MessageId;
         uint32_t linesToScroll {0};
     };
 

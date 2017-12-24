@@ -12,7 +12,8 @@ namespace Kernel {
 namespace IPC {
 
     enum class MessageNamespace {
-        ServiceRegistry
+        ServiceRegistry,
+        VGA
     };
 
     struct Message {
