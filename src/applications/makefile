@@ -15,7 +15,7 @@ LDFLAGS = --sysroot=../../sysroot/ -L=system/lib -L=libraries/lib -g
 
 OBJS = test/main.o
 
-LIBS = -lc_freestanding
+LIBS = -lc
 
 LINK_LIST = \
 	$(OBJS) \

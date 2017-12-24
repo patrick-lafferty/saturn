@@ -45,6 +45,7 @@ DEPS = \
 	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(OBJS_WITHOUT_CRT))) \
 	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(LIBC_FREE_OBJS))) \
 	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(TEST_LIBC_FREE_OBJS))) \
+	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(LIBC_HOSTED_OBJS))) \
 	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(LIBC++_FREE_OBJS))) \
 	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(TEST_LIBC++_FREE_OBJS))) \
 	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(USERLAND_OBJS)))
@@ -80,13 +81,19 @@ sysroot:
 	$(MKDIR) sysroot/system/lib
 	$(MKDIR) sysroot/system/include
 
-saturn.bin: libc test_libc libc++ test_libc++ userland $(OBJS) $(ARCHDIR)/linker.ld
+saturn.bin: libc_freestanding libc_hosted test_libc libc++ test_libc++ userland $(OBJS) $(ARCHDIR)/linker.ld
 	$(LD) -T $(ARCHDIR)/linker.ld -o sysroot/system/boot/$@ $(LDFLAGS) $(LINK_LIST)  
 
-libc: $(LIBC_FREE_OBJS)
+libc_freestanding: $(LIBC_FREE_OBJS)
 	$(AR) rcs src/libc/libc_freestanding.a $(LIBC_FREE_OBJS)
 	ranlib src/libc/libc_freestanding.a
 	cp src/libc/libc_freestanding.a sysroot/system/lib
+	cp -R --preserve=timestamps src/libc/include sysroot/system/
+
+libc_hosted: $(LIBC_HOSTED_OBJS)
+	$(AR) rcs src/libc/libc.a $(LIBC_HOSTED_OBJS)
+	ranlib src/libc/libc.a
+	cp src/libc/libc.a sysroot/system/lib
 	cp -R --preserve=timestamps src/libc/include sysroot/system/
 
 test_libc: $(TEST_LIBC_FREE_OBJS)
@@ -134,6 +141,7 @@ clean:
 	$(RM) $(OBJS_WITHOUT_CRT) $(LIBC_FREE_OBJS)
 	$(RM) src/libc/libc_freestanding.a
 	$(RM) test/libc/libc_test_freestanding.a
+	$(RM) src/libc/libc.a
 	$(RM) .d/ -rf
 
 iso: 
