@@ -68,6 +68,66 @@ namespace Shell {
         return false;
     }
 
+    struct ElfHeader {
+        uint32_t magicNumber;
+        uint8_t bitFormat;
+        uint8_t endianness;
+        uint8_t versionShort;
+        uint8_t osABI;
+        uint8_t abiVersion;
+        uint8_t pad[7];
+        uint16_t type;
+        uint16_t machine;
+        uint32_t versionLong;
+        uint32_t entryPoint;
+        uint32_t programHeaderStart;
+        uint32_t sectionHeaderStart;
+        uint32_t flags;
+        uint16_t headerSize;
+        uint16_t programHeaderEntrySize;
+        uint16_t programHeaderEntryCount;
+        uint16_t sectionHeaderEntrySize;
+        uint16_t sectionHeaderEntryCount;
+        uint16_t sectionHeaderNameIndex;
+    };
+
+    struct ProgramHeader {
+        uint32_t type;
+        uint32_t offset;
+        uint32_t virtualAddress;
+        uint32_t physicalAddress;
+        uint32_t imageSize;
+        uint32_t memorySize;
+        uint32_t flags;
+        uint32_t alignment;
+    };
+
+    void readELF() {
+
+        ElfHeader header;
+        auto file = fopen("/libraries/lib/libfreetype.a", "");
+
+        if (file == nullptr) {
+            printf("[Shell] Error opening libfreetype.a\n");
+            return;
+        }
+
+        fread(&header, sizeof(header), 1, file);
+
+        printf("Magic: %d, bit: %d, endianness: %d, version: %d\n",
+            header.magicNumber, header.bitFormat, header.endianness, header.versionShort);
+
+        printf("ABI: %d, abiVer: %d, type: %d, machine: %d\n",
+            header.osABI, header.abiVersion, header.type, header.machine);
+
+        printf("versionLong: %d, entryPoint: %x, pheadStart: %d\n",
+            header.versionLong, header.entryPoint, header.programHeaderStart);
+return;
+        fseek(file, header.programHeaderStart, SEEK_CUR);
+        ProgramHeader program;
+        fread(&program, sizeof(program), 1, file);
+    }
+
     VirtualFileSystem::ReadResult readSignature(uint32_t descriptor, bool& success) {
         read(descriptor, 0);
         IPC::MaximumMessageBuffer buffer;
@@ -422,6 +482,9 @@ namespace Shell {
             if (doOpen(words[1], descriptor)) {
                 doReadFile(descriptor);
             }
+        }
+        else if (words[0].compare("elf-test") == 0) {
+            readELF();
         }
         else {
             return false;
