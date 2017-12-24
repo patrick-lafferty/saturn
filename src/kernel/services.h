@@ -18,13 +18,30 @@ namespace Kernel {
         ServiceTypeEnd
     };
 
+    enum class MessageId {
+        RegisterService,
+        RegisterDriver,
+        RegisterDriverResult,
+        DriverIrqReceived,
+        RegisterPseudoService,
+        RegisterServiceDenied,
+        NotifyServiceReady,
+        VGAServiceMeta,
+        GenericServiceMeta,
+        SubscribeServiceRegistered,
+        NotifyServiceRegistered,
+        RunProgram,
+        RunResult,
+        LinearFrameBufferFound
+    };
+
     struct RegisterService : IPC::Message {
         RegisterService() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::RegisterService);
             length = sizeof(RegisterService);
+            messageNamespace = static_cast<uint32_t>(IPC::MessageNamespace::ServiceRegistry);
         }
 
-        static uint32_t MessageId;
         ServiceType type;
     };
 
@@ -35,59 +52,63 @@ namespace Kernel {
 
     struct RegisterDriver : IPC::Message {
         RegisterDriver() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::RegisterService);
             length = sizeof(RegisterDriver);
+            messageNamespace = static_cast<uint32_t>(IPC::MessageNamespace::ServiceRegistry);
         }
 
-        static uint32_t MessageId;
         DriverType type;
     };
 
     struct RegisterDriverResult : IPC::Message {
         RegisterDriverResult() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::RegisterDriverResult);
             length = sizeof(RegisterDriverResult);
+            messageNamespace = static_cast<uint32_t>(IPC::MessageNamespace::ServiceRegistry);
         }
 
-        static uint32_t MessageId;
         bool success;
     };
 
     struct DriverIrqReceived : IPC::Message {
         DriverIrqReceived() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::DriverIrqReceived);
             length = sizeof(DriverIrqReceived);
+            messageNamespace = static_cast<uint32_t>(IPC::MessageNamespace::ServiceRegistry);
         }
 
-        static uint32_t MessageId;
     };
 
     typedef void (*PseudoMessageHandler)(IPC::Message*);
 
     struct RegisterPseudoService : IPC::Message {
         RegisterPseudoService() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::RegisterPseudoService);
             length = sizeof(RegisterPseudoService);
+            messageNamespace = static_cast<uint32_t>(IPC::MessageNamespace::ServiceRegistry);
         }
 
-        static uint32_t MessageId;
         ServiceType type;
         PseudoMessageHandler handler;
     };
 
     struct RegisterServiceDenied : IPC::Message {
+        RegisterServiceDenied() {
+            messageId = static_cast<uint32_t>(MessageId::RegisterServiceDenied);
+            length = sizeof(RegisterServiceDenied);
+            messageNamespace = static_cast<uint32_t>(IPC::MessageNamespace::ServiceRegistry);
+        }
 
-        static uint32_t MessageId;
         bool success {false};
     };
 
     struct NotifyServiceReady : IPC::Message {
         NotifyServiceReady() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::NotifyServiceReady);
             length = sizeof(NotifyServiceReady);
+            messageNamespace = static_cast<uint32_t>(IPC::MessageNamespace::ServiceRegistry);
         }
 
-        static uint32_t MessageId;
     };
 
     struct ServiceMeta : IPC::Message {
@@ -100,71 +121,71 @@ namespace Kernel {
 
     struct VGAServiceMeta : ServiceMeta {
         VGAServiceMeta() { 
-            messageId = MessageId; 
+            messageId = static_cast<uint32_t>(MessageId::VGAServiceMeta); 
             length = sizeof(VGAServiceMeta);
+            messageNamespace = static_cast<uint32_t>(IPC::MessageNamespace::ServiceRegistry);
         }
 
-        static uint32_t MessageId;
         uint32_t vgaAddress {0};
     };
 
     struct GenericServiceMeta : ServiceMeta {
         GenericServiceMeta() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::GenericServiceMeta);
             length = sizeof(GenericServiceMeta);
+            messageNamespace = static_cast<uint32_t>(IPC::MessageNamespace::ServiceRegistry);
         }
 
-        static uint32_t MessageId;
     };
 
     struct SubscribeServiceRegistered : IPC::Message {
         SubscribeServiceRegistered() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::SubscribeServiceRegistered);
             length = sizeof(SubscribeServiceRegistered);
+            messageNamespace = static_cast<uint32_t>(IPC::MessageNamespace::ServiceRegistry);
         }
 
-        static uint32_t MessageId;
         ServiceType type;
     };
 
     struct NotifyServiceRegistered : IPC::Message {
         NotifyServiceRegistered() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::NotifyServiceRegistered);
             length = sizeof(NotifyServiceRegistered);
+            messageNamespace = static_cast<uint32_t>(IPC::MessageNamespace::ServiceRegistry);
         }
 
-        static uint32_t MessageId;
         ServiceType type;
     };
 
     struct RunProgram : IPC::Message {
         RunProgram() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::RunProgram);
             length = sizeof(RunProgram);
+            messageNamespace = static_cast<uint32_t>(IPC::MessageNamespace::ServiceRegistry);
         }
 
-        static uint32_t MessageId;
         uintptr_t entryPoint;
     };
 
     struct RunResult : IPC::Message {
         RunResult() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::RunResult);
             length = sizeof(RunResult);
+            messageNamespace = static_cast<uint32_t>(IPC::MessageNamespace::ServiceRegistry);
         }
 
-        static uint32_t MessageId;
         bool success;
         uint32_t pid;
     };
 
     struct LinearFrameBufferFound : IPC::Message {
         LinearFrameBufferFound() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::LinearFrameBufferFound);
             length = sizeof(LinearFrameBufferFound);
+            messageNamespace = static_cast<uint32_t>(IPC::MessageNamespace::ServiceRegistry);
         }
 
-        static uint32_t MessageId;
         uint32_t address;
     };
 

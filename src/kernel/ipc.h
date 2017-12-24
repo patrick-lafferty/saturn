@@ -11,13 +11,20 @@ namespace Kernel {
 
 namespace IPC {
 
+    enum class MessageNamespace {
+        ServiceRegistry
+    };
+
     struct Message {
         uint32_t length;
         uint32_t senderTaskId;
+
         union {
             uint32_t recipientId;
             Kernel::ServiceType serviceType;
         };
+
+        uint32_t messageNamespace;
         uint32_t messageId;
     };
 
@@ -32,13 +39,13 @@ namespace IPC {
         TaskId
     };
 
-    uint32_t getId(); 
+    /*uint32_t getId(); 
 
     template<typename T>
     void registerMessage() {
 
         T::MessageId = getId();
-    }
+    }*/
 
     template<typename T>
     T extractMessage(const MaximumMessageBuffer& buffer) {
@@ -93,8 +100,8 @@ namespace IPC {
             }
 
              if (lastWriteOffset > bufferSize) {
-                    kprintf("[Mailbox] lastWriteOffset is invalid\n");
-                }
+                kprintf("[Mailbox] lastWriteOffset is invalid\n");
+            }
         }
 
         bool receive(Message* message) {

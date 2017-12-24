@@ -8,21 +8,6 @@
 
 namespace Kernel {
 
-    uint32_t RegisterService::MessageId;
-    uint32_t RegisterDriver::MessageId;
-    uint32_t RegisterDriverResult::MessageId;
-    uint32_t DriverIrqReceived::MessageId;
-    uint32_t RegisterPseudoService::MessageId;
-    uint32_t RegisterServiceDenied::MessageId;
-    uint32_t NotifyServiceReady::MessageId;
-    uint32_t VGAServiceMeta::MessageId;
-    uint32_t GenericServiceMeta::MessageId;
-    uint32_t SubscribeServiceRegistered::MessageId;
-    uint32_t NotifyServiceRegistered::MessageId;
-    uint32_t RunProgram::MessageId;
-    uint32_t RunResult::MessageId;
-    uint32_t LinearFrameBufferFound::MessageId;
-
     ServiceRegistry::ServiceRegistry() {
         auto count = static_cast<uint32_t>(ServiceType::ServiceTypeEnd) + 1;
         taskIds = new uint32_t[count];
@@ -37,87 +22,93 @@ namespace Kernel {
         }
 
         pseudoMessageHandlers = new PseudoMessageHandler[count];
-
-        IPC::registerMessage<RegisterService>();
-        IPC::registerMessage<RegisterDriver>();
-        IPC::registerMessage<RegisterDriverResult>();
-        IPC::registerMessage<DriverIrqReceived>();
-        IPC::registerMessage<RegisterPseudoService>();
-        IPC::registerMessage<RegisterServiceDenied>();
-        IPC::registerMessage<NotifyServiceReady>();
-        IPC::registerMessage<VGAServiceMeta>();
-        IPC::registerMessage<GenericServiceMeta>();
-        IPC::registerMessage<SubscribeServiceRegistered>();
-        IPC::registerMessage<NotifyServiceRegistered>();
-        IPC::registerMessage<RunProgram>();
-        IPC::registerMessage<RunResult>();
-        IPC::registerMessage<LinearFrameBufferFound>();
     }
 
     void ServiceRegistry::receiveMessage(IPC::Message* message) {
-        if (message->messageId == RegisterService::MessageId) {
-            auto request = IPC::extractMessage<RegisterService>(
-                *static_cast<IPC::MaximumMessageBuffer*>(message));
-            registerService(request.senderTaskId, request.type);
-        }
-        else if (message->messageId == RegisterPseudoService::MessageId) {
-            auto request = IPC::extractMessage<RegisterPseudoService>(
-                *static_cast<IPC::MaximumMessageBuffer*>(message));
-            registerPseudoService(request.type, request.handler);
-        }
-        else if (message->messageId == SubscribeServiceRegistered::MessageId) {
-            auto request = IPC::extractMessage<SubscribeServiceRegistered>(
-                *static_cast<IPC::MaximumMessageBuffer*>(message));
-            
-            auto index = static_cast<uint32_t>(request.type);
-            
-            subscribers[index].push_back(request.senderTaskId);
+        switch(static_cast<IPC::MessageNamespace>(message->messageNamespace)) {
+            case IPC::MessageNamespace::ServiceRegistry: {
+                switch(static_cast<MessageId>(message->messageId)) {
+                    case MessageId::RegisterService: {
+                        auto request = IPC::extractMessage<RegisterService>(
+                            *static_cast<IPC::MaximumMessageBuffer*>(message));
+                        registerService(request.senderTaskId, request.type);
 
-            if (meta[index].ready) {
-                notifySubscribers(index);
-            }
-        }
-        else if (message->messageId == RunProgram::MessageId) {
-            auto run = IPC::extractMessage<RunProgram>(
-                *static_cast<IPC::MaximumMessageBuffer*>(message));
-            
-            auto task = currentScheduler->createUserTask(run.entryPoint);
-            currentScheduler->scheduleTask(task);
+                        break;
+                    }
+                    case MessageId::RegisterPseudoService: {
+                        auto request = IPC::extractMessage<RegisterPseudoService>(
+                            *static_cast<IPC::MaximumMessageBuffer*>(message));
+                        registerPseudoService(request.type, request.handler);
 
-            RunResult result;
-            result.recipientId = message->senderTaskId;
-            result.success = task != nullptr;
-            result.pid = task->id;
-            auto currentTask = currentScheduler->getTask(message->senderTaskId);
-            currentTask->mailbox->send(&result);
-        }
-        else if (message->messageId == NotifyServiceReady::MessageId) {
-            auto lastService = static_cast<uint32_t>(ServiceType::ServiceTypeEnd);
-            auto index = lastService;
+                        break;
+                    }
+                    case MessageId::SubscribeServiceRegistered: {
+                        auto request = IPC::extractMessage<SubscribeServiceRegistered>(
+                            *static_cast<IPC::MaximumMessageBuffer*>(message));
+                        
+                        auto index = static_cast<uint32_t>(request.type);
+                        
+                        subscribers[index].push_back(request.senderTaskId);
 
-            for (auto i = 0u; i < lastService; i++) {
-                if (taskIds[i] == message->senderTaskId) {
-                    index = i;
-                    break;
+                        if (meta[index].ready) {
+                            notifySubscribers(index);
+                        }
+
+                        break;
+                    }
+                    case MessageId::RunProgram: {
+                        auto run = IPC::extractMessage<RunProgram>(
+                            *static_cast<IPC::MaximumMessageBuffer*>(message));
+                        
+                        auto task = currentScheduler->createUserTask(run.entryPoint);
+                        currentScheduler->scheduleTask(task);
+
+                        RunResult result;
+                        result.recipientId = message->senderTaskId;
+                        result.success = task != nullptr;
+                        result.pid = task->id;
+                        auto currentTask = currentScheduler->getTask(message->senderTaskId);
+                        currentTask->mailbox->send(&result);
+
+                        break;
+                    }
+                    case MessageId::NotifyServiceReady: {
+                        auto lastService = static_cast<uint32_t>(ServiceType::ServiceTypeEnd);
+                        auto index = lastService;
+
+                        for (auto i = 0u; i < lastService; i++) {
+                            if (taskIds[i] == message->senderTaskId) {
+                                index = i;
+                                break;
+                            }
+                        }
+
+                        if (index != lastService) {
+                            meta[index].ready = true;
+                            notifySubscribers(index);
+                        }
+
+                        break;
+                    }
+                    case MessageId::LinearFrameBufferFound: {
+                        auto msg = IPC::extractMessage<LinearFrameBufferFound>(
+                                *static_cast<IPC::MaximumMessageBuffer*>(message));
+
+                        addresses.linearFrameBuffer = msg.address;
+
+                        break;
+                    }
+                    case MessageId::RegisterDriver: {
+                        auto request = IPC::extractMessage<RegisterDriver>(
+                            *static_cast<IPC::MaximumMessageBuffer*>(message));
+                        
+                        registerDriver(request.senderTaskId, request.type);
+
+                        break;
+                    }
                 }
+                break;
             }
-
-            if (index != lastService) {
-                meta[index].ready = true;
-                notifySubscribers(index);
-            }
-        }
-        else if (message->messageId == LinearFrameBufferFound::MessageId) {
-            auto msg = IPC::extractMessage<LinearFrameBufferFound>(
-                    *static_cast<IPC::MaximumMessageBuffer*>(message));
-
-            addresses.linearFrameBuffer = msg.address;
-        }
-        else if (message->messageId == RegisterDriver::MessageId) {
-            auto request = IPC::extractMessage<RegisterDriver>(
-                *static_cast<IPC::MaximumMessageBuffer*>(message));
-            
-            registerDriver(request.senderTaskId, request.type);
         }
     }
 

@@ -11,7 +11,8 @@ void waitForServiceRegistered(Kernel::ServiceType type) {
         IPC::MaximumMessageBuffer buffer;
         receive(&buffer);
 
-        if (buffer.messageId == Kernel::NotifyServiceRegistered::MessageId) {
+        if (buffer.messageNamespace == static_cast<uint32_t>(IPC::MessageNamespace::ServiceRegistry)
+                && buffer.messageId == static_cast<uint32_t>(Kernel::MessageId::NotifyServiceRegistered)) {
             auto notify = IPC::extractMessage<Kernel::NotifyServiceRegistered>(buffer);
 
             if (notify.type == type) {
