@@ -10,7 +10,6 @@
 #include <string.h>
 #include "ext2/filesystem.h"
 
-using namespace Kernel;
 using namespace VirtualFileSystem;
 using namespace ATA;
 using namespace MassStorageFileSystem::Ext2;
@@ -69,7 +68,7 @@ namespace MassStorageFileSystem {
         MountRequest request;
         const char* path = "/";
         memcpy(request.path, path, strlen(path) + 1);
-        request.serviceType = ServiceType::VFS;
+        request.serviceType = Kernel::ServiceType::VFS;
         request.cacheable = true;
 
         send(IPC::RecipientType::ServiceName, &request);
@@ -120,7 +119,8 @@ namespace MassStorageFileSystem {
         IPC::MaximumMessageBuffer buffer;
         receive(&buffer);
 
-        if (buffer.messageId != ReadResult::MessageId) {
+        if (buffer.messageNamespace == IPC::MessageNamespace::VFS
+            && buffer.messageId != static_cast<uint32_t>(MessageId::ReadResult)) {
             return nullptr;
         }
 
@@ -145,51 +145,73 @@ namespace MassStorageFileSystem {
             IPC::MaximumMessageBuffer buffer;
             receive(&buffer);
 
-            if (buffer.messageId == DriverIrqReceived::MessageId) {
-                if (queuedRequests.empty()) {
-                    printf("[MassStorageController] Received DriverIrq but have no queuedRequests\n");
-                    continue;
-                }
+            switch (buffer.messageNamespace) {
+                case IPC::MessageNamespace::ServiceRegistry: {
 
-                if (pendingCommand == PendingDiskCommand::Read) {
-                    auto& request = queuedRequests.front();
+                    switch (static_cast<Kernel::MessageId>(buffer.messageId)) {
+                        case Kernel::MessageId::DriverIrqReceived: {
+                            if (queuedRequests.empty()) {
+                                printf("[MassStorageController] Received DriverIrq but have no queuedRequests\n");
+                                continue;
+                            }
 
-                    fileSystems[request.requesterId]->receiveSector();
-                    //if (!fileSystems[request.requesterId]->receiveSector()) {
-                    //    continue;
-                   // }
-                    request.sectorCount--;
+                            if (pendingCommand == PendingDiskCommand::Read) {
+                                auto& request = queuedRequests.front();
 
-                    if (request.sectorCount == 0) {
-                        pendingCommand = PendingDiskCommand::None;
-                        queuedRequests.pop();
+                                fileSystems[request.requesterId]->receiveSector();
+                                request.sectorCount--;
 
-                        if (!queuedRequests.empty()) {
-                            queueReadSector(queuedRequests.front());
+                                if (request.sectorCount == 0) {
+                                    pendingCommand = PendingDiskCommand::None;
+                                    queuedRequests.pop();
+
+                                    if (!queuedRequests.empty()) {
+                                        queueReadSector(queuedRequests.front());
+                                    }
+                                }
+                            }
+                            break;
                         }
+                        default:
+                            break;
                     }
+                    break;
                 }
-            }
-            else if (buffer.messageId == GetDirectoryEntries::MessageId) {
-                auto request = IPC::extractMessage<GetDirectoryEntries>(buffer);
-                handleGetDirectoryEntries(request);
-            }
-            else if (buffer.messageId == OpenRequest::MessageId) {
-                auto request = IPC::extractMessage<OpenRequest>(buffer);
-                OpenResult result;
-                result.success = true;
-                result.serviceType = ServiceType::VFS;
-                result.fileDescriptor = fileSystems[0]->openFile(request.index, request.requestId);
-                result.requestId = request.requestId;
-                send(IPC::RecipientType::ServiceName, &result);
-            }
-            else if (buffer.messageId == ::VirtualFileSystem::ReadRequest::MessageId) {
-                auto request = IPC::extractMessage<::VirtualFileSystem::ReadRequest>(buffer);
-                handleReadRequest(request);
-            }
-            else if (buffer.messageId == ::VirtualFileSystem::SeekRequest::MessageId) {
-                auto request = IPC::extractMessage<::VirtualFileSystem::SeekRequest>(buffer);
-                handleSeekRequest(request);
+                case IPC::MessageNamespace::VFS: {
+
+                    switch (static_cast<MessageId>(buffer.messageId)) {
+                        case MessageId::GetDirectoryEntries: {
+                            auto request = IPC::extractMessage<GetDirectoryEntries>(buffer);
+                            handleGetDirectoryEntries(request);
+                            break;
+                        }
+                        case MessageId::OpenRequest: {
+                            auto request = IPC::extractMessage<OpenRequest>(buffer);
+                            OpenResult result;
+                            result.success = true;
+                            result.serviceType = Kernel::ServiceType::VFS;
+                            result.fileDescriptor = fileSystems[0]->openFile(request.index, request.requestId);
+                            result.requestId = request.requestId;
+                            send(IPC::RecipientType::ServiceName, &result);
+                            break;
+                        }
+                        case MessageId::ReadRequest: {
+                            auto request = IPC::extractMessage<::VirtualFileSystem::ReadRequest>(buffer);
+                            handleReadRequest(request);
+                            break;
+                        }
+                        case MessageId::SeekRequest: {
+                            auto request = IPC::extractMessage<::VirtualFileSystem::SeekRequest>(buffer);
+                            handleSeekRequest(request);
+                            break;
+                        }
+                        default:
+                            break;
+                    }
+                    break;
+                }
+                default:
+                    break;
             }
         }
     }
@@ -209,77 +231,90 @@ namespace MassStorageFileSystem {
             IPC::MaximumMessageBuffer buffer;
             receive(&buffer);
 
-            if (buffer.messageId == DriverIrqReceived::MessageId) {
+            switch (buffer.messageNamespace) {
+                case IPC::MessageNamespace::ServiceRegistry: {
 
-                switch(currentState) {
-                    case State::ReadGPTHeader: {
-                        driver->receiveSector(reinterpret_cast<uint16_t*>(&gptHeader));
+                    switch (static_cast<Kernel::MessageId>(buffer.messageId)) {
+                        case Kernel::MessageId::DriverIrqReceived: {
+                            switch(currentState) {
+                                case State::ReadGPTHeader: {
+                                    driver->receiveSector(reinterpret_cast<uint16_t*>(&gptHeader));
 
-                        /*
-                        make sure we got a valid GPT header by checking the crc
-                        */
-                        auto headerCRC = gptHeader.headerCRC32;
-                        gptHeader.headerCRC32 = 0;
-                        auto ptr = reinterpret_cast<uint8_t*>(&gptHeader);
+                                    /*
+                                    make sure we got a valid GPT header by checking the crc
+                                    */
+                                    auto headerCRC = gptHeader.headerCRC32;
+                                    gptHeader.headerCRC32 = 0;
+                                    auto ptr = reinterpret_cast<uint8_t*>(&gptHeader);
 
-                        if (!CRC::check32(headerCRC, ptr, sizeof(GPTHeader) - sizeof(GPTHeader::remaining))) {
-                            printf("[Mass Storage] Invalid GPT Header, CRC32 check failed\n");
+                                    if (!CRC::check32(headerCRC, ptr, sizeof(GPTHeader) - sizeof(GPTHeader::remaining))) {
+                                        printf("[Mass Storage] Invalid GPT Header, CRC32 check failed\n");
+                                    }
+
+                                    remainingPartitionEntries = gptHeader.partitionEntriesCount;
+                                    currentState = State::ReadPartitionTable;
+
+                                    driver->queueReadSector(gptHeader.partitionArrayLBA, 1);
+
+                                    break;
+                                }
+                                case State::ReadPartitionTable: {
+
+                                    uint16_t buffer[256];
+                                    driver->receiveSector(buffer);
+
+                                    Partition partition;
+                                    memcpy(&partition, buffer, sizeof(Partition));
+                                    auto type = partition.partitionType;
+                                    partition.partitionType = GUID(type.a, type.b, type.c, type.d);
+
+                                    if (partition.partitionType.matches(0x0FC63DAF, 0x8483, 0x4772, 0x8E793D69D8477DE4)) {
+                                        auto requesterId = fileSystems.size();
+                                        pendingCommand = PendingDiskCommand::None;
+
+                                        auto requester = makeRequester(
+                                            [this, requesterId](auto lba, auto sectorCount) {
+                                                queueReadSectorRequest(lba, sectorCount, requesterId);
+                                            },
+                                            []() {return;}
+                                        );
+
+                                        auto transfer = makeTransfer(
+                                            [this](auto buffer) {
+                                                return driver->receiveSector(buffer);
+                                            },
+                                            []() {return;}
+                                        );
+
+                                        auto device = new BlockDevice(
+                                            requester,
+                                            transfer,
+                                            partition
+                                        );
+                                        fileSystems.push_back(new Ext2FileSystem(device));
+                                    }
+
+                                    return;
+
+                                    remainingPartitionEntries--;
+                                
+                                    if (remainingPartitionEntries == 0) {
+                                        return;
+                                    }
+
+                                    break;
+                                }
+                            }
+
+                            break;
                         }
-
-                        remainingPartitionEntries = gptHeader.partitionEntriesCount;
-                        currentState = State::ReadPartitionTable;
-
-                        driver->queueReadSector(gptHeader.partitionArrayLBA, 1);
-
-                        break;
+                        default:
+                            break;
                     }
-                    case State::ReadPartitionTable: {
-
-                        uint16_t buffer[256];
-                        driver->receiveSector(buffer);
-
-                        Partition partition;
-                        memcpy(&partition, buffer, sizeof(Partition));
-                        auto type = partition.partitionType;
-                        partition.partitionType = GUID(type.a, type.b, type.c, type.d);
-
-                        if (partition.partitionType.matches(0x0FC63DAF, 0x8483, 0x4772, 0x8E793D69D8477DE4)) {
-                            auto requesterId = fileSystems.size();
-                            pendingCommand = PendingDiskCommand::None;
-
-                            auto requester = makeRequester(
-                                [this, requesterId](auto lba, auto sectorCount) {
-                                    queueReadSectorRequest(lba, sectorCount, requesterId);
-                                },
-                                []() {return;}
-                            );
-
-                            auto transfer = makeTransfer(
-                                [this](auto buffer) {
-                                    return driver->receiveSector(buffer);
-                                },
-                                []() {return;}
-                            );
-
-                            auto device = new BlockDevice(
-                                requester,
-                                transfer,
-                                partition
-                            );
-                            fileSystems.push_back(new Ext2FileSystem(device));
-                        }
-
-                        return;
-
-                        remainingPartitionEntries--;
-                       
-                        if (remainingPartitionEntries == 0) {
-                            return;
-                        }
-
-                        break;
-                    }
+                    break;
                 }
+                default:
+                    break;
             }
         }
     }
@@ -321,7 +356,7 @@ namespace MassStorageFileSystem {
     }
 
     void service() {
-        waitForServiceRegistered(ServiceType::VFS);
+        waitForServiceRegistered(Kernel::ServiceType::VFS);
         registerService();
         sleep(100);
         auto driver = setupDriver();
