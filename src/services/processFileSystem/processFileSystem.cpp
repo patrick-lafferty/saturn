@@ -202,6 +202,7 @@ namespace PFS {
         const char* path = "/process";
         memcpy(request.path, path, strlen(path) + 1);
         request.serviceType = Kernel::ServiceType::VFS;
+        request.cacheable = false;
 
         send(IPC::RecipientType::ServiceName, &request);
 

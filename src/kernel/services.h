@@ -52,7 +52,7 @@ namespace Kernel {
 
     struct RegisterDriver : IPC::Message {
         RegisterDriver() {
-            messageId = static_cast<uint32_t>(MessageId::RegisterService);
+            messageId = static_cast<uint32_t>(MessageId::RegisterDriver);
             length = sizeof(RegisterDriver);
             messageNamespace = IPC::MessageNamespace::ServiceRegistry;
         }

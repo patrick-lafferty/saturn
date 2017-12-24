@@ -21,6 +21,8 @@ namespace FakeFileSystem {
         auto pathLength = strlen(path) + 1;
         memcpy(request.path, path, pathLength);
         request.serviceType = Kernel::ServiceType::VFS;
+        request.cacheable = false;
+        request.writeable = false;
 
         send(IPC::RecipientType::ServiceName, &request);
     }

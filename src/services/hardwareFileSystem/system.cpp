@@ -17,6 +17,8 @@ namespace HardwareFileSystem {
         const char* path = "/system/hardware";
         memcpy(request.path, path, strlen(path) + 1);
         request.serviceType = Kernel::ServiceType::VFS;
+        request.cacheable = false;
+        request.writeable = true;
 
         send(IPC::RecipientType::ServiceName, &request);
     }
