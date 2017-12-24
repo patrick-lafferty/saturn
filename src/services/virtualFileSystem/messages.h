@@ -6,14 +6,33 @@
 
 namespace VirtualFileSystem {
 
+    enum class MessageId {
+        MountRequest,
+        GetDirectoryEntries,
+        GetDirectoryEntriesResult,
+        OpenRequest,
+        OpenResult,
+        CreateRequest,
+        CreateResult,
+        ReadRequest,
+        ReadResult,
+        Read512Result,
+        WriteRequest,
+        WriteResult,
+        CloseRequest,
+        CloseResult,
+        SeekRequest,
+        SeekResult
+    };
+
     struct MountRequest : IPC::Message {
         MountRequest() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::MountRequest);
             length = sizeof(MountRequest);
             memset(path, '\0', sizeof(path));
+            messageNamespace = IPC::MessageNamespace::VFS;
         }
 
-        static uint32_t MessageId;
         char path[64];
         uint32_t serviceId;
         bool cacheable;
@@ -25,22 +44,22 @@ namespace VirtualFileSystem {
     */
     struct GetDirectoryEntries : IPC::Message {
         GetDirectoryEntries() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::GetDirectoryEntries);
             length = sizeof(GetDirectoryEntries);
+            messageNamespace = IPC::MessageNamespace::VFS;
         }
 
-        static uint32_t MessageId;
         uint32_t requestId;
         uint32_t index;
     };
 
     struct GetDirectoryEntriesResult : IPC::Message {
         GetDirectoryEntriesResult() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::GetDirectoryEntriesResult);
             length = sizeof(GetDirectoryEntriesResult);
+            messageNamespace = IPC::MessageNamespace::VFS;
         }
 
-        static uint32_t MessageId;
         uint32_t requestId;
 
         /*
@@ -59,14 +78,12 @@ namespace VirtualFileSystem {
     End VFS to FileSystems only section
     */
 
-    //TODO: result or response?
-    //mountresult
-
     struct OpenRequest : IPC::Message {
         OpenRequest() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::OpenRequest);
             length = sizeof(OpenRequest);
             memset(path, '\0', sizeof(path));
+            messageNamespace = IPC::MessageNamespace::VFS;
         }
 
         void shrink(int pathLength) {
@@ -76,7 +93,6 @@ namespace VirtualFileSystem {
                 + sizeof(requestId);
         }
 
-        static uint32_t MessageId;
         uint32_t requestId;
         char path[64];
         uint32_t index;
@@ -86,11 +102,11 @@ namespace VirtualFileSystem {
 
     struct OpenResult : IPC::Message {
         OpenResult() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::OpenResult);
             length = sizeof(OpenResult);
+            messageNamespace = IPC::MessageNamespace::VFS;
         }
 
-        static uint32_t MessageId;
         uint32_t fileDescriptor;
         bool success;
         uint32_t requestId;
@@ -98,9 +114,10 @@ namespace VirtualFileSystem {
 
     struct CreateRequest : IPC::Message {
         CreateRequest() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::CreateRequest);
             length = sizeof(CreateRequest);
             memset(path, '\0', sizeof(path));
+            messageNamespace = IPC::MessageNamespace::VFS;
         }
 
         void shrink(int pathLength) {
@@ -110,7 +127,6 @@ namespace VirtualFileSystem {
                 + sizeof(requestId);
         } 
 
-        static uint32_t MessageId;
         uint32_t requestId;
         char path[64];
 
@@ -119,22 +135,22 @@ namespace VirtualFileSystem {
 
     struct CreateResult : IPC::Message {
         CreateResult() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::CreateResult);
             length = sizeof(CreateResult);
+            messageNamespace = IPC::MessageNamespace::VFS;
         }
 
-        static uint32_t MessageId;
         bool success;
         uint32_t requestId;
     };
 
     struct ReadRequest : IPC::Message {
         ReadRequest() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::ReadRequest);
             length = sizeof(ReadRequest);
+            messageNamespace = IPC::MessageNamespace::VFS;
         }
 
-        static uint32_t MessageId;
         uint32_t requestId;
         uint32_t fileDescriptor;
         uint32_t readLength;
@@ -142,13 +158,13 @@ namespace VirtualFileSystem {
 
     struct ReadResult : IPC::Message {
         ReadResult() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::ReadResult);
             length = sizeof(ReadResult);
             memset(buffer, 0, sizeof(buffer));
             bytesWritten = 0;
+            messageNamespace = IPC::MessageNamespace::VFS;
         }
 
-        static uint32_t MessageId;
         uint32_t requestId;
         bool success;
         uint8_t buffer[256];
@@ -157,13 +173,13 @@ namespace VirtualFileSystem {
 
     struct Read512Result : IPC::Message {
         Read512Result() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::Read512Result);
             length = sizeof(Read512Result);
             memset(buffer, 0, sizeof(buffer));
             bytesWritten = 0;
+            messageNamespace = IPC::MessageNamespace::VFS;
         }
 
-        static uint32_t MessageId;
         uint32_t requestId;
         bool success;
         uint8_t buffer[512];
@@ -173,12 +189,12 @@ namespace VirtualFileSystem {
 
     struct WriteRequest : IPC::Message {
         WriteRequest() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::WriteRequest);
             length = sizeof(WriteRequest);
             memset(buffer, 0, sizeof(buffer));
+            messageNamespace = IPC::MessageNamespace::VFS;
         }
 
-        static uint32_t MessageId;
         uint32_t requestId;
         uint32_t fileDescriptor;
         uint32_t writeLength;
@@ -187,12 +203,12 @@ namespace VirtualFileSystem {
 
     struct WriteResult : IPC::Message {
         WriteResult() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::WriteResult);
             length = sizeof(WriteResult);
             expectReadResult = false;
+            messageNamespace = IPC::MessageNamespace::VFS;
         }
 
-        static uint32_t MessageId;
         uint32_t requestId;
         bool success;
         bool expectReadResult;
@@ -200,21 +216,21 @@ namespace VirtualFileSystem {
 
     struct CloseRequest : IPC::Message {
         CloseRequest() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::CloseRequest);
             length = sizeof(CloseRequest);
+            messageNamespace = IPC::MessageNamespace::VFS;
         }
 
-        static uint32_t MessageId;
         uint32_t fileDescriptor;
     };
 
     struct CloseResult : IPC::Message {
         CloseResult() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::CloseResult);
             length = sizeof(CloseResult);
+            messageNamespace = IPC::MessageNamespace::VFS;
         }
 
-        static uint32_t MessageId;
         bool success;
     };
 
@@ -226,11 +242,11 @@ namespace VirtualFileSystem {
 
     struct SeekRequest : IPC::Message {
         SeekRequest() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::SeekRequest);
             length = sizeof(SeekRequest);
+            messageNamespace = IPC::MessageNamespace::VFS;
         }
 
-        static uint32_t MessageId;
         uint32_t requestId;
         uint32_t fileDescriptor;
         uint32_t offset;
@@ -239,11 +255,11 @@ namespace VirtualFileSystem {
 
     struct SeekResult : IPC::Message {
         SeekResult() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::SeekResult);
             length = sizeof(SeekResult);
+            messageNamespace = IPC::MessageNamespace::VFS;
         }
 
-        static uint32_t MessageId;
         uint32_t requestId;
         bool success;
         uint32_t filePosition;

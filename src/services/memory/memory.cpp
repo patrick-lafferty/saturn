@@ -7,17 +7,10 @@ using namespace Kernel;
 
 namespace Memory {
 
-    uint32_t GetPhysicalReport::MessageId;
-    uint32_t PhysicalReport::MessageId;
-
-    void registerMessages() {
-        IPC::registerMessage<GetPhysicalReport>();
-        IPC::registerMessage<PhysicalReport>();
-    }
-
     void handleMessage(IPC::Message* message) {
 
-        if (message->messageId == GetPhysicalReport::MessageId) {
+        if (message->messageNamespace == IPC::MessageNamespace::Memory
+                && message->messageId == static_cast<uint32_t>(MessageId::GetPhysicalReport)) {
             PhysicalReport report {};
             report.freeMemory = Memory::currentPMM->getFreePages();
             report.totalMemory = Memory::currentPMM->getTotalPages();
@@ -33,7 +26,5 @@ namespace Memory {
         registerRequest.handler = handleMessage;
 
         send(IPC::RecipientType::ServiceRegistryMailbox, &registerRequest);
-
-        registerMessages();
     }
 }

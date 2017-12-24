@@ -38,7 +38,8 @@ size_t fread(void* restrict ptr, size_t size, size_t count, FILE* restrict strea
                     IPC::MaximumMessageBuffer messageBuffer;
                     receive(&messageBuffer);
 
-                    if (messageBuffer.messageId == VirtualFileSystem::Read512Result::MessageId) {
+                    if (messageBuffer.messageNamespace == IPC::MessageNamespace::VFS
+                        && messageBuffer.messageId == static_cast<uint32_t>(VirtualFileSystem::MessageId::Read512Result)) {
                         result = IPC::extractMessage<VirtualFileSystem::Read512Result>(messageBuffer);
                     }
                 }

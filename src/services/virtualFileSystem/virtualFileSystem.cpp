@@ -9,42 +9,6 @@ using namespace Kernel;
 
 namespace VirtualFileSystem {
 
-    uint32_t MountRequest::MessageId;
-    uint32_t GetDirectoryEntries::MessageId;
-    uint32_t GetDirectoryEntriesResult::MessageId;
-    uint32_t OpenRequest::MessageId;
-    uint32_t OpenResult::MessageId;
-    uint32_t CreateRequest::MessageId;
-    uint32_t CreateResult::MessageId;
-    uint32_t ReadRequest::MessageId;
-    uint32_t ReadResult::MessageId;
-    uint32_t Read512Result::MessageId;
-    uint32_t WriteRequest::MessageId;
-    uint32_t WriteResult::MessageId;
-    uint32_t CloseRequest::MessageId;
-    uint32_t CloseResult::MessageId;
-    uint32_t SeekRequest::MessageId;
-    uint32_t SeekResult::MessageId;
-
-    void registerMessages() {
-        IPC::registerMessage<MountRequest>();
-        IPC::registerMessage<GetDirectoryEntries>();
-        IPC::registerMessage<GetDirectoryEntriesResult>();
-        IPC::registerMessage<OpenRequest>();
-        IPC::registerMessage<OpenResult>();
-        IPC::registerMessage<CreateRequest>();
-        IPC::registerMessage<CreateResult>();
-        IPC::registerMessage<ReadRequest>();
-        IPC::registerMessage<ReadResult>();
-        IPC::registerMessage<Read512Result>();
-        IPC::registerMessage<WriteRequest>();
-        IPC::registerMessage<WriteResult>();
-        IPC::registerMessage<CloseRequest>();
-        IPC::registerMessage<CloseResult>();
-        IPC::registerMessage<SeekRequest>();
-        IPC::registerMessage<SeekResult>();
-    }
-
     struct Mount {
         char* path;
         uint32_t pathLength;
@@ -1017,66 +981,89 @@ namespace VirtualFileSystem {
             IPC::MaximumMessageBuffer buffer;
             receive(&buffer);
 
-            if (buffer.messageId == MountRequest::MessageId) {
-                auto request = IPC::extractMessage<MountRequest>(buffer);
-                handleMountRequest(request);
-            }
-            else if (buffer.messageId == GetDirectoryEntriesResult::MessageId) {
-                auto result = IPC::extractMessage<GetDirectoryEntriesResult>(buffer);
-                handleGetDirectoryEntriesResult(result);
-            }
-            else if (buffer.messageId == OpenRequest::MessageId) {
-                auto request = IPC::extractMessage<OpenRequest>(buffer);
-                handleOpenRequest(request);
-            }
-            else if (buffer.messageId == OpenResult::MessageId) {
-                auto result = IPC::extractMessage<OpenResult>(buffer);
-                handleOpenResult(result); 
-            }
-            else if (buffer.messageId == CreateRequest::MessageId) {
-                auto request = IPC::extractMessage<CreateRequest>(buffer);
-                handleCreateRequest(request);
-            }
-            else if (buffer.messageId == CreateResult::MessageId) {
-                auto result = IPC::extractMessage<CreateResult>(buffer);
-                handleCreateResult(result);
-            }
-            else if (buffer.messageId == ReadRequest::MessageId) {
-                auto request = IPC::extractMessage<ReadRequest>(buffer);
-                handleReadRequest(request);
-                /*
-                TODO: consider implementing either:
-                1) message forwarding (could be insecure)
-                2) a separate ReadRequestForwarded message
-                */
-            }
-            else if (buffer.messageId == ReadResult::MessageId) {
-                auto result = IPC::extractMessage<ReadResult>(buffer);
-                handleReadResult(result);
-            }
-            else if (buffer.messageId == Read512Result::MessageId) {
-                auto result = IPC::extractMessage<Read512Result>(buffer);
-                handleRead512Result(result);
-            }
-            else if (buffer.messageId == WriteRequest::MessageId) {
-                auto request = IPC::extractMessage<WriteRequest>(buffer);
-                handleWriteRequest(request);
-            }
-            else if (buffer.messageId == WriteResult::MessageId) {
-                auto result = IPC::extractMessage<WriteResult>(buffer);
-                handleWriteResult(result);
-            }
-            else if (buffer.messageId == CloseRequest::MessageId) {
-                auto request = IPC::extractMessage<CloseRequest>(buffer);
-                handleCloseRequest(request);
-            }
-            else if (buffer.messageId == SeekRequest::MessageId) {
-                auto request = IPC::extractMessage<SeekRequest>(buffer);
-                handleSeekRequest(request);
-            }
-            else if (buffer.messageId == SeekResult::MessageId) {
-                auto result = IPC::extractMessage<SeekResult>(buffer);
-                handleSeekResult(result);
+            switch(buffer.messageNamespace) {
+                case IPC::MessageNamespace::VFS {
+
+                    switch(static_cast<MessageId>(buffer.messageId)) {
+                        case MessageId::MountRequest: {
+                            auto request = IPC::extractMessage<MountRequest>(buffer);
+                            handleMountRequest(request);
+                            break;
+                        }
+                        case MessageId::GetDirectoryEntriesResult: {
+                            auto result = IPC::extractMessage<GetDirectoryEntriesResult>(buffer);
+                            handleGetDirectoryEntriesResult(result);
+                            break;
+                        }
+                        case MessageId::OpenRequest: {
+                            auto request = IPC::extractMessage<OpenRequest>(buffer);
+                            handleOpenRequest(request);
+                            break;
+                        }
+                        case MessageId::OpenResult: {
+                            auto result = IPC::extractMessage<OpenResult>(buffer);
+                            handleOpenResult(result);
+                            break;
+                        }
+                        case MessageId::CreateRequest: {
+                            auto request = IPC::extractMessage<CreateRequest>(buffer);
+                            handleCreateRequest(request);
+                            break;
+                        }
+                        case MessageId::CreateResult: {
+                            auto result = IPC::extractMessage<CreateResult>(buffer);
+                            handleCreateResult(result);
+                            break;
+                        }
+                        case MessageId::ReadRequest: {
+                            auto request = IPC::extractMessage<ReadRequest>(buffer);
+                            handleReadRequest(request);
+                            /*
+                            TODO: consider implementing either:
+                            1) message forwarding (could be insecure)
+                            2) a separate ReadRequestForwarded message
+                            */
+                            break;
+                        }
+                        case MessageId::ReadResult: {
+                            auto result = IPC::extractMessage<ReadResult>(buffer);
+                            handleReadResult(result);
+                            break;
+                        }
+                        case MessageId::Read512Result: {
+                             auto result = IPC::extractMessage<Read512Result>(buffer);
+                            handleRead512Result(result);
+                            break;
+                        }
+                        case MessageId::WriteRequest: {
+                            auto request = IPC::extractMessage<WriteRequest>(buffer);
+                            handleWriteRequest(request);
+                            break;
+                        }
+                        case MessageId::WriteResult: {
+                            auto result = IPC::extractMessage<WriteResult>(buffer);
+                            handleWriteResult(result);
+                            break;
+                        }
+                        case MessageId::CloseRequest: {
+                            auto request = IPC::extractMessage<CloseRequest>(buffer);
+                            handleCloseRequest(request);
+                            break;
+                        }
+                        case MessageId::SeekRequest: {
+                            auto request = IPC::extractMessage<SeekRequest>(buffer);
+                            handleSeekRequest(request);
+                            break;
+                        }
+                        case MessageId::SeekResult: {
+                            auto result = IPC::extractMessage<SeekResult>(buffer);
+                            handleSeekResult(result);
+                            break;
+                        }
+                    }
+
+                    break;
+                }
             }
 
         }
@@ -1090,10 +1077,6 @@ namespace VirtualFileSystem {
 
         send(IPC::RecipientType::ServiceRegistryMailbox, &registerRequest);
         receive(&buffer);
-
-        if (buffer.messageId == GenericServiceMeta::MessageId) {
-            registerMessages();
-        }
 
         NotifyServiceReady ready;
         send(IPC::RecipientType::ServiceRegistryMailbox, &ready);

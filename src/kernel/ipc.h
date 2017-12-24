@@ -16,7 +16,9 @@ namespace IPC {
         VGA,
         Terminal,
         PS2,
-        Keyboard
+        Keyboard,
+        Memory,
+        VFS
     };
 
     struct Message {

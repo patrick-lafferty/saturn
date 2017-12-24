@@ -7,23 +7,28 @@ namespace Memory {
 
     void service();
 
+    enum class MessageId {
+        GetPhysicalReport,
+        PhysicalReport
+    };  
+
     struct GetPhysicalReport : IPC::Message {
         GetPhysicalReport() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::GetPhysicalReport);
             length = sizeof(GetPhysicalReport);
+            messageNamespace = IPC::MessageNamespace::Memory;
         }
 
-        static uint32_t MessageId;
     };
 
 
     struct PhysicalReport : IPC::Message {
         PhysicalReport() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::PhysicalReport);
             length = sizeof(PhysicalReport);
+            messageNamespace = IPC::MessageNamespace::Memory;
         }
 
-        static uint32_t MessageId;
         uint32_t freeMemory;
         uint32_t totalMemory;
     };
