@@ -982,7 +982,7 @@ namespace VirtualFileSystem {
             receive(&buffer);
 
             switch(buffer.messageNamespace) {
-                case IPC::MessageNamespace::VFS {
+                case IPC::MessageNamespace::VFS: {
 
                     switch(static_cast<MessageId>(buffer.messageId)) {
                         case MessageId::MountRequest: {
@@ -1064,6 +1064,8 @@ namespace VirtualFileSystem {
 
                     break;
                 }
+                default:
+                    break;
             }
 
         }

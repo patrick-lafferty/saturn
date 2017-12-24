@@ -9,7 +9,6 @@
 #include <vector>
 #include <parsing>
 
-using namespace Kernel;
 using namespace VirtualFileSystem;
 using namespace Vostok;
 
@@ -30,7 +29,7 @@ namespace PFS {
         bool failed {true};
         OpenResult result;
         result.requestId = request.requestId;
-        result.serviceType = ServiceType::VFS;
+        result.serviceType = Kernel::ServiceType::VFS;
 
         auto addDescriptor = [&](auto instance, auto id, auto type) {
             failed = false;
@@ -87,7 +86,7 @@ namespace PFS {
         bool failed {true};
         CreateResult result;
         result.requestId = request.requestId;
-        result.serviceType = ServiceType::VFS;
+        result.serviceType = Kernel::ServiceType::VFS;
 
         auto words = split({request.path, strlen(request.path)}, '/');
 
@@ -161,33 +160,48 @@ namespace PFS {
             IPC::MaximumMessageBuffer buffer;
             receive(&buffer);
 
-            if (buffer.messageId == OpenRequest::MessageId) {
-                auto request = IPC::extractMessage<OpenRequest>(buffer);
-                handleOpenRequest(request, processes, openDescriptors);
-            }
-            else if (buffer.messageId == CreateRequest::MessageId) {
-                auto request = IPC::extractMessage<CreateRequest>(buffer);
-                handleCreateRequest(request, processes);
-            }
-            else if (buffer.messageId == ReadRequest::MessageId) {
-                auto request = IPC::extractMessage<ReadRequest>(buffer);
-                handleReadRequest(request, openDescriptors);
-            }
-            else if (buffer.messageId == WriteRequest::MessageId) {
-                auto request = IPC::extractMessage<WriteRequest>(buffer);
-                handleWriteRequest(request, openDescriptors);
+            switch(buffer.messageNamespace) {
+                case IPC::MessageNamespace::VFS: {
+                    switch(static_cast<MessageId>(buffer.messageId)) {
+                        case MessageId::OpenRequest: {
+                            auto request = IPC::extractMessage<OpenRequest>(buffer);
+                            handleOpenRequest(request, processes, openDescriptors);
+                            break;
+                        }
+                        case MessageId::CreateRequest: {
+                            auto request = IPC::extractMessage<CreateRequest>(buffer);
+                            handleCreateRequest(request, processes);
+                            break;
+                        }
+                        case MessageId::ReadRequest: {
+                            auto request = IPC::extractMessage<ReadRequest>(buffer);
+                            handleReadRequest(request, openDescriptors);
+                            break;
+                        }
+                        case MessageId::WriteRequest: {
+                            auto request = IPC::extractMessage<WriteRequest>(buffer);
+                            handleWriteRequest(request, openDescriptors);
+                            break;
+                        }
+                        default:
+                            break;
+                    }
+                    break;
+                }
+                default: 
+                    break;
             }
         }
     }
 
     void service() {
 
-        waitForServiceRegistered(ServiceType::VFS);
+        waitForServiceRegistered(Kernel::ServiceType::VFS);
 
         MountRequest request;
         const char* path = "/process";
         memcpy(request.path, path, strlen(path) + 1);
-        request.serviceType = ServiceType::VFS;
+        request.serviceType = Kernel::ServiceType::VFS;
 
         send(IPC::RecipientType::ServiceName, &request);
 

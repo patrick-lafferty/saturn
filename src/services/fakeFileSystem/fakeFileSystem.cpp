@@ -11,7 +11,6 @@
 #include <services/drivers/bochsGraphicsAdaptor/driver.h>
 #include <services/massStorageFileSystem/system.h>
 
-using namespace Kernel;
 using namespace VirtualFileSystem;
 
 namespace FakeFileSystem {
@@ -21,7 +20,7 @@ namespace FakeFileSystem {
         const char* path = "/bin";
         auto pathLength = strlen(path) + 1;
         memcpy(request.path, path, pathLength);
-        request.serviceType = ServiceType::VFS;
+        request.serviceType = Kernel::ServiceType::VFS;
 
         send(IPC::RecipientType::ServiceName, &request);
     }
@@ -38,67 +37,83 @@ namespace FakeFileSystem {
             IPC::MaximumMessageBuffer buffer;
             receive(&buffer);
 
-            if (buffer.messageId == OpenRequest::MessageId) {
-                /*
-                All open requests are guaranteed to succeed so long as
-                the path matches one of the below
-                */
-                auto request = IPC::extractMessage<OpenRequest>(buffer);
-                OpenResult result;
-                result.success = true;
-                result.serviceType = ServiceType::VFS;
-                result.requestId = request.requestId;
+            switch (buffer.messageNamespace) {
+                case IPC::MessageNamespace::VFS: {
+                    
+                    switch (static_cast<MessageId>(buffer.messageId)) {
+                        case MessageId::OpenRequest: {
+                            /*
+                            All open requests are guaranteed to succeed so long as
+                            the path matches one of the below
+                            */
+                            auto request = IPC::extractMessage<OpenRequest>(buffer);
+                            OpenResult result;
+                            result.success = true;
+                            result.serviceType = Kernel::ServiceType::VFS;
+                            result.requestId = request.requestId;
 
-                auto descriptor = nextFileDescriptor++;
-                result.fileDescriptor = descriptor;
+                            auto descriptor = nextFileDescriptor++;
+                            result.fileDescriptor = descriptor;
 
-                uintptr_t entryPoint {0};
+                            uintptr_t entryPoint {0};
 
-                if (strcmp(request.path, "/vga.service") == 0) {
-                    entryPoint = reinterpret_cast<uintptr_t>(VGA::service);
-                }
-                else if (strcmp(request.path, "/terminal.service") == 0) {
-                    entryPoint = reinterpret_cast<uintptr_t>(Terminal::service);
-                }
-                else if (strcmp(request.path, "/ps2.service") == 0) {
-                    entryPoint = reinterpret_cast<uintptr_t>(PS2::service);
-                }
-                else if (strcmp(request.path, "/keyboard.service") == 0) {
-                    entryPoint = reinterpret_cast<uintptr_t>(Keyboard::service);
-                }
-                else if (strcmp(request.path, "/shell") == 0) {
-                    entryPoint = reinterpret_cast<uintptr_t>(Shell::main);
-                }
-                else if (strcmp(request.path, "/bochsGraphicsAdaptor.service") == 0) {
-                    entryPoint = reinterpret_cast<uintptr_t>(BGA::service);
-                }
-                else if (strcmp(request.path, "/massStorage.service") == 0) {
-                    entryPoint = reinterpret_cast<uintptr_t>(MassStorageFileSystem::service);
-                }
-                else {
-                    result.success = false;
-                }
+                            if (strcmp(request.path, "/vga.service") == 0) {
+                                entryPoint = reinterpret_cast<uintptr_t>(VGA::service);
+                            }
+                            else if (strcmp(request.path, "/terminal.service") == 0) {
+                                entryPoint = reinterpret_cast<uintptr_t>(Terminal::service);
+                            }
+                            else if (strcmp(request.path, "/ps2.service") == 0) {
+                                entryPoint = reinterpret_cast<uintptr_t>(PS2::service);
+                            }
+                            else if (strcmp(request.path, "/keyboard.service") == 0) {
+                                entryPoint = reinterpret_cast<uintptr_t>(Keyboard::service);
+                            }
+                            else if (strcmp(request.path, "/shell") == 0) {
+                                entryPoint = reinterpret_cast<uintptr_t>(Shell::main);
+                            }
+                            else if (strcmp(request.path, "/bochsGraphicsAdaptor.service") == 0) {
+                                entryPoint = reinterpret_cast<uintptr_t>(BGA::service);
+                            }
+                            else if (strcmp(request.path, "/massStorage.service") == 0) {
+                                entryPoint = reinterpret_cast<uintptr_t>(MassStorageFileSystem::service);
+                            }
+                            else {
+                                result.success = false;
+                            }
 
-                descriptors[descriptor].entryPoint = entryPoint;
+                            descriptors[descriptor].entryPoint = entryPoint;
 
-                send(IPC::RecipientType::ServiceName, &result);
+                            send(IPC::RecipientType::ServiceName, &result);
+                            break;
+                        }
+                        case MessageId::ReadRequest: {
+                            auto request = IPC::extractMessage<ReadRequest>(buffer);
+
+                            ReadResult result;
+                            result.success = true;
+                            result.requestId = request.requestId;
+                            memcpy(result.buffer, &descriptors[request.fileDescriptor].entryPoint, sizeof(uintptr_t));
+                            result.serviceType = Kernel::ServiceType::VFS;
+                            send(IPC::RecipientType::ServiceName, &result);
+                            break;
+                        }
+                        default:
+                            break;
+                    }
+
+                    break;
+                }
+                default:
+                    break;
             }
-            else if (buffer.messageId == ReadRequest::MessageId) {
-                auto request = IPC::extractMessage<ReadRequest>(buffer);
 
-                ReadResult result;
-                result.success = true;
-                result.requestId = request.requestId;
-                memcpy(result.buffer, &descriptors[request.fileDescriptor].entryPoint, sizeof(uintptr_t));
-                result.serviceType = ServiceType::VFS;
-                send(IPC::RecipientType::ServiceName, &result);
-            }
         }
     }
 
     void service() {
 
-        waitForServiceRegistered(ServiceType::VFS);
+        waitForServiceRegistered(Kernel::ServiceType::VFS);
         registerService();
         messageLoop();
     }

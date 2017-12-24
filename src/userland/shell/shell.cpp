@@ -59,7 +59,8 @@ namespace Shell {
         IPC::MaximumMessageBuffer buffer;
         receive(&buffer);
 
-        if (buffer.messageId == VirtualFileSystem::OpenResult::MessageId) {
+        if (buffer.messageNamespace == IPC::MessageNamespace::VFS
+            && buffer.messageId == static_cast<uint32_t>(VirtualFileSystem::MessageId::OpenResult)) {
             auto msg = IPC::extractMessage<VirtualFileSystem::OpenResult>(buffer);
             descriptor = msg.fileDescriptor;
 
@@ -134,7 +135,8 @@ return;
         IPC::MaximumMessageBuffer buffer;
         receive(&buffer);
 
-        if (buffer.messageId == VirtualFileSystem::ReadResult::MessageId) {
+        if (buffer.messageNamespace == IPC::MessageNamespace::VFS
+            && buffer.messageId == static_cast<uint32_t>(VirtualFileSystem::MessageId::ReadResult)) {
             auto r = IPC::extractMessage<VirtualFileSystem::ReadResult>(buffer);
             success = r.success;
             return r;
@@ -231,7 +233,8 @@ return;
             IPC::MaximumMessageBuffer buffer;
             receive(&buffer);
 
-            if (buffer.messageId == VirtualFileSystem::ReadResult::MessageId) {
+            if (buffer.messageNamespace == IPC::MessageNamespace::VFS
+                && buffer.messageId == static_cast<uint32_t>(VirtualFileSystem::MessageId::ReadResult)) {
                 auto result = IPC::extractMessage<VirtualFileSystem::ReadResult>(buffer);
 
                 if (!result.success || result.bytesWritten == 0) {
@@ -267,7 +270,8 @@ return;
             IPC::MaximumMessageBuffer buffer;
             receive(&buffer);
 
-            if (buffer.messageId == VirtualFileSystem::Read512Result::MessageId) {
+            if (buffer.messageNamespace == IPC::MessageNamespace::VFS
+                && buffer.messageId == static_cast<uint32_t>(VirtualFileSystem::MessageId::Read512Result)) {
                 auto result = IPC::extractMessage<VirtualFileSystem::Read512Result>(buffer);
 
                 if (!result.success || result.bytesWritten == 0) {
@@ -299,7 +303,8 @@ return;
             IPC::MaximumMessageBuffer buffer;
             receive(&buffer);
 
-            if (buffer.messageId == VirtualFileSystem::WriteResult::MessageId) {
+            if (buffer.messageNamespace == IPC::MessageNamespace::VFS
+                && buffer.messageId == static_cast<uint32_t>(VirtualFileSystem::MessageId::WriteResult)) {
                 auto msg = IPC::extractMessage<VirtualFileSystem::WriteResult>(buffer);
 
                 if (!msg.success) {
@@ -312,7 +317,8 @@ return;
         IPC::MaximumMessageBuffer buffer;
         receive(&buffer);
 
-        if (buffer.messageId == VirtualFileSystem::ReadResult::MessageId) {
+        if (buffer.messageNamespace == IPC::MessageNamespace::VFS
+            && buffer.messageId == static_cast<uint32_t>(VirtualFileSystem::MessageId::ReadResult)) {
             auto msg = IPC::extractMessage<VirtualFileSystem::ReadResult>(buffer);
             Vostok::ArgBuffer args{msg.buffer, sizeof(msg.buffer)};
             printResult(args); 
@@ -325,7 +331,8 @@ return;
         IPC::MaximumMessageBuffer buffer;
         receive(&buffer);
 
-        if (buffer.messageId == VirtualFileSystem::WriteResult::MessageId) {
+        if (buffer.messageNamespace == IPC::MessageNamespace::VFS
+            && buffer.messageId == static_cast<uint32_t>(VirtualFileSystem::MessageId::WriteResult)) {
             auto msg = IPC::extractMessage<VirtualFileSystem::WriteResult>(buffer);
 
             if (!msg.success) {
