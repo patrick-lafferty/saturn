@@ -11,24 +11,6 @@ using namespace Kernel;
 
 namespace Terminal {
 
-    uint32_t PrintMessage::MessageId;
-    uint32_t Print32Message::MessageId;
-    uint32_t Print64Message::MessageId;
-    uint32_t Print128Message::MessageId;
-    uint32_t KeyPress::MessageId;
-    uint32_t GetCharacter::MessageId;
-    uint32_t CharacterInput::MessageId;
-
-    void registerMessages() {
-        IPC::registerMessage<PrintMessage>();
-        IPC::registerMessage<Print32Message>();
-        IPC::registerMessage<Print64Message>();
-        IPC::registerMessage<Print128Message>();
-        IPC::registerMessage<KeyPress>();
-        IPC::registerMessage<GetCharacter>();
-        IPC::registerMessage<CharacterInput>();
-    }
-    
     class InputQueue {
     public:
         
@@ -71,11 +53,34 @@ namespace Terminal {
         uint32_t size {0};
     };
 
-    bool isPrintMessage(uint32_t id) {
-        return id == PrintMessage::MessageId
-            || id == Print32Message::MessageId
-            || id == Print64Message::MessageId
-            || id == Print128Message::MessageId;
+    void handlePrint(DirtyRect& dirty, Terminal& emulator) {
+        if (dirty.overflowed) {
+            ScrollScreen scroll {};
+            scroll.serviceType = ServiceType::VGA;
+            scroll.linesToScroll = dirty.linesOverflowed;
+            send(IPC::RecipientType::ServiceName, &scroll);
+        }
+
+        auto index = dirty.startIndex;
+        uint32_t count{dirty.endIndex};
+
+        uint32_t blitBufferSize = sizeof(BlitMessage::buffer) / sizeof(uint16_t);                
+        auto blitsToDo = count / blitBufferSize + 1;
+
+        for (auto i = 0u; i < blitsToDo; i++) {
+
+            BlitMessage blit;
+            blit.index = index + i * blitBufferSize;
+            blit.count = std::min(count, blitBufferSize);
+            blit.serviceType = ServiceType::VGA;
+            memcpy(blit.buffer, 
+                emulator.getBuffer() + index + i * blitBufferSize, 
+                sizeof(uint16_t) * blit.count);
+
+            send(IPC::RecipientType::ServiceName, &blit);
+
+            count -= blitBufferSize;
+        }
     }
 
     void messageLoop() {
@@ -88,76 +93,67 @@ namespace Terminal {
             IPC::MaximumMessageBuffer buffer;
             receive(&buffer);
 
-            if (isPrintMessage(buffer.messageId)) {
-                DirtyRect dirty;
+            switch(buffer.messageNamespace) {
+                case IPC::MessageNamespace::Terminal: {
 
-                if (buffer.messageId == PrintMessage::MessageId) {
-                    auto message = IPC::extractMessage<PrintMessage>(buffer);
-                    dirty = emulator.interpret(message.buffer, message.stringLength);
-                }
-                else if (buffer.messageId == Print32Message::MessageId) {
-                    auto message = IPC::extractMessage<Print32Message>(buffer);
-                    dirty = emulator.interpret(message.buffer, message.stringLength);
-                }
-                else if (buffer.messageId == Print64Message::MessageId) {
-                    auto message = IPC::extractMessage<Print64Message>(buffer);
-                    dirty = emulator.interpret(message.buffer, message.stringLength);
-                }
-                else if (buffer.messageId == Print128Message::MessageId) {
-                    auto message = IPC::extractMessage<Print128Message>(buffer);
-                    dirty = emulator.interpret(message.buffer, message.stringLength);
-                }
+                    switch(static_cast<MessageId>(buffer.messageId)) {
+                        case MessageId::Print: {
+                            auto message = IPC::extractMessage<PrintMessage>(buffer);
+                            auto dirty = emulator.interpret(message.buffer, message.stringLength);
+                            handlePrint(dirty, emulator);
 
-                if (dirty.overflowed) {
-                    ScrollScreen scroll {};
-                    scroll.serviceType = ServiceType::VGA;
-                    scroll.linesToScroll = dirty.linesOverflowed;
-                    send(IPC::RecipientType::ServiceName, &scroll);
-                }
+                            break;
+                        }
+                        case MessageId::Print32: {
+                            auto message = IPC::extractMessage<Print32Message>(buffer);
+                            auto dirty = emulator.interpret(message.buffer, message.stringLength);
+                            handlePrint(dirty, emulator);
 
-                auto index = dirty.startIndex;
-                uint32_t count{dirty.endIndex};
+                            break;
+                        }
+                        case MessageId::Print64: {
+                            auto message = IPC::extractMessage<Print64Message>(buffer);
+                            auto dirty = emulator.interpret(message.buffer, message.stringLength);
+                            handlePrint(dirty, emulator);
 
-                uint32_t blitBufferSize = sizeof(BlitMessage::buffer) / sizeof(uint16_t);                
-                auto blitsToDo = count / blitBufferSize + 1;
+                            break;
+                        }
+                        case MessageId::Print128: {
+                            auto message = IPC::extractMessage<Print128Message>(buffer);
+                            auto dirty = emulator.interpret(message.buffer, message.stringLength);
+                            handlePrint(dirty, emulator);
 
-                for (auto i = 0u; i < blitsToDo; i++) {
+                            break;
+                        }
+                        case MessageId::KeyPress: {
+                            auto message = IPC::extractMessage<KeyPress>(buffer);
+                            queue.add(message.key);
 
-                    BlitMessage blit;
-                    blit.index = index + i * blitBufferSize;
-                    blit.count = std::min(count, blitBufferSize);
-                    blit.serviceType = ServiceType::VGA;
-                    memcpy(blit.buffer, 
-                        emulator.getBuffer() + index + i * blitBufferSize, 
-                        sizeof(uint16_t) * blit.count);
+                            if (taskIdWaitingForInput != 0) {
+                                CharacterInput input {};
+                                input.character = queue.get();
+                                input.recipientId = taskIdWaitingForInput;
+                                send(IPC::RecipientType::TaskId, &input);
+                                taskIdWaitingForInput = 0;    
+                            }
+                            break;
+                        }
+                        case MessageId::GetCharacter: {
+                            if (queue.inputIsAvailable()) {
+                                CharacterInput input {};
+                                input.character = queue.get();
+                                input.recipientId = buffer.senderTaskId;
+                                send(IPC::RecipientType::TaskId, &input);
+                            }
+                            else {
+                                taskIdWaitingForInput = buffer.senderTaskId;
+                            }
 
-                    send(IPC::RecipientType::ServiceName, &blit);
+                            break;
+                        }
+                    }
 
-                    count -= blitBufferSize;
-                }
-                
-            }
-            else if (buffer.messageId == KeyPress::MessageId) {
-                auto message = IPC::extractMessage<KeyPress>(buffer);
-                queue.add(message.key);
-
-                if (taskIdWaitingForInput != 0) {
-                    CharacterInput input {};
-                    input.character = queue.get();
-                    input.recipientId = taskIdWaitingForInput;
-                    send(IPC::RecipientType::TaskId, &input);
-                    taskIdWaitingForInput = 0;    
-                }
-            }
-            else if (buffer.messageId == GetCharacter::MessageId) {
-                if (queue.inputIsAvailable()) {
-                    CharacterInput input {};
-                    input.character = queue.get();
-                    input.recipientId = buffer.senderTaskId;
-                    send(IPC::RecipientType::TaskId, &input);
-                }
-                else {
-                    taskIdWaitingForInput = buffer.senderTaskId;
+                    break;
                 }
             }
         }
@@ -173,13 +169,6 @@ namespace Terminal {
 
         send(IPC::RecipientType::ServiceRegistryMailbox, &registerRequest);
         receive(&buffer);
-
-        if (buffer.messageId == RegisterServiceDenied::MessageId) {
-            //TODO: how show error if print service can't print
-        }
-        else if (buffer.messageId == GenericServiceMeta::MessageId) {
-            registerMessages();
-        }
 
         NotifyServiceReady ready;
         send(IPC::RecipientType::ServiceRegistryMailbox, &ready);

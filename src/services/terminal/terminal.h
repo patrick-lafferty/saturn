@@ -6,76 +6,86 @@
 namespace Terminal {
     void service();
 
+    enum class MessageId {
+        Print,
+        Print32,
+        Print64,
+        Print128,
+        KeyPress,
+        GetCharacter,
+        CharacterInput
+    };
+
     struct PrintMessage : IPC::Message {
         PrintMessage() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::Print);
             length = sizeof(PrintMessage);
+            messageNamespace = IPC::MessageNamespace::Terminal;
         }
 
-        static uint32_t MessageId;
         char buffer[256];
         uint32_t stringLength {0};
     };
 
     struct Print32Message : IPC::Message {
         Print32Message() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::Print32);
             length = sizeof(Print32Message);
+            messageNamespace = IPC::MessageNamespace::Terminal;
         }
 
-        static uint32_t MessageId;
         char buffer[32];
         uint32_t stringLength {0};
     };
 
     struct Print64Message : IPC::Message {
         Print64Message() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::Print64);
             length = sizeof(Print64Message);
+            messageNamespace = IPC::MessageNamespace::Terminal;
         }
 
-        static uint32_t MessageId;
         char buffer[64];
         uint32_t stringLength {0};
     };
 
     struct Print128Message : IPC::Message {
         Print128Message() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::Print128);
             length = sizeof(Print128Message);
+            messageNamespace = IPC::MessageNamespace::Terminal;
         }
 
-        static uint32_t MessageId;
         char buffer[128];
         uint32_t stringLength {0};
     };
 
     struct KeyPress : IPC::Message {
         KeyPress() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::KeyPress);
             length = sizeof(KeyPress);
+            messageNamespace = IPC::MessageNamespace::Terminal;
         }
 
-        static uint32_t MessageId;
         uint8_t key;
     };
 
     struct GetCharacter : IPC::Message {
         GetCharacter() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::GetCharacter);
             length = sizeof(GetCharacter);
+            messageNamespace = IPC::MessageNamespace::Terminal;
         }
 
-        static uint32_t MessageId;
     };
 
     struct CharacterInput : IPC::Message {
         CharacterInput() {
-            messageId = MessageId;
+            messageId = static_cast<uint32_t>(MessageId::CharacterInput);
             length = sizeof(CharacterInput);
+            messageNamespace = IPC::MessageNamespace::Terminal;
         }
 
-        static uint32_t MessageId;
         uint8_t character;
     };
 

@@ -15,7 +15,7 @@ namespace VGA {
             IPC::MaximumMessageBuffer buffer;
             receive(&buffer);
 
-            switch(static_cast<IPC::MessageNamespace>(buffer.messageNamespace)) {
+            switch(buffer.messageNamespace) {
                 case IPC::MessageNamespace::VGA: {
 
                     switch(static_cast<MessageId>(buffer.messageId)) {

@@ -16,6 +16,7 @@ namespace VGA {
         BlitMessage() {
             messageId = static_cast<uint32_t>(MessageId::Blit);
             length = sizeof(BlitMessage);
+            messageNamespace = IPC::MessageNamespace::VGA;
         }
 
         uint16_t buffer[64];
@@ -27,6 +28,7 @@ namespace VGA {
         ScrollScreen() {
             messageId = static_cast<uint32_t>(MessageId::Scroll);
             length = sizeof(ScrollScreen);
+            messageNamespace = IPC::MessageNamespace::VGA;
         }
 
         uint32_t linesToScroll {0};

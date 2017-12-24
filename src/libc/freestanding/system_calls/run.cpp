@@ -11,7 +11,7 @@ uint32_t run(uintptr_t entryPoint) {
     IPC::MaximumMessageBuffer buffer;
     receive(&buffer);
 
-    if (buffer.messageNamespace == static_cast<uint32_t>(IPC::MessageNamespace::ServiceRegistry) 
+    if (buffer.messageNamespace == IPC::MessageNamespace::ServiceRegistry 
         && buffer.messageId == static_cast<uint32_t>(MessageId::RunResult)) {
         auto result = IPC::extractMessage<RunResult>(buffer);
         return result.pid;
