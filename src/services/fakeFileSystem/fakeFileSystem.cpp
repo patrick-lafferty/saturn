@@ -5,7 +5,6 @@
 #include <string.h>
 #include <services/terminal/vga.h>
 #include <services/terminal/terminal.h>
-#include <services/splash/splash.h>
 #include <services/ps2/ps2.h>
 #include <services/keyboard/keyboard.h>
 #include <userland/shell/shell.h>
@@ -66,9 +65,6 @@ namespace FakeFileSystem {
                 }
                 else if (strcmp(request.path, "/keyboard.service") == 0) {
                     entryPoint = reinterpret_cast<uintptr_t>(Keyboard::service);
-                }
-                else if (strcmp(request.path, "/splash.service") == 0) {
-                    entryPoint = reinterpret_cast<uintptr_t>(Splash::service);
                 }
                 else if (strcmp(request.path, "/shell") == 0) {
                     entryPoint = reinterpret_cast<uintptr_t>(Shell::main);
