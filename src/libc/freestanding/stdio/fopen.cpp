@@ -14,6 +14,7 @@ FILE* fopen(const char* restrict filename, const char* restrict mode) {
         return file;
     }
     else {
+        printf("[libc] fopen failed\n");
         return nullptr;
     }
 
