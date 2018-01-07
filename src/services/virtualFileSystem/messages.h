@@ -94,8 +94,8 @@ namespace VirtualFileSystem {
         }
 
         uint32_t requestId;
-        char path[64];
         uint32_t index;
+        char path[64];
 
         //TODO: read/write, permissions
     };
@@ -108,8 +108,8 @@ namespace VirtualFileSystem {
         }
 
         uint32_t fileDescriptor;
-        bool success;
         uint32_t requestId;
+        bool success;
     };
 
     struct CreateRequest : IPC::Message {
