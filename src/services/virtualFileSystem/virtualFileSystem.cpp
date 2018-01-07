@@ -65,6 +65,8 @@ namespace VirtualFileSystem {
             }
         }
 
+        printf("[VFS] getPendingRequest failed to find requestId %d\n", requestId);
+
         return requests.end();
     }
 

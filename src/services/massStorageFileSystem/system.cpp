@@ -249,6 +249,7 @@ namespace MassStorageFileSystem {
 
                                     if (!CRC::check32(headerCRC, ptr, sizeof(GPTHeader) - sizeof(GPTHeader::remaining))) {
                                         printf("[Mass Storage] Invalid GPT Header, CRC32 check failed\n");
+                                        asm("hlt");
                                     }
 
                                     remainingPartitionEntries = gptHeader.partitionEntriesCount;
@@ -292,6 +293,10 @@ namespace MassStorageFileSystem {
                                             partition
                                         );
                                         fileSystems.push_back(new Ext2FileSystem(device));
+                                    }
+                                    else {
+                                        printf("[Mass Storage] PartitionType doesn't match\n");
+                                        asm("hlt");
                                     }
 
                                     return;
@@ -358,7 +363,7 @@ namespace MassStorageFileSystem {
     void service() {
         waitForServiceRegistered(Kernel::ServiceType::VFS);
         registerService();
-        sleep(100);
+        sleep(300);
         auto driver = setupDriver();
         auto massStorage = new MassStorageController(driver);
         massStorage->preloop();
