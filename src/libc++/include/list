@@ -6,7 +6,7 @@
 namespace std {
 
     template<typename T>
-    struct Allocator {};
+    struct allocator;
 
     template<class T, class Allocator = std::allocator<T>>
     class list {
@@ -211,6 +211,7 @@ namespace std {
             }
 
             delete current;
+            count--;
 
             return iterator{next};
         }
