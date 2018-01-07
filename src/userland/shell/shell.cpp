@@ -105,12 +105,13 @@ namespace Shell {
     };
 
     void readELF() {
-
+        run("/applications/test/test.bin");
+        return;
         ElfHeader header;
-        auto file = fopen("/libraries/lib/libfreetype.a", "");
+        auto file = fopen("/applications/test/test.bin", "");
 
         if (file == nullptr) {
-            printf("[Shell] Error opening libfreetype.a\n");
+            printf("[Shell] Error opening test.bin\n");
             return;
         }
 
@@ -124,10 +125,14 @@ namespace Shell {
 
         printf("versionLong: %d, entryPoint: %x, pheadStart: %d\n",
             header.versionLong, header.entryPoint, header.programHeaderStart);
-return;
-        fseek(file, header.programHeaderStart, SEEK_CUR);
+
+        fseek(file, header.programHeaderStart, SEEK_SET);
+
         ProgramHeader program;
         fread(&program, sizeof(program), 1, file);
+
+        printf("virtualAddress: %x, imageSize: %x, memorySize: %x\n",
+            program.virtualAddress, program.imageSize, program.memorySize);
     }
 
     VirtualFileSystem::ReadResult readSignature(uint32_t descriptor, bool& success) {
