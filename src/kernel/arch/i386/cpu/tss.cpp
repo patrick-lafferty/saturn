@@ -6,7 +6,7 @@ namespace CPU {
         fillTSS(tss);
 
         auto offset = sizeof(TSS) - sizeof(TSS::ioPermissionBitmap);
-        tss->ioMapBaseAddress = offset << 16;
+        tss->ioMapBaseAddress = offset;
 
         loadTSS();
         return tss;

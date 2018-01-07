@@ -29,9 +29,10 @@ namespace CPU {
         uint32_t fs;
         uint32_t gs;
         uint32_t ldtSegmentSelector;
-        uint32_t ioMapBaseAddress;
-        uint8_t ioPermissionBitmap[0xf98];
-    };
+        uint16_t reserved;
+        uint16_t ioMapBaseAddress;
+        uint8_t ioPermissionBitmap[0xf90];
+    } __attribute__((packed));
 
     TSS* setupTSS(uint32_t address);
 }
