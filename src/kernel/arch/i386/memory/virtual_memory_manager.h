@@ -13,7 +13,15 @@ namespace Memory {
     class VirtualMemoryManager;
 }
 
-extern "C" void activateVMM(Memory::VirtualMemoryManager*);
+namespace LibC_Implementation {
+    class Heap;
+}
+
+namespace Kernel {
+    struct Task;
+}
+
+extern "C" void activateVMM(Kernel::Task*);
 
 
 #if TARGET_PREKERNEL
@@ -122,8 +130,13 @@ namespace Memory {
         PageStatus getPageStatus(uintptr_t virtualAddress);
 
         void HACK_setNextAddress(uint32_t address);
+        uint32_t HACK_getNextAddress() {
+            return nextAddress;
+        }
 
         VirtualMemoryManager* cloneForUsermode();
+
+        void preallocateKernelPageTables();
 
     private:
 

@@ -2,10 +2,13 @@
 #include "physical_memory_manager.h"
 #include <string.h>
 #include <stdio.h>
+#include <heap.h>
+#include <scheduler.h>
 
 #ifndef TARGET_PREKERNEL
-void activateVMM(Memory::VirtualMemoryManager* vmm) {
-    vmm->activate();
+void activateVMM(Kernel::Task* task) {
+    task->virtualMemoryManager->activate();
+    LibC_Implementation::KernelHeap = task->heap;
 }
 #endif
 
@@ -262,7 +265,17 @@ namespace Memory {
         map(virtualAddress, newDirectoryAddress);
         physicalManager->finishAllocation(virtualAddress, 1);
         auto newDirectory = reinterpret_cast<PageDirectory*>(virtualAddress);
-        *newDirectory = *directory;
+        auto kernelStart = extractDirectoryIndex(0xD000'0000);
+
+        for (auto i = 0; i < 1024; i++) {
+            if (i >= kernelStart) {
+                newDirectory->pageTableAddresses[i] = directory->pageTableAddresses[i];
+            }
+            else {
+                newDirectory->pageTableAddresses[i] = 0;
+            }
+        }
+
         newDirectory->pageTableAddresses[1023] = newDirectoryAddress | 3; 
         unmap(virtualAddress, 1);
 
@@ -320,6 +333,16 @@ namespace Memory {
                 if (needsMap) {
                     unmap(address, 1);
                 }
+            }
+        }
+    }
+
+    void VirtualMemoryManager::preallocateKernelPageTables() {
+        auto start = extractDirectoryIndex(0xD000'0000);
+
+        for (auto i = start; i < 1023; i++) {
+            if (directory->pageTableAddresses[i] == 0) {
+                allocatePageTable(0xFFC00000 + PageSize * i, i);
             }
         }
     }
