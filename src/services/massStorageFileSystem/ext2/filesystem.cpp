@@ -98,7 +98,12 @@ namespace MassStorageFileSystem::Ext2 {
 
     uint32_t Ext2FileSystem::readInodeBlocks(Inode& inode) {
         auto blocksToRead = ceil((double)inode.sizeLower32Bits / blockSize);
-        auto sectorsToRead = ceil((double)inode.sizeLower32Bits / sectorSize);//1 + request.length / sectorSize;
+        auto sectorsToRead = ceil((double)inode.sizeLower32Bits / sectorSize);
+        auto totalSectors = sectorsToRead;
+
+        #ifdef VERBOSE_DEBUG
+        printf("[ATA] readInodeBlocks: blocks: %d, sectors: %d\n", blocksToRead, sectorsToRead);
+        #endif
         
         for (auto i = 0u; i < blocksToRead; i++) {
             auto lba = blockIdToLba(inode.directBlock[i]);
@@ -107,7 +112,7 @@ namespace MassStorageFileSystem::Ext2 {
             blockDevice->queueReadSector(lba, sectorCount);
         }
 
-        return blocksToRead;
+        return totalSectors;
     }
 
     void Ext2FileSystem::handleRequest(Request& request) {
@@ -158,7 +163,7 @@ namespace MassStorageFileSystem::Ext2 {
             
             auto inode = inodes[inodeIndex];
 
-            request.remainingBlocks = readInodeBlocks(inode);
+            request.totalRemainingSectors = readInodeBlocks(inode);
             request.finishedReadingBlocks = true;
         }
         else {
@@ -172,9 +177,9 @@ namespace MassStorageFileSystem::Ext2 {
             uint32_t remainingSpace = sizeof(result.data);
             uint32_t writeIndex = 0;
             bool needToSend;
-            request.remainingBlocks--;
+            request.totalRemainingSectors--;
 
-            result.expectMore = request.remainingBlocks > 0;
+            result.expectMore = request.totalRemainingSectors > 0;
             auto entrySize = static_cast<uint32_t>(sizeof(DirectoryEntry));
 
             for (int i = 0; i < 512; i++) {
@@ -226,17 +231,10 @@ namespace MassStorageFileSystem::Ext2 {
                 entry = *reinterpret_cast<DirectoryEntry*>(ptr);
             }
 
-            if (needToSend) {
-                result.expectMore = request.remainingBlocks > 0;
-                send(IPC::RecipientType::ServiceName, &result);
-            }
-            else if (result.expectMore) {
-                //nothing more to send, but we said to expect more, so send one more saying done
-                result.expectMore = request.remainingBlocks > 0;
-                send(IPC::RecipientType::ServiceName, &result);
-            }
+            result.expectMore = request.totalRemainingSectors > 0;
+            send(IPC::RecipientType::ServiceName, &result);
 
-            if (request.remainingBlocks == 0) {
+            if (request.totalRemainingSectors == 0) {
                 finishRequest();
             }
         }
@@ -384,6 +382,10 @@ namespace MassStorageFileSystem::Ext2 {
 
     void Ext2FileSystem::handleReadInodeRequest(Request& request) {
 
+        #ifdef VERBOSE_DEBUG
+        printf("[ATA] handleReadInodeRequest\n");
+        #endif
+
         if (!request.read.finishedReadingInode) {
             readInode(request.read.inode);
             request.read.finishedReadingInode = true;
@@ -412,12 +414,18 @@ namespace MassStorageFileSystem::Ext2 {
 
     bool Ext2FileSystem::receiveSector() {
 
+        #ifdef VERBOSE_DEBUG
+        printf("[ATA] receiveSector\n");
+        #endif
+
         memset(buffer, 0, 512);
         if (!blockDevice->receiveSector(buffer)) {
+            printf("[ATA] receiveSector: blockDevice->receiveSector returned false\n");
             return false;
         }
 
         if (queuedRequests.empty()) {
+            printf("[ATA] receiveSector: queuedRequests is empty\n");
             return false;
         }
 
@@ -428,6 +436,10 @@ namespace MassStorageFileSystem::Ext2 {
 
     uint32_t Ext2FileSystem::openFile(uint32_t index, uint32_t requestId) {
         static uint32_t nextFileDescriptor = 0;
+
+        #ifdef VERBOSE_DEBUG
+        printf("[ATA] openFile\n");
+        #endif
 
         FileDescriptor descriptor;
         descriptor.filePosition = 0;
@@ -457,6 +469,10 @@ namespace MassStorageFileSystem::Ext2 {
 
     void Ext2FileSystem::readDirectory(uint32_t index, uint32_t requestId) {
         
+        #ifdef VERBOSE_DEBUG
+        printf("[ATA] readDirectory\n");
+        #endif
+
         Request request{};
         request.read.inode = index;
         
@@ -475,7 +491,11 @@ namespace MassStorageFileSystem::Ext2 {
     }
 
     void Ext2FileSystem::readFile(uint32_t index, uint32_t requestId, uint32_t byteCount) {
-        
+
+        #ifdef VERBOSE_DEBUG
+        printf("[ATA] readFile\n");
+        #endif
+
         Request request{};
         request.read.requestId = requestId;
         request.type = RequestType::ReadFile;
@@ -490,6 +510,11 @@ namespace MassStorageFileSystem::Ext2 {
     }
 
     void Ext2FileSystem::seekFile(uint32_t index, uint32_t requestId, uint32_t offset, Origin origin) {
+
+        #ifdef VERBOSE_DEBUG        
+        printf("[ATA] seekFile\n");
+        #endif
+
         auto descriptor = findDescriptor(index, openFileDescriptors);
         VirtualFileSystem::SeekResult result;
         result.requestId = requestId;
