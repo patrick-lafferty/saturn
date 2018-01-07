@@ -134,6 +134,10 @@ namespace Kernel {
         InterruptEnable = 1 << 9
     };
 
+    struct InitialKernelStack {
+        uint32_t eip {0};
+    };
+
     struct TaskStack {
         uint32_t eflags;
         uint32_t edi {0};
@@ -158,7 +162,7 @@ namespace Kernel {
         Scheduler(CPU::TSS* kernelTSS);
 
         Task* createKernelTask(uintptr_t functionAddress);
-        Task* createUserTask(uintptr_t functionAddress);
+        Task* createUserTask(uintptr_t functionAddress, char* path = nullptr);
         
         void notifyTimesliceExpired();
         void scheduleTask(Task* task);
@@ -177,6 +181,10 @@ namespace Kernel {
         void exitKernelTask();
 
         void cleanupTasks();
+
+        Task* getCurrentTask() {
+            return currentTask;
+        }
 
     private:
 

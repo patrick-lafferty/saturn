@@ -9,23 +9,115 @@
 #include <services.h>
 #include <stdlib.h>
 #include <cpu/tss.h>
+#include <system_calls.h>
 
 extern "C" void startProcess(Kernel::Task* task);
 extern "C" void changeProcess(Kernel::Task* current, Kernel::Task* next);
 extern "C" void launchProcess();
 extern "C" void usermodeStub();
+extern "C" void elfUsermodeStub();
 
 uint32_t HACK_TSS_ADDRESS;
+
+struct ElfHeader {
+    uint32_t magicNumber;
+    uint8_t bitFormat;
+    uint8_t endianness;
+    uint8_t versionShort;
+    uint8_t osABI;
+    uint8_t abiVersion;
+    uint8_t pad[7];
+    uint16_t type;
+    uint16_t machine;
+    uint32_t versionLong;
+    uint32_t entryPoint;
+    uint32_t programHeaderStart;
+    uint32_t sectionHeaderStart;
+    uint32_t flags;
+    uint16_t headerSize;
+    uint16_t programHeaderEntrySize;
+    uint16_t programHeaderEntryCount;
+    uint16_t sectionHeaderEntrySize;
+    uint16_t sectionHeaderEntryCount;
+    uint16_t sectionHeaderNameIndex;
+};
+
+struct ProgramHeader {
+    uint32_t type;
+    uint32_t offset;
+    uint32_t virtualAddress;
+    uint32_t physicalAddress;
+    uint32_t imageSize;
+    uint32_t memorySize;
+    uint32_t flags;
+    uint32_t alignment;
+};
+
+extern "C" uint32_t loadElf(char* pah) {
+    char* path = "/applications/test/test.bin";
+    auto file = fopen(path, "");
+#if 0
+    char* data = new char[0x2000];
+
+    fread(data, 0x2000, 1, file);
+
+    return 0;
+#endif
+
+#if 1
+    ElfHeader header;
+    fread(&header, sizeof(header), 1, file);
+    fseek(file, header.programHeaderStart, SEEK_SET);
+    ProgramHeader programs[3];
+    ProgramHeader program;
+
+    for (auto i = 0u; i < header.programHeaderEntryCount; i++) {
+        fread(&programs[i], sizeof(program), 1, file);
+    }
+
+    program = programs[0]; 
+
+    /*auto savedAddress = Memory::currentVMM->HACK_getNextAddress();
+
+    Memory::currentVMM->HACK_setNextAddress(program.virtualAddress);
+    auto addr = Memory::currentVMM->allocatePages(program.imageSize / Memory::PageSize,
+        static_cast<uint32_t>(Memory::PageTableFlags::AllowUserModeAccess));
+
+    uint8_t* prog = reinterpret_cast<uint8_t*>(addr);*/
+    auto prog = reinterpret_cast<uint8_t*>(map(program.virtualAddress, 
+        1 + program.imageSize / Memory::PageSize,
+        static_cast<uint32_t>(Memory::PageTableFlags::AllowUserModeAccess)
+            //| static_cast<uint32_t>(Memory::PageTableFlags::Present)
+            | static_cast<uint32_t>(Memory::PageTableFlags::AllowWrite)));
+
+        /*map(program.virtualAddress + 0x1000, 
+        1,
+        static_cast<uint32_t>(Memory::PageTableFlags::AllowUserModeAccess)
+            //| static_cast<uint32_t>(Memory::PageTableFlags::Present)
+            | static_cast<uint32_t>(Memory::PageTableFlags::AllowWrite));*/
+    //*prog = 0;
+    //*(prog + 0x1000) = 0;
+    //fseek(file, header.programHeaderStart + header.programHeaderEntrySize * header.programHeaderEntryCount,
+    //    SEEK_SET);
+    fread(prog + 148, program.imageSize, 1, file);
+
+    //Memory::currentVMM->HACK_setNextAddress(savedAddress);
+
+    return header.entryPoint;// - (sizeof(header) + sizeof(program) * 3); //0xa0;
+    #endif
+}
+
+extern "C" void idleLoop();
 
 namespace Kernel {
 
     Scheduler* currentScheduler;
 
-    void idleLoop() {
+    /*void idleLoop() {
         while(true) {
             asm volatile("hlt");
         }
-    }
+    }*/
 
     void cleanupTasksService() {
         currentScheduler->cleanupTasks();
@@ -35,8 +127,8 @@ namespace Kernel {
         currentScheduler->exitKernelTask();
     }
 
-    struct alignas(0x100000) Stack {
-
+    struct alignas(0x1000) Stack {
+        char data[0x100000];
     };
 
     uint32_t createStack(bool) {
@@ -54,7 +146,7 @@ namespace Kernel {
         blockedQueue.append(cleanupTask);
 
         elapsedTime_milliseconds = 0;
-        timeslice_milliseconds = 10;
+        timeslice_milliseconds = 50;
         kernelHeap = LibC_Implementation::KernelHeap;
         kernelVMM = Memory::currentVMM;
         this->kernelTSS = kernelTSS;
@@ -62,7 +154,8 @@ namespace Kernel {
 
     void Scheduler::cleanupTasks() {
         while (true) {
-            auto task = deleteQueue.getHead();
+            asm("cli");
+            /*auto task = deleteQueue.getHead();
 
             while (task != nullptr) {
                 auto kernelStackAddress = (task->context.kernelESP & ~0xFFF);
@@ -70,8 +163,8 @@ namespace Kernel {
                 auto next = task->nextTask;
                 deleteQueue.remove(task);
                 task = next;
-            }
-
+            }*/
+            asm("sti");
             blockTask(BlockReason::WaitingForMessage, 0);
         }
     }
@@ -120,22 +213,29 @@ namespace Kernel {
 
     void Scheduler::runNextTask() {
         if (state == State::StartCurrent) {
-            LibC_Implementation::KernelHeap = currentTask->heap;
+            //LibC_Implementation::KernelHeap = currentTask->heap;
+            if (startTask == currentTask) {
+                return;
+            }
             changeProcess(startTask, currentTask);
+           
         }
         else if (state == State::ChangeToStart) {
             auto current = currentTask;
             currentTask = nullptr;
-            LibC_Implementation::KernelHeap = startTask->heap;
+            //LibC_Implementation::KernelHeap = startTask->heap;
+            if (current == startTask) {
+                return;
+            }
             changeProcess(current, startTask);
-            
+           
         }
         else {
             auto current = currentTask;
             currentTask = nextTask;
 
             if (current != nextTask) {
-                LibC_Implementation::KernelHeap = nextTask->heap;
+                //LibC_Implementation::KernelHeap = nextTask->heap;
                 changeProcess(current, nextTask);
             }
         }
@@ -159,36 +259,34 @@ namespace Kernel {
         uint8_t volatile* stackPointer = static_cast<uint8_t volatile*>
             (reinterpret_cast<void volatile*>(address));
 
-        TaskStack volatile* stack = reinterpret_cast<TaskStack volatile*>(stackPointer);
+        InitialKernelStack volatile* stack = reinterpret_cast<InitialKernelStack volatile*>(stackPointer);
 
-        auto eflags = stack->eflags;
         auto eip = stack->eip;
         
-        for(auto i = 0u; i < sizeof(TaskStack); i++) {
+        for(auto i = 0u; i < sizeof(InitialKernelStack); i++) {
             *stackPointer = 0;
+            stackPointer++;
         }
 
+        stackPointer -= sizeof(InitialKernelStack);
         stackPointer -= offset;
-        stack = reinterpret_cast<TaskStack volatile*>(stackPointer);
+        stack = reinterpret_cast<InitialKernelStack volatile*>(stackPointer);
 
-        stack->eflags = eflags;
         stack->eip = eip;
 
         task->context.esp = reinterpret_cast<uint32_t>(stackPointer);
 
-        return stackPointer + sizeof(TaskStack);
+        return stackPointer + sizeof(InitialKernelStack);
     }
     
     Task* Scheduler::createKernelTask(uintptr_t functionAddress) {
         auto processStack = createStack(false);
 
         uint8_t volatile* stackPointer = static_cast<uint8_t volatile*>(reinterpret_cast<void volatile*>(processStack + 4096));
-        stackPointer -= sizeof(TaskStack);
+        stackPointer -= sizeof(InitialKernelStack);
 
-        TaskStack volatile* stack = reinterpret_cast<TaskStack volatile*>(stackPointer);
-        stack->eflags = 
-            static_cast<uint32_t>(EFlags::InterruptEnable) | 
-            static_cast<uint32_t>(EFlags::Reserved);
+        InitialKernelStack volatile* stack = reinterpret_cast<InitialKernelStack volatile*>(stackPointer);
+        
         stack->eip = functionAddress;
 
         static uint32_t nextTaskId {0};
@@ -216,20 +314,15 @@ namespace Kernel {
         return task;
     }
 
-    Task* Scheduler::createUserTask(uintptr_t functionAddress) {
-        //Memory::currentPMM->report();
+    Task* Scheduler::createUserTask(uintptr_t functionAddress, char* path) {
         auto oldHeap = LibC_Implementation::KernelHeap;
         LibC_Implementation::KernelHeap = kernelHeap;
         auto oldVMM = Memory::currentVMM;
         kernelVMM->activate();
 
         auto task = createKernelTask(reinterpret_cast<uintptr_t>(launchProcess));
-        //auto oldVMM = Memory::currentVMM;
         auto vmm = Memory::currentVMM->cloneForUsermode();
         task->virtualMemoryManager = vmm;
-        //vmm->HACK_setNextAddress(0xd000'0000 - 0x2000);
-        //auto backupHeap = LibC_Implementation::KernelHeap;
-        //LibC_Implementation::KernelHeap = nullptr;
         auto backupTSS = *kernelTSS;
         vmm->activate();
         vmm->HACK_setNextAddress(0xcfff'f000);
@@ -245,13 +338,18 @@ namespace Kernel {
         LibC_Implementation::createHeap(Memory::PageSize * Memory::PageSize);
         auto userStackAddress = createStack(true);
         task->heap = LibC_Implementation::KernelHeap;
-        //task->heap->HACK_syncPageWithVMM();
 
         /*
         Need to adjust the kernel stack because we want to add
         userESP and userEIP to the top
         */
-        auto kernelStackPointer = adjustStack(task, 12);
+        auto spaceToAdjust = 8;
+
+        if (path != nullptr) {
+            spaceToAdjust += 4;
+        }
+
+        auto kernelStackPointer = adjustStack(task, spaceToAdjust);
 
         uint8_t volatile* userStackPointer = static_cast<uint8_t volatile*>
             (reinterpret_cast<void volatile*>(userStackAddress + 4096));
@@ -262,7 +360,13 @@ namespace Kernel {
         userStack->eflags = reinterpret_cast<TaskStack volatile*>
             (kernelStackPointer - sizeof(TaskStack))->eflags;
         userStack->eip = functionAddress;
-        //userStackPointer += sizeof(TaskStack);
+
+        if (path != nullptr) {
+            char* pathCopy = new char[strlen(path) + 1];
+            memset(pathCopy, '\0', strlen(path) + 1);
+            memcpy(pathCopy, path, strlen(path));
+            userStack->edi = reinterpret_cast<uintptr_t>(pathCopy);
+        }
         
         /*
         createUserTask creates a task that starts inside launchProcess,
@@ -273,12 +377,13 @@ namespace Kernel {
         auto stackExtras = reinterpret_cast<uint32_t volatile*>(kernelStackPointer);
         *stackExtras++ = reinterpret_cast<uint32_t>(vmm);
         *stackExtras++ = reinterpret_cast<uint32_t>(userStackPointer);
-        *stackExtras++ = reinterpret_cast<uint32_t>(usermodeStub);//functionAddress;
 
-        //oldVMM->activate();
-        //LibC_Implementation::KernelHeap = backupHeap;
-
-        //Memory::currentPMM->report();
+        if (path == nullptr) {
+            *stackExtras++ = reinterpret_cast<uint32_t>(usermodeStub);
+        }
+        else {
+            *stackExtras++ = reinterpret_cast<uint32_t>(elfUsermodeStub);
+        }
 
         oldVMM->activate();
         LibC_Implementation::KernelHeap = oldHeap;
@@ -362,6 +467,7 @@ namespace Kernel {
             }
             else if (blocked->state == TaskState::Blocked
                 && blocked->mailbox->hasUnreadMessages()) {
+                    kprintf("unblocked %d\n", blocked->id);
                 unblockTask(blocked);
             }
 
@@ -385,6 +491,7 @@ namespace Kernel {
     }
 
     void Scheduler::sendMessage(IPC::RecipientType recipient, IPC::Message* message) {
+asm("cli");
         if (currentTask != nullptr) {
             message->senderTaskId = currentTask->id;
         }
@@ -393,6 +500,7 @@ namespace Kernel {
 
         if (recipient == IPC::RecipientType::ServiceRegistryMailbox) {
             ServiceRegistryInstance->receiveMessage(message);
+            asm("sti");
             return;
         }
         else {
@@ -403,10 +511,12 @@ namespace Kernel {
                 if (taskId == 0) {
                     if (ServiceRegistryInstance->isPseudoService(message->serviceType)) {
                         ServiceRegistryInstance->receivePseudoMessage(message->serviceType, message);
+            asm("sti");
                         return;
                     }
                     else {
                         kprintf("[Scheduler] Unknown Service Name\n");
+            asm("hlt");
                         return;
                     }
                 }
@@ -429,6 +539,7 @@ namespace Kernel {
                             unblockTask(task);
                         }
 
+            asm("sti");
                         return;
                     }
 
@@ -443,6 +554,7 @@ namespace Kernel {
                     if (task->id == taskId) {
                         //TODO: check if mailbox is full, if so block current task
                         task->mailbox->send(message);
+            asm("sti");
                         return;
                     }
 
@@ -452,6 +564,7 @@ namespace Kernel {
         }
 
         kprintf("[Scheduler] Unsent message from: %d to: %d type: %d\n", message->senderTaskId, taskId, recipient);
+        asm("hlt");
     }
 
     void Scheduler::receiveMessage(IPC::Message* buffer) {
@@ -508,7 +621,7 @@ namespace Kernel {
 
         user stack is at kernelStack - 8
         */
-        
+       if (false) { 
         auto kernelStackAddress = (currentTask->context.esp & ~0xFFF) + Memory::PageSize;
         auto kernelStack = reinterpret_cast<uint32_t volatile*>(kernelStackAddress);
         auto userStackAddress = *(kernelStack - 2) & ~0xFFF;
@@ -524,7 +637,7 @@ namespace Kernel {
         delete currentTask->virtualMemoryManager;
         kernelHeap->free(currentTask->mailbox);
         //TODO: free task pid
-
+       }
         currentTask->state = TaskState::Blocked;
         scheduleNextTask();
         readyQueue.remove(currentTask);
