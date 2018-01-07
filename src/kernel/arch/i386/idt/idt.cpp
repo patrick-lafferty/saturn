@@ -122,6 +122,7 @@ enum class PageFaultError {
 };
 
 void panic(CPU::InterruptStackFrame* frame) {
+    asm volatile("cli");
 
     kprintf("[IDT] General Protection Fault\n");
             kprintf("GS: %x, FS: %x, ES: %x, DS: %x\n", 
@@ -134,6 +135,9 @@ void panic(CPU::InterruptStackFrame* frame) {
                 frame->errorCode, frame->eip, frame->cs, frame->eflags);
             kprintf("RESP: %x, SS: %x\n", 
                 frame->resp, frame->ss);
+
+    Kernel::currentScheduler->getCurrentTask()->virtualMemoryManager->activate();
+
     asm volatile("hlt");
 }
 
@@ -169,7 +173,7 @@ bool handlePageFault(uintptr_t virtualAddress, uint32_t errorCode) {
         }
         else {
             kprintf("[IDT] Illegal Memory Access: %x\n", virtualAddress);     
-            //asm volatile("hlt");
+            asm volatile("hlt");
         }
     }
 
@@ -187,11 +191,11 @@ void handleSystemCall(CPU::InterruptStackFrame* frame) {
             Kernel::currentScheduler->blockTask(Kernel::BlockReason::Sleep, frame->ebx);
             break;
         }
-        case 3: {
+        case static_cast<uint32_t>(SystemCall::Send): {
             Kernel::currentScheduler->sendMessage(static_cast<IPC::RecipientType>(frame->ebx), reinterpret_cast<IPC::Message*>(frame->ecx));
             break;
         }
-        case 4: {
+        case static_cast<uint32_t>(SystemCall::Receive): {
             Kernel::currentScheduler->receiveMessage(reinterpret_cast<IPC::Message*>(frame->ebx));
             break;
         }
@@ -225,6 +229,11 @@ const char* exceptions[] = {
     "SIMD Floating-Point Exception",
     "Virtualization Exception"
 };
+
+extern "C" void taskSwitch() {
+    APIC::signalEndOfInterrupt();
+    Kernel::currentScheduler->notifyTimesliceExpired(); 
+}
 
 void interruptHandler(CPU::InterruptStackFrame* frame) {
     
