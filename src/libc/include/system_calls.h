@@ -19,6 +19,8 @@ namespace Kernel {
 enum class SystemCall {
     Exit = 1,
     Sleep,
+    Send,
+    Receive,
 };
 
 //TODO: should return a bool for success/failure
@@ -44,3 +46,6 @@ VirtualFileSystem::SeekResult seekSynchronous(uint32_t fileDescriptor, uint32_t 
 void waitForServiceRegistered(Kernel::ServiceType type);
 
 uint32_t run(uintptr_t entryPoint);
+uint32_t run(char* path);
+
+void* map(uint32_t address, uint32_t size, uint32_t flags);
