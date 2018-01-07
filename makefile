@@ -18,7 +18,7 @@ FLAGS = -fno-omit-frame-pointer -ffreestanding -fno-exceptions -fno-rtti -fno-bu
 CXXFLAGS = -O0 $(FLAGS) -g $(MARCH) $(DEPENDENCYFLAGS) $(WARNINGS) -std=c++1z  $(CXXPATHS) -masm=intel -Drestrict=__restrict
 
 LD = $(CROSS_COMPILER_PATH)/ld
-LDFLAGS = --sysroot=sysroot/ -L=system/lib -L=libraries/lib -g
+LDFLAGS = --sysroot=sysroot/ -L=system/libraries -L=libraries/lib -g
 
 MKDIR = mkdir -p
 
@@ -78,7 +78,7 @@ sysroot:
 	$(MKDIR) sysroot/
 	$(MKDIR) sysroot/system
 	$(MKDIR) sysroot/system/boot
-	$(MKDIR) sysroot/system/lib
+	$(MKDIR) sysroot/system/libraries
 	$(MKDIR) sysroot/system/include
 
 saturn.bin: libc_freestanding libc_hosted test_libc libc++ test_libc++ userland $(OBJS) $(ARCHDIR)/linker.ld
@@ -87,35 +87,36 @@ saturn.bin: libc_freestanding libc_hosted test_libc libc++ test_libc++ userland 
 libc_freestanding: $(LIBC_FREE_OBJS)
 	$(AR) rcs src/libc/libc_freestanding.a $(LIBC_FREE_OBJS)
 	ranlib src/libc/libc_freestanding.a
-	cp src/libc/libc_freestanding.a sysroot/system/lib
+	cp src/libc/libc_freestanding.a sysroot/system/libraries
 	cp -R --preserve=timestamps src/libc/include sysroot/system/
 
-libc_hosted: $(LIBC_HOSTED_OBJS)
+libc_hosted: $(LIBC_HOSTED_OBJS) $(LIBC_HOSTED_NOT_LINKED_OBJS)
 	$(AR) rcs src/libc/libc.a $(LIBC_HOSTED_OBJS)
 	ranlib src/libc/libc.a
-	cp src/libc/libc.a sysroot/system/lib
+	cp src/libc/libc.a sysroot/system/libraries
+	cp src/libc/hosted/crt1.o sysroot/system/libraries
 	cp -R --preserve=timestamps src/libc/include sysroot/system/
 
 test_libc: $(TEST_LIBC_FREE_OBJS)
 	$(AR) rcs test/libc/libc_test_freestanding.a $(TEST_LIBC_FREE_OBJS)
 	ranlib test/libc/libc_test_freestanding.a
-	cp test/libc/libc_test_freestanding.a sysroot/system/lib
+	cp test/libc/libc_test_freestanding.a sysroot/system/libraries
 
 libc++: $(LIBC++_FREE_OBJS)
 	$(AR) rcs src/libc++/libc++_freestanding.a $(LIBC++_FREE_OBJS)
 	ranlib src/libc++/libc++_freestanding.a
-	cp src/libc++/libc++_freestanding.a sysroot/system/lib
+	cp src/libc++/libc++_freestanding.a sysroot/system/libraries
 	cp -R --preserve=timestamps src/libc++/include sysroot/system/
 
 test_libc++: $(TEST_LIBC++_FREE_OBJS)
 	$(AR) rcs test/libc++/libc++_test_freestanding.a $(TEST_LIBC++_FREE_OBJS)
 	ranlib test/libc++/libc++_test_freestanding.a
-	cp test/libc++/libc++_test_freestanding.a sysroot/system/lib
+	cp test/libc++/libc++_test_freestanding.a sysroot/system/libraries
 
 userland: $(USERLAND_OBJS)
 	$(AR) rcs src/userland/libuserland.a $(USERLAND_OBJS)
 	ranlib src/userland/libuserland.a
-	cp src/userland/libuserland.a sysroot/system/lib
+	cp src/userland/libuserland.a sysroot/system/libraries
 
 %.o: %.s
 	$(AS) $< -o $@ $(ASFLAGS)
@@ -135,7 +136,7 @@ $(DEPENDENCYDIR)/%.d: ;
 -include $(DEPS) 
 
 clean:
-	$(RM) sysroot/system/lib -rf
+	$(RM) sysroot/system/libraries -rf
 	$(RM) sysroot/system/include -rf
 	$(RM) sysroot/system/boot -rf
 	$(RM) $(OBJS_WITHOUT_CRT) $(LIBC_FREE_OBJS)
