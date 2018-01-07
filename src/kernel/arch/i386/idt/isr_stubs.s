@@ -65,7 +65,27 @@ InterruptServiceRoutine_Errorless 48; APIC IRQ 0
 InterruptServiceRoutine_Errorless 49; APIC IRQ 1
 InterruptServiceRoutine_Errorless 50; APIC IRQ 2
 InterruptServiceRoutine_Errorless 51; APIC IRQ 3
-InterruptServiceRoutine_Errorless 52; APIC IRQ 4
+
+global isr52
+extern taskSwitch
+isr52:
+
+    push ebx
+    push eax
+    push esi
+    push edi
+    pushfd
+
+    call taskSwitch
+
+    popfd
+    pop edi
+    pop esi
+    pop eax
+    pop ebx
+
+    iret
+
 InterruptServiceRoutine_Errorless 53; APIC IRQ 5
 InterruptServiceRoutine_Errorless 54; APIC IRQ 6
 InterruptServiceRoutine_Errorless 55; APIC IRQ 7
