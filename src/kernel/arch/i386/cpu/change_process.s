@@ -2,90 +2,47 @@ section .text
 
 global startProcess
 extern HACK_TSS_ADDRESS
+
 startProcess:
-    mov ecx, DWORD [esp + 4] 
-    mov esp, DWORD [ecx]
 
-    ;TODO: HACK: don't hardcode TSS address, and there might be multiple
-    ;ie one per cpu
+    mov ecx, [esp + 4]
+    mov esp, [ecx] 
 
-    ;store the current kernel stack's esp to the TSS
     mov eax, [HACK_TSS_ADDRESS]
     mov ecx, [ecx + 4]
     mov [eax + 4], ecx
 
-    popfd
-    pop edi
-    pop esi
-    pop ebp
-    pop ebx
+    ret    
 
-    ret
 
 ;changes from one ring0 process to another
 global changeProcess
 extern activateVMM
+
 changeProcess:
-    ;c signature:
-    ;void changeProcess(Task* current, Task* next)
 
-    ;save the important registers to the current
-    ;task's stack
-    mov eax, [esp + 4]
-    mov ecx, [esp + 8]
-
-    push ebx
+    mov eax, ebp
     push ebp
-    push esi
-    push edi
-    pushfd 
+    mov ebp, esp
+    add esp, 4
 
-    ;store the stack pointer to the current
-    ;task's context.esp
+    mov eax, [ebp + 8]
     mov [eax], esp
 
-    ;change the current stack pointer
-    ;to the next task's context.esp
-    mov esp, [ecx]
-
-    push eax
-    push ecx
-
-    ;store the current kernel stack's esp to the TSS
-    mov eax, [HACK_TSS_ADDRESS]
-    mov ecx, [ecx + 4]
-    mov [eax + 4], ecx
-
-    pop ecx
-    pop eax
-
-    ;see if we need to change cr3
-    mov eax, [eax + 32]
-    cmp eax, [ecx + 32]
-    je no_change
-    
-    mov eax, [ecx + 32]
+    mov eax, [ebp + 12]
     push eax
     call activateVMM
     pop eax
 
-    no_change:
+    mov eax, [ebp + 12]
+    mov esp, [eax]
 
-    ;TODO: HACK: don't hardcode TSS address, and there might be multiple
-    ;ie one per cpu
-
-    ;restore the important registers from the
-    ;next task's stack
-
-    popfd
-    pop edi
-    pop esi
-    pop ebp
-    pop ebx
+    mov eax, [HACK_TSS_ADDRESS]
+    mov ecx, [ebp + 12]
+    mov ecx, [ecx + 4]
+    mov [eax + 4], ecx
 
     ret
-
-extern taskA
 
 ;launches a usermode process
 global launchProcess
@@ -95,8 +52,6 @@ launchProcess:
     ; user vmm
     ; user esp
     ; user eip
-
-    call activateVMM
     pop eax
 
     pop ecx
@@ -121,8 +76,11 @@ launchProcess:
 endTask:
     mov eax, 1
     int 0xFF
+    ret
 
 global usermodeStub
+;calls the user function in ebx, then when it returns
+;calls endTask to cleanup the task
 usermodeStub:
 
     add esp, 20
@@ -133,6 +91,23 @@ usermodeStub:
     call endTask
     ret
 
+global elfUsermodeStub
+extern loadElf
+;loads a compiled program from an elf file
+elfUsermodeStub:
+
+    push ebp
+    mov ebp, esp
+
+    add esp, 20
+    pop ebx
+
+    call loadElf
+
+    call eax
+
+    call endTask
+    ret
 
 global fillTSS
 fillTSS:
@@ -152,3 +127,8 @@ setCR3:
     mov eax, [esp + 4]
     mov cr3, eax
     ret
+
+global idleLoop
+idleLoop:
+    hlt
+    jmp idleLoop
