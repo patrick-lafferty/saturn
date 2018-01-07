@@ -60,7 +60,15 @@ namespace Kernel {
                         auto run = IPC::extractMessage<RunProgram>(
                             *static_cast<IPC::MaximumMessageBuffer*>(message));
                         
-                        auto task = currentScheduler->createUserTask(run.entryPoint);
+                        char* path = nullptr;
+
+                        if (run.path[0] != '\0') {
+                            path = run.path;
+                        }
+
+                        //kprintf("[ServiceRegistry] runProgram\n");
+
+                        auto task = currentScheduler->createUserTask(run.entryPoint, path);
                         currentScheduler->scheduleTask(task);
 
                         RunResult result;
@@ -104,6 +112,29 @@ namespace Kernel {
                         
                         registerDriver(request.senderTaskId, request.type);
 
+                        break;
+                    }
+                    case MessageId::MapMemory: {
+                        auto request = IPC::extractMessage<MapMemory>(
+                            *static_cast<IPC::MaximumMessageBuffer*>(message));
+
+                        auto currentTask = currentScheduler->getTask(message->senderTaskId);
+                        auto vmm = currentTask->virtualMemoryManager;
+                        auto cachedNextAddress = vmm->HACK_getNextAddress();
+
+                        /*
+                        TODO: just a hacked up implementation to get the elf loader test working
+                        */
+                        vmm->HACK_setNextAddress(request.address);
+                        auto allocatedAddress = vmm->allocatePages(request.size, request.flags);
+                        vmm->HACK_setNextAddress(cachedNextAddress);
+
+                        MapMemoryResult result;
+                        result.recipientId = request.senderTaskId;
+                        result.start = reinterpret_cast<void*>(allocatedAddress);
+
+                        currentTask->mailbox->send(&result);
+                        
                         break;
                     }
                 }
@@ -302,7 +333,7 @@ namespace Kernel {
     }
 
     void ServiceRegistry::setupDriver(uint32_t taskId, DriverType type) {
-
+asm("cli");
         switch (type) {
             
             case DriverType::ATA: {
@@ -314,8 +345,13 @@ namespace Kernel {
                     return;
                 }
 
+                //kprintf("[ServiceRegistry] tss %x grant: %x\n", task, task->tss);
+                auto oldVMM = Memory::currentVMM;
+                task->virtualMemoryManager->activate();
                 grantIOPortRange(0x1f0, 0x1f7, task->tss->ioPermissionBitmap);
                 grantIOPort8(0x3f6, task->tss->ioPermissionBitmap);
+
+                oldVMM->activate();
 
                 RegisterDriverResult result;
                 task->mailbox->send(&result);
@@ -330,5 +366,6 @@ namespace Kernel {
                 kprintf("[ServiceRegistry] Unsupported service type\n");   
             }
         }
+asm("sti");
     }
 }

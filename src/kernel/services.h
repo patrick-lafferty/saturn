@@ -32,7 +32,9 @@ namespace Kernel {
         NotifyServiceRegistered,
         RunProgram,
         RunResult,
-        LinearFrameBufferFound
+        LinearFrameBufferFound,
+        MapMemory,
+        MapMemoryResult
     };
 
     struct RegisterService : IPC::Message {
@@ -163,9 +165,11 @@ namespace Kernel {
             messageId = static_cast<uint32_t>(MessageId::RunProgram);
             length = sizeof(RunProgram);
             messageNamespace = IPC::MessageNamespace::ServiceRegistry;
+            memset(path, '\0', sizeof(path));
         }
 
         uintptr_t entryPoint;
+        char path[256];
     };
 
     struct RunResult : IPC::Message {
@@ -189,6 +193,27 @@ namespace Kernel {
         uint32_t address;
     };
 
+    struct MapMemory : IPC::Message {
+        MapMemory() {
+            messageId = static_cast<uint32_t>(MessageId::MapMemory);
+            length = sizeof(MapMemory);
+            messageNamespace = IPC::MessageNamespace::ServiceRegistry;
+        }
+
+        uint32_t address;
+        uint32_t size;
+        uint32_t flags;
+    };
+
+    struct MapMemoryResult : IPC::Message {
+        MapMemoryResult() {
+            messageId = static_cast<uint32_t>(MessageId::MapMemoryResult);
+            length = sizeof(MapMemoryResult);
+            messageNamespace = IPC::MessageNamespace::ServiceRegistry;
+        }
+
+        void* start;
+    };
 
     struct KnownHardwareAddresses {
         uint32_t linearFrameBuffer;    
