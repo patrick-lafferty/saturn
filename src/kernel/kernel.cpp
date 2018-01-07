@@ -12,6 +12,7 @@
 #include <system_calls.h>
 #include <test/libc/runner.h>
 #include <test/libc++/new.h>
+#include <test/libc++/list.h>
 #include <ipc.h>
 #include <services.h>
 #include <initialize_libc.h>
@@ -70,6 +71,8 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     Memory::currentPMM = &physicalMemManager;
     Memory::currentVMM = &virtualMemManager;
 
+    Memory::currentVMM->preallocateKernelPageTables();
+
     GDT::setup();
     IDT::setup();
     initializeSSE();
@@ -107,13 +110,14 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
 
     Kernel::Scheduler scheduler{tss};
 
-    kprintf("Saturn OS v 0.1.0\n------------------\n\n");
+    kprintf("Saturn OS v 0.1.0\n------------------\n\nCalibrating clock, please wait...\n");
 
     ServiceRegistry registry;
     ServiceRegistryInstance = &registry;
 
     /*runNewTests();*/
     //runAllLibCTests();
+    //runListTests();
 
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(VirtualFileSystem::service)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(PFS::service)));
@@ -122,7 +126,7 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     scheduler.scheduleTask(scheduler.createKernelTask(reinterpret_cast<uint32_t>(HardwareFileSystem::detectHardware)));
     scheduler.scheduleTask(scheduler.createKernelTask(reinterpret_cast<uint32_t>(Discovery::discoverDevices)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(Startup::service)));
-
+    
     scheduler.enterIdle();
 
     return 0;
