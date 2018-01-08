@@ -138,6 +138,8 @@ namespace Memory {
 
         void preallocateKernelPageTables();
 
+        void sharePages(uint32_t ownerStartAddress, VirtualMemoryManager* recipientVMM, uint32_t recipientStartAddress, uint32_t count);
+
     private:
 
         uintptr_t allocatePageTable(uintptr_t virtualAddress, int index);

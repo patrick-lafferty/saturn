@@ -350,4 +350,36 @@ namespace Memory {
     PageDirectory VirtualMemoryManager::getPageDirectory() {
         return *directory;
     }
+
+    void VirtualMemoryManager::sharePages(uint32_t ownerStartAddress, VirtualMemoryManager* recipientVMM, uint32_t recipientStartAddress, uint32_t count) {
+        map(nextAddress, recipientVMM->directoryPhysicalAddress);
+        auto recipientDirectory = static_cast<PageDirectory*>(reinterpret_cast<void*>(nextAddress));
+        auto directoryIndex = extractDirectoryIndex(recipientStartAddress); 
+
+        auto recipientPageTableAddress = recipientDirectory->pageTableAddresses[directoryIndex];
+        map(nextAddress + PageSize, recipientPageTableAddress);
+
+        auto recipientPageTable = reinterpret_cast<PageTable*>(recipientPageTableAddress);
+
+        auto tableIndex = extractTableIndex(recipientStartAddress);
+
+        auto pagesToShare = (tableIndex + count > 1023) ? 1024 : (tableIndex + count);
+        auto pageTable = static_cast<PageTable*>(reinterpret_cast<void*>(calculatePageTableAddress(ownerStartAddress)));
+
+        int pagesShared = 0;
+        for (auto i = tableIndex; i < pagesToShare; i++) {
+            recipientPageTable->pageAddresses[i] = pageTable->pageAddresses[i];
+            pagesShared++;
+        }
+
+        unmap(nextAddress, 2);
+
+        if (tableIndex + count > 1023) {
+            //its split between two page tables
+            count -= pagesShared;
+            sharePages(ownerStartAddress + pagesShared * PageSize, recipientVMM, recipientStartAddress + pagesShared * PageSize,
+                count);
+        }
+    
+    }
 }
