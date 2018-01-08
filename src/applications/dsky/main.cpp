@@ -52,7 +52,7 @@ int dsky_main() {
     };
 
     auto renderer = Window::Text::createRenderer(windowBuffer->buffer);
-    renderer->drawText("P");
+    renderer->drawText("Hello, world!");
 
     while (true) {
 
@@ -60,8 +60,8 @@ int dsky_main() {
         update.serviceType = Kernel::ServiceType::WindowManager;
         update.x = 0;
         update.y = 0;
-        update.width = 100;
-        update.height = 100;
+        update.width = 800;
+        update.height = 600;
 
         /*for (int y = 0; y < 100; y++) {
             for (int x = 0; x < 100; x++) {
@@ -77,6 +77,6 @@ int dsky_main() {
             colourId = 0;
         }
 
-        sleep(10);
+        sleep(100);
     }
 }
