@@ -10,6 +10,8 @@
 #include <userland/shell/shell.h>
 #include <services/drivers/bochsGraphicsAdaptor/driver.h>
 #include <services/massStorageFileSystem/system.h>
+#include <applications/dsky/dsky.h>
+#include <services/windows/manager.h>
 
 using namespace VirtualFileSystem;
 
@@ -79,6 +81,12 @@ namespace FakeFileSystem {
                             }
                             else if (strcmp(request.path, "/massStorage.service") == 0) {
                                 entryPoint = reinterpret_cast<uintptr_t>(MassStorageFileSystem::service);
+                            }
+                            else if (strcmp(request.path, "/dsky.bin") == 0) {
+                                entryPoint = reinterpret_cast<uintptr_t>(dsky_main);
+                            }
+                            else if (strcmp(request.path, "/windows.service") == 0) {
+                                entryPoint = reinterpret_cast<uintptr_t>(Window::main);
                             }
                             else {
                                 result.success = false;

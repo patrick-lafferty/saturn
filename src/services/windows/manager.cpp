@@ -4,6 +4,7 @@
 #include <system_calls.h>
 #include <vector>
 #include <list>
+#include <services/startup/startup.h>
 
 using namespace Kernel;
 
@@ -38,12 +39,18 @@ namespace Window {
     }
 
     void launchShell() {
-        run("/applications/dsky/dsky.bin");
-    }
+        //run("/applications/dsky/dsky.bin");
+        uint32_t descriptor {0};
+        auto result = openSynchronous("/bin/dsky.bin");
 
-    struct alignas(0x1000) WindowBuffer {
-        uint32_t buffer[800 * 600];
-    };
+        auto entryPointResult = readSynchronous(result.fileDescriptor, 4);
+        uint32_t entryPoint {0};
+        memcpy(&entryPoint, entryPointResult.buffer, 4);
+
+        if (entryPoint > 0) {
+            auto pid = run(entryPoint);
+        }
+    }
 
     struct Window {
         WindowBuffer* buffer;
@@ -61,6 +68,8 @@ namespace Window {
         std::vector<Window> windows;
         std::list<Window> windowsWaitingToShare;
 
+        launchShell();
+
         while (true) {
             IPC::MaximumMessageBuffer buffer;
             receive(&buffer);
@@ -72,6 +81,7 @@ namespace Window {
                         case MessageId::CreateWindow: {
                             auto message = IPC::extractMessage<CreateWindow>(buffer);
                             auto windowBuffer = new WindowBuffer;
+                            memset(windowBuffer->buffer, 0, 800 * 600 * 4);
 
                             Window window {windowBuffer, buffer.senderTaskId};
                             windowsWaitingToShare.push_back(window);
@@ -81,6 +91,8 @@ namespace Window {
                             share.sharedAddress = message.bufferAddress;
                             share.sharedTaskId = message.senderTaskId;
                             share.size = 800 * 600 * 4;
+
+                            send(IPC::RecipientType::ServiceRegistryMailbox, &share);
 
                             break;
                         }

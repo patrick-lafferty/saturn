@@ -225,7 +225,6 @@ namespace MassStorageFileSystem {
 
         int remainingPartitionEntries {0};
         State currentState {State::ReadGPTHeader};
-        sleep(400);
 
         while (true) {
             IPC::MaximumMessageBuffer buffer;
@@ -363,7 +362,7 @@ namespace MassStorageFileSystem {
     void service() {
         waitForServiceRegistered(Kernel::ServiceType::VFS);
         registerService();
-        sleep(300);
+        sleep(100);
         auto driver = setupDriver();
         auto massStorage = new MassStorageController(driver);
         massStorage->preloop();
