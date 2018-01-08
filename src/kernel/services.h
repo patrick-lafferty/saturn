@@ -15,6 +15,7 @@ namespace Kernel {
         Memory,
         VFS,
         BGA,
+        WindowManager,
         ServiceTypeEnd
     };
 
@@ -34,7 +35,9 @@ namespace Kernel {
         RunResult,
         LinearFrameBufferFound,
         MapMemory,
-        MapMemoryResult
+        MapMemoryResult,
+        ShareMemory,
+        ShareMemoryResult
     };
 
     struct RegisterService : IPC::Message {
@@ -213,6 +216,29 @@ namespace Kernel {
         }
 
         void* start;
+    };
+
+    struct ShareMemory : IPC::Message {
+        ShareMemory() {
+            messageId = static_cast<uint32_t>(MessageId::ShareMemory);
+            length = sizeof(ShareMemory);
+            messageNamespace = IPC::MessageNamespace::ServiceRegistry;
+        }
+
+        uint32_t ownerAddress;
+        uint32_t sharedAddress;
+        uint32_t sharedTaskId;
+        uint32_t size;
+    };
+
+    struct ShareMemoryResult : IPC::Message {
+        ShareMemoryResult() {
+            messageId = static_cast<uint32_t>(MessageId::ShareMemoryResult);
+            length = sizeof(ShareMemoryResult);
+            messageNamespace = IPC::MessageNamespace::ServiceRegistry;
+        }
+
+        uint32_t sharedTaskId;
     };
 
     struct KnownHardwareAddresses {

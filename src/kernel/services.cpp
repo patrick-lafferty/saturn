@@ -2,6 +2,7 @@
 #include <string.h>
 #include <scheduler.h>
 #include <memory/virtual_memory_manager.h>
+#include <memory/physical_memory_manager.h>
 #include <stdio.h>
 #include "permissions.h"
 #include <cpu/tss.h>
@@ -136,6 +137,26 @@ namespace Kernel {
                         currentTask->mailbox->send(&result);
                         
                         break;
+                    }
+                    case MessageId::ShareMemory: {
+                        auto request = IPC::extractMessage<ShareMemory>(
+                            *static_cast<IPC::MaximumMessageBuffer*>(message));
+
+                        auto currentTask = currentScheduler->getTask(message->senderTaskId);
+                        auto recipientTask = currentScheduler->getTask(request.sharedTaskId);
+
+                        currentTask->virtualMemoryManager->sharePages(
+                            request.ownerAddress,
+                            recipientTask->virtualMemoryManager,
+                            request.sharedAddress,
+                            request.size / Memory::PageSize
+                        );
+
+                        ShareMemoryResult result;
+                        result.recipientId = request.senderTaskId;
+                        result.sharedTaskId = request.sharedTaskId;
+
+                        currentTask->mailbox->send(&result);
                     }
                 }
                 break;
@@ -304,6 +325,30 @@ namespace Kernel {
 
                 grantIOPort16(0x1ce, task->tss->ioPermissionBitmap);
                 grantIOPort16(0x1cf, task->tss->ioPermissionBitmap);
+
+                auto linearFrameBuffer = task->virtualMemoryManager->allocatePages(470);
+                auto pageFlags = 
+                    static_cast<int>(Memory::PageTableFlags::Present)
+                    | static_cast<int>(Memory::PageTableFlags::AllowWrite)
+                    | static_cast<int>(Memory::PageTableFlags::AllowUserModeAccess);
+
+                for (int i = 0; i < 470; i++) {
+                    task->virtualMemoryManager->map(linearFrameBuffer + 0x1000 * i, addresses.linearFrameBuffer + 0x1000 * i, pageFlags);
+                }
+
+                VGAServiceMeta meta;
+                meta.vgaAddress = linearFrameBuffer;
+                task->mailbox->send(&meta);
+
+                break;
+            }
+            case ServiceType::WindowManager: {
+                auto task = currentScheduler->getTask(taskId);
+
+                if (task == nullptr) {
+                    kprintf("[ServiceRegistry] Tried to setupService a null task\n");
+                    return;
+                }
 
                 auto linearFrameBuffer = task->virtualMemoryManager->allocatePages(470);
                 auto pageFlags = 

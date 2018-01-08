@@ -18,7 +18,8 @@ namespace IPC {
         PS2,
         Keyboard,
         Memory,
-        VFS
+        VFS,
+        WindowManager
     };
 
     struct Message {
