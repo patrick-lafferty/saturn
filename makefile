@@ -25,12 +25,14 @@ MKDIR = mkdir -p
 include src/kernel/make.config
 include src/services/make.config
 include src/userland/make.config
+include src/services/windows/lib/make.config
 
 OBJS = \
 	$(ARCHDIR)/crti.o \
 	$(shell $(CC) $(CFLAGS) -m32 -print-file-name=crtbegin.o) \
 	$(KERNEL_OBJS) \
 	$(SERVICES_OBJS) \
+	$(LIB_WINDOW_OBJS) \
 	$(USERLAND_OBJS) \
 	$(shell $(CC) $(CFLAGS) -m32 -print-file-name=crtend.o) \
 	$(ARCHDIR)/crtn.o
@@ -48,7 +50,8 @@ DEPS = \
 	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(LIBC_HOSTED_OBJS))) \
 	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(LIBC++_FREE_OBJS))) \
 	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(TEST_LIBC++_FREE_OBJS))) \
-	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(USERLAND_OBJS)))
+	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(USERLAND_OBJS))) \
+	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(LIB_WINDOW_OBJS)))
 
 include src/libc/make.config
 include test/libc/make.config
@@ -58,7 +61,7 @@ include test/libc++/make.config
 
 $(shell mkdir -p $(dir $(DEPS)) >/dev/null)
 
-LIBS = -lfreetype -luserland -lc_test_freestanding -lc++_test_freestanding -lc++_freestanding -lc_freestanding 
+LIBS = -luserland -lwindows -lfreetype -lc_test_freestanding -lc++_test_freestanding -lc++_freestanding -lc_freestanding 
 
 LINK_LIST = \
 	$(ARCHDIR)/crti.o \
@@ -81,7 +84,7 @@ sysroot:
 	$(MKDIR) sysroot/system/libraries
 	$(MKDIR) sysroot/system/include
 
-saturn.bin: libc_freestanding libc_hosted test_libc libc++ test_libc++ userland $(OBJS) $(ARCHDIR)/linker.ld
+saturn.bin: libc_freestanding libc_hosted test_libc libc++ test_libc++ userland libwindows $(OBJS) $(ARCHDIR)/linker.ld
 	$(LD) -T $(ARCHDIR)/linker.ld -o sysroot/system/boot/$@ $(LDFLAGS) $(LINK_LIST)  
 
 libc_freestanding: $(LIBC_FREE_OBJS)
@@ -117,6 +120,11 @@ userland: $(USERLAND_OBJS)
 	$(AR) rcs src/userland/libuserland.a $(USERLAND_OBJS)
 	ranlib src/userland/libuserland.a
 	cp src/userland/libuserland.a sysroot/system/libraries
+
+libwindows: $(LIB_WINDOW_OBJS)
+	$(AR) rcs src/services/windows/lib/libwindows.a $(LIB_WINDOW_OBJS)
+	ranlib src/services/windows/lib/libwindows.a
+	cp src/services/windows/lib/libwindows.a sysroot/system/libraries
 
 %.o: %.s
 	$(AS) $< -o $@ $(ASFLAGS)

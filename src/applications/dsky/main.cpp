@@ -2,6 +2,7 @@
 #include <services/windows/messages.h>
 #include <system_calls.h>
 #include <services.h>
+#include <services/windows/lib/text.h>
 
 using namespace Window;
 
@@ -50,6 +51,9 @@ int dsky_main() {
         0x00'00'00'FF, 
     };
 
+    auto renderer = Window::Text::createRenderer(windowBuffer->buffer);
+    renderer->drawText("P");
+
     while (true) {
 
         Update update;
@@ -59,11 +63,11 @@ int dsky_main() {
         update.width = 100;
         update.height = 100;
 
-        for (int y = 0; y < 100; y++) {
+        /*for (int y = 0; y < 100; y++) {
             for (int x = 0; x < 100; x++) {
                 windowBuffer->buffer[x + y * 800] = colours[colourId]; 
             }
-        }
+        }*/
 
         send(IPC::RecipientType::ServiceName, &update);
 
@@ -73,6 +77,6 @@ int dsky_main() {
             colourId = 0;
         }
 
-        sleep(100);
+        sleep(10);
     }
 }
