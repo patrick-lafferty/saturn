@@ -178,8 +178,8 @@ namespace Memory {
     }
 
     void VirtualMemoryManager::unmap(uintptr_t virtualAddress, uint32_t count) {
-        auto end = virtualAddress + count * 0x1000;
-        for(auto address = virtualAddress; address < end; address += 0x1000) {
+        auto end = virtualAddress + count * PageSize;
+        for(auto address = virtualAddress; address < end; address += PageSize) {
             auto pageTableAddress = calculatePageTableAddress(address);
             auto pageTable = static_cast<PageTable*>(reinterpret_cast<void*>(pageTableAddress));
             auto tableIndex = extractTableIndex(address);
@@ -359,7 +359,7 @@ namespace Memory {
         auto recipientPageTableAddress = recipientDirectory->pageTableAddresses[directoryIndex];
         map(nextAddress + PageSize, recipientPageTableAddress);
 
-        auto recipientPageTable = reinterpret_cast<PageTable*>(recipientPageTableAddress);
+        auto recipientPageTable = reinterpret_cast<PageTable*>(nextAddress + PageSize);
 
         auto tableIndex = extractTableIndex(recipientStartAddress);
 
