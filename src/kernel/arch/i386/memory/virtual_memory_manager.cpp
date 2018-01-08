@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <heap.h>
 #include <scheduler.h>
+#include <algorithm>
 
 #ifndef TARGET_PREKERNEL
 void activateVMM(Kernel::Task* task) {
@@ -360,21 +361,21 @@ namespace Memory {
         map(nextAddress + PageSize, recipientPageTableAddress);
 
         auto recipientPageTable = reinterpret_cast<PageTable*>(nextAddress + PageSize);
-
-        auto tableIndex = extractTableIndex(recipientStartAddress);
-
-        auto pagesToShare = (tableIndex + count > 1023) ? 1024 : (tableIndex + count);
+        auto recipientTableIndex = extractTableIndex(recipientStartAddress);
+        auto ownerTableIndex = extractTableIndex(ownerStartAddress);
+        auto maxTableIndex = std::max(ownerTableIndex, recipientTableIndex);
+        auto pagesToShare = std::min(1024u, count + maxTableIndex);
         auto pageTable = static_cast<PageTable*>(reinterpret_cast<void*>(calculatePageTableAddress(ownerStartAddress)));
 
         int pagesShared = 0;
-        for (auto i = tableIndex; i < pagesToShare; i++) {
-            recipientPageTable->pageAddresses[i] = pageTable->pageAddresses[i];
+        for (auto r = recipientTableIndex, o = ownerTableIndex; r < pagesToShare && o < pagesToShare; r++, o++) {
+            recipientPageTable->pageAddresses[r] = pageTable->pageAddresses[o];
             pagesShared++;
         }
 
         unmap(nextAddress, 2);
 
-        if (tableIndex + count > 1023) {
+        if (maxTableIndex + count > 1023) {
             //its split between two page tables
             count -= pagesShared;
             sharePages(ownerStartAddress + pagesShared * PageSize, recipientVMM, recipientStartAddress + pagesShared * PageSize,
