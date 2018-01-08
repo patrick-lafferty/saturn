@@ -21,6 +21,10 @@ typedef struct fpost fpos_t;
 #define SEEK_END 2
 #define SEEK_SET 3
 
+extern FILE* stdin;
+extern FILE* stdout;
+extern FILE* stderr;
+
 int fclose(FILE* stream);
 int fflush(FILE* stream);
 FILE* fopen(const char* restrict filename, const char* restrict mode);
