@@ -39,4 +39,8 @@ namespace Window {
         uint32_t x, y;
         uint32_t width, height;
     };
+
+    struct alignas(0x1000) WindowBuffer {
+        uint32_t buffer[800 * 600];
+    };
 }

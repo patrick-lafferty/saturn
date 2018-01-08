@@ -127,8 +127,11 @@ namespace Kernel {
         currentScheduler->exitKernelTask();
     }
 
-    struct alignas(0x1000) Stack {
+    /*struct alignas(0x1000) Stack {
         char data[0x100000];
+    };*/
+    struct alignas(0x100000) Stack {
+
     };
 
     uint32_t createStack(bool) {
@@ -146,7 +149,7 @@ namespace Kernel {
         blockedQueue.append(cleanupTask);
 
         elapsedTime_milliseconds = 0;
-        timeslice_milliseconds = 50;
+        timeslice_milliseconds = 10;
         kernelHeap = LibC_Implementation::KernelHeap;
         kernelVMM = Memory::currentVMM;
         this->kernelTSS = kernelTSS;

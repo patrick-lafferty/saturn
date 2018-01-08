@@ -1,6 +1,7 @@
 #include "driver.h"
 #include <services.h>
 #include <system_calls.h>
+#include <services/startup/startup.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include FT_GLYPH_H
@@ -19,26 +20,12 @@ namespace BGA {
     };
 
     void messageLoop(uint32_t address, FreeTypeConfig config) {
-        auto linearFrameBuffer = reinterpret_cast<uint32_t volatile*>(address);
+        /*auto linearFrameBuffer = reinterpret_cast<uint32_t volatile*>(address);
 
         auto colour = 0x00'FF'00'00u;
         auto bufferSize = 800 * 600 * 4;
 
-        //memset(linearFrameBuffer, colour, bufferSize);
-        /*for (int y = 0; y < 600; y++) {
-            for (int x = 0; x < 800; x++) {
-                linearFrameBuffer[x + y * 800] = colour;
-            }
-
-            if (y == 100) colour = 0x00'2F'00'00; 
-            if (y == 200) colour = 0x00'00'fF'00;
-            if (y == 300) colour = 0x00'00'2F'00;
-            if (y == 400) colour = 0x00'00'00'FF;
-            if (y == 500) colour = 0x00'00'00'2F;
-        }*/
-
-        //auto error = FT_Set_Charmap(config.face, *config.face->charmaps);
-        //auto error = FT_Select_Charmap(config.face, FT_ENCODING_APPLE_ROMAN);
+    
 auto theta = 0.f;
         while (true) {
         char* name = "pat";
@@ -72,7 +59,7 @@ FT_Glyph_Transform( glyph, &matrix, 0 );
 FT_Vector  origin;
 
 
-origin.x = 32; /* 1/2 pixel in 26.6 format */
+origin.x = 32; 
 origin.y = 0;
             error = FT_Render_Glyph(config.face->glyph, FT_RENDER_MODE_NORMAL);
             FT_Glyph_To_Bitmap(
@@ -94,6 +81,8 @@ FT_BitmapGlyph  bit = (FT_BitmapGlyph)glyph;
             it++;
         }
         }
+*/
+        Startup::runProgram("/bin/windows.service");
 
         while (true) {
             IPC::MaximumMessageBuffer buffer;
@@ -234,9 +223,8 @@ FT_BitmapGlyph  bit = (FT_BitmapGlyph)glyph;
     }
 
     void service() {
-        return;
         auto bgaAddress = registerService();
-        sleep(600);
+        sleep(200);
         auto freetypeConfig = setupAdaptor();
 
         if (freetypeConfig.library == nullptr) {
