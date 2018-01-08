@@ -53,6 +53,9 @@ int dsky_main() {
 
     auto renderer = Window::Text::createRenderer(windowBuffer->buffer);
     renderer->drawText("Hello, world!");
+    renderer->drawText("This is line 2, or b");
+    renderer->drawText("2b - or !2b?");
+    renderer->drawText("That is the current inquiry.");
 
     while (true) {
 

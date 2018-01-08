@@ -27,6 +27,7 @@ namespace Window::Text {
         FT_Library library;
         FT_Face face;
         uint32_t* frameBuffer;
+        uint32_t windowHeight;
 
     };
 

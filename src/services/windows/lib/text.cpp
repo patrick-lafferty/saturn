@@ -13,7 +13,8 @@ namespace Window::Text {
         FT_Face face;
 
         error = FT_New_Face(library,
-            "/system/fonts/OxygenMono-Regular.ttf",
+            //"/system/fonts/OxygenMono-Regular.ttf",
+            "/system/fonts/Oxygen-Sans.ttf",
             0,
             &face);
 
@@ -25,8 +26,8 @@ namespace Window::Text {
             face,
             0,
             16 * 64,
-            300,
-            300
+            96,
+            96
         );
 
         if (error != 0) {
@@ -38,7 +39,7 @@ namespace Window::Text {
 
     Renderer::Renderer(FT_Library library, FT_Face face, uint32_t* frameBuffer)
         : library {library}, face {face}, frameBuffer {frameBuffer} {
-
+        windowHeight = 600;
     }
 
     FT_Glyph Glyph::copyImage() {
@@ -89,8 +90,8 @@ namespace Window::Text {
             return {};
         }
 
-        box.width = (box.box.xMax - box.box.xMin) ;/// 64;
-        box.height = (box.box.yMax - box.box.yMin) ;/// 64;
+        box.width = (box.box.xMax - box.box.xMin); 
+        box.height = (box.box.yMax - box.box.yMin);
 
         return box;
     }
@@ -99,10 +100,10 @@ namespace Window::Text {
         auto layout = layoutText(text);
         auto bounds = calculateBoundingBox(layout);
 
+        static uint32_t offset = 0;
         FT_Vector position;
         position.x = 0;
-        position.y = (600 - (bounds.height / 1)) * 64;
-        //position.y = ((600 - bounds.height) / 2) * 64;
+        position.y = (windowHeight - bounds.height ) * 64;
 
         for(auto& glyph : layout) {
 
@@ -122,7 +123,7 @@ namespace Window::Text {
             auto bitmap = reinterpret_cast<FT_BitmapGlyph>(image);
 
             for (int row = 0; row < bitmap->bitmap.rows; row++) {
-                auto y = (600 - bitmap->top) + row;//bitmap->top - (bitmap->bitmap.rows - row);
+                auto y = offset + (windowHeight - bitmap->top) + row;
 
                 for (int column = 0; column < bitmap->bitmap.pitch; column++) {
                     auto x = column + bitmap->left;
@@ -136,6 +137,18 @@ namespace Window::Text {
 
             //FT_Done_Glyph(image);
         }
+
+        offset += face->size->metrics.height / 64;
+        static int i = 0;
+        i++;
+        int sizes[] = {16, 20, 24, 32};
+        FT_Set_Char_Size(
+            face,
+            0,
+            sizes[i] * 64,
+            96,
+            96
+        );
     }
 
     std::vector<Glyph> Renderer::layoutText(char* text) {
@@ -144,11 +157,10 @@ namespace Window::Text {
         auto x = 0u;
         auto y = 0u;
 
-        while (*text != '\0') { 
+        bool kernTableAvailable = FT_HAS_KERNING(face);
+        uint32_t previousIndex = 0;
 
-            Glyph glyph;
-            glyph.position.x = x;
-            glyph.position.y = y;
+        while (*text != '\0') { 
 
             auto glyphIndex = FT_Get_Char_Index(face, *text); 
             auto error = FT_Load_Glyph(
@@ -157,12 +169,29 @@ namespace Window::Text {
                 0
             );
 
+            if (kernTableAvailable && previousIndex > 0) {
+                FT_Vector kerning;
+
+                FT_Get_Kerning(face, 
+                    previousIndex, 
+                    glyphIndex,
+                    FT_KERNING_DEFAULT, 
+                    &kerning);
+
+                x += kerning.x >> 6;
+            }
+
+            Glyph glyph;
+            glyph.position.x = x;
+            glyph.position.y = y;
+
             FT_Get_Glyph(face->glyph, &glyph.image);
             FT_Glyph_Transform(glyph.image, nullptr, &glyph.position);
 
             x += face->glyph->advance.x >> 6;
             glyphs.push_back(glyph);
             text++;
+            previousIndex = glyphIndex;
         }
 
         return glyphs;
