@@ -165,8 +165,7 @@ int printf(const char* format, ...) {
     va_start(args, format);
 
     int charactersWritten = 0;
-    Terminal::PrintMessage message;
-    message.serviceType = Kernel::ServiceType::Terminal;
+    VirtualFileSystem::WriteRequest message;
     memset(message.buffer, '\0', sizeof(message.buffer));
 
     auto write = [&](auto c) {
@@ -179,19 +178,7 @@ int printf(const char* format, ...) {
     va_end(args);
     
     message.buffer[charactersWritten] = '\0';
-    message.stringLength = charactersWritten;
-
-    if (charactersWritten < 32) {
-        message.messageId = static_cast<uint32_t>(Terminal::MessageId::Print32);
-    }
-    else if (charactersWritten < 64) {
-        message.messageId = static_cast<uint32_t>(Terminal::MessageId::Print64);
-    }
-    else if (charactersWritten < 128) {
-        message.messageId = static_cast<uint32_t>(Terminal::MessageId::Print128);
-    }
-
-    send(IPC::RecipientType::ServiceName, &message);
+    fwrite(message.buffer, charactersWritten, 1, stdout);
 
     return charactersWritten;
 }

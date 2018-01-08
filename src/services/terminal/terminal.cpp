@@ -2,12 +2,14 @@
 #include <string.h>
 #include <services.h>
 #include <system_calls.h>
+#include <services/virtualFileSystem/virtualFileSystem.h>
 #include "vga.h"
 #include <stdlib.h>
 #include <algorithm>
 
 using namespace VGA;
 using namespace Kernel;
+using namespace VirtualFileSystem;
 
 namespace Terminal {
 
@@ -83,6 +85,27 @@ namespace Terminal {
         }
     }
 
+    void handleOpenRequest(OpenRequest& request) {
+        std::string_view name {request.path, strlen(request.path)};
+
+        OpenResult result;
+        result.requestId = request.requestId;
+        result.serviceType = Kernel::ServiceType::VFS;
+        result.success = true;
+
+        if (name.compare("/display") == 0) {
+            result.fileDescriptor = 1;
+        }
+        else if (name.compare("/input") == 0) {
+            result.fileDescriptor = 0;
+        }
+        else {
+            result.success = false;
+        }
+
+        send(IPC::RecipientType::ServiceName, &result);
+    }
+
     void messageLoop() {
 
         Terminal emulator{new uint16_t[2000]};
@@ -94,10 +117,48 @@ namespace Terminal {
             receive(&buffer);
 
             switch(buffer.messageNamespace) {
+                case IPC::MessageNamespace::VFS: {
+                    switch(static_cast<::VirtualFileSystem::MessageId>(buffer.messageId)) {
+                        case ::VirtualFileSystem::MessageId::OpenRequest: {
+                            auto request = IPC::extractMessage<OpenRequest>(buffer);
+                            handleOpenRequest(request);
+                            break;
+                        }
+                        case ::VirtualFileSystem::MessageId::ReadRequest: {
+                            auto request = IPC::extractMessage<ReadRequest>(buffer);
+                            //handleReadRequest(request, openDescriptors);
+                            break;
+                        }
+                        case ::VirtualFileSystem::MessageId::WriteRequest: {
+                            auto request = IPC::extractMessage<WriteRequest>(buffer);
+                            WriteResult result;
+                            result.requestId = request.requestId;
+                            result.recipientId = request.senderTaskId;
+
+                            if (request.fileDescriptor == 1) {
+                                auto dirty = emulator.interpret(reinterpret_cast<char*>(request.buffer), 
+                                    request.writeLength);
+                                handlePrint(dirty, emulator);
+
+                                result.success = true;
+                            }
+                            else {
+                                result.success = false;
+                            }
+
+                            send(IPC::RecipientType::TaskId, &result);
+
+                            break;
+                        }
+                        default:
+                            break;
+                    }
+                    break;
+                }
                 case IPC::MessageNamespace::Terminal: {
 
                     switch(static_cast<MessageId>(buffer.messageId)) {
-                        case MessageId::Print: {
+                        /*case MessageId::Print: {
                             auto message = IPC::extractMessage<PrintMessage>(buffer);
                             auto dirty = emulator.interpret(message.buffer, message.stringLength);
                             handlePrint(dirty, emulator);
@@ -124,7 +185,7 @@ namespace Terminal {
                             handlePrint(dirty, emulator);
 
                             break;
-                        }
+                        }*/
                         case MessageId::KeyPress: {
                             auto message = IPC::extractMessage<KeyPress>(buffer);
                             queue.add(message.key);
@@ -169,6 +230,14 @@ namespace Terminal {
 
         send(IPC::RecipientType::ServiceRegistryMailbox, &registerRequest);
         receive(&buffer);
+
+        MountRequest request;
+        const char* path = "/system/runtime/terminal";
+        memcpy(request.path, path, strlen(path) + 1);
+        request.serviceType = Kernel::ServiceType::VFS;
+        request.cacheable = false;
+
+        send(IPC::RecipientType::ServiceName, &request);
 
         NotifyServiceReady ready;
         send(IPC::RecipientType::ServiceRegistryMailbox, &ready);

@@ -577,3 +577,10 @@ fread - declared
 tt_loader_init returns 128
 because tt_size_ready_bytecode returns 128
 because tt_size_run_fpgm returns 128
+* Step 14: stdin/out/err
+
+Right now printf directly sends a Terminal::Print message. Change it to write to
+the proper file descriptor so that tasks started before the window manager
+print as normal, and graphical tasks print with the bga driver
+
+- [ ] VFS file descriptors need to be per-process, not shared globally

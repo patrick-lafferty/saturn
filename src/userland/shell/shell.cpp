@@ -519,6 +519,10 @@ namespace Shell {
         uint32_t cursorPosition {0};
         uint32_t promptLength = 7;
 
+        stdin = fopen("/system/runtime/terminal/input", "");
+        stdout = fopen("/system/runtime/terminal/display", "");
+        stderr = fopen("/system/runtime/terminal/display", "");
+
         while (true) {
             moveCursor(1);
             printf("\e[38;5;9mshell> \e[38;5;15m");
