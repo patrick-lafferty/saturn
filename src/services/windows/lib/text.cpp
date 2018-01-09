@@ -111,14 +111,6 @@ namespace Window::Text {
 
             auto image = glyph.copyImage();
             
-            /*if ((position.x + (image->advance.x >> 10)) >= windowWidth) {// * 64) {
-                position.x = 0;
-                position.y -= face->size->metrics.height;
-                return;
-            }*/
-
-            //FT_Glyph_Transform(image, nullptr, &position);
-
             auto error = FT_Glyph_To_Bitmap(
                 &image,
                 FT_RENDER_MODE_NORMAL,
@@ -129,10 +121,6 @@ namespace Window::Text {
                 continue;
             }
 
-            /*if (position.x + (image->advance.x >> 10) >= windowWidth * 64) {
-                position.x = 0;
-                position.y += face->size->metrics.height / 64;
-            }*/
             position.x = glyph.position.x;
             position.y = glyph.position.y + startingY; 
 
@@ -142,8 +130,6 @@ namespace Window::Text {
 
             for (int row = 0; row < bitmap->bitmap.rows; row++) {
                 auto y = (windowHeight - bitmap->top) + row;
-                //auto y = bitmap->top + row;
-                //auto y = (windowHeight - bounds.height - bitmap->top) + row;
 
                 for (int column = 0; column < bitmap->bitmap.pitch; column++) {
                     auto x = column + bitmap->left;
@@ -158,18 +144,9 @@ namespace Window::Text {
                 }
             }
 
-            //position.x += (image->advance.x >> 10);
-            //position.y += (image->advance.y >> 10);
-
-            /*if (position.x / 64 >= windowWidth) {
-                position.x = 0;
-                position.y += face->size->metrics.height;
-            }*/
-
             //FT_Done_Glyph(image);
         }
 
-        //offset += face->size->metrics.height / 64;
     }
 
     std::vector<Glyph> Renderer::layoutText(char* text) {
