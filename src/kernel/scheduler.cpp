@@ -149,7 +149,7 @@ namespace Kernel {
         blockedQueue.append(cleanupTask);
 
         elapsedTime_milliseconds = 0;
-        timeslice_milliseconds = 10;
+        timeslice_milliseconds = 20;
         kernelHeap = LibC_Implementation::KernelHeap;
         kernelVMM = Memory::currentVMM;
         this->kernelTSS = kernelTSS;

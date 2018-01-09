@@ -43,19 +43,8 @@ int dsky_main() {
         return 1;
     }
 
-    int colourId = 0;
-    uint32_t colours[] = {
-        0xFF'00'00'00, 
-        0x00'FF'00'00, 
-        0x00'00'FF'00, 
-        0x00'00'00'FF, 
-    };
-
     auto renderer = Window::Text::createRenderer(windowBuffer->buffer);
-    renderer->drawText("Hello, world!");
-    renderer->drawText("This is line 2, or b");
-    renderer->drawText("2b - or !2b?");
-    renderer->drawText("That is the current inquiry.");
+    renderer->drawText("abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz0123456789");
 
     while (true) {
 
@@ -66,19 +55,7 @@ int dsky_main() {
         update.width = 800;
         update.height = 600;
 
-        /*for (int y = 0; y < 100; y++) {
-            for (int x = 0; x < 100; x++) {
-                windowBuffer->buffer[x + y * 800] = colours[colourId]; 
-            }
-        }*/
-
         send(IPC::RecipientType::ServiceName, &update);
-
-        colourId++;
-
-        if (colourId == 4) {
-            colourId = 0;
-        }
 
         sleep(100);
     }
