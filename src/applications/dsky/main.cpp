@@ -44,7 +44,10 @@ int dsky_main() {
     }
 
     auto renderer = Window::Text::createRenderer(windowBuffer->buffer);
-    renderer->drawText("abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz0123456789");
+    char* text = "abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz0123456789";
+    auto layout = renderer->layoutText(text, 400);
+    renderer->drawText(layout, 50, 100);
+    renderer->drawText(layout, 300, 300);
 
     while (true) {
 

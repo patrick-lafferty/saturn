@@ -584,3 +584,10 @@ the proper file descriptor so that tasks started before the window manager
 print as normal, and graphical tasks print with the bga driver
 
 - [ ] VFS file descriptors need to be per-process, not shared globally
+- [ ] need to support per-process namespaces
+- [ ] need a standard directory for runtime environment things, like keyboard, console
+  - /system/runtime/keyboard
+  
+* Step 15: Window Manager
+
+-try out DejaVu and Noto fonts

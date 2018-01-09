@@ -1,4 +1,5 @@
 #include "text.h"
+#include <algorithm>
 
 namespace Window::Text {
     Renderer* createRenderer(uint32_t* frameBuffer) {
@@ -55,12 +56,6 @@ namespace Window::Text {
         return glyph;
     }
 
-    struct BoundingBox {
-        FT_BBox box;
-        uint32_t width;
-        uint32_t height;
-    };
-
     BoundingBox calculateBoundingBox(std::vector<Glyph>& glyphs) {
         BoundingBox box {{10000, 10000, -10000, -10000}};
 
@@ -97,17 +92,14 @@ namespace Window::Text {
         return box;
     }
 
-    void Renderer::drawText(char* text) {
-        auto layout = layoutText(text);
-        auto bounds = calculateBoundingBox(layout);
+    void Renderer::drawText(TextLayout& layout, uint32_t x, uint32_t y) {
 
         static uint32_t offset = 0;
-        FT_Vector position;
-        position.x = 0;
-        position.y = (windowHeight - bounds.height );
-        auto startingY = position.y;
+        FT_Vector origin;
+        origin.x = x;
+        origin.y = (windowHeight - layout.bounds.height) - std::min(y, windowHeight - layout.bounds.height);
 
-        for(auto& glyph : layout) {
+        for(auto& glyph : layout.glyphs) {
 
             auto image = glyph.copyImage();
             
@@ -121,12 +113,9 @@ namespace Window::Text {
                 continue;
             }
 
-            position.x = glyph.position.x;
-            position.y = glyph.position.y + startingY; 
-
             auto bitmap = reinterpret_cast<FT_BitmapGlyph>(image);
-            bitmap->top += position.y;
-            bitmap->left += position.x;
+            bitmap->top += glyph.position.y + origin.y;
+            bitmap->left += glyph.position.x + origin.x;
 
             for (int row = 0; row < bitmap->bitmap.rows; row++) {
                 auto y = (windowHeight - bitmap->top) + row;
@@ -135,22 +124,18 @@ namespace Window::Text {
                     auto x = column + bitmap->left;
 
                     auto index = x + y * windowWidth;
-
-                    if (index >= 1920000) {
-                        asm("hlt");
-                    }
-
                     frameBuffer[index] = *bitmap->bitmap.buffer++;
                 }
             }
 
-            //FT_Done_Glyph(image);
+            /*TODO: this crashes, find out why
+            FT_Done_Glyph(image);*/
         }
 
     }
 
-    std::vector<Glyph> Renderer::layoutText(char* text) {
-        std::vector<Glyph> glyphs;
+    TextLayout Renderer::layoutText(char* text, uint32_t allowedWidth) {
+        TextLayout layout;
 
         auto x = 0u;
         auto y = 0;
@@ -181,7 +166,7 @@ namespace Window::Text {
 
             auto widthRequired = (face->glyph->metrics.width >> 6) + (face->glyph->advance.x >> 6); 
 
-            if ((x + widthRequired) >= windowWidth) {
+            if ((x + widthRequired) >= allowedWidth) {
                 x = 0;
                 y -= face->size->metrics.height >> 6;
             }
@@ -195,11 +180,13 @@ namespace Window::Text {
 
             x += face->glyph->advance.x >> 6;
 
-            glyphs.push_back(glyph);
+            layout.glyphs.push_back(glyph);
             text++;
             previousIndex = glyphIndex;
         }
 
-        return glyphs;
+        layout.bounds = calculateBoundingBox(layout.glyphs);
+
+        return layout;
     }
 }
