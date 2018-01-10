@@ -121,7 +121,6 @@ int dsky_main() {
 
         if (cursorY + currentLayout->bounds.height >= screenHeight) {
             auto scroll = currentLayout->lineSpace + currentLayout->bounds.height - (screenHeight - cursorY);
-            //scroll = 100;
             auto byteCount = screenWidth * (screenHeight - scroll) * 4;
             memcpy(windowBuffer->buffer, windowBuffer->buffer + screenWidth * (scroll), byteCount);
             memset(windowBuffer->buffer + (screenHeight - scroll) * screenWidth, 0, scroll * screenWidth * 4);
@@ -129,11 +128,9 @@ int dsky_main() {
             update.y = 0;
             update.width = screenWidth;
             update.height = screenHeight;
-            cursorY = 0;
             
             scrolled = true;
             cursorY = screenHeight - currentLayout->bounds.height - 1 - currentLayout->lineSpace;
-            /*cursorY -= scroll;*/
         }
 
         renderer->drawText(*currentLayout, cursorX, cursorY);
@@ -143,12 +140,12 @@ int dsky_main() {
             update.x = cursorX;
             update.y = cursorY;
             update.width = currentLayout->bounds.width;
-            update.height = currentLayout->bounds.height;// + layout.lineSpace; 
+            update.height = currentLayout->bounds.height;
         }
 
         send(IPC::RecipientType::ServiceName, &update);
 
-        cursorY += currentLayout->bounds.height;// + currentLayout->lineSpace;
+        cursorY += currentLayout->bounds.height;
 
         sleep(1000);
         i++;
