@@ -90,6 +90,11 @@ namespace Window::Text {
             FT_BBox glyphBounds;
 
             FT_Glyph_Get_CBox(glyph.image, ft_glyph_bbox_pixels, &glyphBounds);
+            //need to transform the bounding box by the glyph's position
+            glyphBounds.xMax += glyph.position.x;
+            glyphBounds.xMin += glyph.position.x;
+            glyphBounds.yMax += glyph.position.y;
+            glyphBounds.yMin += glyph.position.y;
 
             if (glyphBounds.xMax > box.box.xMax) {
                 box.box.xMax = glyphBounds.xMax;
@@ -124,7 +129,7 @@ namespace Window::Text {
         static uint32_t offset = 0;
         FT_Vector origin;
         origin.x = x;
-        origin.y = (windowHeight - layout.bounds.height) - std::min(y, windowHeight - layout.bounds.height);
+        origin.y = y + layout.bounds.height;
 
         for(auto& glyph : layout.glyphs) {
 
@@ -141,11 +146,11 @@ namespace Window::Text {
             }
 
             auto bitmap = reinterpret_cast<FT_BitmapGlyph>(image);
-            bitmap->top += glyph.position.y + origin.y;
+            bitmap->top = origin.y + glyph.position.y - bitmap->top;
             bitmap->left += glyph.position.x + origin.x;
 
             for (int row = 0; row < bitmap->bitmap.rows; row++) {
-                auto y = (windowHeight - bitmap->top) + row;
+                auto y = row + bitmap->top;
 
                 for (int column = 0; column < bitmap->bitmap.pitch; column++) {
                     auto x = column + bitmap->left;
@@ -176,7 +181,7 @@ namespace Window::Text {
             auto error = FT_Load_Glyph(
                 face,
                 glyphIndex,
-                0
+                FT_LOAD_DEFAULT
             );
 
             if (kernTableAvailable && previousIndex > 0) {
@@ -213,6 +218,7 @@ namespace Window::Text {
         }
 
         layout.bounds = calculateBoundingBox(layout.glyphs);
+        layout.lineSpace = face->size->metrics.height >> 6;
 
         return layout;
     }

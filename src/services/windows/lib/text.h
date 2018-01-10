@@ -49,6 +49,7 @@ namespace Window::Text {
     struct TextLayout {
         std::vector<Glyph> glyphs;
         BoundingBox bounds;
+        uint32_t lineSpace;
     };
     
     class Renderer {
