@@ -28,8 +28,125 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ipc.h>
 
 namespace IPC {
-    uint32_t getId() {
-        static uint32_t messageId {0};
-        return messageId++;
+
+    void Mailbox::send(Message* message) {
+        uint32_t availableSpace {0};
+
+        if (lastReadOffset > lastWriteOffset) {
+            availableSpace = lastReadOffset - lastWriteOffset;
+        }
+        else {
+            availableSpace = bufferSize - lastWriteOffset + lastReadOffset;
+        }
+
+        if (message->length > availableSpace) {
+            //??
+            kprintf("[IPC] Send() ??\n");
+        }
+        else {
+            auto ptr = buffer + lastWriteOffset;
+            auto spaceUntilEnd = bufferSize - lastWriteOffset;
+
+            if (message->length > spaceUntilEnd) {
+                //its cutoff
+                memcpy(ptr, message, spaceUntilEnd);
+                lastWriteOffset = 0;
+                ptr = buffer;
+                auto remainingMessageLength = message->length - spaceUntilEnd;
+                memcpy(ptr, reinterpret_cast<uint8_t*>(message) + spaceUntilEnd, remainingMessageLength);
+                lastWriteOffset = remainingMessageLength;
+            }
+            else {
+                memcpy(ptr, message, message->length);
+                lastWriteOffset += message->length;
+            }
+
+            unreadMessages++;
+        }
+
+        if (lastWriteOffset > bufferSize) {
+            kprintf("[Mailbox] lastWriteOffset is invalid\n");
+        }
     }
+
+    bool Mailbox::receive(Message* message) {
+        if (unreadMessages == 0) {
+            //block
+            kprintf("[IPC] Read blocked\n");
+            return false;
+        }
+        else {
+            uint32_t messageLength {0};
+
+            if ((bufferSize - lastReadOffset) < sizeof(Message)) {
+                auto spaceUntilEnd = bufferSize - lastReadOffset;
+                Message temp;
+
+                if (spaceUntilEnd > 0) {
+                    memcpy(&temp, buffer + lastReadOffset, spaceUntilEnd);
+                    memcpy(reinterpret_cast<uint8_t*>(&temp) + spaceUntilEnd, buffer, sizeof(Message) - spaceUntilEnd);
+                }
+                else {
+                    memcpy(&temp, buffer, sizeof(Message));
+                }
+
+                messageLength = temp.length;
+            }
+            else {
+                messageLength = reinterpret_cast<Message*>(buffer + lastReadOffset)->length;
+            }
+
+            auto ptr = buffer + lastReadOffset;
+
+            if (lastReadOffset > lastWriteOffset) {
+                auto spaceUntilEnd = bufferSize - lastReadOffset;
+
+                if (messageLength > spaceUntilEnd) {
+                    //its cutoff
+                    memcpy(message, ptr, spaceUntilEnd);
+                    lastReadOffset = 0;
+                    ptr = buffer;
+                    auto remainingMessageLength = messageLength - spaceUntilEnd;
+                    memcpy(reinterpret_cast<uint8_t*>(message) + spaceUntilEnd, ptr, remainingMessageLength);
+                    lastReadOffset = remainingMessageLength;   
+                }
+                else {
+                    memcpy(message, ptr, messageLength);
+                    lastReadOffset += messageLength;
+                }
+            }
+            else {
+                auto spaceUntilEnd = lastWriteOffset - lastReadOffset;
+
+                if (messageLength > spaceUntilEnd) {
+                    memcpy(message, ptr, spaceUntilEnd);
+                    lastReadOffset = 0;
+                    ptr = buffer;
+                    auto remainingMessageLength = messageLength - spaceUntilEnd;
+                    memcpy(reinterpret_cast<uint8_t*>(message) + spaceUntilEnd, ptr, remainingMessageLength);
+                    lastReadOffset = remainingMessageLength;
+                }
+                else {
+                    memcpy(message, ptr, messageLength);
+                    lastReadOffset += messageLength;
+                }
+            }
+
+            if (lastReadOffset > bufferSize) {
+                kprintf("[Mailbox] lastReadOffset is invalid\n");
+            }
+
+            unreadMessages--;
+            return true;
+        }
+    }
+
+    /*bool Mailbox::receive(Message* message, MessageNamespace filter, uint32_t messageId) {
+        if (unreadMessages == 0) {
+            return false;
+        }
+
+
+
+    }*/
 }
