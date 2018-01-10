@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <list>
 #include <services/startup/startup.h>
 #include <algorithm>
+#include <services/keyboard/messages.h>
 
 using namespace Kernel;
 
@@ -58,6 +59,10 @@ namespace Window {
 
                 NotifyServiceReady ready;
                 send(IPC::RecipientType::ServiceRegistryMailbox, &ready);
+
+                Keyboard::RedirectToWindowManager redirect;
+                redirect.serviceType = ServiceType::Keyboard;
+                send(IPC::RecipientType::ServiceName, &redirect);
 
                 return msg.vgaAddress;
             }
@@ -100,6 +105,7 @@ namespace Window {
 
         auto screenWidth = 800u;
         auto screenHeight = 600u;
+        auto activeWindow = 0;
 
         while (true) {
             IPC::MaximumMessageBuffer buffer;
@@ -190,6 +196,16 @@ namespace Window {
                         }
                     }
 
+                    break;
+                }
+                case IPC::MessageNamespace::Keyboard: {
+                    switch (static_cast<Keyboard::MessageId>(buffer.messageId)) {
+                        case Keyboard::MessageId::KeyPress: {
+                            buffer.recipientId = windows[activeWindow].taskId;
+                            send(IPC::RecipientType::TaskId, &buffer);
+                            break;
+                        }
+                    }
                     break;
                 }
             }

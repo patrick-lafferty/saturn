@@ -35,6 +35,7 @@ interface for the Apollo Guidance Computer.
 #include <system_calls.h>
 #include <services.h>
 #include <services/windows/lib/text.h>
+#include <services/keyboard/messages.h>
 
 using namespace Window;
 
@@ -79,25 +80,8 @@ void drawBox(uint32_t* buffer, uint32_t positionX, uint32_t positionY, uint32_t 
     }
 }
 
-int dsky_main() {
-    auto windowBuffer = new WindowBuffer;
-    auto address = reinterpret_cast<uintptr_t>(windowBuffer);
-
-    auto screenWidth = 800u;
-    auto screenHeight = 600u;
-
-    if (!createWindow(address)) {
-        delete windowBuffer;
-        return 1;
-    }
-
-    auto renderer = Window::Text::createRenderer(windowBuffer->buffer);
-    char* text = "abcdefghijklabcdefghijkl";
-    auto sentenceLayout = renderer->layoutText(text, 100);
-
-    uint32_t cursorX = 0;    
-    uint32_t cursorY = 0;
-    auto currentLayout = &sentenceLayout;
+/*
+auto currentLayout = &sentenceLayout;
 
     int i = 1;
 
@@ -150,4 +134,55 @@ int dsky_main() {
         sleep(1000);
         i++;
     }
+
+*/
+
+int dsky_main() {
+    auto windowBuffer = new WindowBuffer;
+    auto address = reinterpret_cast<uintptr_t>(windowBuffer);
+
+    auto screenWidth = 800u;
+    auto screenHeight = 600u;
+
+    if (!createWindow(address)) {
+        delete windowBuffer;
+        return 1;
+    }
+
+    auto renderer = Window::Text::createRenderer(windowBuffer->buffer);
+
+    uint32_t cursorX = 0;    
+    uint32_t cursorY = 0;
+
+    Update update;
+    update.serviceType = Kernel::ServiceType::WindowManager;
+
+    while (true) {
+        IPC::MaximumMessageBuffer buffer;
+        receive(&buffer);
+
+        switch (buffer.messageNamespace) {
+            case IPC::MessageNamespace::Keyboard: {
+                switch (static_cast<Keyboard::MessageId>(buffer.messageId)) {
+                    case Keyboard::MessageId::KeyPress: {
+                        auto keypress = IPC::extractMessage<Keyboard::KeyPress>(buffer);
+                        char text[] = {(char)keypress.key, '\0'};
+                        auto layout = renderer->layoutText(text, 100);
+
+                        renderer->drawText(layout, cursorX, cursorY);
+
+                        update.x = cursorX;
+                        update.y = cursorY;
+                        update.width = layout.bounds.width;
+                        update.height = layout.bounds.height;
+                        send(IPC::RecipientType::ServiceName, &update);
+
+                        cursorX += layout.bounds.width;
+                    }
+                }
+                break;
+            }
+        }
+    }
+    
 }
