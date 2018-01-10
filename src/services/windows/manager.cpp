@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vector>
 #include <list>
 #include <services/startup/startup.h>
+#include <algorithm>
 
 using namespace Kernel;
 
@@ -97,6 +98,9 @@ namespace Window {
 
         launchShell();
 
+        auto screenWidth = 800u;
+        auto screenHeight = 600u;
+
         while (true) {
             IPC::MaximumMessageBuffer buffer;
             receive(&buffer);
@@ -108,7 +112,7 @@ namespace Window {
                         case MessageId::CreateWindow: {
                             auto message = IPC::extractMessage<CreateWindow>(buffer);
                             auto windowBuffer = new WindowBuffer;
-                            memset(windowBuffer->buffer, 0, 800 * 600 * 4);
+                            memset(windowBuffer->buffer, 0, screenWidth * screenHeight * 4);
 
                             Window window {windowBuffer, buffer.senderTaskId};
                             windowsWaitingToShare.push_back(window);
@@ -139,10 +143,13 @@ namespace Window {
                                 continue;
                             }
 
-                            for (int y = message.y; y < message.height; y++) {
+                            auto endY = std::min(screenHeight, message.height + message.y);
+                            auto endX = std::min(screenWidth, message.width + message.x);
+
+                            for (auto y = message.y; y < endY; y++) {
                                 auto offset = y * 800;
 
-                                for (int x = message.x; x < message.width; x++) {
+                                for (auto x = message.x; x < endX; x++) {
                                     linearFrameBuffer[x + offset] = windowBuffer[x + offset];
                                 }
                             }
