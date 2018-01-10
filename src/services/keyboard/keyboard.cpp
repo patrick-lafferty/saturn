@@ -26,6 +26,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "keyboard.h"
+#include "messages.h"
 #include <services.h>
 #include <system_calls.h>
 #include <services/terminal/terminal.h>
@@ -146,51 +147,59 @@ namespace Keyboard {
         send(IPC::RecipientType::ServiceName, &message);
     }
 
-    void sendKeyToTerminal(uint8_t key) {
-        Terminal::KeyPress message {};
-        message.serviceType = Kernel::ServiceType::Terminal;
-        message.key = key;
-        send(IPC::RecipientType::ServiceName, &message);
-    }
-    
     void messageLoop() {
 
         ModifierStatus modifiers {};
+        KeyPress message {};
+        message.serviceType = Kernel::ServiceType::Terminal;
 
         while (true) {
             IPC::MaximumMessageBuffer buffer;
             receive(&buffer);
 
-            if (buffer.messageNamespace == IPC::MessageNamespace::Keyboard
-                && buffer.messageId == static_cast<uint32_t>(MessageId::KeyEvent)) {
-                auto event = IPC::extractMessage<KeyEvent>(buffer);
+            switch(buffer.messageNamespace) {
+                case IPC::MessageNamespace::Keyboard: {
+                    
+                    switch (static_cast<MessageId>(buffer.messageId)) {
+                        case MessageId::KeyEvent: {
+                            auto event = IPC::extractMessage<KeyEvent>(buffer);
 
-                switch (event.key) {
-                    case PhysicalKey::LeftShift: {
-                        modifiers.leftShiftPressed = event.status == KeyStatus::Pressed;
-                        break;
-                    }
-                    case PhysicalKey::RightShift: {
-                        modifiers.rightShiftPressed = event.status == KeyStatus::Pressed;
-                        break;
-                    }
-                    case PhysicalKey::CapsLock: {
-                        if (event.status == KeyStatus::Pressed) {
-                            modifiers.capsLockPressed = !modifiers.capsLockPressed;
+                            switch (event.key) {
+                                case PhysicalKey::LeftShift: {
+                                    modifiers.leftShiftPressed = event.status == KeyStatus::Pressed;
+                                    break;
+                                }
+                                case PhysicalKey::RightShift: {
+                                    modifiers.rightShiftPressed = event.status == KeyStatus::Pressed;
+                                    break;
+                                }
+                                case PhysicalKey::CapsLock: {
+                                    if (event.status == KeyStatus::Pressed) {
+                                        modifiers.capsLockPressed = !modifiers.capsLockPressed;
+                                    }
+                                    break;
+                                }
+                                default: {
+                                    
+                                    if (event.status == KeyStatus::Pressed) {
+                                        auto key = translateKeyEvent(event.key, modifiers);
+                                        message.key = key;
+                                        send(IPC::RecipientType::ServiceName, &message);
+                                    }
+                                    break;
+                                }
+                            }
+                            break;
                         }
-                        break;
-                    }
-                    default: {
-                        
-                        if (event.status == KeyStatus::Pressed) {
-                            auto key = translateKeyEvent(event.key, modifiers);
-                            sendKeyToTerminal(key);
-                            //echo(key);
+                        case MessageId::RedirectToWindowManager: {
+                            message.serviceType = ServiceType::WindowManager;
+                            break;
                         }
-                        break;
                     }
+
+                    break;
                 }
-            }
+            }    
         }
     }
 

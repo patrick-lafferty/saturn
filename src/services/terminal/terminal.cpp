@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "vga.h"
 #include <stdlib.h>
 #include <algorithm>
+#include <services/keyboard/messages.h>
 
 using namespace VGA;
 using namespace Kernel;
@@ -182,6 +183,25 @@ namespace Terminal {
                     }
                     break;
                 }
+                case IPC::MessageNamespace::Keyboard: {
+                    switch(static_cast<Keyboard::MessageId>(buffer.messageId)) {
+                        case Keyboard::MessageId::KeyPress: {
+                            auto message = IPC::extractMessage<Keyboard::KeyPress>(buffer);
+                            queue.add(message.key);
+
+                            if (taskIdWaitingForInput != 0) {
+                                CharacterInput input {};
+                                input.character = queue.get();
+                                input.recipientId = taskIdWaitingForInput;
+                                send(IPC::RecipientType::TaskId, &input);
+                                taskIdWaitingForInput = 0;    
+                            }
+                            break;
+                        }
+                    }
+
+                    break;
+                }
                 case IPC::MessageNamespace::Terminal: {
 
                     switch(static_cast<MessageId>(buffer.messageId)) {
@@ -213,19 +233,7 @@ namespace Terminal {
 
                             break;
                         }*/
-                        case MessageId::KeyPress: {
-                            auto message = IPC::extractMessage<KeyPress>(buffer);
-                            queue.add(message.key);
-
-                            if (taskIdWaitingForInput != 0) {
-                                CharacterInput input {};
-                                input.character = queue.get();
-                                input.recipientId = taskIdWaitingForInput;
-                                send(IPC::RecipientType::TaskId, &input);
-                                taskIdWaitingForInput = 0;    
-                            }
-                            break;
-                        }
+                        
                         case MessageId::GetCharacter: {
                             if (queue.inputIsAvailable()) {
                                 CharacterInput input {};

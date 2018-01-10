@@ -38,7 +38,6 @@ namespace Terminal {
         Print32,
         Print64,
         Print128,
-        KeyPress,
         GetCharacter,
         CharacterInput
     };
@@ -85,16 +84,6 @@ namespace Terminal {
 
         char buffer[128];
         uint32_t stringLength {0};
-    };
-
-    struct KeyPress : IPC::Message {
-        KeyPress() {
-            messageId = static_cast<uint32_t>(MessageId::KeyPress);
-            length = sizeof(KeyPress);
-            messageNamespace = IPC::MessageNamespace::Terminal;
-        }
-
-        uint8_t key;
     };
 
     struct GetCharacter : IPC::Message {

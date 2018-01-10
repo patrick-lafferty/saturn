@@ -31,7 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <services/terminal/terminal.h>
 #include <string.h>
 #include <stdio.h>
-#include <services/keyboard/keyboard.h>
+#include <services/keyboard/messages.h>
 
 using namespace Kernel;
 
