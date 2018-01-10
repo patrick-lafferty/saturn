@@ -609,6 +609,31 @@ asm("cli");
         }
     }
 
+    void Scheduler::receiveMessage(IPC::Message* buffer, IPC::MessageNamespace filter, uint32_t messageId) {
+        if (currentTask != nullptr) {
+            auto task = currentTask;
+
+            while (true) {
+
+                if (!currentTask->mailbox->hasUnreadMessages()) {
+                    blockTask(BlockReason::WaitingForMessage, 0);
+                }
+
+                task->mailbox->receive(buffer);
+
+                if (buffer->messageNamespace != filter
+                        || buffer->messageId != messageId) {
+
+                    task->mailbox->send(buffer);
+                    blockTask(BlockReason::WaitingForMessage, 0);
+                }
+                else {
+                    return;
+                }
+            }
+        }
+    }
+
     Task* Scheduler::getTask(uint32_t taskId) {
         if (!readyQueue.isEmpty()) {
             auto task = readyQueue.getHead();

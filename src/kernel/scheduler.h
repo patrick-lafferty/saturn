@@ -44,6 +44,7 @@ namespace IPC {
     class Mailbox;
     struct Message;
     enum class RecipientType;
+    enum class MessageNamespace : uint32_t;
 }
 
 namespace CPU {
@@ -202,6 +203,7 @@ namespace Kernel {
 
         void sendMessage(IPC::RecipientType recipient, IPC::Message* message);
         void receiveMessage(IPC::Message* buffer);
+        void receiveMessage(IPC::Message* buffer, IPC::MessageNamespace filter, uint32_t messageId);
 
         Task* getTask(uint32_t taskId);
         void exitTask();

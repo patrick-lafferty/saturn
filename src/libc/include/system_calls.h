@@ -48,12 +48,14 @@ enum class SystemCall {
     Sleep,
     Send,
     Receive,
+    FilteredReceive
 };
 
 //TODO: should return a bool for success/failure
 //ie check if messageId = 0, means service wasn't setup yet
 void send(IPC::RecipientType recipient, IPC::Message* message);
 void receive(IPC::Message* buffer);
+void filteredReceive(IPC::Message* buffer, IPC::MessageNamespace filter, uint32_t messageId);
 void receiveAndIgnore();
 
 void open(const char* path);

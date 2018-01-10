@@ -226,6 +226,14 @@ void handleSystemCall(CPU::InterruptStackFrame* frame) {
             Kernel::currentScheduler->receiveMessage(reinterpret_cast<IPC::Message*>(frame->ebx));
             break;
         }
+        case static_cast<uint32_t>(SystemCall::FilteredReceive): {
+            Kernel::currentScheduler->receiveMessage(
+                reinterpret_cast<IPC::Message*>(frame->ebx),
+                static_cast<IPC::MessageNamespace>(frame->ecx),
+                frame->edx);
+
+            break;
+        }
         default: {
             kprintf("[IDT] Unhandled system call: %d (ebx: %x)\n", frame->eax, frame->ebx);
             break;
