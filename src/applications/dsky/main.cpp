@@ -25,6 +25,11 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+
+/*
+Dsky (pronounced Diss-key) is Saturn's shell, named after the physical
+interface for the Apollo Guidance Computer.
+*/
 #include "dsky.h"
 #include <services/windows/messages.h>
 #include <system_calls.h>
@@ -61,6 +66,19 @@ bool createWindow(uint32_t address) {
     return false;
 }
 
+void drawBox(uint32_t* buffer, uint32_t positionX, uint32_t positionY, uint32_t width, uint32_t height) {
+    for (auto y = positionY; y < positionY + height; y++) {
+
+        for (auto x = positionX; x < positionX + width; x++) {
+            buffer[x + y * 800] = 0x00'ff'00'00;
+
+            if (y > positionY && y < (positionY + height - 1)) {
+                x += width - 2;
+            }
+        }
+    }
+}
+
 int dsky_main() {
     auto windowBuffer = new WindowBuffer;
     auto address = reinterpret_cast<uintptr_t>(windowBuffer);
@@ -71,22 +89,33 @@ int dsky_main() {
     }
 
     auto renderer = Window::Text::createRenderer(windowBuffer->buffer);
-    char* text = "abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz0123456789";
-    auto layout = renderer->layoutText(text, 400);
-    renderer->drawText(layout, 50, 100);
-    renderer->drawText(layout, 300, 300);
+    char* text = "abcdefghijkl";
+    auto layout = renderer->layoutText(text, 100);
+
+    uint32_t cursorX = 0;    
+    uint32_t cursorY = 0;
 
     while (true) {
 
+        renderer->drawText(layout, cursorX, cursorY);
+
         Update update;
         update.serviceType = Kernel::ServiceType::WindowManager;
-        update.x = 0;
-        update.y = 0;
-        update.width = 800;
-        update.height = 600;
+        update.x = cursorX;
+        update.y = cursorY;
+        update.width = layout.bounds.width;
+        update.height = layout.bounds.height + layout.lineSpace; 
+        
+        drawBox(windowBuffer->buffer, cursorX, cursorY, layout.bounds.width, layout.bounds.height );
 
         send(IPC::RecipientType::ServiceName, &update);
+        cursorX += 50;
+        cursorY += layout.bounds.height + layout.lineSpace;
 
-        sleep(100);
+        if (cursorY + layout.bounds.height >= 600) {
+            cursorY = 0;
+        }
+
+        sleep(2000);
     }
 }
