@@ -50,6 +50,7 @@ namespace Window::Text {
         std::vector<Glyph> glyphs;
         BoundingBox bounds;
         uint32_t lineSpace;
+        uint32_t lines;
     };
     
     class Renderer {

@@ -146,14 +146,23 @@ namespace Window::Text {
             }
 
             auto bitmap = reinterpret_cast<FT_BitmapGlyph>(image);
+            auto delta = bitmap->top;
             bitmap->top = origin.y + glyph.position.y - bitmap->top;
+            //bitmap->top = origin.y + (bitmap->top - glyph.position.y);
+            //bitmap->top = origin.y + (layout.bounds.height - (glyph.position.y - bitmap->top));
             bitmap->left += glyph.position.x + origin.x;
 
             for (int row = 0; row < bitmap->bitmap.rows; row++) {
-                auto y = row + bitmap->top;
+                auto y = row + bitmap->top - (layout.lines - 1) * layout.lineSpace;
+                //auto y = bitmap->top - row;
+
+                if (y == windowHeight)
+                { 
+                    continue;
+                }
 
                 for (int column = 0; column < bitmap->bitmap.pitch; column++) {
-                    auto x = column + glyph.position.x;
+                    auto x = column + origin.x + glyph.position.x;
 
                     auto index = x + y * windowWidth;
                     frameBuffer[index] = *bitmap->bitmap.buffer++;
@@ -168,6 +177,7 @@ namespace Window::Text {
 
     TextLayout Renderer::layoutText(char* text, uint32_t allowedWidth) {
         TextLayout layout;
+        layout.lines = 1;
 
         auto x = 0u;
         auto y = 0;
@@ -200,15 +210,16 @@ namespace Window::Text {
 
             if ((x + widthRequired) >= allowedWidth) {
                 x = 0;
-                y -= face->size->metrics.height >> 6;
+                y += face->size->metrics.height >> 6;
+                layout.lines++;
             }
 
             Glyph glyph;
             glyph.position.x = x;
             glyph.position.y = y;
 
-            FT_Get_Glyph(face->glyph, &glyph.image);
-            FT_Glyph_Transform(glyph.image, nullptr, &glyph.position);
+            error = FT_Get_Glyph(face->glyph, &glyph.image);
+            error = FT_Glyph_Transform(glyph.image, nullptr, &glyph.position);
 
             x += face->glyph->advance.x >> 6;
 
