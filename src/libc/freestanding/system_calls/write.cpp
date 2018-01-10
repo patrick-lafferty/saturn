@@ -44,14 +44,7 @@ VirtualFileSystem::WriteResult writeSynchronous(uint32_t fileDescriptor, const v
     write(fileDescriptor, data, length);
 
     IPC::MaximumMessageBuffer buffer;
-    receive(&buffer);
+    filteredReceive(&buffer, IPC::MessageNamespace::VFS, static_cast<uint32_t>(MessageId::WriteResult));
 
-    if (buffer.messageNamespace == IPC::MessageNamespace::VFS
-            && buffer.messageId == static_cast<uint32_t>(MessageId::WriteResult)) {
-        return IPC::extractMessage<WriteResult>(buffer);
-    }
-    else {
-        asm("hlt");
-        return {};
-    }
+    return IPC::extractMessage<WriteResult>(buffer);
 }

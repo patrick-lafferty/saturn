@@ -44,14 +44,7 @@ VirtualFileSystem::SeekResult seekSynchronous(uint32_t fileDescriptor, uint32_t 
     seek(fileDescriptor, offset, origin);
 
     IPC::MaximumMessageBuffer buffer;
-    receive(&buffer);
+    filteredReceive(&buffer, IPC::MessageNamespace::VFS, static_cast<uint32_t>(MessageId::SeekResult));
 
-    if (buffer.messageNamespace == IPC::MessageNamespace::VFS
-            && buffer.messageId == static_cast<uint32_t>(MessageId::SeekResult)) {
-        return IPC::extractMessage<SeekResult>(buffer);
-    }
-    else {
-        asm ("hlt");
-        return {};
-    }
+    return IPC::extractMessage<SeekResult>(buffer);
 }

@@ -60,14 +60,7 @@ Read512Result read512Synchronous(uint32_t fileDescriptor, uint32_t length) {
     read(fileDescriptor, length);
 
     IPC::MaximumMessageBuffer buffer;
-    receive(&buffer);
+    filteredReceive(&buffer, IPC::MessageNamespace::VFS, static_cast<uint32_t>(MessageId::Read512Result));
 
-    if (buffer.messageNamespace == IPC::MessageNamespace::VFS
-            && buffer.messageId == static_cast<uint32_t>(MessageId::Read512Result)) {
-        return IPC::extractMessage<Read512Result>(buffer);
-    }
-    else {
-        asm ("hlt");
-        return {};
-    }
+    return IPC::extractMessage<Read512Result>(buffer);
 }

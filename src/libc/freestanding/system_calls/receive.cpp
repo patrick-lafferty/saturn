@@ -28,12 +28,23 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <system_calls.h>
 
 void receive(IPC::Message* buffer) {
-    uint32_t systemCall = 4;
+    uint32_t systemCall = static_cast<uint32_t>(SystemCall::Receive);
 
     asm volatile("int $0xFF"
         : //no outputs
         : "a" (systemCall),
           "b" (buffer));
+}
+
+void filteredReceive(IPC::Message* buffer, IPC::MessageNamespace filter, uint32_t messageId) {
+    uint32_t systemCall = static_cast<uint32_t>(SystemCall::FilteredReceive);
+
+    asm volatile("int $0xFF"
+        : //no outputs
+        : "a" (systemCall),
+          "b" (buffer),
+          "c" (filter),
+          "d" (messageId));
 }
 
 void receiveAndIgnore() {
