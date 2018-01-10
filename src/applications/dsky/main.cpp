@@ -83,6 +83,9 @@ int dsky_main() {
     auto windowBuffer = new WindowBuffer;
     auto address = reinterpret_cast<uintptr_t>(windowBuffer);
 
+    auto screenWidth = 800u;
+    auto screenHeight = 600u;
+
     if (!createWindow(address)) {
         delete windowBuffer;
         return 1;
@@ -90,32 +93,50 @@ int dsky_main() {
 
     auto renderer = Window::Text::createRenderer(windowBuffer->buffer);
     char* text = "abcdefghijkl";
-    auto layout = renderer->layoutText(text, 100);
 
     uint32_t cursorX = 0;    
     uint32_t cursorY = 0;
 
-    while (true) {
+    int i = 0;
 
-        renderer->drawText(layout, cursorX, cursorY);
+    while (true) {
+        char num[3];
+        sprintf(num, "%d", i);
+        i++;
 
         Update update;
         update.serviceType = Kernel::ServiceType::WindowManager;
-        update.x = cursorX;
-        update.y = cursorY;
-        update.width = layout.bounds.width;
-        update.height = layout.bounds.height + layout.lineSpace; 
-        
-        drawBox(windowBuffer->buffer, cursorX, cursorY, layout.bounds.width, layout.bounds.height );
 
-        send(IPC::RecipientType::ServiceName, &update);
-        cursorX += 50;
-        cursorY += layout.bounds.height + layout.lineSpace;
+        auto layout = renderer->layoutText(num, 100);
+        bool scrolled {false};
 
-        if (cursorY + layout.bounds.height >= 600) {
-            cursorY = 0;
+        if (cursorY + layout.bounds.height >= screenHeight) {
+            auto scroll = layout.bounds.height - (screenHeight - cursorY);
+            auto byteCount = screenWidth * (screenHeight - scroll) * 4;
+            memcpy(windowBuffer->buffer, windowBuffer->buffer + screenWidth * (scroll), byteCount);
+            memset(windowBuffer->buffer + (screenHeight - scroll) * screenWidth, 0, scroll * screenWidth * 4);
+            update.x = 0;
+            update.y = 0;
+            update.width = screenWidth;
+            update.height = screenHeight;
+            
+            scrolled = true;
+            cursorY -= scroll;
         }
 
-        sleep(2000);
+        renderer->drawText(layout, cursorX, cursorY);
+
+        if (!scrolled) {
+            update.x = cursorX;
+            update.y = cursorY;
+            update.width = layout.bounds.width;
+            update.height = layout.bounds.height;// + layout.lineSpace; 
+        }
+
+        send(IPC::RecipientType::ServiceName, &update);
+
+        cursorY += layout.bounds.height;// + layout.lineSpace;
+
+        sleep(100);
     }
 }

@@ -153,7 +153,7 @@ namespace Window::Text {
                 auto y = row + bitmap->top;
 
                 for (int column = 0; column < bitmap->bitmap.pitch; column++) {
-                    auto x = column + bitmap->left;
+                    auto x = column + glyph.position.x;
 
                     auto index = x + y * windowWidth;
                     frameBuffer[index] = *bitmap->bitmap.buffer++;
