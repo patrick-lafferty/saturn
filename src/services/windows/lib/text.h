@@ -37,6 +37,7 @@ namespace Window::Text {
         FT_Vector position;
         FT_Glyph image;
         uint32_t height;
+        uint32_t colour;
 
         FT_Glyph copyImage();
     };

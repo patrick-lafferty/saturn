@@ -145,9 +145,8 @@ int dsky_main() {
 
     Update update;
     update.serviceType = Kernel::ServiceType::WindowManager;
-    auto l = renderer->layoutText("hello, worl128312yabba dabba do", 300);
+    auto l = renderer->layoutText("\e[38;2;100;149;237mhello, \e[38;2;220;20;60mworld", 500);
     renderer->drawText(l, cursorX, 0);
-    drawBox(windowBuffer->buffer, cursorX, 0, l.bounds.width, l.bounds.height);
 
     update.x = 0;//cursorX;
     update.y = 0;//cursorY;

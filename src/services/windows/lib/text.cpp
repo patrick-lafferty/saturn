@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "text.h"
 #include <algorithm>
 #include "debug.h"
+#include <services/terminal/terminal.h>
 
 namespace Window::Text {
     Renderer* createRenderer(uint32_t* frameBuffer) {
@@ -151,7 +152,7 @@ namespace Window::Text {
         static uint32_t offset = 0;
         FT_Vector origin;
         origin.x = x;
-        origin.y = y ;//+ layout.bounds.height;
+        origin.y = y;
 
         for(auto& glyph : layout.glyphs) {
 
@@ -169,11 +170,11 @@ namespace Window::Text {
 
             auto bitmap = reinterpret_cast<FT_BitmapGlyph>(image);
             auto delta = bitmap->top;
-            bitmap->top = origin.y + glyph.position.y ;///*+ layout.maxAscent*/+ ((face->size->metrics.height - face->size->metrics.ascender) /64  - bitmap->top) /*- glyph.height*/;
+            bitmap->top = origin.y + glyph.position.y;
             bitmap->left += glyph.position.x + origin.x;
 
             for (int row = 0; row < bitmap->bitmap.rows; row++) {
-                auto y = row + bitmap->top;// - (layout.lines - 1) * layout.lineSpace;
+                auto y = row + bitmap->top;
 
                 if (y == windowHeight)
                 { 
@@ -185,7 +186,7 @@ namespace Window::Text {
 
                     auto index = x + y * windowWidth;
                     auto val = *bitmap->bitmap.buffer++;
-                    auto col = 0x00'64'95'EDu;
+                    auto col = glyph.colour;//0x00'64'95'EDu;
                     auto back = 0x00'20'20'20u;
                     auto f = blend(col, back, val);
                     frameBuffer[index] = f;
@@ -199,6 +200,154 @@ namespace Window::Text {
 
     }
 
+    uint32_t foreground = 0x00'64'95'EDu;
+    uint32_t defaultForeground = 0x00'64'95'EDu;
+
+    enum class ParseState {
+        FindCode,
+        FindCodeEx,
+        FindChannel
+    };
+
+    uint32_t handleSelectGraphicRendition(char* buffer) {
+        auto start = buffer;
+        char* end {nullptr};
+        long code {0};
+        ParseState state {ParseState::FindCode};
+        bool done = *buffer == '\0';
+        uint32_t colour {0};
+        auto channelIndex = 0;
+
+        while (!done) {
+            switch (state) {
+                case ParseState::FindCode: {
+                    code = strtol(buffer, &end, 10);
+
+                    if (!(code == 38 || code == 48)) {
+                        done = true;
+                        break;
+                    }
+
+                    buffer = end;
+
+                    if (*buffer != ';') {
+                        done = true;
+                        break;
+                    }
+
+                    buffer++;
+                    state = ParseState::FindCodeEx;
+
+                    break;
+                }
+                case ParseState::FindCodeEx: {
+                    auto codeEx = strtol(buffer, &end, 10);
+
+                    if (codeEx != 2) {
+                        done = true;
+                        break;
+                    }
+
+                    buffer = end;
+
+                    if (*buffer != ';') {
+                        done = true;
+                        break;
+                    }
+
+                    buffer++;
+                    state = ParseState::FindChannel;
+
+                    break;
+                }
+                case ParseState::FindChannel: {
+                    auto value = strtol(buffer, &end, 10);
+
+                    if (end == buffer + 1) {
+                        done = true;
+                        break;
+                    }
+
+                    buffer = end;
+
+                    if (channelIndex < 1 && *buffer != ';') {
+                        done = true;
+                        break;
+                    }
+
+                    buffer++;
+                    colour = (colour << 8) | value;
+                    channelIndex++;
+
+                    if (channelIndex == 3) {
+
+                        if (code == 38) {
+                            foreground = colour;
+                        }
+
+                        done = true;
+                        break;                        
+                    }
+
+                    break;
+                }
+            }
+
+        }
+
+        return end - start + 1; //ends SGR ends with 'm', consume that
+    } 
+
+    uint32_t handleEscapeSequence(char* buffer) {
+        auto start = buffer;
+
+        switch (*buffer++) {
+            case 'O': {
+                //f1-f4...
+                break;
+            }
+            case '[': {
+
+                auto sequenceStart = buffer;
+                bool validSequence {false};
+
+                /*
+                According to https://en.wikipedia.org/wiki/ANSI_escape_code,
+                CSI is x*y*z, where:
+                * is the kleene start
+                x is a parameter byte from 0x30 to 0x3F
+                y is an intermediate byte from 0x20 to 0x2F
+                z is the final byte from 0x40 to 0x7E, and determines the sequence
+                */
+
+                while (*buffer != '\0') {
+                    auto next = *buffer;
+
+                    if (next >= 0x40 && next <= 0x7E) {
+                        validSequence = true;
+                        break;
+                    }
+
+                    buffer++;
+                }
+
+                if (!validSequence) {
+                    return buffer - start;
+                }
+
+                switch(*buffer) {
+                    case static_cast<char>(Terminal::CSIFinalByte::SelectGraphicRendition): {
+                        return 1 + handleSelectGraphicRendition(sequenceStart);
+                    }
+                }
+
+                break;
+            }
+        }
+
+        return buffer - start;
+    }
+
     TextLayout Renderer::layoutText(char* text, uint32_t allowedWidth) {
         TextLayout layout;
         layout.lines = 1;
@@ -210,6 +359,12 @@ namespace Window::Text {
         uint32_t previousIndex = 0;
 
         while (*text != '\0') { 
+
+            if (*text == 27) {
+                auto consumedChars = 0 + handleEscapeSequence(text + 1);
+                text += consumedChars + 1;
+                continue;
+            }
 
             auto glyphIndex = FT_Get_Char_Index(face, *text); 
             auto error = FT_Load_Glyph(
@@ -244,6 +399,7 @@ namespace Window::Text {
             glyph.height = face->glyph->metrics.height >> 6;
             auto diff = (face->size->metrics.ascender - face->glyph->metrics.horiBearingY) / 64;
             glyph.position.y += diff;
+            glyph.colour = foreground;
 
             error = FT_Get_Glyph(face->glyph, &glyph.image);
             error = FT_Glyph_Transform(glyph.image, nullptr, &glyph.position);
