@@ -27,6 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "text.h"
 #include <algorithm>
+#include "debug.h"
 
 namespace Window::Text {
     Renderer* createRenderer(uint32_t* frameBuffer) {
@@ -53,7 +54,7 @@ namespace Window::Text {
         error = FT_Set_Char_Size(
             face,
             0,
-            24 * 64,
+            48 * 64,
             96,
             96
         );
@@ -124,12 +125,33 @@ namespace Window::Text {
         return box;
     }
 
+    uint32_t blend(uint32_t source, uint32_t destination, uint8_t alpha) {
+
+        auto sourceRed = (source >> 16) & 0xFF;
+        auto sourceGreen = (source >> 8) & 0xFF;
+        auto sourceBlue = source & 0xFF;
+
+        auto destinationRed = (destination >> 16) & 0xFF;
+        auto destinationGreen = (destination >> 8) & 0xFF;
+        auto destinationBlue = destination & 0xFF;
+
+        auto destinationAlpha = 255 - alpha;
+
+        uint32_t red = ((sourceRed * alpha) + (destinationRed * destinationAlpha)) /  255;
+        uint32_t green = ((sourceGreen * alpha) + (destinationGreen * destinationAlpha)) / 255;
+        uint32_t blue = ((sourceBlue * alpha) + (destinationBlue * destinationAlpha)) / 255;
+
+        auto result = (255 << 24) | (red << 16) | (green << 8) | blue;
+
+        return result;
+    }
+
     void Renderer::drawText(TextLayout& layout, uint32_t x, uint32_t y) {
 
         static uint32_t offset = 0;
         FT_Vector origin;
         origin.x = x;
-        origin.y = y + layout.bounds.height;
+        origin.y = y ;//+ layout.bounds.height;
 
         for(auto& glyph : layout.glyphs) {
 
@@ -147,11 +169,11 @@ namespace Window::Text {
 
             auto bitmap = reinterpret_cast<FT_BitmapGlyph>(image);
             auto delta = bitmap->top;
-            bitmap->top = origin.y + glyph.position.y - bitmap->top;
+            bitmap->top = origin.y + glyph.position.y ;///*+ layout.maxAscent*/+ ((face->size->metrics.height - face->size->metrics.ascender) /64  - bitmap->top) /*- glyph.height*/;
             bitmap->left += glyph.position.x + origin.x;
 
             for (int row = 0; row < bitmap->bitmap.rows; row++) {
-                auto y = row + bitmap->top - (layout.lines - 1) * layout.lineSpace;
+                auto y = row + bitmap->top;// - (layout.lines - 1) * layout.lineSpace;
 
                 if (y == windowHeight)
                 { 
@@ -162,8 +184,13 @@ namespace Window::Text {
                     auto x = column + origin.x + glyph.position.x;
 
                     auto index = x + y * windowWidth;
-                    frameBuffer[index] = *bitmap->bitmap.buffer++;
+                    auto val = *bitmap->bitmap.buffer++;
+                    auto col = 0x00'64'95'EDu;
+                    auto back = 0x00'20'20'20u;
+                    auto f = blend(col, back, val);
+                    frameBuffer[index] = f;
                 }
+
             }
 
             /*TODO: this crashes, find out why
@@ -214,6 +241,9 @@ namespace Window::Text {
             Glyph glyph;
             glyph.position.x = x;
             glyph.position.y = y;
+            glyph.height = face->glyph->metrics.height >> 6;
+            auto diff = (face->size->metrics.ascender - face->glyph->metrics.horiBearingY) / 64;
+            glyph.position.y += diff;
 
             error = FT_Get_Glyph(face->glyph, &glyph.image);
             error = FT_Glyph_Transform(glyph.image, nullptr, &glyph.position);
@@ -226,6 +256,7 @@ namespace Window::Text {
         }
 
         layout.bounds = calculateBoundingBox(layout.glyphs);
+        layout.bounds.height += (face->size->metrics.height >> 6) / 2;
         layout.lineSpace = face->size->metrics.height >> 6;
 
         return layout;

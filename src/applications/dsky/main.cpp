@@ -35,9 +35,11 @@ interface for the Apollo Guidance Computer.
 #include <system_calls.h>
 #include <services.h>
 #include <services/windows/lib/text.h>
+#include <services/windows/lib/debug.h>
 #include <services/keyboard/messages.h>
 
 using namespace Window;
+using namespace Window::Debug;
 
 bool createWindow(uint32_t address) {
     
@@ -65,19 +67,6 @@ bool createWindow(uint32_t address) {
     }
 
     return false;
-}
-
-void drawBox(uint32_t* buffer, uint32_t positionX, uint32_t positionY, uint32_t width, uint32_t height) {
-    for (auto y = positionY; y < positionY + height; y++) {
-
-        for (auto x = positionX; x < positionX + width; x++) {
-            buffer[x + y * 800] = 0x00'ff'00'00;
-
-            if (y > positionY && y < (positionY + height - 1)) {
-                x += width - 2;
-            }
-        }
-    }
 }
 
 /*
@@ -152,10 +141,21 @@ int dsky_main() {
     auto renderer = Window::Text::createRenderer(windowBuffer->buffer);
 
     uint32_t cursorX = 0;    
-    uint32_t cursorY = 0;
+    uint32_t cursorY = 100;
 
     Update update;
     update.serviceType = Kernel::ServiceType::WindowManager;
+    auto l = renderer->layoutText("hello, worl128312yabba dabba do", 300);
+    renderer->drawText(l, cursorX, 0);
+    drawBox(windowBuffer->buffer, cursorX, 0, l.bounds.width, l.bounds.height);
+
+    update.x = 0;//cursorX;
+    update.y = 0;//cursorY;
+    update.width = 800;//layout.bounds.width;
+    update.height = 600;//layout.bounds.height;
+    send(IPC::RecipientType::ServiceName, &update);
+
+    cursorY += 100;
 
     while (true) {
         IPC::MaximumMessageBuffer buffer;
@@ -171,10 +171,10 @@ int dsky_main() {
 
                         renderer->drawText(layout, cursorX, cursorY);
 
-                        update.x = cursorX;
-                        update.y = cursorY;
-                        update.width = layout.bounds.width;
-                        update.height = layout.bounds.height;
+                        update.x = 0;//cursorX;
+                        update.y = 0;//cursorY;
+                        update.width = 800;//layout.bounds.width;
+                        update.height = 600;//layout.bounds.height;
                         send(IPC::RecipientType::ServiceName, &update);
 
                         cursorX += layout.bounds.width;

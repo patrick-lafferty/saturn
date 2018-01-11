@@ -36,6 +36,7 @@ namespace Window::Text {
     struct Glyph {
         FT_Vector position;
         FT_Glyph image;
+        uint32_t height;
 
         FT_Glyph copyImage();
     };

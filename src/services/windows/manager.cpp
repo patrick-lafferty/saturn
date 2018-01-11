@@ -118,7 +118,8 @@ namespace Window {
                         case MessageId::CreateWindow: {
                             auto message = IPC::extractMessage<CreateWindow>(buffer);
                             auto windowBuffer = new WindowBuffer;
-                            memset(windowBuffer->buffer, 0, screenWidth * screenHeight * 4);
+                            auto backgroundColour = 0x00'20'20'20;
+                            memset(windowBuffer->buffer, backgroundColour, screenWidth * screenHeight * 4);
 
                             Window window {windowBuffer, buffer.senderTaskId};
                             windowsWaitingToShare.push_back(window);
