@@ -53,13 +53,15 @@ namespace Window::Text {
         BoundingBox bounds;
         uint32_t lineSpace;
         uint32_t lines;
+        bool underline {false};
+        uint32_t underlinePosition;
+        uint32_t underlineThickness;
     };
 
     enum class Style {
         Normal,
         Bold,
-        Italic,
-        Underline
+        Italic
     };
 
     class Renderer {
@@ -69,12 +71,12 @@ namespace Window::Text {
 
         //TODO: should be const TextLayout& but vector is missing cbegin and const iterators
         void drawText(TextLayout& layout, uint32_t x, uint32_t y);
-        TextLayout layoutText(char* text, uint32_t allowedWidth, Style style = Style::Normal);
+        TextLayout layoutText(char* text, uint32_t allowedWidth, Style style = Style::Normal, bool underline = false);
 
     private:
 
         FT_Library library;
-        FT_Face faces[4];
+        FT_Face faces[3];
         uint32_t* frameBuffer;
         uint32_t windowWidth;
         uint32_t windowHeight;

@@ -223,16 +223,29 @@ namespace Window::Text {
 
                     auto index = x + y * windowWidth;
                     auto val = *bitmap->bitmap.buffer++;
-                    auto col = glyph.colour;//0x00'64'95'EDu;
+                    auto col = glyph.colour;
                     auto back = 0x00'20'20'20u;
                     auto f = blend(col, back, val);
                     frameBuffer[index] = f;
                 }
 
             }
-
+            
             /*TODO: this crashes, find out why
             FT_Done_Glyph(image);*/
+        }
+
+        if (layout.underline) {
+
+            for (int row = 0; row < layout.underlineThickness; row++) {
+                auto y = row + origin.y + layout.underlinePosition;
+
+                for (int column = 0; column < layout.bounds.width; column++) {
+                    auto x = column + origin.x;
+                    auto index = x + y * windowWidth;
+                    frameBuffer[index] = layout.glyphs[0].colour;
+                }
+            }
         }
 
     }
@@ -380,7 +393,7 @@ namespace Window::Text {
         return buffer - start;
     }
 
-    TextLayout Renderer::layoutText(char* text, uint32_t allowedWidth, Style style) {
+    TextLayout Renderer::layoutText(char* text, uint32_t allowedWidth, Style style, bool underline) {
         TextLayout layout;
         layout.lines = 1;
 
@@ -448,6 +461,12 @@ namespace Window::Text {
         layout.bounds = calculateBoundingBox(layout.glyphs);
         layout.bounds.height += (face->size->metrics.height >> 6) / 2;
         layout.lineSpace = face->size->metrics.height >> 6;
+
+        if (underline) {
+            layout.underline = true;
+            layout.underlinePosition = (face->underline_position >> 6) + (face->size->metrics.height >> 6);
+            layout.underlineThickness = face->underline_thickness >> 6;
+        }
 
         return layout;
     }

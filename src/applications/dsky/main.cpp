@@ -145,8 +145,12 @@ int dsky_main() {
 
     Update update;
     update.serviceType = Kernel::ServiceType::WindowManager;
-    auto l = renderer->layoutText("\e[38;2;0;191;255mhello, world", 500, Window::Text::Style::Italic);
+    auto l = renderer->layoutText("\e[38;2;0;191;255mhello, world", 500, Window::Text::Style::Normal);
     renderer->drawText(l, cursorX, 0);
+    l = renderer->layoutText("\e[38;2;0;191;255mhello, world", 500, Window::Text::Style::Bold, true);
+    renderer->drawText(l, cursorX, 200);
+    l = renderer->layoutText("\e[38;2;0;191;255mhello, world", 500, Window::Text::Style::Italic);
+    renderer->drawText(l, cursorX, 400);
 
     update.x = 0;//cursorX;
     update.y = 0;//cursorY;
