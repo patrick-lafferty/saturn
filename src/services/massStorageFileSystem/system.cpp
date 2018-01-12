@@ -352,6 +352,11 @@ namespace MassStorageFileSystem {
 
     void MassStorageController::queueReadSectorRequest(uint32_t lba, uint32_t sectorCount, uint32_t requesterId) {
         Request request{lba, sectorCount, requesterId};
+
+        if (sectorCount == 0) {
+            asm("hlt");
+        }
+
         queuedRequests.push(request);
 
         if (pendingCommand == PendingDiskCommand::None) {

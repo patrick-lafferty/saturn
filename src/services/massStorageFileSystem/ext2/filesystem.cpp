@@ -307,14 +307,55 @@ namespace MassStorageFileSystem::Ext2 {
                 }
                 else if (blockId > 11 && blockId < 266) {
                     auto lba = blockIdToLba(descriptor->inode.singlyIndirectBlock);
-                    blockDevice->queueReadSector(lba, sectorsPerBlock);
-                    request.read.indirectSectorsRemaining = sectorsPerBlock;
-                    request.read.totalRemainingSectors += sectorsPerBlock;
-                    request.read.remainingSectorsInBlock = 2;
+                    auto indirectSectors = 2;
+                    blockId -= 12;
+
+                    if (blockId > 128) {
+                        lba++;
+                        indirectSectors = 1;
+                    }
+                    else if ((blockId + sectorCount / sectorsPerBlock) < 128) {
+                        indirectSectors = 1;
+                    }
+
+                    
+
+                    blockDevice->queueReadSector(lba, indirectSectors);
+                    request.read.indirectSectorsRemaining = indirectSectors;
+                    request.read.totalRemainingSectors += indirectSectors;
+                    request.read.remainingSectorsInBlock = indirectSectors;
+                    break;
+                }
+                else if (blockId > 268 && blockId < 65804) {
+                    blockId -= 268;
+                    blockId /= 256;
+                    auto lba = blockIdToLba(descriptor->inode.doublyIndirectBlock);
+                    auto indirectSectors = 2;
+
+                    if (blockId > 255) {
+                        lba++;
+                        indirectSectors = 1;
+                    }
+
+                    auto endBlock = (descriptor->filePosition + request.length) / blockSize;
+                    endBlock = (endBlock - 268) / 256;
+
+                    if (blockId < 256 && endBlock > 255) {
+                        indirectSectors = 2;
+                    }
+                    else {
+                        indirectSectors = 1;
+                    }
+
+                    blockDevice->queueReadSector(lba, indirectSectors);//sectorsPerBlock);
+                    request.read.indirectSectorsRemaining = indirectSectors;//sectorsPerBlock;
+                    request.read.totalRemainingSectors += indirectSectors; //sectorsPerBlock;
+                    request.read.remainingSectorsInBlock = indirectSectors;
                     break;
                 }
                 else {
-                    printf("[Ext2] Stub: Ext2FileSystem::handleReadRequest doesn't support double/triple indirect blocks yet\n");
+                    printf("[Ext2] Stub: Ext2FileSystem::handleReadRequest doesn't support triple indirect blocks yet\n");
+                    asm("hlt");
                     break;
                 }
 
@@ -324,8 +365,11 @@ namespace MassStorageFileSystem::Ext2 {
             if (meta.startingBlock < 12) {
                 request.read.state = ReadProgress::DirectBlock;
             }
-            else {
+            else if (meta.startingBlock < 266) {
                 request.read.state = ReadProgress::IndirectBlockList;
+            }
+            else {
+                request.read.state = ReadProgress::DoublyIndirectBlockList;
             }
 
             request.read.remainingBytes = request.length;
@@ -357,6 +401,16 @@ namespace MassStorageFileSystem::Ext2 {
                     auto meta = prepareFileReadRequest(descriptor, request.read.remainingBytes);
                     auto startingId = meta.startingBlock - 12;
 
+                    if (meta.startingBlock > 268) {
+                        startingId = (meta.startingBlock - 268) % 256;
+
+                        if (startingId > 128) {
+                            startingId -= 128;
+                        }
+
+                        meta.blocksToRead = std::min(255u, meta.blocksToRead);
+                    }
+
                     for (auto i = 0u; i < meta.blocksToRead; i++) {
                         auto blockId = startingId + i;
                         auto id = *(blockIds + blockId);
@@ -375,12 +429,63 @@ namespace MassStorageFileSystem::Ext2 {
 
                         request.read.remainingBlocks++;
                         meta.startingPosition = ((meta.startingPosition / blockSize) + 1) * blockSize;
+
+                        if (meta.remainingSectors == 0) {
+                            break;
+                        }
                     }
 
                     request.read.indirectSectorsRemaining--;
 
                     if (request.read.indirectSectorsRemaining == 0) {
                         request.read.state = ReadProgress::IndirectBlock;
+                    }
+
+                    break;
+                }
+                case ReadProgress::DoublyIndirectBlockList: {
+                    auto blockIds = reinterpret_cast<uint32_t*>(buffer);
+                    auto meta = prepareFileReadRequest(descriptor, request.read.remainingBytes);
+                    auto startingId = meta.startingBlock - 268;
+                    auto totalIndirectSectors = 0;
+
+                    for (auto i = 0u; i < meta.blocksToRead; i++) {
+                        auto blockId = (startingId + i) / 256;
+                        auto id = *(blockIds + blockId);
+
+                        if (id == 0) {
+                            break;
+                        }
+
+                        auto remainingSectorsInBlock = sectorsPerBlock - (meta.startingPosition % blockSize) / sectorSize;
+                        auto sectorCount = std::min(sectorsPerBlock, meta.remainingSectors); 
+                        auto lba = blockIdToLba(id);
+
+                        bool skip = false;    
+                        if (((startingId + i) % 256) > 128) {
+                            lba++;
+                            sectorCount = 1;
+                            skip = true;
+                        }
+
+                        blockDevice->queueReadSector(lba, sectorCount);
+                        meta.remainingSectors -= sectorCount;
+
+                        request.read.remainingBlocks++;
+                        meta.startingPosition = ((meta.startingPosition / blockSize) + 1) * blockSize;
+                        totalIndirectSectors += sectorCount;
+                        request.read.totalRemainingSectors += sectorCount;
+
+                        if (meta.remainingSectors == 0 || skip) {
+                            break;
+                        }
+                    }
+
+                    request.read.indirectSectorsRemaining--;
+
+                    if (request.read.indirectSectorsRemaining == 0) {
+                        request.read.state = ReadProgress::IndirectBlockList;
+                        request.read.indirectSectorsRemaining = totalIndirectSectors;
                     }
 
                     break;
