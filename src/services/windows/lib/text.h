@@ -54,7 +54,14 @@ namespace Window::Text {
         uint32_t lineSpace;
         uint32_t lines;
     };
-    
+
+    enum class Style {
+        Normal,
+        Bold,
+        Italic,
+        Underline
+    };
+
     class Renderer {
     public:
 
@@ -62,12 +69,12 @@ namespace Window::Text {
 
         //TODO: should be const TextLayout& but vector is missing cbegin and const iterators
         void drawText(TextLayout& layout, uint32_t x, uint32_t y);
-        TextLayout layoutText(char* text, uint32_t allowedWidth);
+        TextLayout layoutText(char* text, uint32_t allowedWidth, Style style = Style::Normal);
 
     private:
 
         FT_Library library;
-        FT_Face face;
+        FT_Face faces[4];
         uint32_t* frameBuffer;
         uint32_t windowWidth;
         uint32_t windowHeight;

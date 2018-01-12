@@ -68,9 +68,46 @@ namespace Window::Text {
     }
 
     Renderer::Renderer(FT_Library library, FT_Face face, uint32_t* frameBuffer)
-        : library {library}, face {face}, frameBuffer {frameBuffer} {
+        : library {library}, frameBuffer {frameBuffer} {
         windowWidth = 800;
         windowHeight = 600;
+        faces[0] = face;
+
+        char* fonts[] = {
+            "/system/fonts/dejavu/DejaVuSans-Bold.ttf",
+            "/system/fonts/dejavu/DejaVuSans-Oblique.ttf",
+        };
+
+        int i = 1;
+
+        for (auto font : fonts) {
+            FT_Face face;
+
+            auto error = FT_New_Face(library,
+                font,
+                0,
+                &face);
+
+            if (error != 0) {
+                continue;
+            }
+
+            error = FT_Set_Char_Size(
+                face,
+                0,
+                48 * 64,
+                96,
+                96
+            );
+
+            if (error != 0) {
+                continue;
+            }
+
+            faces[i] = face;
+            i++;
+        }
+        
     }
 
     FT_Glyph Glyph::copyImage() {
@@ -263,11 +300,6 @@ namespace Window::Text {
                 case ParseState::FindChannel: {
                     auto value = strtol(buffer, &end, 10);
 
-                    if (end == buffer + 1) {
-                        done = true;
-                        break;
-                    }
-
                     buffer = end;
 
                     if (channelIndex < 1 && *buffer != ';') {
@@ -348,12 +380,14 @@ namespace Window::Text {
         return buffer - start;
     }
 
-    TextLayout Renderer::layoutText(char* text, uint32_t allowedWidth) {
+    TextLayout Renderer::layoutText(char* text, uint32_t allowedWidth, Style style) {
         TextLayout layout;
         layout.lines = 1;
 
         auto x = 0u;
         auto y = 0;
+
+        FT_Face face = faces[static_cast<int>(style)];
 
         bool kernTableAvailable = FT_HAS_KERNING(face);
         uint32_t previousIndex = 0;
