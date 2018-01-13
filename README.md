@@ -1,4 +1,4 @@
-| ![Latest Screenshot](screenshots/parrot.png) |
+| ![Latest Screenshot](https://github.com/patrick-lafferty/saturn/blob/master/screenshots/parrot.PNG) |
 | :-: |
 | *Testing the limits of the text renderer, using FreeType* |
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
