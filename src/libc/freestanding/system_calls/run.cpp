@@ -36,15 +36,9 @@ uint32_t run(uintptr_t entryPoint) {
     send(IPC::RecipientType::ServiceRegistryMailbox, &run);
 
     IPC::MaximumMessageBuffer buffer;
-    receive(&buffer);
+    filteredReceive(&buffer, IPC::MessageNamespace::ServiceRegistry, static_cast<uint32_t>(MessageId::RunResult));
 
-    if (buffer.messageNamespace == IPC::MessageNamespace::ServiceRegistry 
-        && buffer.messageId == static_cast<uint32_t>(MessageId::RunResult)) {
-        auto result = IPC::extractMessage<RunResult>(buffer);
-        return result.pid;
-    }
-
-    return 0;
+    return IPC::extractMessage<RunResult>(buffer).pid;
 }
 
 uint32_t run(char* path) {
@@ -53,13 +47,7 @@ uint32_t run(char* path) {
     send(IPC::RecipientType::ServiceRegistryMailbox, &run);
 
     IPC::MaximumMessageBuffer buffer;
-    receive(&buffer);
+    filteredReceive(&buffer, IPC::MessageNamespace::ServiceRegistry, static_cast<uint32_t>(MessageId::RunResult));
 
-    if (buffer.messageNamespace == IPC::MessageNamespace::ServiceRegistry 
-        && buffer.messageId == static_cast<uint32_t>(MessageId::RunResult)) {
-        auto result = IPC::extractMessage<RunResult>(buffer);
-        return result.pid;
-    }
-
-    return 0;
+    return IPC::extractMessage<RunResult>(buffer).pid;
 }

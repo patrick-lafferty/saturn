@@ -44,18 +44,8 @@ OpenResult openSynchronous(const char* path) {
     open(path);
 
     IPC::MaximumMessageBuffer buffer;
-    receive(&buffer);
+    filteredReceive(&buffer, IPC::MessageNamespace::VFS, static_cast<uint32_t>(MessageId::OpenResult));
 
-    if (buffer.messageNamespace == IPC::MessageNamespace::VFS
-            && buffer.messageId == static_cast<uint32_t>(MessageId::OpenResult)) {
-        return IPC::extractMessage<OpenResult>(buffer);
-    }
-    else {
-        printf("[Syscall] openSynchronous: unexpected messageId: %d, expected: %d\n", 
-            buffer.messageId, MessageId::OpenResult);
-        printf("    while opening path: %s\n", path);
-        sleep(1000);
-        asm ("hlt");
-        return {};
-    }
+    return IPC::extractMessage<OpenResult>(buffer);
+
 }
