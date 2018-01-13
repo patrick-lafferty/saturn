@@ -38,8 +38,13 @@ namespace Window::Text {
         FT_Glyph image;
         uint32_t height;
         uint32_t colour;
+        uint8_t index;
 
         FT_Glyph copyImage();
+
+        bool isValid() {
+            return image != nullptr;
+        }
     };
 
     struct BoundingBox {
@@ -75,6 +80,7 @@ namespace Window::Text {
 
     private:
 
+        BoundingBox calculateBoundingBox(std::vector<Glyph>& glyphs);
         void loadFont(uint32_t index);
 
         FT_Library library;
@@ -82,6 +88,11 @@ namespace Window::Text {
         uint32_t* frameBuffer;
         uint32_t windowWidth;
         uint32_t windowHeight;
+
+        const int MaxCachedGlyphIndex {128};
+
+        Glyph cachedGlyphs[128];
+        FT_BBox cachedBoundingBoxes[128];
     };
 
     Renderer* createRenderer(uint32_t* frameBuffer);

@@ -165,17 +165,17 @@ int dsky_main() {
 
                         renderer->drawText(layout, cursorX, cursorY);
 
-                        update.x = 0;//cursorX;
-                        update.y = 0;//cursorY;
-                        update.width = 800;//layout.bounds.width;
-                        update.height = 600;//layout.bounds.height;
+                        update.x = cursorX;
+                        update.y = cursorY;
+                        update.width = layout.bounds.width;
+                        update.height = layout.bounds.height;
                         send(IPC::RecipientType::ServiceName, &update);
 
                         cursorX += layout.bounds.width;
                         break;
                     }
                     case Keyboard::MessageId::KeyPress: {
-                        
+
                         break;
                     }
                 }

@@ -119,13 +119,13 @@ namespace Window::Text {
         return glyph;
     }
 
-    BoundingBox calculateBoundingBox(std::vector<Glyph>& glyphs) {
+    BoundingBox Renderer::calculateBoundingBox(std::vector<Glyph>& glyphs) {
         BoundingBox box {{10000, 10000, -10000, -10000}};
 
         for (auto& glyph : glyphs) {
-            FT_BBox glyphBounds;
+            FT_BBox glyphBounds = cachedBoundingBoxes[glyph.index];
 
-            FT_Glyph_Get_CBox(glyph.image, ft_glyph_bbox_pixels, &glyphBounds);
+            //FT_Glyph_Get_CBox(glyph.image, ft_glyph_bbox_pixels, &glyphBounds);
             //need to transform the bounding box by the glyph's position
             glyphBounds.xMax += glyph.position.x;
             glyphBounds.xMin += glyph.position.x;
@@ -191,8 +191,32 @@ namespace Window::Text {
         for(auto& glyph : layout.glyphs) {
 
             auto image = glyph.copyImage();
+
+            /*auto top = origin.y + glyph.position.y;
+            auto left = glyph.position.x + origin.x;
+
+            for (int row = 0; row < 20; row++) {
+                auto y = row + top;
+
+                if (y == windowHeight)
+                { 
+                    continue;
+                }
+
+                for (int column = 0; column < 20; column++) {
+                    auto x = column + origin.x + glyph.position.x;
+
+                    auto index = x + y * windowWidth;
+                    auto val = 255;
+                    auto col = glyph.colour;
+                    auto back = 0x00'20'20'20u;
+                    auto f = blend(col, back, val);
+                    frameBuffer[index] = f;
+                }
+
+            }*/
             
-            auto error = FT_Glyph_To_Bitmap(
+           auto error = FT_Glyph_To_Bitmap(
                 &image,
                 FT_RENDER_MODE_NORMAL,
                 nullptr,
@@ -405,7 +429,7 @@ namespace Window::Text {
 
         FT_Face face = faces[faceIndex];
 
-        FT_Set_Char_Size(
+        /*FT_Set_Char_Size(
             face,
             0,
             size * 64,
@@ -413,7 +437,7 @@ namespace Window::Text {
             96
         );
 
-        bool kernTableAvailable = FT_HAS_KERNING(face);
+        bool kernTableAvailable = FT_HAS_KERNING(face);*/
         uint32_t previousIndex = 0;
 
         while (*text != '\0') { 
@@ -424,49 +448,60 @@ namespace Window::Text {
                 continue;
             }
 
-            auto glyphIndex = FT_Get_Char_Index(face, *text); 
-            auto error = FT_Load_Glyph(
-                face,
-                glyphIndex,
-                FT_LOAD_DEFAULT
-            );
+            auto character = *text;
 
-            if (kernTableAvailable && previousIndex > 0) {
-                FT_Vector kerning;
-
-                FT_Get_Kerning(face, 
-                    previousIndex, 
+            if (character < MaxCachedGlyphIndex && !cachedGlyphs[character].isValid()) {
+                auto glyphIndex = FT_Get_Char_Index(face, character); 
+                auto error = FT_Load_Glyph(
+                    face,
                     glyphIndex,
-                    FT_KERNING_DEFAULT, 
-                    &kerning);
+                    FT_LOAD_DEFAULT
+                );
 
-                x += kerning.x >> 6;
+                /*if (kernTableAvailable && previousIndex > 0) {
+                    FT_Vector kerning;
+
+                    FT_Get_Kerning(face, 
+                        previousIndex, 
+                        glyphIndex,
+                        FT_KERNING_DEFAULT, 
+                        &kerning);
+
+                    x += kerning.x >> 6;
+                }*/
+
+                auto widthRequired = (face->glyph->metrics.width >> 6) + (face->glyph->advance.x >> 6); 
+
+                if ((x + widthRequired) >= allowedWidth) {
+                    x = 0;
+                    y += face->size->metrics.height >> 6;
+                    layout.lines++;
+                }
+
+                Glyph glyph;
+                glyph.position.x = 0;//x;
+                glyph.position.y = 0;//y;
+                glyph.height = face->glyph->metrics.height >> 6;
+                auto diff = (face->size->metrics.ascender - face->glyph->metrics.horiBearingY) / 64;
+                glyph.position.y += diff;
+                glyph.index = character;
+
+                error = FT_Get_Glyph(face->glyph, &glyph.image);
+                //error = FT_Glyph_Transform(glyph.image, nullptr, &glyph.position);
+                FT_Glyph_Get_CBox(glyph.image, ft_glyph_bbox_pixels, &cachedBoundingBoxes[character]);
+                cachedGlyphs[character] = glyph;
             }
 
-            auto widthRequired = (face->glyph->metrics.width >> 6) + (face->glyph->advance.x >> 6); 
-
-            if ((x + widthRequired) >= allowedWidth) {
-                x = 0;
-                y += face->size->metrics.height >> 6;
-                layout.lines++;
-            }
-
-            Glyph glyph;
+            auto glyph = cachedGlyphs[character];
             glyph.position.x = x;
-            glyph.position.y = y;
-            glyph.height = face->glyph->metrics.height >> 6;
-            auto diff = (face->size->metrics.ascender - face->glyph->metrics.horiBearingY) / 64;
-            glyph.position.y += diff;
+            glyph.position.y += y;
             glyph.colour = foreground;
-
-            error = FT_Get_Glyph(face->glyph, &glyph.image);
-            error = FT_Glyph_Transform(glyph.image, nullptr, &glyph.position);
 
             x += face->glyph->advance.x >> 6;
 
             layout.glyphs.push_back(glyph);
             text++;
-            previousIndex = glyphIndex;
+            //previousIndex = glyphIndex;
         }
 
         layout.bounds = calculateBoundingBox(layout.glyphs);
