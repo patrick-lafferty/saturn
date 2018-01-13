@@ -44,63 +44,6 @@ interface for the Apollo Guidance Computer.
 using namespace Window;
 using namespace Window::Debug;
 
-/*
-auto currentLayout = &sentenceLayout;
-
-    int i = 1;
-
-    while (true) {
-        
-        char num[4];
-        sprintf(num, "%d", i);
-
-        Update update;
-        update.serviceType = Kernel::ServiceType::WindowManager;
-
-        auto layout = renderer->layoutText(num, 400);
-        bool scrolled {false};
-
-        if (i % 5 == 0) {
-            currentLayout = &sentenceLayout;
-        }
-        else {
-            currentLayout = &layout;
-        }
-
-        if (cursorY + currentLayout->bounds.height >= screenHeight) {
-            auto scroll = currentLayout->lineSpace + currentLayout->bounds.height - (screenHeight - cursorY);
-            auto byteCount = screenWidth * (screenHeight - scroll) * 4;
-            memcpy(windowBuffer->buffer, windowBuffer->buffer + screenWidth * (scroll), byteCount);
-            memset(windowBuffer->buffer + (screenHeight - scroll) * screenWidth, 0, scroll * screenWidth * 4);
-            update.x = 0;
-            update.y = 0;
-            update.width = screenWidth;
-            update.height = screenHeight;
-            
-            scrolled = true;
-            cursorY = screenHeight - currentLayout->bounds.height - 1 - currentLayout->lineSpace;
-        }
-
-        renderer->drawText(*currentLayout, cursorX, cursorY);
-        drawBox(windowBuffer->buffer, cursorX, cursorY, currentLayout->bounds.width, currentLayout->bounds.height );
-
-        if (!scrolled) {
-            update.x = cursorX;
-            update.y = cursorY;
-            update.width = currentLayout->bounds.width;
-            update.height = currentLayout->bounds.height;
-        }
-
-        send(IPC::RecipientType::ServiceName, &update);
-
-        cursorY += currentLayout->bounds.height;
-
-        sleep(1000);
-        i++;
-    }
-
-*/
-
 void clear(uint32_t* buffer, uint32_t screenWidth, uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
     auto background = 0x00'20'20'20u;
 
@@ -130,6 +73,8 @@ public:
 
         drawPrompt();
 
+        auto maxInputWidth = screenWidth - promptLayout.bounds.width;
+
         while (true) {
 
             IPC::MaximumMessageBuffer buffer;
@@ -151,7 +96,7 @@ public:
                                 currentLayout.bounds.height);
 
                             auto maxWidth = currentLayout.bounds.width;
-                            currentLayout = textRenderer->layoutText(inputBuffer, screenWidth);
+                            currentLayout = textRenderer->layoutText(inputBuffer, maxInputWidth);
 
                             if (needsToScroll(currentLayout.bounds.height)) {
                                 scroll(currentLayout.bounds.height);
@@ -170,7 +115,7 @@ public:
                             switch (key.key) {
                                 case Keyboard::VirtualKey::Enter: {
 
-                                    auto amountToScroll = currentLayout.bounds.height + currentLayout.lineSpace;
+                                    auto amountToScroll = (currentLayout.lines + 1) * currentLayout.lineSpace;
 
                                     if (needsToScroll(amountToScroll)) {
                                         scroll(amountToScroll);
@@ -180,10 +125,11 @@ public:
                                         cursorY += currentLayout.bounds.height;
                                     }
 
-                                    currentLayout = textRenderer->layoutText("", screenWidth);
+                                    currentLayout = textRenderer->layoutText("", maxInputWidth);
 
                                     drawPrompt(); 
                                     index = 0;
+                                    memset(inputBuffer, '\0', 500);
                                     break;
                                 }
                             }
@@ -215,8 +161,7 @@ private:
         auto frameBuffer = window->getFramebuffer();
 
         memcpy(frameBuffer, frameBuffer + screenWidth * (scroll), byteCount);
-        //memset(frameBuffer + (screenHeight - scroll) * screenWidth, 0, scroll * screenWidth * 4);
-        clear(frameBuffer, screenWidth, 0, screenHeight - scroll, screenWidth, scroll);
+        clear(frameBuffer, screenWidth, 0, screenHeight - scroll - 1, screenWidth, scroll);
         
         updateWindowBuffer(0, 0, screenWidth, screenHeight);
         
@@ -239,4 +184,6 @@ int dsky_main() {
     }
 
     dsky.messageLoop();
+
+    return 0;
 }
