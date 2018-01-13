@@ -152,6 +152,11 @@ public:
 
                             auto maxWidth = currentLayout.bounds.width;
                             currentLayout = textRenderer->layoutText(inputBuffer, screenWidth);
+
+                            if (needsToScroll(currentLayout.bounds.height)) {
+                                scroll(currentLayout.bounds.height);
+                            }
+
                             maxWidth = std::max(maxWidth, currentLayout.bounds.width);
                             textRenderer->drawText(currentLayout, cursorX, cursorY);
                             updateWindowBuffer(cursorX, cursorY, maxWidth, currentLayout.bounds.height);
@@ -160,6 +165,28 @@ public:
                             break;
                         }
                         case Keyboard::MessageId::KeyPress: {
+                            auto key = IPC::extractMessage<Keyboard::KeyPress>(buffer);
+
+                            switch (key.key) {
+                                case Keyboard::VirtualKey::Enter: {
+
+                                    auto amountToScroll = currentLayout.bounds.height + currentLayout.lineSpace;
+
+                                    if (needsToScroll(amountToScroll)) {
+                                        scroll(amountToScroll);
+                                        cursorY = screenHeight - currentLayout.lineSpace;
+                                    }
+                                    else {
+                                        cursorY += currentLayout.bounds.height;
+                                    }
+
+                                    currentLayout = textRenderer->layoutText("", screenWidth);
+
+                                    drawPrompt(); 
+                                    index = 0;
+                                    break;
+                                }
+                            }
 
                             break;
                         }
@@ -173,9 +200,27 @@ public:
 private:
 
     void drawPrompt() {
-        textRenderer->drawText(promptLayout, cursorX, cursorY);
+        textRenderer->drawText(promptLayout, 0, cursorY);
         updateWindowBuffer(0, cursorY, promptLayout.bounds.width, promptLayout.bounds.height);
         cursorX = promptLayout.bounds.width;
+    }
+
+    bool needsToScroll(uint32_t spaceRequired) {
+        return (cursorY + spaceRequired) >= screenHeight;
+    }
+
+    void scroll(uint32_t spaceRequired) {
+        auto scroll = spaceRequired - (screenHeight - cursorY);
+        auto byteCount = screenWidth * (screenHeight - scroll) * 4;
+        auto frameBuffer = window->getFramebuffer();
+
+        memcpy(frameBuffer, frameBuffer + screenWidth * (scroll), byteCount);
+        //memset(frameBuffer + (screenHeight - scroll) * screenWidth, 0, scroll * screenWidth * 4);
+        clear(frameBuffer, screenWidth, 0, screenHeight - scroll, screenWidth, scroll);
+        
+        updateWindowBuffer(0, 0, screenWidth, screenHeight);
+        
+        cursorY = screenHeight - spaceRequired - 1;
     }
 
     Text::TextLayout promptLayout;    
