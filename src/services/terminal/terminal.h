@@ -95,16 +95,6 @@ namespace Terminal {
 
     };
 
-    struct CharacterInput : IPC::Message {
-        CharacterInput() {
-            messageId = static_cast<uint32_t>(MessageId::CharacterInput);
-            length = sizeof(CharacterInput);
-            messageNamespace = IPC::MessageNamespace::Terminal;
-        }
-
-        uint8_t character;
-    };
-
     struct DirtyRect {
         uint32_t startIndex {0};
         uint32_t endIndex {0};

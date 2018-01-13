@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <services/terminal/terminal.h>
 #include <string.h>
 #include <stdio.h>
+#include <ctype.h>
 
 using namespace Kernel;
 using namespace PS2;
@@ -113,8 +114,21 @@ namespace Keyboard {
         en_US[0x55] = {'=', '+'};
         en_US[0x5D] = {'\\', '|'};
 
-        en_US[0x5A] = {13, 13};
-        en_US[0x66] = {8, 8};
+        en_US[0x5A] = {static_cast<uint8_t>(VirtualKey::Enter), static_cast<uint8_t>(VirtualKey::Enter)};
+        en_US[0x66] = {static_cast<uint8_t>(VirtualKey::Backspace), static_cast<uint8_t>(VirtualKey::Backspace)};
+
+        en_US[0x05] = {static_cast<uint8_t>(VirtualKey::F1), static_cast<uint8_t>(VirtualKey::F1)};
+        en_US[0x06] = {static_cast<uint8_t>(VirtualKey::F2), static_cast<uint8_t>(VirtualKey::F2)};
+        en_US[0x04] = {static_cast<uint8_t>(VirtualKey::F3), static_cast<uint8_t>(VirtualKey::F3)};
+        en_US[0x0C] = {static_cast<uint8_t>(VirtualKey::F4), static_cast<uint8_t>(VirtualKey::F4)};
+        en_US[0x03] = {static_cast<uint8_t>(VirtualKey::F5), static_cast<uint8_t>(VirtualKey::F5)};
+        en_US[0x0B] = {static_cast<uint8_t>(VirtualKey::F6), static_cast<uint8_t>(VirtualKey::F6)};
+        en_US[0x83] = {static_cast<uint8_t>(VirtualKey::F7), static_cast<uint8_t>(VirtualKey::F7)};
+        en_US[0x0A] = {static_cast<uint8_t>(VirtualKey::F8), static_cast<uint8_t>(VirtualKey::F8)};
+        en_US[0x01] = {static_cast<uint8_t>(VirtualKey::F9), static_cast<uint8_t>(VirtualKey::F9)};
+        en_US[0x09] = {static_cast<uint8_t>(VirtualKey::F10), static_cast<uint8_t>(VirtualKey::F10)};
+        en_US[0x78] = {static_cast<uint8_t>(VirtualKey::F11), static_cast<uint8_t>(VirtualKey::F11)};
+        en_US[0x07] = {static_cast<uint8_t>(VirtualKey::F12), static_cast<uint8_t>(VirtualKey::F12)};
     }
 
     struct ModifierStatus {
@@ -150,8 +164,11 @@ namespace Keyboard {
     void messageLoop() {
 
         ModifierStatus modifiers {};
-        KeyPress message {};
-        message.serviceType = Kernel::ServiceType::Terminal;
+        KeyPress keyMessage;
+        keyMessage.serviceType = Kernel::ServiceType::Terminal;
+
+        CharacterInput characterMessage;
+        characterMessage.serviceType = Kernel::ServiceType::Terminal;
 
         while (true) {
             IPC::MaximumMessageBuffer buffer;
@@ -183,8 +200,16 @@ namespace Keyboard {
                                     
                                     if (event.status == KeyStatus::Pressed) {
                                         auto key = translateKeyEvent(event.key, modifiers);
-                                        message.key = key;
-                                        send(IPC::RecipientType::ServiceName, &message);
+
+                                        if (isprint(key)) {
+                                            characterMessage.character = key;
+                                            send(IPC::RecipientType::ServiceName, &characterMessage);
+                                        }
+                                        else {
+                                            keyMessage.key = static_cast<VirtualKey>(key);
+                                            send(IPC::RecipientType::ServiceName, &keyMessage);
+                                        }
+
                                     }
                                     break;
                                 }
@@ -192,7 +217,8 @@ namespace Keyboard {
                             break;
                         }
                         case MessageId::RedirectToWindowManager: {
-                            message.serviceType = ServiceType::WindowManager;
+                            keyMessage.serviceType = ServiceType::WindowManager;
+                            characterMessage.serviceType = ServiceType::WindowManager;
                             break;
                         }
                     }

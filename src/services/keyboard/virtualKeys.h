@@ -26,56 +26,54 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #pragma once
-
 #include <stdint.h>
-#include <ipc.h>
-#include <services/ps2/ps2.h>
-#include "virtualKeys.h"
 
 namespace Keyboard {
-    enum class MessageId {
-        KeyEvent,
-        KeyPress,
-        CharacterInput,
-        RedirectToWindowManager
-    };
-
-    struct KeyEvent : IPC::Message {
-        KeyEvent() {
-            messageId = static_cast<uint32_t>(MessageId::KeyEvent);
-            length = sizeof(KeyEvent);
-            messageNamespace = IPC::MessageNamespace::Keyboard;
-        }
-
-        PS2::PhysicalKey key;
-        PS2::KeyStatus status;
-    };
-
-    struct KeyPress : IPC::Message {
-        KeyPress() {
-            messageId = static_cast<uint32_t>(MessageId::KeyPress);
-            length = sizeof(KeyPress);
-            messageNamespace = IPC::MessageNamespace::Keyboard;
-        }
-
-        VirtualKey key;
-    };
-
-    struct CharacterInput : IPC::Message {
-        CharacterInput() {
-            messageId = static_cast<uint32_t>(MessageId::CharacterInput);
-            length = sizeof(CharacterInput);
-            messageNamespace = IPC::MessageNamespace::Keyboard;
-        }
-
-        uint8_t character;
-    }; 
-
-    struct RedirectToWindowManager : IPC::Message {
-        RedirectToWindowManager() {
-            messageId = static_cast<uint32_t>(MessageId::RedirectToWindowManager);
-            length = sizeof(KeyEvent);
-            messageNamespace = IPC::MessageNamespace::Keyboard;
-        }
+    enum class VirtualKey : uint8_t {
+        Left,
+        Right,
+        Up,
+        Down,
+        Enter,
+        Backspace,
+        F1,
+        F2,
+        F3,
+        F4,
+        F5,
+        F6,
+        F7,
+        F8,
+        F9,
+        F10,
+        F11,
+        F12,
+        A,
+        B,
+        C,
+        D,
+        E,
+        F,
+        G,
+        H,
+        I,
+        J,
+        K,
+        L,
+        M,
+        N,
+        O,
+        P,
+        Q,
+        R,
+        S,
+        T,
+        U,
+        V,
+        W,
+        X,
+        Y,
+        Z,
+        
     };
 }

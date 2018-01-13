@@ -27,6 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "shell.h"
 #include <services/terminal/terminal.h>
+#include <services/keyboard/messages.h>
 #include <services.h>
 #include <system_calls.h>
 #include <string.h>
@@ -57,7 +58,7 @@ namespace Shell {
             if (buffer.messageNamespace == IPC::MessageNamespace::Terminal
                 && buffer.messageId == static_cast<uint32_t>(Terminal::MessageId::CharacterInput)) {
                 done = true;
-                auto input = IPC::extractMessage<Terminal::CharacterInput>(buffer);
+                auto input = IPC::extractMessage<Keyboard::CharacterInput>(buffer);
                 return input.character;
             }
         }

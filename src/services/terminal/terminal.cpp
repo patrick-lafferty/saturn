@@ -185,12 +185,12 @@ namespace Terminal {
                 }
                 case IPC::MessageNamespace::Keyboard: {
                     switch(static_cast<Keyboard::MessageId>(buffer.messageId)) {
-                        case Keyboard::MessageId::KeyPress: {
-                            auto message = IPC::extractMessage<Keyboard::KeyPress>(buffer);
-                            queue.add(message.key);
+                        case Keyboard::MessageId::CharacterInput: {
+                            auto message = IPC::extractMessage<Keyboard::CharacterInput>(buffer);
+                            queue.add(message.character);
 
                             if (taskIdWaitingForInput != 0) {
-                                CharacterInput input {};
+                                Keyboard::CharacterInput input {};
                                 input.character = queue.get();
                                 input.recipientId = taskIdWaitingForInput;
                                 send(IPC::RecipientType::TaskId, &input);
@@ -236,7 +236,7 @@ namespace Terminal {
                         
                         case MessageId::GetCharacter: {
                             if (queue.inputIsAvailable()) {
-                                CharacterInput input {};
+                                Keyboard::CharacterInput input {};
                                 input.character = queue.get();
                                 input.recipientId = buffer.senderTaskId;
                                 send(IPC::RecipientType::TaskId, &input);
