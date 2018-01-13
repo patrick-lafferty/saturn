@@ -36,38 +36,13 @@ interface for the Apollo Guidance Computer.
 #include <services.h>
 #include <services/windows/lib/text.h>
 #include <services/windows/lib/debug.h>
+#include <services/windows/lib/window.h>
+#include <services/windows/lib/application.h>
 #include <services/keyboard/messages.h>
+#include <algorithm>
 
 using namespace Window;
 using namespace Window::Debug;
-
-bool createWindow(uint32_t address) {
-    
-    CreateWindow create;
-    create.serviceType = Kernel::ServiceType::WindowManager;
-    create.bufferAddress = address;
-    
-    send(IPC::RecipientType::ServiceName, &create);
-    
-    IPC::MaximumMessageBuffer buffer;
-    receive(&buffer);
-
-    switch (buffer.messageNamespace) {
-        case IPC::MessageNamespace::WindowManager: {
-            switch (static_cast<MessageId>(buffer.messageId)) {
-                case MessageId::CreateWindowSucceeded: {
-
-                    return true;
-                    break;
-                }
-            }
-
-            break;
-        }
-    }
-
-    return false;
-}
 
 /*
 auto currentLayout = &sentenceLayout;
@@ -126,62 +101,97 @@ auto currentLayout = &sentenceLayout;
 
 */
 
+void clear(uint32_t* buffer, uint32_t screenWidth, uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
+    auto background = 0x00'20'20'20u;
+
+    for (auto row = 0u; row < height; row++) {
+        std::fill_n(buffer + x + (y + row) * screenWidth, width, background);
+    }
+}
+
+class Dsky : public Application {
+public:
+
+    Dsky(uint32_t screenWidth, uint32_t screenHeight) 
+        : Application(screenWidth, screenHeight) {
+
+        if (!isValid()) {
+            return;
+        }
+
+        promptLayout = textRenderer->layoutText("\e[38;2;255;69;0m> \e[38;2;0;191;255m", screenWidth);
+    }
+
+    void messageLoop() {
+        char inputBuffer[500];
+        memset(inputBuffer, '\0', 500);
+        int index {0};
+        Text::TextLayout currentLayout;
+
+        drawPrompt();
+
+        while (true) {
+
+            IPC::MaximumMessageBuffer buffer;
+            receive(&buffer);
+
+            switch (buffer.messageNamespace) {
+                case IPC::MessageNamespace::Keyboard: {
+                    switch (static_cast<Keyboard::MessageId>(buffer.messageId)) {
+                        case Keyboard::MessageId::CharacterInput: {
+
+                            auto input = IPC::extractMessage<Keyboard::CharacterInput>(buffer);
+                            inputBuffer[index] = input.character;
+
+                            clear(window->getFramebuffer(), 
+                                screenWidth, 
+                                cursorX, 
+                                cursorY, 
+                                currentLayout.bounds.width, 
+                                currentLayout.bounds.height);
+
+                            auto maxWidth = currentLayout.bounds.width;
+                            currentLayout = textRenderer->layoutText(inputBuffer, screenWidth);
+                            maxWidth = std::max(maxWidth, currentLayout.bounds.width);
+                            textRenderer->drawText(currentLayout, cursorX, cursorY);
+                            updateWindowBuffer(cursorX, cursorY, maxWidth, currentLayout.bounds.height);
+
+                            index++;
+                            break;
+                        }
+                        case Keyboard::MessageId::KeyPress: {
+
+                            break;
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+private:
+
+    void drawPrompt() {
+        textRenderer->drawText(promptLayout, cursorX, cursorY);
+        updateWindowBuffer(0, cursorY, promptLayout.bounds.width, promptLayout.bounds.height);
+        cursorX = promptLayout.bounds.width;
+    }
+
+    Text::TextLayout promptLayout;    
+    uint32_t cursorX {0}, cursorY {0};
+};
+
 int dsky_main() {
-    auto windowBuffer = new WindowBuffer;
-    auto address = reinterpret_cast<uintptr_t>(windowBuffer);
 
     auto screenWidth = 800u;
     auto screenHeight = 600u;
 
-    if (!createWindow(address)) {
-        delete windowBuffer;
+    Dsky dsky {screenWidth, screenHeight};
+
+    if (!dsky.isValid()) {
         return 1;
     }
 
-    auto renderer = Window::Text::createRenderer(windowBuffer->buffer);
-
-    uint32_t cursorX = 0;    
-    uint32_t cursorY = 0;
-
-    Update update;
-    update.serviceType = Kernel::ServiceType::WindowManager;
-    update.x = 0;//cursorX;
-    update.y = 0;//cursorY;
-    update.width = 800;//layout.bounds.width;
-    update.height = 600;//layout.bounds.height;
-    send(IPC::RecipientType::ServiceName, &update);
-
-    while (true) {
-        IPC::MaximumMessageBuffer buffer;
-        receive(&buffer);
-
-        switch (buffer.messageNamespace) {
-            case IPC::MessageNamespace::Keyboard: {
-                switch (static_cast<Keyboard::MessageId>(buffer.messageId)) {
-                    case Keyboard::MessageId::CharacterInput: {
-                        auto keypress = IPC::extractMessage<Keyboard::KeyPress>(buffer);
-                        char text[] = {(char)keypress.key, '\0'};
-                        auto layout = renderer->layoutText(text, 100);
-
-                        renderer->drawText(layout, cursorX, cursorY);
-
-                        update.x = cursorX;
-                        update.y = cursorY;
-                        update.width = layout.bounds.width;
-                        update.height = layout.bounds.height;
-                        send(IPC::RecipientType::ServiceName, &update);
-
-                        cursorX += layout.bounds.width;
-                        break;
-                    }
-                    case Keyboard::MessageId::KeyPress: {
-
-                        break;
-                    }
-                }
-                break;
-            }
-        }
-    }
-    
+    dsky.messageLoop();
 }
