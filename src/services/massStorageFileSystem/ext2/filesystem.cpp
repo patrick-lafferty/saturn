@@ -402,7 +402,7 @@ namespace MassStorageFileSystem::Ext2 {
                     if (meta.startingBlock > 268) {
                         startingId = (meta.startingBlock - 268) % 256;
 
-                        if (startingId > 128) {
+                        if (startingId >= 128) {
                             startingId -= 128;
                         }
 
@@ -460,7 +460,7 @@ namespace MassStorageFileSystem::Ext2 {
                         auto lba = blockIdToLba(id);
 
                         bool skip = false;    
-                        if (((startingId + i) % 256) > 128) {
+                        if (((startingId + i) % 256) >= 128) {
                             lba++;
                             sectorCount = 1;
                             skip = true;
