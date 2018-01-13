@@ -71,7 +71,7 @@ namespace Window::Text {
 
         //TODO: should be const TextLayout& but vector is missing cbegin and const iterators
         void drawText(TextLayout& layout, uint32_t x, uint32_t y);
-        TextLayout layoutText(char* text, uint32_t allowedWidth, Style style = Style::Normal, bool underline = false);
+        TextLayout layoutText(char* text, uint32_t allowedWidth, Style style = Style::Normal, bool underline = false, uint32_t size = 18);
 
     private:
 

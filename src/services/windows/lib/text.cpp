@@ -55,7 +55,7 @@ namespace Window::Text {
         error = FT_Set_Char_Size(
             face,
             0,
-            48 * 64,
+            18 * 64,
             96,
             96
         );
@@ -95,7 +95,7 @@ namespace Window::Text {
             error = FT_Set_Char_Size(
                 face,
                 0,
-                48 * 64,
+                18 * 64,
                 96,
                 96
             );
@@ -393,7 +393,7 @@ namespace Window::Text {
         return buffer - start;
     }
 
-    TextLayout Renderer::layoutText(char* text, uint32_t allowedWidth, Style style, bool underline) {
+    TextLayout Renderer::layoutText(char* text, uint32_t allowedWidth, Style style, bool underline, uint32_t size) {
         TextLayout layout;
         layout.lines = 1;
 
@@ -401,6 +401,14 @@ namespace Window::Text {
         auto y = 0;
 
         FT_Face face = faces[static_cast<int>(style)];
+
+        FT_Set_Char_Size(
+            face,
+            0,
+            size * 64,
+            96,
+            96
+        );
 
         bool kernTableAvailable = FT_HAS_KERNING(face);
         uint32_t previousIndex = 0;

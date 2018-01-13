@@ -141,16 +141,102 @@ int dsky_main() {
     auto renderer = Window::Text::createRenderer(windowBuffer->buffer);
 
     uint32_t cursorX = 0;    
-    uint32_t cursorY = 100;
+    uint32_t cursorY = 0;
 
     Update update;
     update.serviceType = Kernel::ServiceType::WindowManager;
-    auto l = renderer->layoutText("\e[38;2;0;191;255mhello, world", 500, Window::Text::Style::Normal);
-    renderer->drawText(l, cursorX, 0);
-    l = renderer->layoutText("\e[38;2;0;191;255mhello, world", 500, Window::Text::Style::Bold, true);
-    renderer->drawText(l, cursorX, 200);
-    l = renderer->layoutText("\e[38;2;0;191;255mhello, world", 500, Window::Text::Style::Italic);
-    renderer->drawText(l, cursorX, 400);
+
+    auto line1 = renderer->layoutText("This parrot is \e[38;2;220;20;60mno more.", 800, Window::Text::Style::Normal);
+    renderer->drawText(line1, 0, cursorY);
+    cursorY += line1.bounds.height;
+    
+    auto line21 = renderer->layoutText("\e[38;2;100;149;237mIt has ", 800, Window::Text::Style::Normal);
+    renderer->drawText(line21, 0, cursorY);
+    auto line22 = renderer->layoutText("\e[38;2;127;255;0mceased", 800, Window::Text::Style::Bold);
+    renderer->drawText(line22, line21.bounds.width + 5, cursorY);
+    auto line23 = renderer->layoutText("to be!", 800, Window::Text::Style::Normal, true);
+    renderer->drawText(line23, line21.bounds.width + line22.bounds.width + 10, cursorY);
+    cursorY += line23.bounds.height;
+
+    auto line31 = renderer->layoutText("Its ", 800, Window::Text::Style::Normal);
+    renderer->drawText(line31, 0, cursorY);
+    cursorX = line31.bounds.width + 5;
+    auto line32 = renderer->layoutText("\e[38;2;0;100;0mexpired", 800, Window::Text::Style::Italic);
+    renderer->drawText(line32, cursorX, cursorY);
+    cursorX += line32.bounds.width + 5;
+    auto line33 = renderer->layoutText("and gone to", 800, Window::Text::Style::Normal);
+    renderer->drawText(line33, cursorX, cursorY);
+    cursorX += line33.bounds.width + 5;
+    auto line34 = renderer->layoutText("meet ", 800, Window::Text::Style::Italic);
+    renderer->drawText(line34, cursorX, cursorY);
+    cursorX += line34.bounds.width + 5;
+    auto line35 = renderer->layoutText("\e[38;2;255;215;0mits maker.", 800, Window::Text::Style::Bold);
+    renderer->drawText(line35, cursorX, cursorY);
+    cursorX = 0;
+    cursorY += line34.bounds.height;
+
+    auto line4 = renderer->layoutText("This is a \e[38;2;0;0;0mlate parrot!", 800, Window::Text::Style::Normal, false, 22);
+    renderer->drawText(line4, 0, cursorY);
+    cursorY += line4.bounds.height;
+
+    auto line51 = renderer->layoutText("\e[38;2;100;149;237mIts a", 800, Window::Text::Style::Normal, false, 24);
+    renderer->drawText(line51, 0, cursorY);
+    cursorX += line51.bounds.width + 10;
+    auto line52 = renderer->layoutText("\e[38;2;255;165;0mstiff!", 800, Window::Text::Style::Bold, false, 24);
+    renderer->drawText(line52, cursorX, cursorY);
+    cursorX += line52.bounds.width + 10;
+    auto line53 = renderer->layoutText("\e[38;2;100;149;237mBereft of life", 800, Window::Text::Style::Italic, false, 24);
+    renderer->drawText(line53, cursorX, cursorY);
+    cursorX += line53.bounds.width + 5;
+    auto line54 = renderer->layoutText(", it", 800, Window::Text::Style::Normal, false, 24);
+    renderer->drawText(line54, cursorX, cursorY);
+    cursorX += line54.bounds.width + 10;
+    auto line55 = renderer->layoutText("\e[38;2;128;0;128mrests", 800, Window::Text::Style::Bold, true, 24);
+    renderer->drawText(line55, cursorX, cursorY);
+    cursorX += line55.bounds.width + 10;
+    auto line56 = renderer->layoutText("in", 800, Window::Text::Style::Normal, false, 24);
+    renderer->drawText(line56, cursorX, cursorY);
+    cursorX += line56.bounds.width + 10;
+    auto line57 = renderer->layoutText("\e[38;2;128;0;128mpeace!", 800, Window::Text::Style::Bold, true, 24);
+    renderer->drawText(line57, cursorX, cursorY);
+    cursorX = 0;
+    cursorY += line57.bounds.height;
+
+    auto line61 = renderer->layoutText("\e[38;2;100;149;237mIf you hadn't", 800, Window::Text::Style::Normal, false, 28);
+    renderer->drawText(line61, 0, cursorY);
+    cursorX += line61.bounds.width + 10;
+    auto line62 = renderer->layoutText("\e[38;2;255;69;0mnailed it", 800, Window::Text::Style::Bold, false, 28);
+    renderer->drawText(line62, cursorX, cursorY);
+    cursorX += line62.bounds.width + 10;
+    auto line63 = renderer->layoutText("\e[38;2;100;149;237mto the", 800, Window::Text::Style::Normal, false, 28);
+    renderer->drawText(line63, cursorX, cursorY);
+    cursorX += line63.bounds.width + 10;
+    auto line64 = renderer->layoutText("perch", 800, Window::Text::Style::Italic, false, 28);
+    renderer->drawText(line64, cursorX, cursorY);
+    cursorX += line64.bounds.width + 10;
+    auto line65 = renderer->layoutText("it'd", 800, Window::Text::Style::Normal, false, 28);
+    renderer->drawText(line65, cursorX, cursorY);
+    cursorX = 0;
+    cursorY += line65.bounds.height + 10;
+    auto line66 = renderer->layoutText("be \e[38;2;255;5;5mpushing up the daisies!", 800, Window::Text::Style::Normal, true, 28);
+    renderer->drawText(line66, cursorX, cursorY);
+    cursorY += line66.bounds.height;
+
+    auto line71 = renderer->layoutText("\e[38;2;100;149;237mIts run \e[38;2;255;99;71mdown the curtain \e[38;2;100;149;237mand joined", 800, Window::Text::Style::Italic, true, 32);
+    renderer->drawText(line71, 0, cursorY);
+    cursorY += line71.bounds.height;
+    auto line72 = renderer->layoutText("the \e[38;2;0;255;0mchoir invisible!", 800, Window::Text::Style::Bold, true, 32);
+    renderer->drawText(line72, 0, cursorY);
+    cursorY += line72.bounds.height;
+
+    auto line81 = renderer->layoutText("\e[38;2;128;0;0mThis", 800, Window::Text::Style::Normal, false, 48);
+    renderer->drawText(line81, 0, cursorY);
+    cursorX += line81.bounds.width + 10;
+    auto line82 = renderer->layoutText("\e[38;2;100;149;237mis an", 800, Window::Text::Style::Normal, false, 48);
+    renderer->drawText(line82, cursorX, cursorY);
+    cursorX += line82.bounds.width + 10;
+    auto line83 = renderer->layoutText("\e[38;2;135;206;250mex-parrot!", 800, Window::Text::Style::Bold, true, 48);
+    renderer->drawText(line83, cursorX, cursorY);
 
     update.x = 0;//cursorX;
     update.y = 0;//cursorY;
