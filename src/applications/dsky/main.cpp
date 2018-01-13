@@ -158,7 +158,7 @@ int dsky_main() {
         switch (buffer.messageNamespace) {
             case IPC::MessageNamespace::Keyboard: {
                 switch (static_cast<Keyboard::MessageId>(buffer.messageId)) {
-                    case Keyboard::MessageId::KeyPress: {
+                    case Keyboard::MessageId::CharacterInput: {
                         auto keypress = IPC::extractMessage<Keyboard::KeyPress>(buffer);
                         char text[] = {(char)keypress.key, '\0'};
                         auto layout = renderer->layoutText(text, 100);
@@ -172,6 +172,11 @@ int dsky_main() {
                         send(IPC::RecipientType::ServiceName, &update);
 
                         cursorX += layout.bounds.width;
+                        break;
+                    }
+                    case Keyboard::MessageId::KeyPress: {
+                        
+                        break;
                     }
                 }
                 break;

@@ -202,8 +202,36 @@ namespace Window {
                 case IPC::MessageNamespace::Keyboard: {
                     switch (static_cast<Keyboard::MessageId>(buffer.messageId)) {
                         case Keyboard::MessageId::KeyPress: {
+
+                            auto keypress = IPC::extractMessage<Keyboard::KeyPress>(buffer);
+
+                            switch (keypress.key) {
+                                case Keyboard::VirtualKey::F1: {
+                                    std::fill_n(linearFrameBuffer, 800 * 600, 0x00FF0000);
+                                    break;
+                                }
+                                case Keyboard::VirtualKey::F2: {
+                                    std::fill_n(linearFrameBuffer, 800 * 600, 0x0000FF00);
+                                    break;
+                                }
+                                case Keyboard::VirtualKey::F3: {
+                                    std::fill_n(linearFrameBuffer, 800 * 600, 0x000000FF);
+                                    break;
+                                }
+                                default: {
+                                    buffer.recipientId = windows[activeWindow].taskId;
+                                    send(IPC::RecipientType::TaskId, &buffer);
+                                    break;
+                                }
+                            }
+                            
+                            break;
+                        }
+                        case Keyboard::MessageId::CharacterInput: {
+
                             buffer.recipientId = windows[activeWindow].taskId;
                             send(IPC::RecipientType::TaskId, &buffer);
+
                             break;
                         }
                     }
