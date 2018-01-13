@@ -125,7 +125,6 @@ namespace Window::Text {
         for (auto& glyph : glyphs) {
             FT_BBox glyphBounds = cachedBoundingBoxes[glyph.index];
 
-            //FT_Glyph_Get_CBox(glyph.image, ft_glyph_bbox_pixels, &glyphBounds);
             //need to transform the bounding box by the glyph's position
             glyphBounds.xMax += glyph.position.x;
             glyphBounds.xMin += glyph.position.x;
@@ -190,49 +189,13 @@ namespace Window::Text {
 
         for(auto& glyph : layout.glyphs) {
 
-            auto image = glyph.copyImage();
-
-            /*auto top = origin.y + glyph.position.y;
+            auto bitmap = reinterpret_cast<FT_BitmapGlyph>(glyph.image);
+            auto top = origin.y + glyph.position.y;
             auto left = glyph.position.x + origin.x;
-
-            for (int row = 0; row < 20; row++) {
-                auto y = row + top;
-
-                if (y == windowHeight)
-                { 
-                    continue;
-                }
-
-                for (int column = 0; column < 20; column++) {
-                    auto x = column + origin.x + glyph.position.x;
-
-                    auto index = x + y * windowWidth;
-                    auto val = 255;
-                    auto col = glyph.colour;
-                    auto back = 0x00'20'20'20u;
-                    auto f = blend(col, back, val);
-                    frameBuffer[index] = f;
-                }
-
-            }*/
-            
-           auto error = FT_Glyph_To_Bitmap(
-                &image,
-                FT_RENDER_MODE_NORMAL,
-                nullptr,
-                true);
-
-            if (error) {
-                continue;
-            }
-
-            auto bitmap = reinterpret_cast<FT_BitmapGlyph>(image);
-            auto delta = bitmap->top;
-            bitmap->top = origin.y + glyph.position.y;
-            bitmap->left += glyph.position.x + origin.x;
+            auto ptr = bitmap->bitmap.buffer;
 
             for (int row = 0; row < bitmap->bitmap.rows; row++) {
-                auto y = row + bitmap->top;
+                auto y = row + top;
 
                 if (y == windowHeight)
                 { 
@@ -243,7 +206,7 @@ namespace Window::Text {
                     auto x = column + origin.x + glyph.position.x;
 
                     auto index = x + y * windowWidth;
-                    auto val = *bitmap->bitmap.buffer++;
+                    auto val = *ptr++;
                     auto col = glyph.colour;
                     auto back = 0x00'20'20'20u;
                     auto f = blend(col, back, val);
@@ -251,9 +214,6 @@ namespace Window::Text {
                 }
 
             }
-            
-            /*TODO: this crashes, find out why
-            FT_Done_Glyph(image);*/
         }
 
         if (layout.underline) {
@@ -429,7 +389,10 @@ namespace Window::Text {
 
         FT_Face face = faces[faceIndex];
 
-        /*FT_Set_Char_Size(
+        /*
+        TODO: cache needs to account for sizes and keming
+
+        FT_Set_Char_Size(
             face,
             0,
             size * 64,
@@ -458,7 +421,10 @@ namespace Window::Text {
                     FT_LOAD_DEFAULT
                 );
 
-                /*if (kernTableAvailable && previousIndex > 0) {
+                /*
+                TODO: cache needs to account for keming
+
+                if (kernTableAvailable && previousIndex > 0) {
                     FT_Vector kerning;
 
                     FT_Get_Kerning(face, 
@@ -479,16 +445,27 @@ namespace Window::Text {
                 }
 
                 Glyph glyph;
-                glyph.position.x = 0;//x;
-                glyph.position.y = 0;//y;
+                glyph.position.x = 0;
+                glyph.position.y = 0;
                 glyph.height = face->glyph->metrics.height >> 6;
                 auto diff = (face->size->metrics.ascender - face->glyph->metrics.horiBearingY) / 64;
                 glyph.position.y += diff;
                 glyph.index = character;
 
                 error = FT_Get_Glyph(face->glyph, &glyph.image);
-                //error = FT_Glyph_Transform(glyph.image, nullptr, &glyph.position);
+                error = FT_Glyph_Transform(glyph.image, nullptr, &glyph.position);
                 FT_Glyph_Get_CBox(glyph.image, ft_glyph_bbox_pixels, &cachedBoundingBoxes[character]);
+
+                error = FT_Glyph_To_Bitmap(
+                    &glyph.image,
+                    FT_RENDER_MODE_NORMAL,
+                    nullptr,
+                    false);
+
+                if (error) {
+                    continue;
+                }
+
                 cachedGlyphs[character] = glyph;
             }
 
@@ -501,7 +478,10 @@ namespace Window::Text {
 
             layout.glyphs.push_back(glyph);
             text++;
-            //previousIndex = glyphIndex;
+            /*
+            TODO: cache needs to account for keming
+            previousIndex = glyphIndex;
+            */
         }
 
         layout.bounds = calculateBoundingBox(layout.glyphs);

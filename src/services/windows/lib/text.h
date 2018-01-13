@@ -35,7 +35,7 @@ namespace Window::Text {
 
     struct Glyph {
         FT_Vector position;
-        FT_Glyph image;
+        FT_Glyph image {nullptr};
         uint32_t height;
         uint32_t colour;
         uint8_t index;
