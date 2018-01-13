@@ -29,9 +29,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <algorithm>
 #include "debug.h"
 #include <services/terminal/terminal.h>
+#include "window.h"
 
 namespace Window::Text {
-    Renderer* createRenderer(uint32_t* frameBuffer) {
+    Renderer* createRenderer(Window* window) {
         FT_Library library;
 
         auto error = FT_Init_FreeType(&library);
@@ -63,15 +64,15 @@ namespace Window::Text {
             return nullptr; 
         }
 
-        return new Renderer(library, face, frameBuffer);
+        return new Renderer(library, face, window);
     }
 
-    Renderer::Renderer(FT_Library library, FT_Face face, uint32_t* frameBuffer)
-        : library {library}, frameBuffer {frameBuffer} {
+    Renderer::Renderer(FT_Library library, FT_Face face, Window* window)
+        : library {library}, window {window} {
         windowWidth = 800;
         windowHeight = 600;
         faces[0] = face;
-
+        frameBuffer = window->getFramebuffer();
     }
 
     void Renderer::loadFont(uint32_t index) {
@@ -438,11 +439,11 @@ namespace Window::Text {
 
                 auto widthRequired = (face->glyph->metrics.width >> 6) + (face->glyph->advance.x >> 6); 
 
-                if ((x + widthRequired) >= allowedWidth) {
+                /*if ((x + widthRequired) >= allowedWidth) {
                     x = 0;
                     y += face->size->metrics.height >> 6;
                     layout.lines++;
-                }
+                }*/
 
                 Glyph glyph;
                 glyph.position.x = 0;
@@ -470,6 +471,14 @@ namespace Window::Text {
             }
 
             auto glyph = cachedGlyphs[character];
+
+            auto widthRequired = (face->glyph->metrics.width >> 6) + (face->glyph->advance.x >> 6); 
+            if ((x + widthRequired) >= allowedWidth) {
+                x = 0;
+                y += face->size->metrics.height >> 6;
+                layout.lines++;
+            }
+
             glyph.position.x = x;
             glyph.position.y += y;
             glyph.colour = foreground;

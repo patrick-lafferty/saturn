@@ -25,45 +25,49 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#pragma once
-
-#include <stdint.h>
-#include <ipc.h>
+#include "window.h"
+#include <system_calls.h>
+#include "../messages.h"
+#include <services.h>
 
 namespace Window {
-    enum class MessageId {
-        CreateWindow,
-        CreateWindowSucceeded,
-        Update
-    };
 
-    struct CreateWindow : IPC::Message {
-        CreateWindow() {
-            messageId = static_cast<uint32_t>(MessageId::CreateWindow);
-            length = sizeof(CreateWindow);
-            messageNamespace = IPC::MessageNamespace::WindowManager;
+    Window* createWindow(uint32_t width, uint32_t height) {
+        auto windowBuffer = new WindowBuffer;
+        auto address = reinterpret_cast<uintptr_t>(windowBuffer);
+
+        CreateWindow create;
+        create.serviceType = Kernel::ServiceType::WindowManager;
+        create.bufferAddress = address;
+        
+        send(IPC::RecipientType::ServiceName, &create);
+        
+        IPC::MaximumMessageBuffer buffer;
+        receive(&buffer);
+
+        switch (buffer.messageNamespace) {
+            case IPC::MessageNamespace::WindowManager: {
+                switch (static_cast<MessageId>(buffer.messageId)) {
+                    case MessageId::CreateWindowSucceeded: {
+
+                        return new Window(windowBuffer);
+                        break;
+                    }
+                }
+
+                break;
+            }
         }
 
-        uint32_t bufferAddress;
+        return nullptr;
+    }
 
-    };
+    Window::Window(WindowBuffer* buffer)
+        : buffer {buffer} {
 
-    struct CreateWindowSucceeded : IPC::Message {
-        CreateWindowSucceeded() {
-            messageId = static_cast<uint32_t>(MessageId::CreateWindowSucceeded);
-            length = sizeof(CreateWindowSucceeded);
-            messageNamespace = IPC::MessageNamespace::WindowManager;
-        }
-    };
+    }
 
-    struct Update : IPC::Message {
-        Update() {
-            messageId = static_cast<uint32_t>(MessageId::Update);
-            length = sizeof(Update);
-            messageNamespace = IPC::MessageNamespace::WindowManager;
-        }
-
-        uint32_t x, y;
-        uint32_t width, height;
-    };
+    uint32_t* Window::getFramebuffer() {
+        return buffer->buffer;
+    }
 }

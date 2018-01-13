@@ -26,44 +26,29 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #pragma once
-
 #include <stdint.h>
-#include <ipc.h>
 
 namespace Window {
-    enum class MessageId {
-        CreateWindow,
-        CreateWindowSucceeded,
-        Update
+    class Window;
+
+    namespace Text {
+        class Renderer;
+    }
+
+    class Application {
+    public:
+
+        Application(uint32_t width, uint32_t height);
+
+        bool isValid();
+
+    protected:
+
+        Window* window;
+        Text::Renderer* textRenderer;
+        uint32_t screenWidth, screenHeight;
     };
 
-    struct CreateWindow : IPC::Message {
-        CreateWindow() {
-            messageId = static_cast<uint32_t>(MessageId::CreateWindow);
-            length = sizeof(CreateWindow);
-            messageNamespace = IPC::MessageNamespace::WindowManager;
-        }
+    void updateWindowBuffer(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
 
-        uint32_t bufferAddress;
-
-    };
-
-    struct CreateWindowSucceeded : IPC::Message {
-        CreateWindowSucceeded() {
-            messageId = static_cast<uint32_t>(MessageId::CreateWindowSucceeded);
-            length = sizeof(CreateWindowSucceeded);
-            messageNamespace = IPC::MessageNamespace::WindowManager;
-        }
-    };
-
-    struct Update : IPC::Message {
-        Update() {
-            messageId = static_cast<uint32_t>(MessageId::Update);
-            length = sizeof(Update);
-            messageNamespace = IPC::MessageNamespace::WindowManager;
-        }
-
-        uint32_t x, y;
-        uint32_t width, height;
-    };
 }

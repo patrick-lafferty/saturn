@@ -27,6 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "manager.h"
 #include "messages.h"
+#include "lib/window.h"
 #include <services.h>
 #include <system_calls.h>
 #include <vector>
@@ -85,7 +86,7 @@ namespace Window {
         }
     }
 
-    struct Window {
+    struct WindowHandle {
         WindowBuffer* buffer;
         uint32_t taskId;
     };
@@ -98,8 +99,8 @@ namespace Window {
         }
 
         auto linearFrameBuffer = reinterpret_cast<uint32_t volatile*>(vgaAddress);
-        std::vector<Window> windows;
-        std::list<Window> windowsWaitingToShare;
+        std::vector<WindowHandle> windows;
+        std::list<WindowHandle> windowsWaitingToShare;
 
         launchShell();
 
@@ -121,7 +122,7 @@ namespace Window {
                             auto backgroundColour = 0x00'20'20'20;
                             memset(windowBuffer->buffer, backgroundColour, screenWidth * screenHeight * 4);
 
-                            Window window {windowBuffer, buffer.senderTaskId};
+                            WindowHandle window {windowBuffer, buffer.senderTaskId};
                             windowsWaitingToShare.push_back(window);
 
                             ShareMemory share;

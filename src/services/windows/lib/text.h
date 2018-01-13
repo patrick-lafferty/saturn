@@ -31,6 +31,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include FT_GLYPH_H
 #include <vector>
 
+namespace Window {
+    class Window;
+}
+
 namespace Window::Text {
 
     struct Glyph {
@@ -49,8 +53,8 @@ namespace Window::Text {
 
     struct BoundingBox {
         FT_BBox box;
-        uint32_t width;
-        uint32_t height;
+        uint32_t width {0};
+        uint32_t height {0};
     };
 
     struct TextLayout {
@@ -72,7 +76,7 @@ namespace Window::Text {
     class Renderer {
     public:
 
-        Renderer(FT_Library library, FT_Face face, uint32_t* frameBuffer);
+        Renderer(FT_Library library, FT_Face face, Window* window);
 
         //TODO: should be const TextLayout& but vector is missing cbegin and const iterators
         void drawText(TextLayout& layout, uint32_t x, uint32_t y);
@@ -86,6 +90,7 @@ namespace Window::Text {
         FT_Library library;
         FT_Face faces[3];
         uint32_t* frameBuffer;
+        Window* window;
         uint32_t windowWidth;
         uint32_t windowHeight;
 
@@ -95,5 +100,5 @@ namespace Window::Text {
         FT_BBox cachedBoundingBoxes[128];
     };
 
-    Renderer* createRenderer(uint32_t* frameBuffer);
+    Renderer* createRenderer(Window* window);
 }

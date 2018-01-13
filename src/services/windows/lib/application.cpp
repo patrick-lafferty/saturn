@@ -25,45 +25,43 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#pragma once
-
-#include <stdint.h>
-#include <ipc.h>
+#include "application.h"
+#include "window.h"
+#include "text.h"
+#include <system_calls.h>
+#include <services.h>
+#include "../messages.h"
 
 namespace Window {
-    enum class MessageId {
-        CreateWindow,
-        CreateWindowSucceeded,
-        Update
-    };
 
-    struct CreateWindow : IPC::Message {
-        CreateWindow() {
-            messageId = static_cast<uint32_t>(MessageId::CreateWindow);
-            length = sizeof(CreateWindow);
-            messageNamespace = IPC::MessageNamespace::WindowManager;
+    Application::Application(uint32_t width, uint32_t height) 
+        : screenWidth {width}, screenHeight {height} {
+        window = createWindow(width, height);
+
+        if (window == nullptr) {
+            return;
         }
 
-        uint32_t bufferAddress;
+        textRenderer = Text::createRenderer(window);
 
-    };
-
-    struct CreateWindowSucceeded : IPC::Message {
-        CreateWindowSucceeded() {
-            messageId = static_cast<uint32_t>(MessageId::CreateWindowSucceeded);
-            length = sizeof(CreateWindowSucceeded);
-            messageNamespace = IPC::MessageNamespace::WindowManager;
-        }
-    };
-
-    struct Update : IPC::Message {
-        Update() {
-            messageId = static_cast<uint32_t>(MessageId::Update);
-            length = sizeof(Update);
-            messageNamespace = IPC::MessageNamespace::WindowManager;
+        if (textRenderer == nullptr) {
+            return;
         }
 
-        uint32_t x, y;
-        uint32_t width, height;
-    };
+        updateWindowBuffer(0, 0, width, height);
+    }
+
+    bool Application::isValid() {
+        return window != nullptr && textRenderer != nullptr;
+    }
+
+    void updateWindowBuffer(uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
+        Update update;
+        update.serviceType = Kernel::ServiceType::WindowManager;
+        update.x = x;
+        update.y = y;
+        update.width = width;
+        update.height = height;
+        send(IPC::RecipientType::ServiceName, &update);
+    }
 }
