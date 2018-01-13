@@ -75,6 +75,8 @@ namespace Window::Text {
 
     private:
 
+        void loadFont(uint32_t index);
+
         FT_Library library;
         FT_Face faces[3];
         uint32_t* frameBuffer;

@@ -497,7 +497,6 @@ namespace Kernel {
             }
             else if (blocked->state == TaskState::Blocked
                 && blocked->mailbox->hasUnreadMessages()) {
-                    kprintf("unblocked %d\n", blocked->id);
                 unblockTask(blocked);
             }
 

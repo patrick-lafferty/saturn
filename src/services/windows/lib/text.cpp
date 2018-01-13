@@ -43,8 +43,7 @@ namespace Window::Text {
         FT_Face face;
 
         error = FT_New_Face(library,
-            //"/system/fonts/OxygenMono-Regular.ttf",
-            "/system/fonts/Oxygen-Sans.ttf",
+            "/system/fonts/dejavu/DejaVuSans.ttf",
             0,
             &face);
 
@@ -73,41 +72,39 @@ namespace Window::Text {
         windowHeight = 600;
         faces[0] = face;
 
+    }
+
+    void Renderer::loadFont(uint32_t index) {
+
         char* fonts[] = {
             "/system/fonts/dejavu/DejaVuSans-Bold.ttf",
             "/system/fonts/dejavu/DejaVuSans-Oblique.ttf",
         };
 
-        int i = 1;
+        FT_Face face;
 
-        for (auto font : fonts) {
-            FT_Face face;
+        auto error = FT_New_Face(library,
+            fonts[index],
+            0,
+            &face);
 
-            auto error = FT_New_Face(library,
-                font,
-                0,
-                &face);
-
-            if (error != 0) {
-                continue;
-            }
-
-            error = FT_Set_Char_Size(
-                face,
-                0,
-                18 * 64,
-                96,
-                96
-            );
-
-            if (error != 0) {
-                continue;
-            }
-
-            faces[i] = face;
-            i++;
+        if (error != 0) {
+            return;
         }
-        
+
+        error = FT_Set_Char_Size(
+            face,
+            0,
+            18 * 64,
+            96,
+            96
+        );
+
+        if (error != 0) {
+            return;
+        }
+
+        faces[index] = face;
     }
 
     FT_Glyph Glyph::copyImage() {
@@ -400,7 +397,13 @@ namespace Window::Text {
         auto x = 0u;
         auto y = 0;
 
-        FT_Face face = faces[static_cast<int>(style)];
+        auto faceIndex = static_cast<int>(style);
+
+        if (faces[faceIndex] == nullptr) {
+            loadFont(faceIndex);
+        }
+
+        FT_Face face = faces[faceIndex];
 
         FT_Set_Char_Size(
             face,
