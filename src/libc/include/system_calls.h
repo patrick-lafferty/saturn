@@ -48,7 +48,8 @@ enum class SystemCall {
     Sleep,
     Send,
     Receive,
-    FilteredReceive
+    FilteredReceive,
+    PeekReceive
 };
 
 //TODO: should return a bool for success/failure
@@ -56,6 +57,7 @@ enum class SystemCall {
 void send(IPC::RecipientType recipient, IPC::Message* message);
 void receive(IPC::Message* buffer);
 void filteredReceive(IPC::Message* buffer, IPC::MessageNamespace filter, uint32_t messageId);
+bool peekReceive(IPC::Message* buffer);
 void receiveAndIgnore();
 
 void open(const char* path);

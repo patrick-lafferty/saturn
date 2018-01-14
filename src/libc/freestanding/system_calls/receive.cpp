@@ -47,6 +47,20 @@ void filteredReceive(IPC::Message* buffer, IPC::MessageNamespace filter, uint32_
           "d" (messageId));
 }
 
+bool peekReceive(IPC::Message* buffer) {
+    uint32_t systemCall = static_cast<uint32_t>(SystemCall::PeekReceive);
+    bool result {false};
+
+    asm volatile(
+        "int $0xFF \n"
+        "mov %%eax, %%edx"
+        : "=d" (result)
+        : "a" (systemCall),
+          "b" (buffer));
+
+    return result;
+}
+
 void receiveAndIgnore() {
     IPC::MaximumMessageBuffer buffer;
     receive(&buffer);

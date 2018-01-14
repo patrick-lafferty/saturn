@@ -38,44 +38,28 @@ namespace Startup {
     bool openProgram(const char* path, uint32_t& descriptor) {
         open(path);
         IPC::MaximumMessageBuffer buffer;
-        receive(&buffer);
+        filteredReceive(&buffer, IPC::MessageNamespace::VFS, static_cast<uint32_t>(MessageId::OpenResult));
 
-        if (buffer.messageNamespace == IPC::MessageNamespace::VFS
-                && buffer.messageId == static_cast<uint32_t>(MessageId::OpenResult)) {
-            auto message = IPC::extractMessage<OpenResult>(buffer);
-            
-            if (message.success) {
-                descriptor = message.fileDescriptor;
-            }
-
-            return message.success;
-        }
-        else {
-            asm ("hlt");
+        auto message = IPC::extractMessage<OpenResult>(buffer);
+        
+        if (message.success) {
+            descriptor = message.fileDescriptor;
         }
 
-        return false;
+        return message.success;
     }
 
     uintptr_t getEntryPoint(uint32_t fileDescriptor) {
         read(fileDescriptor, 4);
         IPC::MaximumMessageBuffer buffer;
-        receive(&buffer);
+        filteredReceive(&buffer, IPC::MessageNamespace::VFS, static_cast<uint32_t>(MessageId::ReadResult));
 
-        if (buffer.messageNamespace == IPC::MessageNamespace::VFS
-                && buffer.messageId == static_cast<uint32_t>(MessageId::ReadResult)) {
-            auto msg = IPC::extractMessage<ReadResult>(buffer);
-            uintptr_t result {0};
-            memcpy(&result, msg.buffer, sizeof(uintptr_t));
+        auto msg = IPC::extractMessage<ReadResult>(buffer);
+        uintptr_t result {0};
+        memcpy(&result, msg.buffer, sizeof(uintptr_t));
 
-            return result;
-        }
-        else {
-            asm ("hlt");
-        }
-
-        return 0;
-    }
+        return result;
+}
 
     bool createProcessObject(uint32_t pid) {
         char path[20];
@@ -85,18 +69,10 @@ namespace Startup {
         create(path);
 
         IPC::MaximumMessageBuffer buffer;
-        receive(&buffer);
+        filteredReceive(&buffer, IPC::MessageNamespace::VFS, static_cast<uint32_t>(MessageId::CreateResult));
 
-        if (buffer.messageNamespace == IPC::MessageNamespace::VFS
-                && buffer.messageId == static_cast<uint32_t>(MessageId::CreateResult)) {
-            auto result = IPC::extractMessage<CreateResult>(buffer);
-            return result.success;
-        }
-        else {
-            asm ("hlt");
-        }
-
-        return false;
+        auto result = IPC::extractMessage<CreateResult>(buffer);
+        return result.success;
     }
 
     void dummyReceive() {

@@ -318,5 +318,6 @@ namespace HardwareFileSystem {
         writeSynchronous(openResult.fileDescriptor, readResult.buffer, sizeof(readResult.buffer));
 
         close(openResult.fileDescriptor);
+        receiveAndIgnore();
     }
 }

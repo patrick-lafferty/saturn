@@ -204,6 +204,7 @@ namespace Kernel {
         void sendMessage(IPC::RecipientType recipient, IPC::Message* message);
         void receiveMessage(IPC::Message* buffer);
         void receiveMessage(IPC::Message* buffer, IPC::MessageNamespace filter, uint32_t messageId);
+        bool peekReceiveMessage(IPC::Message* buffer);
 
         Task* getTask(uint32_t taskId);
         void exitTask();

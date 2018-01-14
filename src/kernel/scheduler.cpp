@@ -176,7 +176,7 @@ namespace Kernel {
         blockedQueue.append(cleanupTask);
 
         elapsedTime_milliseconds = 0;
-        timeslice_milliseconds = 20;
+        timeslice_milliseconds = 10;
         kernelHeap = LibC_Implementation::KernelHeap;
         kernelVMM = Memory::currentVMM;
         this->kernelTSS = kernelTSS;
@@ -631,6 +631,21 @@ asm("cli");
                 }
             }
         }
+    }
+
+    bool Scheduler::peekReceiveMessage(IPC::Message* buffer) {
+        if (currentTask != nullptr) {
+            auto task = currentTask;
+
+            if (!currentTask->mailbox->hasUnreadMessages()) {
+                return false;
+            }
+
+            task->mailbox->receive(buffer);
+            return true;
+        }
+
+        return false;
     }
 
     Task* Scheduler::getTask(uint32_t taskId) {

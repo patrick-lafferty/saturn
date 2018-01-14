@@ -125,7 +125,29 @@ InterruptServiceRoutine_Errorless 59; APIC IRQ 11
 InterruptServiceRoutine_Errorless 207; APIC spurious interrupt
 
 ;Usermode system calls
-InterruptServiceRoutine_Errorless 255
+global isr255
+extern handleSystemCall
+isr255:
+
+    push edx
+    push ecx
+    push ebx
+    push eax
+    push esi
+    push edi
+    push esp
+
+    call handleSystemCall
+    add esp, 4
+
+    pop edi
+    pop esi
+    pop eax
+    pop ebx
+    pop ecx
+    pop edx
+
+    iret
 
 extern interruptHandler
 

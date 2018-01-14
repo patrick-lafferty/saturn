@@ -207,7 +207,16 @@ bool handlePageFault(uintptr_t virtualAddress, uint32_t errorCode) {
     return false;
 }
 
-void handleSystemCall(CPU::InterruptStackFrame* frame) {
+struct SystemCallFrame {
+    uint32_t edi;
+    uint32_t esi;
+    uint32_t eax;
+    uint32_t ebx;
+    uint32_t ecx;
+    uint32_t edx;
+};
+
+extern "C" void handleSystemCall(SystemCallFrame* frame) {
 
     switch(frame->eax) {
         case static_cast<uint32_t>(SystemCall::Exit): {
@@ -232,6 +241,10 @@ void handleSystemCall(CPU::InterruptStackFrame* frame) {
                 static_cast<IPC::MessageNamespace>(frame->ecx),
                 frame->edx);
 
+            break;
+        }
+        case static_cast<uint32_t>(SystemCall::PeekReceive): {
+            frame->eax = Kernel::currentScheduler->peekReceiveMessage(reinterpret_cast<IPC::Message*>(frame->ebx));
             break;
         }
         default: {
@@ -360,11 +373,6 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
                 kprintf("[IDT] Unhandled APIC IRQ %d\n", frame->interruptNumber);
             }
             APIC::signalEndOfInterrupt();
-            break;
-        }
-        case 255: {
-            handleSystemCall(frame);
-
             break;
         }
         default: {
