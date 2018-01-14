@@ -50,7 +50,6 @@ namespace Window {
         Window* window;
         Text::Renderer* textRenderer;
         uint32_t screenWidth, screenHeight;
-        uint32_t backgroundColour;
     };
 
     void updateWindowBuffer(uint32_t x, uint32_t y, uint32_t width, uint32_t height);

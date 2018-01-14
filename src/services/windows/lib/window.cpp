@@ -43,23 +43,9 @@ namespace Window {
         send(IPC::RecipientType::ServiceName, &create);
         
         IPC::MaximumMessageBuffer buffer;
-        receive(&buffer);
+        filteredReceive(&buffer, IPC::MessageNamespace::WindowManager, static_cast<uint32_t>(MessageId::CreateWindowSucceeded));
 
-        switch (buffer.messageNamespace) {
-            case IPC::MessageNamespace::WindowManager: {
-                switch (static_cast<MessageId>(buffer.messageId)) {
-                    case MessageId::CreateWindowSucceeded: {
-
-                        return new Window(windowBuffer);
-                        break;
-                    }
-                }
-
-                break;
-            }
-        }
-
-        return nullptr;
+        return new Window(windowBuffer);
     }
 
     Window::Window(WindowBuffer* buffer)
@@ -69,5 +55,13 @@ namespace Window {
 
     uint32_t* Window::getFramebuffer() {
         return buffer->buffer;
+    }
+
+    uint32_t Window::getBackgroundColour() {
+        return backgroundColour;
+    }
+
+    void Window::setBackgroundColour(uint32_t colour) {
+        backgroundColour = colour;
     }
 }

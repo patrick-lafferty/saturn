@@ -49,7 +49,7 @@ namespace Window {
             return;
         }
 
-        backgroundColour = 0x00'20'20'20u;
+        window->setBackgroundColour(0x00'20'20'20u);
 
         if (!startHidden) {
             updateWindowBuffer(0, 0, width, height);
@@ -61,6 +61,7 @@ namespace Window {
     }
 
     void Application::clear(uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
+        auto backgroundColour = window->getBackgroundColour();
 
         for (auto row = 0u; row < height; row++) {
             std::fill_n(window->getFramebuffer() + x + (y + row) * screenWidth, width, backgroundColour);

@@ -41,10 +41,13 @@ namespace Window {
         Window(WindowBuffer* buffer); 
 
         uint32_t* getFramebuffer();
+        uint32_t getBackgroundColour();
+        void setBackgroundColour(uint32_t colour);
 
     private:
 
         WindowBuffer* buffer;
+        uint32_t backgroundColour;
     };
 
     Window* createWindow(uint32_t width, uint32_t height);
