@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdio.h>
 #include <string.h>
 #include "rtc.h"
+#include "tsc.h"
 
 //TODO: this will all have to be overhauled to handle multiple apics (per cpu)
 namespace APIC {
@@ -70,6 +71,7 @@ namespace APIC {
         writeLocalAPICRegister(Registers::InitialCount, 0xFFFFFFFF);
 
         RTC::enable(0xD);
+        TSC::startCalibration();
     }
 
     uint32_t ticksPerMilliSecond = 0;
@@ -78,7 +80,7 @@ namespace APIC {
     bool calibrateAPICTimer() {
 
         if (tries == MaxTries) {
-
+            TSC::stopCalibration();
             writeLocalAPICRegister(Registers::LVT_Timer, combineFlags(LVT_Mask::DisableInterrupt));
             uint32_t ticks = 0xFFFFFFFF - readLocalAPICRegister(Registers::CurrentCount);
             RTC::disable();
