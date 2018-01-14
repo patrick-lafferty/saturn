@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2017, Patrick Lafferty
+Copyright (c) 2018, Patrick Lafferty
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -27,63 +27,35 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #pragma once
 
-#include <stdint.h>
-#include <stddef.h>
+#include "../object.h"
+#include <string_view>
 
-#ifdef __cplusplus
-extern "C" {
+namespace HardwareFileSystem::Timer {
 
-#undef restrict
-#define restrict
+    class TSCObject : public HardwareObject {
+    public:
 
-#endif
+        TSCObject();
+        virtual ~TSCObject() {}
 
-int kprintf(const char* format, ...);
-int printf(const char* format, ...);
-int sprintf(char* buffer, const char* format, ...);
+        void readSelf(uint32_t requesterTaskId, uint32_t requestId) override;
 
-typedef struct _file FILE;
-typedef struct fpost fpos_t;
+        int getProperty(std::string_view name) override;
+        void readProperty(uint32_t requesterTaskId, uint32_t requestId, uint32_t propertyId) override;
+        void writeProperty(uint32_t requesterTaskId, uint32_t requestId, uint32_t propertyId, Vostok::ArgBuffer& args) override;
 
-#define EOF -1
-#define FOPEN_MAX 8
-#define FILENAME_MAX 255
-#define SEEK_CUR 1
-#define SEEK_END 2
-#define SEEK_SET 3
+        const char* getName() override;
 
-extern FILE* stdin;
-extern FILE* stdout;
-extern FILE* stderr;
+    private:
 
-int fclose(FILE* stream);
-int fflush(FILE* stream);
-FILE* fopen(const char* restrict filename, const char* restrict mode);
-int fprintf(FILE* restrict stream,
-    const char* restrict format, ...);
-int fscanf(FILE* restrict stream,
-    const char* restrict format, ...);
+        enum class FunctionId {
 
-int fgetc(FILE* stream);
-char* fgets(char* restrict s, int n,
-    FILE* restrict stream);
-int fputc(int c, FILE* stream);
-int fputs(const char* restrict s,
-    FILE* restrict stream);
-int getc(FILE* stream);
-int putc(int c, FILE* stream);
+        };
 
-size_t fread(void* restrict ptr, size_t size, size_t count, FILE* restrict stream);
-size_t fwrite(const void* restrict ptr,
-    size_t size, size_t count,
-    FILE* restrict stream);
-int fgetpos(FILE* restrict stream,
-    fpos_t* restrict pos);
-int fseek(FILE* stream, long int offset, int whence);
-int fsetpos(FILE* stream, const fpos_t* pos);
-long int ftell(FILE* stream);
+        enum class PropertyId {
+            TicksPerSecond
+        };
 
-
-#ifdef __cplusplus
+        uint64_t ticksPerSecond;
+    };
 }
-#endif

@@ -214,6 +214,7 @@ namespace Vostok {
         Property,
         Void,
         Uint32,
+        Uint64,
         Cstring,
         Bool,
         EndArg
