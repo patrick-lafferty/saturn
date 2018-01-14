@@ -55,18 +55,23 @@ public:
         }
 
         promptLayout = textRenderer->layoutText("\e[38;2;255;69;0m> \e[38;2;0;191;255m", screenWidth);
-        backgroundColour = 0x00'00'00'80;
+        window->setBackgroundColour(0x00'00'00'80);
+    }
+
+    void start() {
+        move(200, 200);
+        clear(0, 0, screenWidth, screenHeight);
     }
 
     void messageLoop() {
+        start();
+
         char inputBuffer[500];
         memset(inputBuffer, '\0', 500);
         int index {0};
         Text::TextLayout currentLayout;
 
         auto maxInputWidth = screenWidth - promptLayout.bounds.width;
-        move(200, 200);
-        clear(0, 0, screenWidth, screenHeight);
 
         while (true) {
 
@@ -81,10 +86,7 @@ public:
                             auto input = IPC::extractMessage<Keyboard::CharacterInput>(buffer);
                             inputBuffer[index] = input.character;
 
-                            clear(cursorX, 
-                                cursorY, 
-                                currentLayout.bounds.width, 
-                                currentLayout.bounds.height);
+                            clear(cursorX, cursorY, currentLayout.bounds.width, currentLayout.bounds.height);
 
                             auto maxWidth = currentLayout.bounds.width;
                             currentLayout = textRenderer->layoutText(inputBuffer, maxInputWidth);

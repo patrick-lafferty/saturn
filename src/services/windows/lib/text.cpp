@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "window.h"
 
 namespace Window::Text {
+    
     Renderer* createRenderer(Window* window) {
         FT_Library library;
 
@@ -188,7 +189,9 @@ namespace Window::Text {
         origin.x = x;
         origin.y = y;
 
-        for(auto& glyph : layout.glyphs) {
+        auto backgroundColour = window->getBackgroundColour();
+
+        for (auto& glyph : layout.glyphs) {
 
             auto bitmap = reinterpret_cast<FT_BitmapGlyph>(glyph.image);
             auto top = origin.y + glyph.position.y;
@@ -208,9 +211,7 @@ namespace Window::Text {
 
                     auto index = x + y * windowWidth;
                     auto val = *ptr++;
-                    auto col = glyph.colour;
-                    auto back = 0x00'20'20'20u;
-                    auto f = blend(col, back, val);
+                    auto f = blend(glyph.colour, backgroundColour, val);
                     frameBuffer[index] = f;
                 }
 
@@ -325,6 +326,7 @@ namespace Window::Text {
         return end - start + 1; //ends SGR ends with 'm', consume that
     } 
 
+    //TODO: pass a struct containing all things that are ansi escapable instead of the global foreground
     uint32_t handleEscapeSequence(char* buffer) {
         auto start = buffer;
 
