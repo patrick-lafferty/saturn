@@ -30,8 +30,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "lib/window.h"
 #include <services.h>
 #include <system_calls.h>
-#include <vector>
-#include <list>
 #include <services/startup/startup.h>
 #include <algorithm>
 #include <services/keyboard/messages.h>
@@ -88,33 +86,118 @@ namespace Window {
         return 0;
     }
 
-    struct WindowHandle {
-        WindowBuffer* buffer;
-        uint32_t taskId;
-        uint32_t x {0}, y {0};
-        uint32_t width {800}, height {600};
-    };
-
-    int main() {
-        auto vgaAddress = registerService();
-
-        if (vgaAddress == 0) {
-            return 1;
-        }
-
-        auto linearFrameBuffer = reinterpret_cast<uint32_t volatile*>(vgaAddress);
-        std::vector<WindowHandle> windows;
-        std::list<WindowHandle> windowsWaitingToShare;
+    Manager::Manager(uint32_t framebufferAddress) {
+        linearFrameBuffer = reinterpret_cast<uint32_t volatile*>(framebufferAddress);
 
         launch("/bin/dsky.bin");
-        auto capcomTaskId = launch("/bin/capcom.bin");
-        auto capcomWindowId = 0;
+        capcomTaskId = launch("/bin/capcom.bin");
+    }
 
-        auto screenWidth = 800u;
-        auto screenHeight = 600u;
-        auto activeWindow = 0;
-        auto previousActiveWindow = 0;
+    void Manager::handleCreateWindow(const CreateWindow& message) {
+        auto windowBuffer = new WindowBuffer;
+        auto backgroundColour = 0x00'20'20'20;
+        memset(windowBuffer->buffer, backgroundColour, screenWidth * screenHeight * 4);
 
+        WindowHandle window {windowBuffer, message.senderTaskId};
+        window.width = message.width;
+        window.height = message.height;
+        windowsWaitingToShare.push_back(window);
+
+        ShareMemory share;
+        share.ownerAddress = reinterpret_cast<uintptr_t>(windowBuffer);
+        share.sharedAddress = message.bufferAddress;
+        share.sharedTaskId = message.senderTaskId;
+        share.size = 800 * 600 * 4;
+
+        send(IPC::RecipientType::ServiceRegistryMailbox, &share);
+    }
+
+    void Manager::handleUpdate(const Update& message) {
+        for(auto& it : windows) {
+            if (it.taskId == message.senderTaskId) {
+                auto endY = std::min(it.height, std::min(screenHeight, message.height + message.y));
+                auto endX = std::min(it.width, std::min(screenWidth, message.width + message.x));
+                auto windowBuffer = it.buffer->buffer;
+
+                for (auto y = message.y; y < endY; y++) {
+                    auto windowOffset = y * it.width;
+                    auto screenOffset = it.x + (it.y + y) * screenWidth;
+
+                    for (auto x = message.x; x < endX; x++) {
+                        linearFrameBuffer[x + screenOffset] = windowBuffer[x + windowOffset];
+                    }
+                }
+
+                break;
+            }
+        }
+    }
+
+    void Manager::handleMove(const Move& message) {
+        for(auto& it : windows) {
+            if (it.taskId == message.senderTaskId) {
+                it.x = message.x;
+                it.y = message.y;
+                break;
+            }
+        }
+    }
+
+    void Manager::handleShareMemoryResult(const ShareMemoryResult& message) {
+        auto it = windowsWaitingToShare.begin();
+        CreateWindowSucceeded success;
+        success.recipientId = 0;
+
+        while (it != windowsWaitingToShare.end()) {
+            if (it->taskId == message.sharedTaskId) {
+                success.recipientId = it->taskId;
+                windows.push_back(*it);
+                windowsWaitingToShare.erase(it);
+
+                if (it->taskId == capcomTaskId) {
+                    capcomWindowId = windows.size() - 1;
+                }
+
+                break;
+            }
+
+            it.operator++();
+        }
+
+        if (success.recipientId != 0) {
+            send(IPC::RecipientType::TaskId, &success);
+        }
+    }
+
+    void Manager::handleKeyPress(Keyboard::KeyPress& message) {
+        switch (message.key) {
+            case Keyboard::VirtualKey::F1: {
+
+                if (activeWindow != capcomWindowId) {
+                    previousActiveWindow = activeWindow;
+                    activeWindow = capcomWindowId;
+                    Show show;
+                    show.recipientId = capcomTaskId;
+                    send(IPC::RecipientType::TaskId, &show);
+                }
+                else {
+                    activeWindow = previousActiveWindow;
+                    Show show;
+                    show.recipientId = windows[activeWindow].taskId;
+                    send(IPC::RecipientType::TaskId, &show);
+                }
+
+                break;
+            }
+            default: {
+                message.recipientId = windows[activeWindow].taskId;
+                send(IPC::RecipientType::TaskId, &message);
+                break;
+            }
+        }
+    }
+
+    void Manager::messageLoop() {
         while (true) {
             IPC::MaximumMessageBuffer buffer;
             receive(&buffer);
@@ -125,60 +208,20 @@ namespace Window {
                     switch (static_cast<MessageId>(buffer.messageId)) {
                         case MessageId::CreateWindow: {
                             auto message = IPC::extractMessage<CreateWindow>(buffer);
-                            auto windowBuffer = new WindowBuffer;
-                            auto backgroundColour = 0x00'20'20'20;
-                            memset(windowBuffer->buffer, backgroundColour, screenWidth * screenHeight * 4);
-
-                            WindowHandle window {windowBuffer, buffer.senderTaskId};
-                            window.width = message.width;
-                            window.height = message.height;
-                            windowsWaitingToShare.push_back(window);
-
-                            ShareMemory share;
-                            share.ownerAddress = reinterpret_cast<uintptr_t>(windowBuffer);
-                            share.sharedAddress = message.bufferAddress;
-                            share.sharedTaskId = message.senderTaskId;
-                            share.size = 800 * 600 * 4;
-
-                            send(IPC::RecipientType::ServiceRegistryMailbox, &share);
+                            handleCreateWindow(message);
 
                             break;
                         }
                         case MessageId::Update: {
 
                             auto message = IPC::extractMessage<Update>(buffer);
-
-                            for(auto& it : windows) {
-                                if (it.taskId == message.senderTaskId) {
-                                    auto endY = std::min(it.height, std::min(screenHeight, message.height + message.y));
-                                    auto endX = std::min(it.width, std::min(screenWidth, message.width + message.x));
-                                    auto windowBuffer = it.buffer->buffer;
-
-                                    for (auto y = message.y; y < endY; y++) {
-                                        auto windowOffset = y * it.width;
-                                        auto screenOffset = it.x + (it.y + y) * screenWidth;
-
-                                        for (auto x = message.x; x < endX; x++) {
-                                            linearFrameBuffer[x + screenOffset] = windowBuffer[x + windowOffset];
-                                        }
-                                    }
-
-                                    break;
-                                }
-                            }
+                            handleUpdate(message); 
 
                             break;
                         }
                         case MessageId::Move: {
                             auto message = IPC::extractMessage<Move>(buffer);
-
-                            for(auto& it : windows) {
-                                if (it.taskId == message.senderTaskId) {
-                                    it.x = message.x;
-                                    it.y = message.y;
-                                    break;
-                                }
-                            }
+                            handleMove(message);
 
                             break;
                         }
@@ -192,29 +235,7 @@ namespace Window {
                         case Kernel::MessageId::ShareMemoryResult: {
 
                             auto message = IPC::extractMessage<ShareMemoryResult>(buffer);
-                            auto it = windowsWaitingToShare.begin();
-                            CreateWindowSucceeded success;
-                            success.recipientId = 0;
-
-                            while (it != windowsWaitingToShare.end()) {
-                                if (it->taskId == message.sharedTaskId) {
-                                    success.recipientId = it->taskId;
-                                    windows.push_back(*it);
-                                    windowsWaitingToShare.erase(it);
-
-                                    if (it->taskId == capcomTaskId) {
-                                        capcomWindowId = windows.size() - 1;
-                                    }
-
-                                    break;
-                                }
-
-                                it.operator++();
-                            }
-
-                            if (success.recipientId != 0) {
-                                send(IPC::RecipientType::TaskId, &success);
-                            }
+                            handleShareMemoryResult(message); 
 
                             break;
                         }
@@ -226,33 +247,8 @@ namespace Window {
                     switch (static_cast<Keyboard::MessageId>(buffer.messageId)) {
                         case Keyboard::MessageId::KeyPress: {
 
-                            auto keypress = IPC::extractMessage<Keyboard::KeyPress>(buffer);
-
-                            switch (keypress.key) {
-                                case Keyboard::VirtualKey::F1: {
-
-                                    if (activeWindow != capcomWindowId) {
-                                        previousActiveWindow = activeWindow;
-                                        activeWindow = capcomWindowId;
-                                        Show show;
-                                        show.recipientId = capcomTaskId;
-                                        send(IPC::RecipientType::TaskId, &show);
-                                    }
-                                    else {
-                                        activeWindow = previousActiveWindow;
-                                        Show show;
-                                        show.recipientId = windows[activeWindow].taskId;
-                                        send(IPC::RecipientType::TaskId, &show);
-                                    }
-
-                                    break;
-                                }
-                                default: {
-                                    buffer.recipientId = windows[activeWindow].taskId;
-                                    send(IPC::RecipientType::TaskId, &buffer);
-                                    break;
-                                }
-                            }
+                            auto message = IPC::extractMessage<Keyboard::KeyPress>(buffer);
+                            handleKeyPress(message);                            
                             
                             break;
                         }
@@ -264,9 +260,27 @@ namespace Window {
                             break;
                         }
                     }
+
+                    Render render;
+                    render.recipientId = windows[activeWindow].taskId;
+                    send(IPC::RecipientType::TaskId, &render);
+
                     break;
                 }
             }
         }
+    }
+
+    int main() {
+        auto framebufferAddress = registerService();
+
+        if (framebufferAddress == 0) {
+            return 1;
+        }
+
+        Manager manager {framebufferAddress};
+        manager.messageLoop();
+
+        return 0;
     }
 }

@@ -26,7 +26,56 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #pragma once
+#include <stdint.h>
+#include <vector>
+#include <list>
+
+namespace Kernel {
+    struct ShareMemoryResult;
+}
+
+namespace Keyboard {
+    struct KeyPress;
+    struct CharacterInput;
+}
 
 namespace Window {
     int main();
+
+    struct WindowHandle {
+        struct WindowBuffer* buffer;
+        uint32_t taskId;
+        uint32_t x {0}, y {0};
+        uint32_t width {800}, height {600};
+    };
+
+    class Manager {
+    public:
+
+        Manager(uint32_t framebufferAddress);
+        void messageLoop();
+
+    private:
+
+        void handleCreateWindow(const struct CreateWindow& message);
+        void handleUpdate(const struct Update& message);
+        void handleMove(const struct Move& message);
+
+        void handleShareMemoryResult(const Kernel::ShareMemoryResult& message);
+
+        void handleKeyPress(Keyboard::KeyPress& message);
+
+        std::vector<WindowHandle> windows;
+        std::list<WindowHandle> windowsWaitingToShare;
+        uint32_t volatile* linearFrameBuffer;
+
+        uint32_t screenWidth {800u};
+        uint32_t screenHeight {600u};
+
+        uint32_t capcomTaskId;
+        uint32_t capcomWindowId {0};
+
+        uint32_t activeWindow {0};
+        uint32_t previousActiveWindow {0};
+    };
 }
