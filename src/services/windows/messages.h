@@ -34,7 +34,9 @@ namespace Window {
     enum class MessageId {
         CreateWindow,
         CreateWindowSucceeded,
-        Update
+        Update,
+        Show,
+        Move
     };
 
     struct CreateWindow : IPC::Message {
@@ -65,5 +67,23 @@ namespace Window {
 
         uint32_t x, y;
         uint32_t width, height;
+    };
+
+    struct Show : IPC::Message {
+        Show() {
+            messageId = static_cast<uint32_t>(MessageId::Show);
+            length = sizeof(Show);
+            messageNamespace = IPC::MessageNamespace::WindowManager;
+        }
+    };
+
+    struct Move : IPC::Message {
+        Move() {
+            messageId = static_cast<uint32_t>(MessageId::Move);
+            length = sizeof(Move);
+            messageNamespace = IPC::MessageNamespace::WindowManager;
+        }
+
+        uint32_t x, y;
     };
 }

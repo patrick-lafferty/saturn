@@ -40,17 +40,10 @@ interface for the Apollo Guidance Computer.
 #include <services/windows/lib/application.h>
 #include <services/keyboard/messages.h>
 #include <algorithm>
+#include <parsing>
 
 using namespace Window;
 using namespace Window::Debug;
-
-void clear(uint32_t* buffer, uint32_t screenWidth, uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
-    auto background = 0x00'20'20'20u;
-
-    for (auto row = 0u; row < height; row++) {
-        std::fill_n(buffer + x + (y + row) * screenWidth, width, background);
-    }
-}
 
 class Dsky : public Application {
 public:
@@ -88,9 +81,7 @@ public:
                             auto input = IPC::extractMessage<Keyboard::CharacterInput>(buffer);
                             inputBuffer[index] = input.character;
 
-                            clear(window->getFramebuffer(), 
-                                screenWidth, 
-                                cursorX, 
+                            clear(cursorX, 
                                 cursorY, 
                                 currentLayout.bounds.width, 
                                 currentLayout.bounds.height);
@@ -139,6 +130,14 @@ public:
                     }
                     break;
                 }
+                case IPC::MessageNamespace::WindowManager: {
+                    switch (static_cast<MessageId>(buffer.messageId)) {
+                        case MessageId::Show: {
+                            updateWindowBuffer(0, 0, screenWidth, screenHeight);
+                            break;
+                        }
+                    }
+                }
             }
         }
     }
@@ -161,7 +160,7 @@ private:
         auto frameBuffer = window->getFramebuffer();
 
         memcpy(frameBuffer, frameBuffer + screenWidth * (scroll), byteCount);
-        clear(frameBuffer, screenWidth, 0, screenHeight - scroll - 1, screenWidth, scroll);
+        clear(0, screenHeight - scroll - 1, screenWidth, scroll);
         
         updateWindowBuffer(0, 0, screenWidth, screenHeight);
         

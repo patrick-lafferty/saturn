@@ -72,10 +72,9 @@ namespace Window {
         return 0;
     }
 
-    void launchShell() {
-        //run("/applications/dsky/dsky.bin");
+    uint32_t launch(char* path) {
         uint32_t descriptor {0};
-        auto result = openSynchronous("/bin/dsky.bin");
+        auto result = openSynchronous(path);
 
         auto entryPointResult = readSynchronous(result.fileDescriptor, 4);
         uint32_t entryPoint {0};
@@ -83,12 +82,16 @@ namespace Window {
 
         if (entryPoint > 0) {
             auto pid = run(entryPoint);
+            return pid;
         }
+
+        return 0;
     }
 
     struct WindowHandle {
         WindowBuffer* buffer;
         uint32_t taskId;
+        uint32_t x {0}, y {0};
     };
 
     int main() {
@@ -102,11 +105,14 @@ namespace Window {
         std::vector<WindowHandle> windows;
         std::list<WindowHandle> windowsWaitingToShare;
 
-        launchShell();
+        launch("/bin/dsky.bin");
+        auto capcomTaskId = launch("/bin/capcom.bin");
+        auto capcomWindowId = 0;
 
         auto screenWidth = 800u;
         auto screenHeight = 600u;
         auto activeWindow = 0;
+        auto previousActiveWindow = 0;
 
         while (true) {
             IPC::MaximumMessageBuffer buffer;
@@ -138,27 +144,36 @@ namespace Window {
                         case MessageId::Update: {
 
                             auto message = IPC::extractMessage<Update>(buffer);
-                            uint32_t* windowBuffer = nullptr;
 
                             for(auto& it : windows) {
                                 if (it.taskId == message.senderTaskId) {
-                                    windowBuffer = it.buffer->buffer;
+                                    auto endY = std::min(screenHeight, message.height + message.y);
+                                    auto endX = std::min(screenWidth, message.width + message.x);
+                                    auto windowBuffer = it.buffer->buffer;
+
+                                    for (auto y = message.y; y < endY; y++) {
+                                        auto windowOffset = y * screenWidth;
+                                        auto screenOffset = it.x + (it.y + y) * screenWidth;
+
+                                        for (auto x = message.x; x < endX; x++) {
+                                            linearFrameBuffer[x + screenOffset] = windowBuffer[x + windowOffset];
+                                        }
+                                    }
+
                                     break;
                                 }
                             }
 
-                            if (windowBuffer == nullptr) {
-                                continue;
-                            }
+                            break;
+                        }
+                        case MessageId::Move: {
+                            auto message = IPC::extractMessage<Move>(buffer);
 
-                            auto endY = std::min(screenHeight, message.height + message.y);
-                            auto endX = std::min(screenWidth, message.width + message.x);
-
-                            for (auto y = message.y; y < endY; y++) {
-                                auto offset = y * 800;
-
-                                for (auto x = message.x; x < endX; x++) {
-                                    linearFrameBuffer[x + offset] = windowBuffer[x + offset];
+                            for(auto& it : windows) {
+                                if (it.taskId == message.senderTaskId) {
+                                    it.x = message.x;
+                                    it.y = message.y;
+                                    break;
                                 }
                             }
 
@@ -174,7 +189,6 @@ namespace Window {
                         case Kernel::MessageId::ShareMemoryResult: {
 
                             auto message = IPC::extractMessage<ShareMemoryResult>(buffer);
-
                             auto it = windowsWaitingToShare.begin();
                             CreateWindowSucceeded success;
                             success.recipientId = 0;
@@ -184,6 +198,11 @@ namespace Window {
                                     success.recipientId = it->taskId;
                                     windows.push_back(*it);
                                     windowsWaitingToShare.erase(it);
+
+                                    if (it->taskId == capcomTaskId) {
+                                        capcomWindowId = windows.size() - 1;
+                                    }
+
                                     break;
                                 }
 
@@ -208,15 +227,21 @@ namespace Window {
 
                             switch (keypress.key) {
                                 case Keyboard::VirtualKey::F1: {
-                                    std::fill_n(linearFrameBuffer, 800 * 600, 0x00FF0000);
-                                    break;
-                                }
-                                case Keyboard::VirtualKey::F2: {
-                                    std::fill_n(linearFrameBuffer, 800 * 600, 0x0000FF00);
-                                    break;
-                                }
-                                case Keyboard::VirtualKey::F3: {
-                                    std::fill_n(linearFrameBuffer, 800 * 600, 0x000000FF);
+
+                                    if (activeWindow != capcomWindowId) {
+                                        previousActiveWindow = activeWindow;
+                                        activeWindow = capcomWindowId;
+                                        Show show;
+                                        show.recipientId = capcomTaskId;
+                                        send(IPC::RecipientType::TaskId, &show);
+                                    }
+                                    else {
+                                        activeWindow = previousActiveWindow;
+                                        Show show;
+                                        show.recipientId = windows[activeWindow].taskId;
+                                        send(IPC::RecipientType::TaskId, &show);
+                                    }
+
                                     break;
                                 }
                                 default: {
