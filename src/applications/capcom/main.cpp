@@ -103,7 +103,7 @@ public:
 
                             maxWidth = std::max(maxWidth, currentLayout.bounds.width);
                             textRenderer->drawText(currentLayout, cursorX, cursorY);
-                            updateWindowBuffer(cursorX, cursorY, maxWidth, currentLayout.bounds.height);
+                            //updateWindowBuffer(cursorX, cursorY, maxWidth, currentLayout.bounds.height);
 
                             index++;
                             break;
@@ -140,8 +140,13 @@ public:
                 }
                 case IPC::MessageNamespace::WindowManager: {
                     switch (static_cast<MessageId>(buffer.messageId)) {
+                        case MessageId::Render: {
+                            updateBackBuffer(0, 0, screenWidth, screenHeight);
+                            break;
+                        }
                         case MessageId::Show: {
-                            updateWindowBuffer(0, 0, screenWidth, screenHeight);
+                            //updateWindowBuffer(0, 0, screenWidth, screenHeight);
+                            updateBackBuffer(0, 0, screenWidth, screenHeight);
                             break;
                         }
                     }
@@ -169,7 +174,7 @@ private:
         memcpy(frameBuffer, frameBuffer + screenWidth * (scroll), byteCount);
         clear(0, screenHeight - scroll - 1, screenWidth, scroll);
         
-        updateWindowBuffer(0, 0, screenWidth, screenHeight);
+        //updateWindowBuffer(0, 0, screenWidth, screenHeight);
         
         cursorY = screenHeight - spaceRequired - 1;
     }

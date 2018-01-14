@@ -77,7 +77,15 @@ namespace Window {
         send(IPC::RecipientType::ServiceName, &move);
     }
 
+    void Application::updateBackBuffer(uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
+
+        window->blitBackBuffer();
+        updateWindowBuffer(x, y, width, height);
+    }
+
     void updateWindowBuffer(uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
+        //TODO: calculate dirty areas, don't memcpy the entire buffer
+
         Update update;
         update.serviceType = Kernel::ServiceType::WindowManager;
         update.x = x;

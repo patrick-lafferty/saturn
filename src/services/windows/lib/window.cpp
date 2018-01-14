@@ -51,7 +51,9 @@ namespace Window {
     }
 
     Window::Window(WindowBuffer* buffer, uint32_t width, uint32_t height)
-        : buffer {buffer}, width {width}, height {height} {
+        : backBuffer {buffer}, width {width}, height {height} {
+        this->buffer = new WindowBuffer;
+        memset(this->buffer->buffer, backgroundColour, width * height * 4);
     }
 
     uint32_t* Window::getFramebuffer() {
@@ -68,5 +70,9 @@ namespace Window {
 
     uint32_t Window::getWidth() {
         return width;
+    }
+
+    void Window::blitBackBuffer() {
+        memcpy(backBuffer, buffer, width * height * 4);
     }
 }

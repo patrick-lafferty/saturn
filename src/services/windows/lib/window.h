@@ -44,10 +44,12 @@ namespace Window {
         uint32_t getBackgroundColour();
         void setBackgroundColour(uint32_t colour);
         uint32_t getWidth();
+        void blitBackBuffer();
 
     private:
 
         WindowBuffer* buffer;
+        WindowBuffer* backBuffer;
         uint32_t backgroundColour;
         uint32_t width, height;
     };
