@@ -190,15 +190,10 @@ namespace Discovery::PCI {
         create(path);
 
         IPC::MaximumMessageBuffer buffer;
-        receive(&buffer);
+        filteredReceive(&buffer, IPC::MessageNamespace::VFS, static_cast<uint32_t>(VirtualFileSystem::MessageId::CreateResult));
 
-        if (buffer.messageNamespace == IPC::MessageNamespace::VFS
-                && buffer.messageId == static_cast<uint32_t>(VirtualFileSystem::MessageId::CreateResult)) {
-            auto result = IPC::extractMessage<VirtualFileSystem::CreateResult>(buffer);
-            return result.success;
-        }
-
-        return false;
+        auto result = IPC::extractMessage<VirtualFileSystem::CreateResult>(buffer);
+        return result.success;
     }
 
     KnownDevices getDeviceType(Device& device) {

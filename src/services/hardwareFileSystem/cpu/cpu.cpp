@@ -104,15 +104,11 @@ namespace HardwareFileSystem {
         create(path);
 
         IPC::MaximumMessageBuffer buffer;
-        receive(&buffer);
+        filteredReceive(&buffer, IPC::MessageNamespace::VFS, static_cast<uint32_t>(MessageId::CreateResult));
 
-        if (buffer.messageNamespace == IPC::MessageNamespace::VFS
-            && buffer.messageId == static_cast<uint32_t>(MessageId::CreateResult)) {
-            auto result = IPC::extractMessage<CreateResult>(buffer);
-            return result.success;
-        }
+        auto result = IPC::extractMessage<CreateResult>(buffer);
 
-        return false;
+        return result.success;
     }
 
     void detectCPU() {

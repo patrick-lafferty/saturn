@@ -33,6 +33,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <parsing>
 #include "cpu/cpu.h"
 #include "pci/pci.h"
+#include "timer/timer.h"
+#include <kernel/arch/i386/cpu/tsc.h>
 
 using namespace VirtualFileSystem;
 using namespace Vostok;
@@ -141,6 +143,9 @@ namespace HardwareFileSystem {
         }
         else if (name.compare("pci") == 0) {
             return new PCI::Object();
+        }
+        else if (name.compare("timer") == 0) {
+            return new Timer::TimerObject();
         }
 
         return nullptr;
@@ -297,5 +302,21 @@ namespace HardwareFileSystem {
         waitForServiceRegistered(Kernel::ServiceType::VFS);
 
         detectCPU();
+
+        while (!Timer::createTimerObject()) {
+            sleep(10);
+        }
+
+        auto openResult = openSynchronous("/system/hardware/timer/tsc/ticksPerSecond");
+        auto readResult = readSynchronous(openResult.fileDescriptor, 0);
+
+        Vostok::ArgBuffer args{readResult.buffer, sizeof(readResult.buffer)};
+        args.readType();
+
+        auto ticksPerSecond = TSC::getTicksPerSecond();
+        args.writeValueWithType(ticksPerSecond, Vostok::ArgTypes::Uint64);
+        writeSynchronous(openResult.fileDescriptor, readResult.buffer, sizeof(readResult.buffer));
+
+        close(openResult.fileDescriptor);
     }
 }
