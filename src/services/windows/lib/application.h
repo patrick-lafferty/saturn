@@ -38,15 +38,19 @@ namespace Window {
     class Application {
     public:
 
-        Application(uint32_t width, uint32_t height);
+        Application(uint32_t width, uint32_t height, bool startHidden = false);
 
         bool isValid();
 
     protected:
 
+        void clear(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
+        void move(uint32_t x, uint32_t y);
+
         Window* window;
         Text::Renderer* textRenderer;
         uint32_t screenWidth, screenHeight;
+        uint32_t backgroundColour;
     };
 
     void updateWindowBuffer(uint32_t x, uint32_t y, uint32_t width, uint32_t height);

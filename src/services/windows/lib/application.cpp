@@ -31,10 +31,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <system_calls.h>
 #include <services.h>
 #include "../messages.h"
+#include <algorithm>
 
 namespace Window {
 
-    Application::Application(uint32_t width, uint32_t height) 
+    Application::Application(uint32_t width, uint32_t height, bool startHidden) 
         : screenWidth {width}, screenHeight {height} {
         window = createWindow(width, height);
 
@@ -48,11 +49,30 @@ namespace Window {
             return;
         }
 
-        updateWindowBuffer(0, 0, width, height);
+        backgroundColour = 0x00'20'20'20u;
+
+        if (!startHidden) {
+            updateWindowBuffer(0, 0, width, height);
+        }
     }
 
     bool Application::isValid() {
         return window != nullptr && textRenderer != nullptr;
+    }
+
+    void Application::clear(uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
+
+        for (auto row = 0u; row < height; row++) {
+            std::fill_n(window->getFramebuffer() + x + (y + row) * screenWidth, width, backgroundColour);
+        }
+    }
+
+    void Application::move(uint32_t x, uint32_t y) {
+        Move move;
+        move.serviceType = Kernel::ServiceType::WindowManager;
+        move.x = x;
+        move.y = y;
+        send(IPC::RecipientType::ServiceName, &move);
     }
 
     void updateWindowBuffer(uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
