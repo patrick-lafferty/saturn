@@ -47,7 +47,8 @@ namespace Window {
         }
 
         uint32_t bufferAddress;
-
+        uint32_t width;
+        uint32_t height;
     };
 
     struct CreateWindowSucceeded : IPC::Message {

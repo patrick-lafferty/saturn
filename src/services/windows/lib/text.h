@@ -43,6 +43,7 @@ namespace Window::Text {
         uint32_t height;
         uint32_t colour;
         uint8_t index;
+        uint32_t glyphIndex;
 
         FT_Glyph copyImage();
 

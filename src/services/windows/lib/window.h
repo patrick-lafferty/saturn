@@ -38,16 +38,18 @@ namespace Window {
     class Window {
     public:
 
-        Window(WindowBuffer* buffer); 
+        Window(WindowBuffer* buffer, uint32_t width, uint32_t height); 
 
         uint32_t* getFramebuffer();
         uint32_t getBackgroundColour();
         void setBackgroundColour(uint32_t colour);
+        uint32_t getWidth();
 
     private:
 
         WindowBuffer* buffer;
         uint32_t backgroundColour;
+        uint32_t width, height;
     };
 
     Window* createWindow(uint32_t width, uint32_t height);

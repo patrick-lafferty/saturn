@@ -39,18 +39,19 @@ namespace Window {
         CreateWindow create;
         create.serviceType = Kernel::ServiceType::WindowManager;
         create.bufferAddress = address;
+        create.width = width;
+        create.height = height;
         
         send(IPC::RecipientType::ServiceName, &create);
         
         IPC::MaximumMessageBuffer buffer;
         filteredReceive(&buffer, IPC::MessageNamespace::WindowManager, static_cast<uint32_t>(MessageId::CreateWindowSucceeded));
 
-        return new Window(windowBuffer);
+        return new Window(windowBuffer, width, height);
     }
 
-    Window::Window(WindowBuffer* buffer)
-        : buffer {buffer} {
-
+    Window::Window(WindowBuffer* buffer, uint32_t width, uint32_t height)
+        : buffer {buffer}, width {width}, height {height} {
     }
 
     uint32_t* Window::getFramebuffer() {
@@ -63,5 +64,9 @@ namespace Window {
 
     void Window::setBackgroundColour(uint32_t colour) {
         backgroundColour = colour;
+    }
+
+    uint32_t Window::getWidth() {
+        return width;
     }
 }

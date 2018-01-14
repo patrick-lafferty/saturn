@@ -69,7 +69,13 @@ public:
         char inputBuffer[500];
         memset(inputBuffer, '\0', 500);
         int index {0};
-        Text::TextLayout currentLayout;
+        Text::TextLayout currentLayout = textRenderer->layoutText("Menu", screenWidth);
+        textRenderer->drawText(currentLayout, 10, 0);
+        cursorY += currentLayout.bounds.height;
+        window->setBackgroundColour(0x00'00'00'20);
+        clear(10, cursorY, screenWidth - 20, currentLayout.bounds.height);
+        drawPrompt();
+        currentLayout.bounds = {};
 
         auto maxInputWidth = screenWidth - promptLayout.bounds.width;
 
@@ -147,9 +153,8 @@ public:
 private:
 
     void drawPrompt() {
-        textRenderer->drawText(promptLayout, 0, cursorY);
-        updateWindowBuffer(0, cursorY, promptLayout.bounds.width, promptLayout.bounds.height);
-        cursorX = promptLayout.bounds.width;
+        textRenderer->drawText(promptLayout, 10, cursorY);
+        cursorX = promptLayout.bounds.width + 10;
     }
 
     bool needsToScroll(uint32_t spaceRequired) {

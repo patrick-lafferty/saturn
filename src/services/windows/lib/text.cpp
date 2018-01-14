@@ -190,6 +190,7 @@ namespace Window::Text {
         origin.y = y;
 
         auto backgroundColour = window->getBackgroundColour();
+        windowWidth = window->getWidth();
 
         for (auto& glyph : layout.glyphs) {
 
@@ -401,10 +402,11 @@ namespace Window::Text {
             size * 64,
             96,
             96
-        );
+        );*/
 
-        bool kernTableAvailable = FT_HAS_KERNING(face);*/
+        bool kernTableAvailable = FT_HAS_KERNING(face);
         uint32_t previousIndex = 0;
+        bool checkKerning = kernTableAvailable;
 
         while (*text != '\0') { 
 
@@ -424,9 +426,6 @@ namespace Window::Text {
                     FT_LOAD_DEFAULT
                 );
 
-                /*
-                TODO: cache needs to account for keming
-
                 if (kernTableAvailable && previousIndex > 0) {
                     FT_Vector kerning;
 
@@ -437,15 +436,15 @@ namespace Window::Text {
                         &kerning);
 
                     x += kerning.x >> 6;
-                }*/
+                }
 
                 auto widthRequired = (face->glyph->metrics.width >> 6) + (face->glyph->advance.x >> 6); 
 
-                /*if ((x + widthRequired) >= allowedWidth) {
+                if ((x + widthRequired) >= allowedWidth) {
                     x = 0;
                     y += face->size->metrics.height >> 6;
                     layout.lines++;
-                }*/
+                }
 
                 Glyph glyph;
                 glyph.position.x = 0;
@@ -454,6 +453,7 @@ namespace Window::Text {
                 auto diff = (face->size->metrics.ascender - face->glyph->metrics.horiBearingY) / 64;
                 glyph.position.y += diff;
                 glyph.index = character;
+                glyph.glyphIndex = glyphIndex;
 
                 error = FT_Get_Glyph(face->glyph, &glyph.image);
                 error = FT_Glyph_Transform(glyph.image, nullptr, &glyph.position);
@@ -470,9 +470,28 @@ namespace Window::Text {
                 }
 
                 cachedGlyphs[character] = glyph;
+                checkKerning = false;
+            }
+            else if (character < MaxCachedGlyphIndex && cachedGlyphs[character].isValid()) {
+                checkKerning = kernTableAvailable;
+            } 
+            else {
+                //not a cached glyph, not a cacheable glyph (probably unicode)
             }
 
             auto glyph = cachedGlyphs[character];
+
+            if (checkKerning && previousIndex > 0) {
+                FT_Vector kerning;
+
+                FT_Get_Kerning(face, 
+                    previousIndex, 
+                    glyph.glyphIndex,
+                    FT_KERNING_DEFAULT, 
+                    &kerning);
+
+                x += kerning.x >> 6;
+            }
 
             auto widthRequired = (face->glyph->metrics.width >> 6) + (face->glyph->advance.x >> 6); 
             if ((x + widthRequired) >= allowedWidth) {
@@ -489,19 +508,22 @@ namespace Window::Text {
 
             layout.glyphs.push_back(glyph);
             text++;
-            /*
-            TODO: cache needs to account for keming
-            previousIndex = glyphIndex;
-            */
+            previousIndex = glyph.glyphIndex;
         }
 
         layout.bounds = calculateBoundingBox(layout.glyphs);
-        layout.bounds.height += (face->size->metrics.height >> 6) / 2;
+        auto height = (face->size->metrics.height >> 6);
+        layout.bounds.height += height/ 2;
+        
+        if (layout.bounds.height < height) {
+            layout.bounds.height = height;
+        }
+
         layout.lineSpace = face->size->metrics.height >> 6;
 
         if (underline) {
             layout.underline = true;
-            layout.underlinePosition = (face->underline_position >> 6) + (face->size->metrics.height >> 6);
+            layout.underlinePosition = (face->underline_position >> 6) + height;
             layout.underlineThickness = face->underline_thickness >> 6;
         }
 

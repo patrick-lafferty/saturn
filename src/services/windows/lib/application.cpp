@@ -62,9 +62,10 @@ namespace Window {
 
     void Application::clear(uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
         auto backgroundColour = window->getBackgroundColour();
+        auto frameBuffer = window->getFramebuffer();
 
         for (auto row = 0u; row < height; row++) {
-            std::fill_n(window->getFramebuffer() + x + (y + row) * screenWidth, width, backgroundColour);
+            std::fill_n(frameBuffer + x + (y + row) * screenWidth, width, backgroundColour);
         }
     }
 

@@ -92,6 +92,7 @@ namespace Window {
         WindowBuffer* buffer;
         uint32_t taskId;
         uint32_t x {0}, y {0};
+        uint32_t width {800}, height {600};
     };
 
     int main() {
@@ -129,6 +130,8 @@ namespace Window {
                             memset(windowBuffer->buffer, backgroundColour, screenWidth * screenHeight * 4);
 
                             WindowHandle window {windowBuffer, buffer.senderTaskId};
+                            window.width = message.width;
+                            window.height = message.height;
                             windowsWaitingToShare.push_back(window);
 
                             ShareMemory share;
@@ -147,12 +150,12 @@ namespace Window {
 
                             for(auto& it : windows) {
                                 if (it.taskId == message.senderTaskId) {
-                                    auto endY = std::min(screenHeight, message.height + message.y);
-                                    auto endX = std::min(screenWidth, message.width + message.x);
+                                    auto endY = std::min(it.height, std::min(screenHeight, message.height + message.y));
+                                    auto endX = std::min(it.width, std::min(screenWidth, message.width + message.x));
                                     auto windowBuffer = it.buffer->buffer;
 
                                     for (auto y = message.y; y < endY; y++) {
-                                        auto windowOffset = y * screenWidth;
+                                        auto windowOffset = y * it.width;
                                         auto screenOffset = it.x + (it.y + y) * screenWidth;
 
                                         for (auto x = message.x; x < endX; x++) {
