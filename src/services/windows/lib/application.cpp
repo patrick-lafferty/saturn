@@ -50,9 +50,11 @@ namespace Window {
         }
 
         window->setBackgroundColour(0x00'20'20'20u);
+        clear(0, 0, width, height);
+        window->markAreaDirty(0, 0, width, height);
 
         if (!startHidden) {
-            updateWindowBuffer(0, 0, width, height);
+            updateBackBuffer(0, 0, width, height);
         }
     }
 
@@ -80,18 +82,12 @@ namespace Window {
     void Application::updateBackBuffer(uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
 
         window->blitBackBuffer();
-        updateWindowBuffer(x, y, width, height);
+        //updateWindowBuffer(x, y, width, height);
     }
 
-    void updateWindowBuffer(uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
-        //TODO: calculate dirty areas, don't memcpy the entire buffer
-
-        Update update;
-        update.serviceType = Kernel::ServiceType::WindowManager;
-        update.x = x;
-        update.y = y;
-        update.width = width;
-        update.height = height;
-        send(IPC::RecipientType::ServiceName, &update);
+    void Application::notifyReadyToRender() {
+        ReadyToRender ready;
+        ready.serviceType = Kernel::ServiceType::WindowManager;
+        send(IPC::RecipientType::ServiceName, &ready);
     }
 }

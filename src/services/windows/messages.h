@@ -34,6 +34,7 @@ namespace Window {
     enum class MessageId {
         CreateWindow,
         CreateWindowSucceeded,
+        ReadyToRender,
         Render,
         Update,
         Show,
@@ -56,6 +57,14 @@ namespace Window {
         CreateWindowSucceeded() {
             messageId = static_cast<uint32_t>(MessageId::CreateWindowSucceeded);
             length = sizeof(CreateWindowSucceeded);
+            messageNamespace = IPC::MessageNamespace::WindowManager;
+        }
+    };
+
+    struct ReadyToRender : IPC::Message {
+         ReadyToRender() {
+            messageId = static_cast<uint32_t>(MessageId::ReadyToRender);
+            length = sizeof(ReadyToRender);
             messageNamespace = IPC::MessageNamespace::WindowManager;
         }
     };

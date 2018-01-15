@@ -54,6 +54,7 @@ namespace Window {
         : backBuffer {buffer}, width {width}, height {height} {
         this->buffer = new WindowBuffer;
         memset(this->buffer->buffer, backgroundColour, width * height * 4);
+        dirty = false;
     }
 
     uint32_t* Window::getFramebuffer() {
@@ -72,7 +73,27 @@ namespace Window {
         return width;
     }
 
+    void updateWindowBuffer(uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
+        //TODO: calculate dirty areas, don't memcpy the entire buffer
+
+        Update update;
+        update.serviceType = Kernel::ServiceType::WindowManager;
+        update.x = x;
+        update.y = y;
+        update.width = width;
+        update.height = height;
+        send(IPC::RecipientType::ServiceName, &update);
+    }
+
     void Window::blitBackBuffer() {
-        memcpy(backBuffer, buffer, width * height * 4);
+        if (dirty) {
+            memcpy(backBuffer, buffer, width * height * 4);
+            updateWindowBuffer(0, 0, width, height);
+            dirty = false;
+        }
+    }
+
+    void Window::markAreaDirty(uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
+        dirty = true;
     }
 }

@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <services/startup/startup.h>
 #include <algorithm>
 #include <services/keyboard/messages.h>
+#include <saturn/time.h>
 
 using namespace Kernel;
 
@@ -143,6 +144,15 @@ namespace Window {
         }
     }
 
+    void Manager::handleReadyToRender(const ReadyToRender& message) {
+        for(auto& it : windows) {
+            if (it.taskId == message.senderTaskId) {
+                it.readyToRender = true;
+                break;
+            }
+        }
+    }
+
     void Manager::handleShareMemoryResult(const ShareMemoryResult& message) {
         auto it = windowsWaitingToShare.begin();
         CreateWindowSucceeded success;
@@ -198,76 +208,111 @@ namespace Window {
     }
 
     void Manager::messageLoop() {
+
+        double time = Saturn::Time::getHighResolutionTimeSeconds(); 
+        double accumulator = 0.;
+        double desiredFrameTime = 0.5;//1.f / 60.f;
+
         while (true) {
+
+            auto currentTime = Saturn::Time::getHighResolutionTimeSeconds();
+            accumulator += (currentTime - time);
+            time = currentTime;
+
             IPC::MaximumMessageBuffer buffer;
-            receive(&buffer);
 
-            switch (buffer.messageNamespace) {
-                case IPC::MessageNamespace::WindowManager: {
+            while (peekReceive(&buffer)) {
+                switch (buffer.messageNamespace) {
+                    case IPC::MessageNamespace::WindowManager: {
 
-                    switch (static_cast<MessageId>(buffer.messageId)) {
-                        case MessageId::CreateWindow: {
-                            auto message = IPC::extractMessage<CreateWindow>(buffer);
-                            handleCreateWindow(message);
+                        switch (static_cast<MessageId>(buffer.messageId)) {
+                            case MessageId::CreateWindow: {
+                                auto message = IPC::extractMessage<CreateWindow>(buffer);
+                                handleCreateWindow(message);
 
-                            break;
+                                break;
+                            }
+                            case MessageId::ReadyToRender: {
+                                auto message = IPC::extractMessage<ReadyToRender>(buffer);
+                                handleReadyToRender(message);
+
+                                break;
+                            }
+                            case MessageId::Update: {
+
+                                auto message = IPC::extractMessage<Update>(buffer);
+                                handleUpdate(message); 
+
+                                break;
+                            }
+                            case MessageId::Move: {
+                                auto message = IPC::extractMessage<Move>(buffer);
+                                handleMove(message);
+
+                                break;
+                            }
                         }
-                        case MessageId::Update: {
 
-                            auto message = IPC::extractMessage<Update>(buffer);
-                            handleUpdate(message); 
-
-                            break;
-                        }
-                        case MessageId::Move: {
-                            auto message = IPC::extractMessage<Move>(buffer);
-                            handleMove(message);
-
-                            break;
-                        }
+                        break;
                     }
+                    case IPC::MessageNamespace::ServiceRegistry: {
+                        
+                        switch (static_cast<Kernel::MessageId>(buffer.messageId)) {
+                            case Kernel::MessageId::ShareMemoryResult: {
 
-                    break;
-                }
-                case IPC::MessageNamespace::ServiceRegistry: {
-                    
-                    switch (static_cast<Kernel::MessageId>(buffer.messageId)) {
-                        case Kernel::MessageId::ShareMemoryResult: {
+                                auto message = IPC::extractMessage<ShareMemoryResult>(buffer);
+                                handleShareMemoryResult(message); 
 
-                            auto message = IPC::extractMessage<ShareMemoryResult>(buffer);
-                            handleShareMemoryResult(message); 
-
-                            break;
+                                break;
+                            }
                         }
+
+                        break;
                     }
+                    case IPC::MessageNamespace::Keyboard: {
+                        switch (static_cast<Keyboard::MessageId>(buffer.messageId)) {
+                            case Keyboard::MessageId::KeyPress: {
 
-                    break;
+                                auto message = IPC::extractMessage<Keyboard::KeyPress>(buffer);
+                                handleKeyPress(message);                            
+                                
+                                break;
+                            }
+                            case Keyboard::MessageId::CharacterInput: {
+
+                                buffer.recipientId = windows[activeWindow].taskId;
+                                send(IPC::RecipientType::TaskId, &buffer);
+
+                                break;
+                            }
+                        }
+
+                        Render render;
+                        render.recipientId = windows[activeWindow].taskId;
+                        send(IPC::RecipientType::TaskId, &render);
+
+                        break;
+                    }
                 }
-                case IPC::MessageNamespace::Keyboard: {
-                    switch (static_cast<Keyboard::MessageId>(buffer.messageId)) {
-                        case Keyboard::MessageId::KeyPress: {
+            }
 
-                            auto message = IPC::extractMessage<Keyboard::KeyPress>(buffer);
-                            handleKeyPress(message);                            
-                            
-                            break;
-                        }
-                        case Keyboard::MessageId::CharacterInput: {
+            while (accumulator >= desiredFrameTime) {
+                accumulator -= desiredFrameTime;
 
-                            buffer.recipientId = windows[activeWindow].taskId;
-                            send(IPC::RecipientType::TaskId, &buffer);
+                if (!windows.empty() && activeWindow < windows.size()) {
+                    auto& window = windows[activeWindow];
 
-                            break;
-                        }
+                    if (!window.readyToRender) {
+                        continue;
                     }
 
                     Render render;
                     render.recipientId = windows[activeWindow].taskId;
                     send(IPC::RecipientType::TaskId, &render);
-
-                    break;
                 }
             }
+
+            sleep(10);
         }
     }
 

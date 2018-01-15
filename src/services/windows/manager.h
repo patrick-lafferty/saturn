@@ -47,6 +47,7 @@ namespace Window {
         uint32_t taskId;
         uint32_t x {0}, y {0};
         uint32_t width {800}, height {600};
+        bool readyToRender {false};
     };
 
     class Manager {
@@ -60,6 +61,7 @@ namespace Window {
         void handleCreateWindow(const struct CreateWindow& message);
         void handleUpdate(const struct Update& message);
         void handleMove(const struct Move& message);
+        void handleReadyToRender(const struct ReadyToRender& message);
 
         void handleShareMemoryResult(const Kernel::ShareMemoryResult& message);
 

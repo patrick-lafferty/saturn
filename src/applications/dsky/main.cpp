@@ -66,6 +66,8 @@ public:
 
         drawPrompt();
 
+        notifyReadyToRender();
+
         auto maxInputWidth = screenWidth - promptLayout.bounds.width;
 
         while (true) {
@@ -95,7 +97,8 @@ public:
 
                             maxWidth = std::max(maxWidth, currentLayout.bounds.width);
                             textRenderer->drawText(currentLayout, cursorX, cursorY);
-                            updateWindowBuffer(cursorX, cursorY, maxWidth, currentLayout.bounds.height);
+                            //updateWindowBuffer(cursorX, cursorY, maxWidth, currentLayout.bounds.height);
+                            window->markAreaDirty(cursorX, cursorY, maxWidth, currentLayout.bounds.height);
 
                             index++;
                             break;
@@ -132,8 +135,12 @@ public:
                 }
                 case IPC::MessageNamespace::WindowManager: {
                     switch (static_cast<MessageId>(buffer.messageId)) {
+                        case MessageId::Render: {
+                            updateBackBuffer(0, 0, screenWidth, screenHeight);
+                            break;
+                        }
                         case MessageId::Show: {
-                            updateWindowBuffer(0, 0, screenWidth, screenHeight);
+                            updateBackBuffer(0, 0, screenWidth, screenHeight);
                             break;
                         }
                     }
@@ -146,7 +153,8 @@ private:
 
     void drawPrompt() {
         textRenderer->drawText(promptLayout, 0, cursorY);
-        updateWindowBuffer(0, cursorY, promptLayout.bounds.width, promptLayout.bounds.height);
+        //updateWindowBuffer(0, cursorY, promptLayout.bounds.width, promptLayout.bounds.height);
+        window->markAreaDirty(0, cursorY, promptLayout.bounds.width, promptLayout.bounds.height);
         cursorX = promptLayout.bounds.width;
     }
 
@@ -162,7 +170,9 @@ private:
         memcpy(frameBuffer, frameBuffer + screenWidth * (scroll), byteCount);
         clear(0, screenHeight - scroll - 1, screenWidth, scroll);
         
-        updateWindowBuffer(0, 0, screenWidth, screenHeight);
+        //updateWindowBuffer(0, 0, screenWidth, screenHeight);
+        
+        window->markAreaDirty(0, 0, screenWidth, screenHeight);
         
         cursorY = screenHeight - spaceRequired - 1;
     }

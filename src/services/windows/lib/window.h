@@ -45,6 +45,7 @@ namespace Window {
         void setBackgroundColour(uint32_t colour);
         uint32_t getWidth();
         void blitBackBuffer();
+        void markAreaDirty(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
 
     private:
 
@@ -52,6 +53,7 @@ namespace Window {
         WindowBuffer* backBuffer;
         uint32_t backgroundColour;
         uint32_t width, height;
+        bool dirty;
     };
 
     Window* createWindow(uint32_t width, uint32_t height);
