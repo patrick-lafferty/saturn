@@ -35,6 +35,11 @@ namespace Window {
         uint32_t buffer[800 * 600];
     };
 
+    struct DirtyArea {
+        uint32_t x, y;
+        uint32_t width, height;
+    };
+
     class Window {
     public:
 
@@ -54,6 +59,7 @@ namespace Window {
         uint32_t backgroundColour;
         uint32_t width, height;
         bool dirty;
+        DirtyArea dirtyArea;
     };
 
     Window* createWindow(uint32_t width, uint32_t height);

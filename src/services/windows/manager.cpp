@@ -182,6 +182,13 @@ namespace Window {
     void Manager::handleKeyPress(Keyboard::KeyPress& message) {
         switch (message.key) {
             case Keyboard::VirtualKey::F1: {
+                Update update;
+                auto& oldWindow = windows[activeWindow];
+                update.senderTaskId = oldWindow.taskId;
+                update.x = oldWindow.x;
+                update.y = oldWindow.y;
+                update.width = oldWindow.width;
+                update.height = oldWindow.height;
 
                 if (activeWindow != capcomWindowId) {
                     previousActiveWindow = activeWindow;
@@ -197,6 +204,9 @@ namespace Window {
                     send(IPC::RecipientType::TaskId, &show);
                 }
 
+                update.senderTaskId = windows[activeWindow].taskId;
+                handleUpdate(update);
+
                 break;
             }
             default: {
@@ -211,7 +221,7 @@ namespace Window {
 
         double time = Saturn::Time::getHighResolutionTimeSeconds(); 
         double accumulator = 0.;
-        double desiredFrameTime = 0.5;//1.f / 60.f;
+        double desiredFrameTime = 0.1;//1.f / 60.f;
 
         while (true) {
 
@@ -286,10 +296,6 @@ namespace Window {
                                 break;
                             }
                         }
-
-                        Render render;
-                        render.recipientId = windows[activeWindow].taskId;
-                        send(IPC::RecipientType::TaskId, &render);
 
                         break;
                     }

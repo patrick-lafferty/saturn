@@ -97,7 +97,6 @@ public:
 
                             maxWidth = std::max(maxWidth, currentLayout.bounds.width);
                             textRenderer->drawText(currentLayout, cursorX, cursorY);
-                            //updateWindowBuffer(cursorX, cursorY, maxWidth, currentLayout.bounds.height);
                             window->markAreaDirty(cursorX, cursorY, maxWidth, currentLayout.bounds.height);
 
                             index++;
@@ -153,7 +152,6 @@ private:
 
     void drawPrompt() {
         textRenderer->drawText(promptLayout, 0, cursorY);
-        //updateWindowBuffer(0, cursorY, promptLayout.bounds.width, promptLayout.bounds.height);
         window->markAreaDirty(0, cursorY, promptLayout.bounds.width, promptLayout.bounds.height);
         cursorX = promptLayout.bounds.width;
     }
@@ -169,8 +167,6 @@ private:
 
         memcpy(frameBuffer, frameBuffer + screenWidth * (scroll), byteCount);
         clear(0, screenHeight - scroll - 1, screenWidth, scroll);
-        
-        //updateWindowBuffer(0, 0, screenWidth, screenHeight);
         
         window->markAreaDirty(0, 0, screenWidth, screenHeight);
         

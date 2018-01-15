@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <system_calls.h>
 #include "../messages.h"
 #include <services.h>
+#include <algorithm>
 
 namespace Window {
 
@@ -74,8 +75,6 @@ namespace Window {
     }
 
     void updateWindowBuffer(uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
-        //TODO: calculate dirty areas, don't memcpy the entire buffer
-
         Update update;
         update.serviceType = Kernel::ServiceType::WindowManager;
         update.x = x;
@@ -87,13 +86,31 @@ namespace Window {
 
     void Window::blitBackBuffer() {
         if (dirty) {
-            memcpy(backBuffer, buffer, width * height * 4);
-            updateWindowBuffer(0, 0, width, height);
+            auto destinationBuffer = backBuffer->buffer;
+            auto sourceBuffer = buffer->buffer;
+
+            for (auto y = 0u; y < dirtyArea.height; y++) {
+                y += dirtyArea.y;
+                auto destination = destinationBuffer + dirtyArea.x + y * width;
+                auto source = sourceBuffer + dirtyArea.x + y * width;
+
+                memcpy(destination, source, dirtyArea.width * sizeof(uint32_t)); 
+            }
+
+            updateWindowBuffer(dirtyArea.x, dirtyArea.y, dirtyArea.width, dirtyArea.height);
+
             dirty = false;
+            dirtyArea = {};
         }
     }
 
     void Window::markAreaDirty(uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
         dirty = true;
+
+        dirtyArea.x = std::min(x, dirtyArea.x);
+        dirtyArea.y = std::min(y, dirtyArea.y);
+
+        dirtyArea.width = std::max(dirtyArea.width + dirtyArea.x, width + x) - dirtyArea.x;
+        dirtyArea.height = std::max(dirtyArea.height + dirtyArea.y, height + y) - dirtyArea.y;
     }
 }

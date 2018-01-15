@@ -76,6 +76,7 @@ public:
         clear(10, cursorY, screenWidth - 20, currentLayout.bounds.height);
         drawPrompt();
         currentLayout.bounds = {};
+        notifyReadyToRender();
 
         auto maxInputWidth = screenWidth - promptLayout.bounds.width;
 
@@ -103,7 +104,7 @@ public:
 
                             maxWidth = std::max(maxWidth, currentLayout.bounds.width);
                             textRenderer->drawText(currentLayout, cursorX, cursorY);
-                            //updateWindowBuffer(cursorX, cursorY, maxWidth, currentLayout.bounds.height);
+                            window->markAreaDirty(cursorX, cursorY, maxWidth, currentLayout.bounds.height);
 
                             index++;
                             break;
@@ -145,7 +146,6 @@ public:
                             break;
                         }
                         case MessageId::Show: {
-                            //updateWindowBuffer(0, 0, screenWidth, screenHeight);
                             updateBackBuffer(0, 0, screenWidth, screenHeight);
                             break;
                         }
