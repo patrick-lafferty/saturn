@@ -51,6 +51,7 @@ namespace Memory {
     uint64_t PhysicalMemoryManager::initialize(const Kernel::MultibootInformation* info) {
 
         uint64_t acpiLocation{};
+        uint64_t possibleACPILocaton {};
 
         if (Kernel::hasValidMemoryMap(info)) {
 
@@ -81,12 +82,21 @@ namespace Memory {
                     acpiLocation = static_cast<uint64_t>(record.lowerBaseAddress) << 32
                         | (record.lowerLength / PageSize + 1);
                 }
+                else if (record.type == 2 && acpiLocation == 0 
+                    && record.lowerBaseAddress >= 0x100'0000 && record.lowerBaseAddress < 0xf000'0000) {
+                    possibleACPILocaton = static_cast<uint64_t>(record.lowerBaseAddress) << 32
+                        | (record.lowerLength / PageSize + 1);
+                }
             }
         }
         else 
         {
             freePage(0x8000, 1);
             totalPages++;
+        }
+
+        if (acpiLocation == 0) {
+            acpiLocation = possibleACPILocaton;
         }
 
         return acpiLocation;

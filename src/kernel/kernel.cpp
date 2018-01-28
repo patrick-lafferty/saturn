@@ -69,10 +69,14 @@ struct MemManagerAddresses {
     uint32_t physicalManager;
     uint32_t virtualManager;
     uint32_t multiboot;
+    uint32_t acpiStartAddress;
+    uint32_t acpiPages;
 };
 
 extern "C" int kernel_main(MemManagerAddresses* addresses) {
     initializeLibC();
+    auto acpiStartAddress = addresses->acpiStartAddress;
+    auto acpiPages = addresses->acpiPages;
     /*
     The prekernel creates its own PMM and VMM in lower addresses.
     We want the higher-half kernel to have its own proper versions
@@ -132,8 +136,9 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     //also don't need APIC tables anymore
     //NOTE: if we actually do, copy them before this line to a new address space
     //virtualMemManager.unmap(0x7fe0000, (0x8fe0000 - 0x7fe0000) / 0x1000);
+    virtualMemManager.unmap(acpiStartAddress, acpiPages);
 
-    LibC_Implementation::createHeap(PageSize * PageSize * 10);
+    LibC_Implementation::createHeap(PageSize * PageSize * 10, &virtualMemManager);
 
     Kernel::Scheduler scheduler{tss};
 

@@ -44,6 +44,8 @@ struct MemManagerAddresses {
     uint32_t physicalManager;
     uint32_t virtualManager;
     uint32_t multiboot;
+    uint32_t acpiStartAddress;
+    uint32_t acpiPages;
 };
 
 extern "C" 
@@ -102,6 +104,9 @@ extern "C" void setupKernel(MultibootInformation* info) {
         //we're on a sane system, map the proper addresses
         _virtualMemManager.map_unpaged(location.startAddress, location.startAddress, location.pages, pageFlags);
     }
+
+    MemoryManagerAddresses.acpiStartAddress = location.startAddress;
+    MemoryManagerAddresses.acpiPages = location.pages;
 
     //APIC registers
     _virtualMemManager.map_unpaged(0xfec00000, 0xfec00000, (0xfef00000 - 0xfec00000) / 0x1000, pageFlags | 0b10000);
