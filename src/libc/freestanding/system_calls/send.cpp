@@ -28,12 +28,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <system_calls.h>
 #include <ipc.h>
 
-void send(IPC::RecipientType recipient, IPC::Message* message) {
-    uint32_t systemCall = 3;
+extern "C" void sendImplementation(uint32_t recipient, uint32_t message);
 
-    asm volatile("int $0xFF"
-        : //no outputs
-        : "a" (systemCall),
-          "b" (recipient),
-          "c" (message));
+void send(IPC::RecipientType recipient, IPC::Message* message) {
+    
+    sendImplementation(static_cast<uint32_t>(recipient), reinterpret_cast<uint32_t>(message));
 }
