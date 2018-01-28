@@ -43,6 +43,9 @@ OBJS_WITHOUT_CRT = \
 	$(ARCHDIR)/crti.o \
 	$(KERNEL_OBJS) \
 	$(SERVICES_OBJS) \
+	$(LIB_WINDOW_OBJS) \
+	$(USERLAND_OBJS) \
+	$(LIB_SATURN_OBJS) \
 	$(ARCHDIR)/crtn.o
 
 DEPS = \
