@@ -35,7 +35,7 @@ extern HACK_TSS_ADDRESS
 startProcess:
 
     mov ecx, [esp + 4]
-    mov esp, [ecx] 
+    mov esp, [ecx + 4] 
 
     mov eax, [HACK_TSS_ADDRESS]
     mov ecx, [ecx + 4]
@@ -50,13 +50,12 @@ extern activateVMM
 
 changeProcess:
 
-    mov eax, ebp
     push ebp
     mov ebp, esp
     add esp, 4
 
     mov eax, [ebp + 8]
-    mov [eax], esp
+    mov [eax + 4], esp ; currentTask->context.kernelESP = esp
 
     mov eax, [ebp + 12]
     push eax
@@ -64,12 +63,12 @@ changeProcess:
     pop eax
 
     mov eax, [ebp + 12]
-    mov esp, [eax]
+    mov esp, [eax + 4] ; esp = nextTask->context.kernelESP
 
     mov eax, [HACK_TSS_ADDRESS]
-    mov ecx, [ebp + 12]
-    mov ecx, [ecx + 4]
-    mov [eax + 4], ecx
+    mov ecx, [ebp + 12] ; nextTask->context                
+    mov ecx, [ecx + 4] ; nextTask->context.kernelESP
+    mov [eax + 4], ecx ; tss->esp0 = nextTask->context.kernelESP
 
     ret
 
@@ -96,7 +95,7 @@ launchProcess:
 
     push 0x23 ; usermode data segment
     push ecx ; user esp
-    pushfd ; eflags
+    push 0x202 ; eflags
     push 0x1B ; usermode code segment
     push ebx ; user eip
 
@@ -155,6 +154,7 @@ global setCR3
 setCR3:
     mov eax, [esp + 4]
     mov cr3, eax
+    invlpg [0xfffff000]
     ret
 
 global idleLoop
