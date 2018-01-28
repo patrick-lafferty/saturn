@@ -48,6 +48,35 @@ section .text
         jmp InterruptServiceRoutine_Common
 %endmacro
 
+extern interruptHandler
+
+InterruptServiceRoutine_Common:
+
+    pusha
+    push ds
+    push es
+    push fs
+    push gs
+    mov ax, 0x10
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    push esp
+
+    call interruptHandler
+
+    add esp, 4
+
+    pop gs
+    pop fs
+    pop es
+    pop ds
+    popa
+    add esp, 8
+
+    iret
+
 InterruptServiceRoutine_Errorless 0 ;divide error
 InterruptServiceRoutine_Errorless 1 ;debug exception
 InterruptServiceRoutine_Errorless 2 ;non-maskable external interrupt
@@ -99,19 +128,12 @@ global isr52
 extern taskSwitch
 isr52:
 
-    push ebx
-    push eax
-    push esi
-    push edi
-    pushfd
+    pushad
 
     call taskSwitch
 
-    popfd
-    pop edi
-    pop esi
-    pop eax
-    pop ebx
+    popad
+
 
     iret
 
@@ -129,6 +151,17 @@ global isr255
 extern handleSystemCall
 isr255:
 
+    push ds
+    push es
+    push fs
+    push gs
+    push eax
+    mov ax, 0x10
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    pop eax
     push edx
     push ecx
     push ebx
@@ -146,34 +179,12 @@ isr255:
     pop ebx
     pop ecx
     pop edx
-
-    iret
-
-extern interruptHandler
-
-InterruptServiceRoutine_Common:
-    pusha
-    push ds
-    push es
-    push fs
-    push gs
-    mov ax, 0x10
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-    push esp
-
-    call interruptHandler
-
-    add esp, 4
-
     pop gs
     pop fs
     pop es
     pop ds
-    popa
-    add esp, 8
 
     iret
+
+
 
