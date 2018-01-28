@@ -40,6 +40,7 @@ namespace IPC {
 
     enum class MessageNamespace : uint32_t {
         ServiceRegistry,
+        Scheduler,
         VGA,
         Terminal,
         PS2,
@@ -70,6 +71,7 @@ namespace IPC {
     enum class RecipientType {
         ServiceRegistryMailbox,
         ServiceName,
+        Scheduler,
         TaskId
     };
 

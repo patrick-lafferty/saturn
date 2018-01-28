@@ -33,7 +33,7 @@ using namespace Kernel;
 uint32_t run(uintptr_t entryPoint) {
     RunProgram run;
     run.entryPoint = entryPoint;
-    send(IPC::RecipientType::ServiceRegistryMailbox, &run);
+    send(IPC::RecipientType::Scheduler, &run);
 
     IPC::MaximumMessageBuffer buffer;
     filteredReceive(&buffer, IPC::MessageNamespace::ServiceRegistry, static_cast<uint32_t>(MessageId::RunResult));
@@ -44,7 +44,7 @@ uint32_t run(uintptr_t entryPoint) {
 uint32_t run(char* path) {
     RunProgram run;
     memcpy(run.path, path, strlen(path));
-    send(IPC::RecipientType::ServiceRegistryMailbox, &run);
+    send(IPC::RecipientType::Scheduler, &run);
 
     IPC::MaximumMessageBuffer buffer;
     filteredReceive(&buffer, IPC::MessageNamespace::ServiceRegistry, static_cast<uint32_t>(MessageId::RunResult));
