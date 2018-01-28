@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <memory/physical_memory_manager.h>
 #include <memory/virtual_memory_manager.h>
 #include <stdio.h>
+#include <new>
 
 using namespace Memory;
 
@@ -39,8 +40,8 @@ namespace LibC_Implementation {
     const uint32_t kernelPageFlags = 
         static_cast<uint32_t>(PageTableFlags::AllowWrite);
 
-    void Heap::initialize(uint32_t heapSize) {
-        currentPage = currentVMM->allocatePages(heapSize / PageSize, kernelPageFlags);
+    void Heap::initialize(uint32_t heapSize, Memory::VirtualMemoryManager* vmm) {
+        currentPage = vmm->allocatePages(heapSize / PageSize, kernelPageFlags);
 
         nextFreeChunk = reinterpret_cast<ChunkHeader*>(currentPage);
         nextFreeChunk->magic = 0xabababab;
@@ -109,6 +110,8 @@ namespace LibC_Implementation {
                 chunk = chunk->next;
             }
         }
+
+        kprintf("[Heap] findFreeChunk for %d size returned null\n", size);
 
         return nullptr;
     }
@@ -257,17 +260,18 @@ namespace LibC_Implementation {
     }
 
     void Heap::HACK_syncPageWithVMM() {
-        currentPage = currentVMM->allocatePages(1, kernelPageFlags);
+        currentPage = Memory::currentVMM->allocatePages(1, kernelPageFlags);
         remainingPageSpace = PageSize;
     }
 
-    void createHeap(uint32_t heapSize) {
-        auto virtualAddress = currentVMM->allocatePages(1, kernelPageFlags);
+    void createHeap(uint32_t heapSize, Memory::VirtualMemoryManager* vmm) {
+        auto virtualAddress = vmm->allocatePages(1, kernelPageFlags);
         auto physicalPage = Memory::currentPMM->allocatePage(1);
-        Memory::currentVMM->map(virtualAddress, physicalPage);
+        vmm->map(virtualAddress, physicalPage);
         Memory::currentPMM->finishAllocation(virtualAddress, 1);
+        auto ptr = reinterpret_cast<void*>(virtualAddress);
 
-        KernelHeap = reinterpret_cast<Heap*>(virtualAddress);
-        KernelHeap->initialize(heapSize);
+        KernelHeap = new (ptr) Heap;
+        KernelHeap->initialize(heapSize, vmm);
     }
 }

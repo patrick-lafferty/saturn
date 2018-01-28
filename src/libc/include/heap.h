@@ -30,6 +30,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stddef.h>
 #include <stdint.h>
 
+namespace Memory {
+    class VirtualMemoryManager;
+}
+
 namespace LibC_Implementation {
 
     struct ChunkHeader {
@@ -44,7 +48,7 @@ namespace LibC_Implementation {
     class Heap {
     public:
 
-        void initialize(uint32_t heapSize);
+        void initialize(uint32_t heapSize, Memory::VirtualMemoryManager* vmm);
         void* allocate(size_t size);
         void* aligned_allocate(size_t alignment, size_t size);
         void free(void* ptr);
@@ -63,7 +67,7 @@ namespace LibC_Implementation {
         ChunkHeader* nextFreeChunk;
     };
 
-    void createHeap(uint32_t heapSize);
+    void createHeap(uint32_t heapSize, Memory::VirtualMemoryManager* vmm);
 
     extern Heap* KernelHeap;
 }
