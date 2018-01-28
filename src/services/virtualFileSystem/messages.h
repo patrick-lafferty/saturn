@@ -49,7 +49,9 @@ namespace VirtualFileSystem {
         CloseRequest,
         CloseResult,
         SeekRequest,
-        SeekResult
+        SeekResult,
+        SubscribeMount,
+        MountNotification
     };
 
     struct MountRequest : IPC::Message {
@@ -290,6 +292,28 @@ namespace VirtualFileSystem {
         uint32_t requestId;
         bool success;
         uint32_t filePosition;
+    };
+
+    struct SubscribeMount : IPC::Message {
+        SubscribeMount() {
+            messageId = static_cast<uint32_t>(MessageId::SubscribeMount);
+            length = sizeof(SubscribeMount);
+            memset(path, '\0', sizeof(path));
+            messageNamespace = IPC::MessageNamespace::VFS;
+        }
+
+        char path[64];
+    };
+
+    struct MountNotification : IPC::Message {
+        MountNotification() {
+            messageId = static_cast<uint32_t>(MessageId::MountNotification);
+            length = sizeof(MountNotification);
+            memset(path, '\0', sizeof(path));
+            messageNamespace = IPC::MessageNamespace::VFS;
+        }
+
+        char path[64];
     };
 
 }
