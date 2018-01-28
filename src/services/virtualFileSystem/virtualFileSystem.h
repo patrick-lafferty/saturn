@@ -98,6 +98,11 @@ namespace VirtualFileSystem {
         }
     };
 
+    struct MountObserver {
+        char path[64];
+        std::vector<uint32_t> subscribers;
+    };
+
     class VirtualFileSystem {
     public:
 
@@ -122,6 +127,7 @@ namespace VirtualFileSystem {
         void handleCloseRequest(CloseRequest& request);
         void handleSeekRequest(SeekRequest& request);
         void handleSeekResult(SeekResult& request);
+        void handleSubscribeMount(SubscribeMount& request);
 
         void readDirectoryFromCache(ReadRequest& request, VirtualFileDescriptor& descriptor);
 
@@ -129,6 +135,7 @@ namespace VirtualFileSystem {
         std::list<PendingRequest> pendingRequests;
         uint32_t nextRequestId;
         std::vector<VirtualFileDescriptor> openFileDescriptors;
+        std::list<MountObserver> mountObservers;
     };
 
     void service();

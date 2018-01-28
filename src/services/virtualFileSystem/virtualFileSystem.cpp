@@ -230,6 +230,22 @@ namespace VirtualFileSystem {
                 }
             }
         }
+
+        for (auto& observer : mountObservers) {
+            if (path.compare(observer.path) == 0) {
+                MountNotification notification;
+                path.copy(notification.path, sizeof(notification.path));
+
+                for (auto taskId : observer.subscribers) {
+                    notification.recipientId = taskId;
+                    send(IPC::RecipientType::TaskId, &notification);
+                }
+
+                //TODO: erase observer
+
+                break;
+            }
+        }
     }
 
     void VirtualFileSystem::handleGetDirectoryEntriesResult(GetDirectoryEntriesResult& result) {
@@ -962,6 +978,32 @@ namespace VirtualFileSystem {
         send(IPC::RecipientType::TaskId, &result);
     }
 
+    void VirtualFileSystem::handleSubscribeMount(SubscribeMount& request) {
+        PendingOpen pending;
+        pending.remainingPath = {request.path, strlen(request.path)};
+
+        if (discoverPath(&root, pending) != DiscoverResult::Failed) {
+            MountNotification notification;
+            strncpy(notification.path, request.path, sizeof(notification.path));
+            notification.recipientId = request.senderTaskId;
+            send(IPC::RecipientType::TaskId, &notification);
+        }
+        else {
+
+            for (auto& observer : mountObservers) {
+                if (strncmp(request.path, observer.path, 64) == 0) {
+                    observer.subscribers.push_back(request.senderTaskId);
+                    return;
+                }
+            }
+
+            MountObserver observer;
+            strncpy(observer.path, request.path, 64);
+            observer.subscribers.push_back(request.senderTaskId);
+            mountObservers.push_back(observer);
+        }
+    }
+
     void VirtualFileSystem::readDirectoryFromCache(ReadRequest& request, VirtualFileDescriptor& descriptor) {
         ReadResult result;
         result.requestId = request.requestId;
@@ -1087,6 +1129,11 @@ namespace VirtualFileSystem {
                         case MessageId::SeekResult: {
                             auto result = IPC::extractMessage<SeekResult>(buffer);
                             handleSeekResult(result);
+                            break;
+                        }
+                        case MessageId::SubscribeMount: {
+                            auto request = IPC::extractMessage<SubscribeMount>(buffer);
+                            handleSubscribeMount(request);
                             break;
                         }
                     }
