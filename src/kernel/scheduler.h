@@ -231,6 +231,7 @@ namespace Kernel {
         Task* currentTask {nullptr};
         Task* nextTask {nullptr};
         Task* cleanupTask {nullptr};
+        Task* schedulerTask {nullptr};
         LinkedList<Task> readyQueue;
         LinkedList<Task> blockedQueue;
         LinkedList<Task> deleteQueue;
@@ -244,6 +245,7 @@ namespace Kernel {
         LibC_Implementation::Heap* kernelHeap;
         Memory::VirtualMemoryManager* kernelVMM;
         CPU::TSS* kernelTSS;
+        bool startedTasks {false};
     };
 }
 

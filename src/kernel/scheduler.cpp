@@ -140,12 +140,6 @@ namespace Kernel {
 
     Scheduler* currentScheduler;
 
-    /*void idleLoop() {
-        while(true) {
-            asm volatile("hlt");
-        }
-    }*/
-
     void cleanupTasksService() {
         currentScheduler->cleanupTasks();
     }
@@ -154,32 +148,70 @@ namespace Kernel {
         currentScheduler->exitKernelTask();
     }
 
-    /*struct alignas(0x1000) Stack {
+    struct alignas(0x1000) Stack {
         char data[0x100000];
-    };*/
-    struct alignas(0x100000) Stack {
-
     };
 
     uint32_t createStack(bool) {
         auto address = new Stack;
+        memset(address->data, 0, sizeof(Stack));
         return reinterpret_cast<uint32_t>(address);
+    }
+
+    void schedulerService() {
+        while (true) {
+            IPC::MaximumMessageBuffer buffer;
+            receive(&buffer);
+
+            switch (buffer.messageNamespace) {
+                case IPC::MessageNamespace::Scheduler: {
+                    switch (static_cast<MessageId>(buffer.messageId)) {
+                        case MessageId::RunProgram: {
+
+                            auto run = IPC::extractMessage<RunProgram>(buffer);
+                            char* path = nullptr;
+
+                            if (run.path[0] != '\0') {
+                                path = run.path;
+                            }
+
+                            auto task = currentScheduler->createUserTask(run.entryPoint, path);
+                            currentScheduler->scheduleTask(task);
+
+                            RunResult result;
+                            result.recipientId = run.senderTaskId;
+                            result.success = task != nullptr;
+                            result.pid = task->id;
+                            send(IPC::RecipientType::TaskId, &result);
+
+                            break;
+                        }
+                    }
+                }
+
+                break;
+            }
+        }
     }
 
     Scheduler::Scheduler(CPU::TSS* kernelTSS) {
         currentScheduler = this;
 
-        taskBuffer = new Task[20];
-        startTask = createKernelTask(reinterpret_cast<uint32_t>(idleLoop));
-        cleanupTask = createKernelTask(reinterpret_cast<uint32_t>(cleanupTasksService));
-        cleanupTask->state = TaskState::Blocked;
-        blockedQueue.append(cleanupTask);
-
-        elapsedTime_milliseconds = 0;
-        timeslice_milliseconds = 10;
+        taskBuffer = new Task[30];
         kernelHeap = LibC_Implementation::KernelHeap;
         kernelVMM = Memory::currentVMM;
         this->kernelTSS = kernelTSS;
+
+        startTask = createKernelTask(reinterpret_cast<uint32_t>(idleLoop));
+        cleanupTask = createKernelTask(reinterpret_cast<uint32_t>(cleanupTasksService));
+        cleanupTask->state = TaskState::Blocked;
+        schedulerTask = createKernelTask(reinterpret_cast<uint32_t>(schedulerService));
+        schedulerTask->state = TaskState::Blocked;
+        blockedQueue.append(cleanupTask);
+        blockedQueue.append(schedulerTask);
+
+        elapsedTime_milliseconds = 0;
+        timeslice_milliseconds = 10;
     }
 
     void Scheduler::cleanupTasks() {
@@ -272,6 +304,11 @@ namespace Kernel {
     }
 
     void Scheduler::notifyTimesliceExpired() {
+
+        if (!startedTasks) {
+            return;
+        }
+
         elapsedTime_milliseconds += timeslice_milliseconds;
 
         unblockWakeableTasks();
@@ -310,9 +347,15 @@ namespace Kernel {
     }
     
     Task* Scheduler::createKernelTask(uintptr_t functionAddress) {
+        auto oldHeap = LibC_Implementation::KernelHeap;
+        LibC_Implementation::KernelHeap = kernelHeap;
+        auto oldVMM = Memory::currentVMM;
+        kernelVMM->activate();
+
         auto processStack = createStack(false);
 
-        uint8_t volatile* stackPointer = static_cast<uint8_t volatile*>(reinterpret_cast<void volatile*>(processStack + 4096));
+        uint8_t volatile* stackPointer = static_cast<uint8_t volatile*>
+            (reinterpret_cast<void volatile*>(processStack + sizeof(Stack)));//4096));
         stackPointer -= sizeof(InitialKernelStack);
 
         InitialKernelStack volatile* stack = reinterpret_cast<InitialKernelStack volatile*>(stackPointer);
@@ -324,22 +367,26 @@ namespace Kernel {
         task->id = nextTaskId++;
         task->context.esp = reinterpret_cast<uint32_t>(stackPointer);
         task->context.kernelESP = task->context.esp;
-        task->virtualMemoryManager = Memory::currentVMM;
-        task->heap = LibC_Implementation::KernelHeap;
+        task->virtualMemoryManager = kernelVMM;
+        task->heap = kernelHeap;
         task->tss = kernelTSS;
 
         const uint32_t mailboxSize = 2 * Memory::PageSize;
-        auto mailboxMemory = task->heap->aligned_allocate(mailboxSize, 2 * Memory::PageSize);
+        auto mailboxMemory = task->heap->aligned_allocate(Memory::PageSize, mailboxSize);
 
         task->mailbox = new (mailboxMemory) 
             IPC::Mailbox(reinterpret_cast<uint32_t>(mailboxMemory) + sizeof(IPC::Mailbox), 
             mailboxSize - sizeof(IPC::Mailbox));
 
         auto kernelStackPointer = adjustStack(task, 4);
+        task->context.kernelESP = task->context.esp;
         auto stackExtras = reinterpret_cast<uint32_t volatile*>(kernelStackPointer);
         *stackExtras = reinterpret_cast<uint32_t>(callExitKernelTask);
 
         taskBuffer++;
+
+        oldVMM->activate();
+        LibC_Implementation::KernelHeap = oldHeap;
 
         return task;
     }
@@ -351,7 +398,7 @@ namespace Kernel {
         kernelVMM->activate();
 
         auto task = createKernelTask(reinterpret_cast<uintptr_t>(launchProcess));
-        auto vmm = Memory::currentVMM->cloneForUsermode();
+        auto vmm = kernelVMM->cloneForUsermode();
         task->virtualMemoryManager = vmm;
         auto backupTSS = *kernelTSS;
         vmm->activate();
@@ -364,9 +411,17 @@ namespace Kernel {
             task->tss->ioPermissionBitmap[i] = 0xFF;
         }
 
+        if (vmm != Memory::currentVMM) {
+            kprintf("[Scheduler] Error: vmm->activate failed\n");
+            asm volatile("hlt");
+        }
+
         vmm->HACK_setNextAddress(0xa000'0000);
-        LibC_Implementation::createHeap(Memory::PageSize * Memory::PageSize);
-        auto userStackAddress = createStack(true);
+        auto userStackAddress = vmm->allocatePages(sizeof(Stack) / Memory::PageSize, static_cast<int>(Memory::PageTableFlags::AllowWrite));
+        auto stack = reinterpret_cast<volatile Stack*>(userStackAddress);
+        memset(const_cast<Stack*>(stack)->data, 0, sizeof(Stack));
+
+        LibC_Implementation::createHeap(Memory::PageSize * Memory::PageSize, vmm);
         task->heap = LibC_Implementation::KernelHeap;
 
         /*
@@ -380,9 +435,10 @@ namespace Kernel {
         }
 
         auto kernelStackPointer = adjustStack(task, spaceToAdjust);
+        task->context.kernelESP = task->context.esp;
 
         uint8_t volatile* userStackPointer = static_cast<uint8_t volatile*>
-            (reinterpret_cast<void volatile*>(userStackAddress + 4096));
+            (reinterpret_cast<void volatile*>(userStackAddress + sizeof(Stack)));//4096));
         userStackPointer -= sizeof(TaskStack);
         TaskStack volatile* userStack = reinterpret_cast<TaskStack volatile*>
             (userStackPointer);
@@ -520,7 +576,6 @@ namespace Kernel {
     }
 
     void Scheduler::sendMessage(IPC::RecipientType recipient, IPC::Message* message) {
-asm("cli");
         if (currentTask != nullptr) {
             message->senderTaskId = currentTask->id;
         }
@@ -528,8 +583,8 @@ asm("cli");
         uint32_t taskId {0};
 
         if (recipient == IPC::RecipientType::ServiceRegistryMailbox) {
+            
             ServiceRegistryInstance->receiveMessage(message);
-            asm("sti");
             return;
         }
         else {
@@ -540,15 +595,16 @@ asm("cli");
                 if (taskId == 0) {
                     if (ServiceRegistryInstance->isPseudoService(message->serviceType)) {
                         ServiceRegistryInstance->receivePseudoMessage(message->serviceType, message);
-            asm("sti");
                         return;
                     }
                     else {
                         kprintf("[Scheduler] Unknown Service Name\n");
-            asm("hlt");
                         return;
                     }
                 }
+            }
+            else if (recipient == IPC::RecipientType::Scheduler) {
+                taskId = schedulerTask->id;
             }
             else {
                 taskId = message->recipientId;
@@ -568,7 +624,6 @@ asm("cli");
                             unblockTask(task);
                         }
 
-            asm("sti");
                         return;
                     }
 
@@ -583,7 +638,6 @@ asm("cli");
                     if (task->id == taskId) {
                         //TODO: check if mailbox is full, if so block current task
                         task->mailbox->send(message);
-            asm("sti");
                         return;
                     }
 
@@ -725,21 +779,25 @@ asm("cli");
         -mailbox
         -free the space in the taskBuffer
         */
+        #if 0
         kernelVMM->activate();
         LibC_Implementation::KernelHeap = kernelHeap;
         kernelHeap->free(currentTask->mailbox);
+        #endif
         //TODO: free task pid
 
         currentTask->state = TaskState::Blocked;
         scheduleNextTask();
         readyQueue.remove(currentTask);
         deleteQueue.append(currentTask);
+        #if 0
         unblockTask(cleanupTask);
-        
+        #endif
         runNextTask();
     }
 
     void Scheduler::enterIdle() {
+        startedTasks = true;
         startProcess(startTask);
     }
 }
