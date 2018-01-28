@@ -85,26 +85,7 @@ namespace Kernel {
                         break;
                     }
                     case MessageId::RunProgram: {
-                        auto run = IPC::extractMessage<RunProgram>(
-                            *static_cast<IPC::MaximumMessageBuffer*>(message));
                         
-                        char* path = nullptr;
-
-                        if (run.path[0] != '\0') {
-                            path = run.path;
-                        }
-
-                        //kprintf("[ServiceRegistry] runProgram\n");
-
-                        auto task = currentScheduler->createUserTask(run.entryPoint, path);
-                        currentScheduler->scheduleTask(task);
-
-                        RunResult result;
-                        result.recipientId = message->senderTaskId;
-                        result.success = task != nullptr;
-                        result.pid = task->id;
-                        auto currentTask = currentScheduler->getTask(message->senderTaskId);
-                        currentTask->mailbox->send(&result);
 
                         break;
                     }

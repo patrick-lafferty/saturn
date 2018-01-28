@@ -194,7 +194,7 @@ namespace Kernel {
         RunProgram() {
             messageId = static_cast<uint32_t>(MessageId::RunProgram);
             length = sizeof(RunProgram);
-            messageNamespace = IPC::MessageNamespace::ServiceRegistry;
+            messageNamespace = IPC::MessageNamespace::Scheduler;
             memset(path, '\0', sizeof(path));
         }
 
