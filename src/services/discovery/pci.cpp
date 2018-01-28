@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <services/hardwareFileSystem/object.h>
 #include <vector>
 #include <services/startup/startup.h>
+#include <saturn/wait.h>
 
 namespace Discovery::PCI {
 
@@ -234,6 +235,7 @@ namespace Discovery::PCI {
 
     void discoverDevices() {
         waitForServiceRegistered(Kernel::ServiceType::VFS);
+        Saturn::Event::waitForMount("/system/hardware");
 
         while (!createPCIObject()) {
             sleep(10);

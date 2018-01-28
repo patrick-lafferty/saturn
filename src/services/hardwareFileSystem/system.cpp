@@ -35,6 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pci/pci.h"
 #include "timer/timer.h"
 #include <kernel/arch/i386/cpu/tsc.h>
+#include <saturn/wait.h>
 
 using namespace VirtualFileSystem;
 using namespace Vostok;
@@ -300,6 +301,7 @@ namespace HardwareFileSystem {
 
     void detectHardware() {
         waitForServiceRegistered(Kernel::ServiceType::VFS);
+        Saturn::Event::waitForMount("/system/hardware");
 
         detectCPU();
 

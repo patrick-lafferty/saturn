@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <system_calls.h>
 #include <services/virtualFileSystem/virtualFileSystem.h>
 #include <services/virtualFileSystem/vostok.h>
+#include <saturn/wait.h>
 
 using namespace VirtualFileSystem;
 
@@ -142,6 +143,7 @@ namespace Startup {
 
     void service() {
         waitForServiceRegistered(Kernel::ServiceType::VFS);
+        Saturn::Event::waitForMount("/process");
 
         runProgram("/bin/vga.service");
         runProgram("/bin/terminal.service");

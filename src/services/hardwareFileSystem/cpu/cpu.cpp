@@ -113,7 +113,7 @@ namespace HardwareFileSystem {
 
     void detectCPU() {
         while (!createCPUObject()) {
-            sleep(10);
+            sleep(50);
         }
 
         uint32_t eax, ebx, ecx, edx;
