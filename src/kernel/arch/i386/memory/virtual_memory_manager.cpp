@@ -76,14 +76,9 @@ namespace Memory {
         directory->pageTableAddresses[1023] = reinterpret_cast<uintptr_t>(static_cast<void*>(directory)) | 3; //| 3; //| 7;//3;
     }
 
-    void updateCR3Address(PageDirectory* directory) {
-        auto directoryAddress = directory->pageTableAddresses[1023] & ~0x3ff;
+    void updateCR3Address(uint32_t directoryPhysicalAddress) {
         
-        /*asm("movl %%eax, %%CR3 \n"
-            : //no output
-            : "a" (directoryAddress)
-        );*/
-        setCR3(directoryAddress);
+        setCR3(directoryPhysicalAddress);
     }
 
     uintptr_t VirtualMemoryManager::allocatePageTable(uintptr_t virtualAddress, int index) {
@@ -100,7 +95,7 @@ namespace Memory {
         directory->pageTableAddresses[index] = physicalPage | flags;
 
         if (pagingActive) {
-            updateCR3Address(directory);
+            updateCR3Address(directoryPhysicalAddress);
             physicalManager->finishAllocation(virtualAddress, 1);
         }
         else {
@@ -160,7 +155,12 @@ namespace Memory {
 
         //TODO: add dirty flag to check if this is necessary
         if (pagingActive) {
-            updateCR3Address(directory);
+            updateCR3Address(directoryPhysicalAddress);
+        }
+
+        if (startingAddress == 0) {
+            kprintf("[VMM] allocatePages returned 0, this shouldn't happen!\n");
+            asm volatile("hlt");
         }
 
         return startingAddress;
@@ -202,7 +202,7 @@ namespace Memory {
         flags |= static_cast<uint32_t>(PageTableFlags::Present);
 
         pageTable->pageAddresses[tableIndex] = physicalAddress | flags; 
-        updateCR3Address(directory);
+        updateCR3Address(directoryPhysicalAddress);
     }
 
     void VirtualMemoryManager::unmap(uintptr_t virtualAddress, uint32_t count) {
@@ -215,7 +215,7 @@ namespace Memory {
             pageTable->pageAddresses[tableIndex] = 0;   
         }
 
-        updateCR3Address(directory);
+        updateCR3Address(directoryPhysicalAddress);
     }
 
     void VirtualMemoryManager::freePages(uintptr_t virtualAddress, uint32_t count) {
@@ -241,7 +241,7 @@ namespace Memory {
             
         }
 
-        updateCR3Address(directory);
+        updateCR3Address(directoryPhysicalAddress);
     }
 
     PageStatus VirtualMemoryManager::getPageStatus(uintptr_t virtualAddress) {
@@ -270,17 +270,17 @@ namespace Memory {
     }
 
     void VirtualMemoryManager::activate() {
-        auto directoryAddress = directoryPhysicalAddress;
 
-        asm("movl %%eax, %%CR3 \n"
+        asm volatile("movl %0, %%CR3 \n"
             "movl %%CR0, %%eax \n"
             "or $0x80000001, %%eax \n"
             "movl %%eax, %%CR0 \n"
+            "invlpg 0xfffff000"
             : //no output
-            : "a" (directoryAddress)
+            : "a" (directoryPhysicalAddress)
         );
 
-        directoryAddress = 0xFFFFF000;
+        auto directoryAddress = 0xFFFFF000;
         directory = static_cast<PageDirectory*>(reinterpret_cast<void*>(directoryAddress));
         pagingActive = true;
         currentVMM = this;
@@ -295,7 +295,7 @@ namespace Memory {
         auto newDirectory = reinterpret_cast<PageDirectory*>(virtualAddress);
         auto kernelStart = extractDirectoryIndex(0xD000'0000);
 
-        for (auto i = 0; i < 1024; i++) {
+        for (auto i = 0u; i < 1024u; i++) {
             if (i >= kernelStart) {
                 newDirectory->pageTableAddresses[i] = directory->pageTableAddresses[i];
             }
