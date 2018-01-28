@@ -36,15 +36,13 @@ void waitForServiceRegistered(Kernel::ServiceType type) {
 
     while (true) {
         IPC::MaximumMessageBuffer buffer;
-        receive(&buffer);
+        filteredReceive(&buffer, IPC::MessageNamespace::ServiceRegistry, 
+            static_cast<uint32_t>(Kernel::MessageId::NotifyServiceRegistered));
 
-        if (buffer.messageNamespace == IPC::MessageNamespace::ServiceRegistry
-                && buffer.messageId == static_cast<uint32_t>(Kernel::MessageId::NotifyServiceRegistered)) {
-            auto notify = IPC::extractMessage<Kernel::NotifyServiceRegistered>(buffer);
+        auto notify = IPC::extractMessage<Kernel::NotifyServiceRegistered>(buffer);
 
-            if (notify.type == type) {
-                return;
-            }
+        if (notify.type == type) {
+            return;
         }
     }
 }
