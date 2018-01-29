@@ -116,6 +116,8 @@ namespace Window {
     void Manager::handleUpdate(const Update& message) {
         for(auto& it : windows) {
             if (it.taskId == message.senderTaskId) {
+                it.readyToRender = true;
+
                 auto endY = std::min(it.height, std::min(screenHeight, message.height + message.y));
                 auto endX = std::min(it.width, std::min(screenWidth, message.width + message.x));
                 auto windowBuffer = it.buffer->buffer;
@@ -221,7 +223,7 @@ namespace Window {
 
         double time = Saturn::Time::getHighResolutionTimeSeconds(); 
         double accumulator = 0.;
-        double desiredFrameTime = 0.1;//1.f / 60.f;
+        double desiredFrameTime = 0.5;//1.f / 60.f;
 
         while (true) {
 
@@ -312,13 +314,13 @@ namespace Window {
                         continue;
                     }
 
+                    window.readyToRender = false;
+
                     Render render;
                     render.recipientId = windows[activeWindow].taskId;
                     send(IPC::RecipientType::TaskId, &render);
                 }
             }
-
-            sleep(10);
         }
     }
 
