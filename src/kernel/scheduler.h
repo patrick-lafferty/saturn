@@ -242,17 +242,15 @@ namespace Kernel {
         void unblockTask(Task* task);
         void unblockWakeableTasks();
 
-
-        Task idleTask;
         Task* taskBuffer;
         Task* currentTask {nullptr};
         Task* nextTask {nullptr};
+        Task* startTask {nullptr};
         Task* cleanupTask {nullptr};
         Task* schedulerTask {nullptr};
         LinkedList<Task> readyQueue;
         LinkedList<Task> blockedQueue;
         LinkedList<Task> deleteQueue;
-        Task* startTask;
 
         uint64_t elapsedTime_milliseconds;
         uint32_t timeslice_milliseconds;

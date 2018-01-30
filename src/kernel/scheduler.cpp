@@ -152,12 +152,6 @@ namespace Kernel {
         char data[0x100000];
     };
 
-    uint32_t createStack(bool) {
-        auto address = new Stack;
-        memset(address->data, 0, sizeof(Stack));
-        return reinterpret_cast<uint32_t>(address);
-    }
-
     uint32_t IdGenerator::generateId() {
         int blockId = 0;
 
@@ -252,8 +246,8 @@ namespace Kernel {
 
     void Scheduler::cleanupTasks() {
         while (true) {
-            asm("cli");
-            /*auto task = deleteQueue.getHead();
+            asm volatile("cli");
+            auto task = deleteQueue.getHead();
 
             while (task != nullptr) {
                 auto kernelStackAddress = (task->context.kernelESP & ~0xFFF);
@@ -261,8 +255,9 @@ namespace Kernel {
                 auto next = task->nextTask;
                 deleteQueue.remove(task);
                 task = next;
-            }*/
-            asm("sti");
+            }
+
+            asm volatile("sti");
             blockTask(BlockReason::WaitingForMessage, 0);
         }
     }
@@ -385,10 +380,15 @@ namespace Kernel {
         auto oldVMM = Memory::currentVMM;
         kernelVMM->activate();
 
-        auto processStack = createStack(false);
+        uint32_t stackAddress {0};
+        {
+            auto stack = new Stack;
+            memset(stack->data, 0, sizeof(Stack));
+            stackAddress = reinterpret_cast<uint32_t>(stack);
+        }
 
         uint8_t volatile* stackPointer = static_cast<uint8_t volatile*>
-            (reinterpret_cast<void volatile*>(processStack + sizeof(Stack)));//4096));
+            (reinterpret_cast<void volatile*>(stackAddress + sizeof(Stack)));
         stackPointer -= sizeof(InitialKernelStack);
 
         InitialKernelStack volatile* stack = reinterpret_cast<InitialKernelStack volatile*>(stackPointer);
@@ -813,11 +813,9 @@ namespace Kernel {
         -mailbox
         -free the space in the taskBuffer
         */
-        #if 0
         kernelVMM->activate();
         LibC_Implementation::KernelHeap = kernelHeap;
         kernelHeap->free(currentTask->mailbox);
-        #endif
 
         idGenerator.freeId(currentTask->id);
 
@@ -825,9 +823,7 @@ namespace Kernel {
         scheduleNextTask();
         readyQueue.remove(currentTask);
         deleteQueue.append(currentTask);
-        #if 0
         unblockTask(cleanupTask);
-        #endif
         runNextTask();
     }
 
