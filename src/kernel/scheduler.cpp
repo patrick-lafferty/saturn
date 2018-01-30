@@ -158,6 +158,42 @@ namespace Kernel {
         return reinterpret_cast<uint32_t>(address);
     }
 
+    uint32_t IdGenerator::generateId() {
+        int blockId = 0;
+
+        for (auto& block : idBitmap) {
+            if (block != 0) {
+                uint32_t bit {0};
+
+                asm ("tzcnt %0, %1"
+                    : "=r" (bit)
+                    : "r" (block));
+
+                auto id = blockId * idsPerBlock + bit;
+                block &= ~(1 << bit);
+
+                return id;
+            }
+
+            blockId++;
+        }
+
+        //if we got here it means we haven't found a free id,
+        //so we need to add a new block
+        idBitmap.push_back(0xFFFFFFFF - 1);
+
+        return blockId * idsPerBlock;
+    }
+
+    void IdGenerator::freeId(uint32_t id) {
+        auto blockId = id / idsPerBlock;
+        auto bit = id % idsPerBlock;
+
+        if (idBitmap.size() > blockId) {
+            idBitmap[blockId] |= 1 << bit;
+        }
+    }
+
     void schedulerService() {
         while (true) {
             IPC::MaximumMessageBuffer buffer;
@@ -275,29 +311,26 @@ namespace Kernel {
 
     void Scheduler::runNextTask() {
         if (state == State::StartCurrent) {
-            //LibC_Implementation::KernelHeap = currentTask->heap;
             if (startTask == currentTask) {
                 return;
             }
+
             changeProcess(startTask, currentTask);
-           
         }
         else if (state == State::ChangeToStart) {
             auto current = currentTask;
             currentTask = nullptr;
-            //LibC_Implementation::KernelHeap = startTask->heap;
             if (current == startTask) {
                 return;
             }
+
             changeProcess(current, startTask);
-           
         }
         else {
             auto current = currentTask;
             currentTask = nextTask;
 
             if (current != nextTask) {
-                //LibC_Implementation::KernelHeap = nextTask->heap;
                 changeProcess(current, nextTask);
             }
         }
@@ -362,9 +395,8 @@ namespace Kernel {
         
         stack->eip = functionAddress;
 
-        static uint32_t nextTaskId {0};
         Task* task = taskBuffer;
-        task->id = nextTaskId++;
+        task->id = idGenerator.generateId();
         task->context.esp = reinterpret_cast<uint32_t>(stackPointer);
         task->context.kernelESP = task->context.esp;
         task->virtualMemoryManager = kernelVMM;
@@ -759,8 +791,10 @@ namespace Kernel {
         kernelVMM->cleanupClonePageTables(pageDirectory, kernelStackAddress - Memory::PageSize);
         delete currentTask->virtualMemoryManager;
         kernelHeap->free(currentTask->mailbox);
-        //TODO: free task pid
        }
+
+        idGenerator.freeId(currentTask->id);
+
         currentTask->state = TaskState::Blocked;
         scheduleNextTask();
         readyQueue.remove(currentTask);
@@ -784,7 +818,8 @@ namespace Kernel {
         LibC_Implementation::KernelHeap = kernelHeap;
         kernelHeap->free(currentTask->mailbox);
         #endif
-        //TODO: free task pid
+
+        idGenerator.freeId(currentTask->id);
 
         currentTask->state = TaskState::Blocked;
         scheduleNextTask();

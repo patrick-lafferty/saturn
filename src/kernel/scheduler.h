@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <stdint.h>
 #include <task_context.h>
+#include <vector>
 
 extern "C" uint32_t HACK_TSS_ADDRESS;
 
@@ -184,6 +185,22 @@ namespace Kernel {
         ChangeToNext
     };
 
+    /*
+    Tracks available task ids and allows them to be recycled
+    when a task exits
+    */
+    class IdGenerator {
+    public:
+
+        uint32_t generateId();
+        void freeId(uint32_t id);
+
+    private:
+
+        std::vector<uint32_t> idBitmap;
+        const uint32_t idsPerBlock {32};
+    };
+
     class Scheduler {
     public:
 
@@ -246,6 +263,7 @@ namespace Kernel {
         Memory::VirtualMemoryManager* kernelVMM;
         CPU::TSS* kernelTSS;
         bool startedTasks {false};
+        IdGenerator idGenerator;
     };
 }
 
