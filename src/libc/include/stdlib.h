@@ -39,10 +39,81 @@ void free(void* ptr);
 void* aligned_alloc(size_t alignment, size_t size);
 void* realloc(void* ptr, size_t size);
 
+//TODO: we claim to be msvc-like to avoid using posix_memalign, so libcxx expects this
+#define _aligned_malloc(size, alignment) aligned_alloc(alignment, size)
+#define _aligned_free free
+
 long strtol(const char* str, char** str_end, int base);
 
 void qsort(void* base, size_t count, size_t size,
     int (*compare)(const void*, const void*));
+
+//TODO
+struct div_t {
+	int quot;
+	int rem;
+};
+
+struct ldiv_t {
+	long int quot;
+	long int rem;
+};
+
+struct lldiv_t {
+	long long int quot;
+	long long int rem;
+};
+
+div_t div(int numer, int denom);
+ldiv_t ldiv(long int numer, long int denom);
+lldiv_t lldiv(long long int numer, long long int denon);
+
+double atof(const char* nptr);
+int atoi(const char* nptr);
+long int atol(const char* nptr);
+long long int atoll(const char* nptr);
+
+double strtod(const char* restrict nptr, char** restrict endptr);
+float strtof(const char* restrict nptr, char** restrict endptr);
+long double strtold(const char* restrict nptr, char** restrict endptr);
+
+long long int strtoll(const char* restrict nptr, char** restrict endptr, int base);
+unsigned long int strtoul(const char* restrict nptr, char** restrict endptr, int base);
+unsigned long long int strtoull(const char* restrict nptr, char** restrict endptr, int base);
+
+int rand(void);
+void srand(unsigned int seed);
+
+void* calloc(size_t nmemb, size_t size);
+
+_Noreturn void abort(void);
+int atexit(void (*func)(void));
+_Noreturn void exit(int status);
+_Noreturn void _Exit(int status);
+
+char* getenv(const char* name);
+int system(const char* string);
+
+void* bsearch(const void* key, 
+	const void* base, 
+	size_t nmemb, 
+	size_t size, 
+	int (*compar)(const void*));
+
+int abs(int j);
+long int labs(long int j);
+long long int llabs(long long int j);
+
+int mblen(const char* s, size_t n);
+int mbtowc(wchar_t* restrict pwc, const char* restrict s, size_t n);
+int wctomb(char* s, wchar_t wchar);
+size_t mbstowcs(wchar_t* restrict pwcs, const char* restrict s, size_t n);
+size_t wcstombs(char* restrict s, const wchar_t* restrict pwcs, size_t n);
+
+#define MB_CUR_MAX 0
+
+typedef int errno_t;
+errno_t rand_s(unsigned int*);
 
 #ifdef __cplusplus
 }

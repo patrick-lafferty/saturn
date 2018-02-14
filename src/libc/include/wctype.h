@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2017, Patrick Lafferty
+Copyright (c) 2018, Patrick Lafferty
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -25,47 +25,38 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#pragma once
 
-#include <stddef.h>
+#pragma once
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void* prekernel_memset(void* destination, int fillByte, size_t count);
-void* memset(void* destination, int fillByte, size_t count);
-int memcmp(const void* first, const void* second, size_t count);
-void* memmove(void* destination, const void* source, size_t count);
-void* memcpy(void* destination, const void* source, size_t count);
+typedef unsigned int wint_t;
+typedef unsigned int wctrans_t;
+typedef unsigned int wctype_t;
 
-size_t strlen(const char* str);
-size_t strlen_s(const char* str, size_t strsz);
+#define WEOF -1
 
-int strcmp(const char* lhs, const char* rhs);
-int strncmp(const char* lhs, const char* rhs, size_t count);
-
-char* strrchr(const char* str, int ch);
-
-void* memchr(const void* s, int c, size_t n);
-char* strstr(const char* s1, const char* s2);
-char* strcpy(char* restrict s1, const char* restrict s2);
-char* strncpy(char* restrict dest, const char* restrict src, size_t count);
-
-char* strcat(char* restrict dest, const char* restrict src);
-
-//TODO
-char* strncat(char* restrict s1, const char* restrict s2, size_t n);
-int strcoll(const char* s1, const char* s2);
-size_t strxfrm(char* restrict s1, const char* restrict s2, size_t n);
-char* strchr(const char* s, int c);
-size_t strcspn(const char* s1, const char* s2);
-char* strpbrk(const char* s1, const char* s2);
-size_t strspn(const char* s1, const char* s2);
-char* strtok(char* restrict s1, const char* restrict s2);
-char* strerror(int errnum);
+int iswalnum(wint_t wc);
+int iswalpha(wint_t wc);
+int iswblank(wint_t wc);
+int iswcntrl(wint_t wc);
+int iswdigit(wint_t wc);
+int iswgraph(wint_t wc);
+int iswlower(wint_t wc);
+int iswprint(wint_t wc);
+int iswpunct(wint_t wc);
+int iswspace(wint_t wc);
+int iswupper(wint_t wc);
+int iswxdigit(wint_t wc);
+int iswctype(wint_t wc, wctype_t desc);
+wctype_t wctype(const char *property);
+wint_t towlower(wint_t wc);
+wint_t towupper(wint_t wc);
+wint_t towctrans(wint_t wc, wctrans_t desc);
+wctrans_t wctrans(const char *property);
 
 #ifdef __cplusplus
 }
 #endif
-

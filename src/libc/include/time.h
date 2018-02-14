@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2017, Patrick Lafferty
+Copyright (c) 2018, Patrick Lafferty
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -29,43 +29,43 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <stddef.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#define CLOCKS_PER_SEC 1
+#define TIME_UTC 1
 
-void* prekernel_memset(void* destination, int fillByte, size_t count);
-void* memset(void* destination, int fillByte, size_t count);
-int memcmp(const void* first, const void* second, size_t count);
-void* memmove(void* destination, const void* source, size_t count);
-void* memcpy(void* destination, const void* source, size_t count);
+typedef int clock_t;
+typedef int time_t;
 
-size_t strlen(const char* str);
-size_t strlen_s(const char* str, size_t strsz);
+struct timespec {
+    time_t tv_sec;
+    long tv_nsec;
+};
 
-int strcmp(const char* lhs, const char* rhs);
-int strncmp(const char* lhs, const char* rhs, size_t count);
+struct tm {
+    int tm_sec;
+    int tm_min;
+    int tm_hour;
+    int tm_mday;
+    int tm_mon;
+    int tm_year;
+    int tm_wday;
+    int tm_yday;
+    int tm_isdst;
+};
 
-char* strrchr(const char* str, int ch);
+clock_t clock(void);
+double difftime(time_t time1, time_t time0);
+time_t mktime(struct tm* timeptr);
+time_t time(time_t* timer);
 
-void* memchr(const void* s, int c, size_t n);
-char* strstr(const char* s1, const char* s2);
-char* strcpy(char* restrict s1, const char* restrict s2);
-char* strncpy(char* restrict dest, const char* restrict src, size_t count);
+char* asctime(const struct tm* timeptr);
+char* ctime(const time_t* timer);
+struct tm* gmtime(const time_t* timer);
+struct tm* localtime(const time_t* timer);
+size_t strftime(char* restrict s,
+    size_t maxSize,
+    const char* restrict format,
+    const struct tm* restrict timeptr);
 
-char* strcat(char* restrict dest, const char* restrict src);
+typedef int clockid_t;
 
-//TODO
-char* strncat(char* restrict s1, const char* restrict s2, size_t n);
-int strcoll(const char* s1, const char* s2);
-size_t strxfrm(char* restrict s1, const char* restrict s2, size_t n);
-char* strchr(const char* s, int c);
-size_t strcspn(const char* s1, const char* s2);
-char* strpbrk(const char* s1, const char* s2);
-size_t strspn(const char* s1, const char* s2);
-char* strtok(char* restrict s1, const char* restrict s2);
-char* strerror(int errnum);
-
-#ifdef __cplusplus
-}
-#endif
-
+int clock_gettime(clockid_t, struct timespec*);

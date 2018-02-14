@@ -41,3 +41,7 @@ extern "C" int isspace(int ch);
 extern "C" int isblank(int ch);
 extern "C" int isprint(int ch);
 extern "C" int ispunct(int ch);
+
+//TODO
+int tolower(int c);
+int toupper(int c);
