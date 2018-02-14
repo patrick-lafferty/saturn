@@ -34,7 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "object.h"
 #include <stdlib.h>
 #include <vector>
-#include <parsing>
+#include <saturn/parsing.h>
 
 using namespace VirtualFileSystem;
 using namespace Vostok;

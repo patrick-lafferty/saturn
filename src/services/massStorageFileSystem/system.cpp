@@ -30,10 +30,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <system_calls.h>
 #include <services/virtualFileSystem/virtualFileSystem.h>
 #include <vector>
-#include <parsing>
+#include <saturn/parsing.h>
 #include <services/drivers/ata/driver.h>
 #include <services/virtualFileSystem/vostok.h>
-#include <crc>
+#include <saturn/crc.h>
 #include <string.h>
 #include "ext2/filesystem.h"
 
@@ -273,7 +273,7 @@ namespace MassStorageFileSystem {
                                     gptHeader.headerCRC32 = 0;
                                     auto ptr = reinterpret_cast<uint8_t*>(&gptHeader);
 
-                                    if (!CRC::check32(headerCRC, ptr, sizeof(GPTHeader) - sizeof(GPTHeader::remaining))) {
+                                    if (!Saturn::CRC::check32(headerCRC, ptr, sizeof(GPTHeader) - sizeof(GPTHeader::remaining))) {
                                         printf("[Mass Storage] Invalid GPT Header, CRC32 check failed\n");
                                         asm("hlt");
                                     }

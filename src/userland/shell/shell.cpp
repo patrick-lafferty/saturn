@@ -37,7 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <services/virtualFileSystem/virtualFileSystem.h>
 #include <services/virtualFileSystem/vostok.h>
 #include <stdlib.h>
-#include <parsing>
+#include <saturn/parsing.h>
 
 using namespace std;
 

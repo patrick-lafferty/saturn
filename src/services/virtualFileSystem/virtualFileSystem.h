@@ -71,10 +71,10 @@ namespace VirtualFileSystem {
 
         }
 
-        union {
+        //union {
             PendingOpen open;
             PendingOpen create;
-        };
+        //};
 
         uint32_t id;
         uint32_t requesterTaskId;
