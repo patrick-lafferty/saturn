@@ -12,10 +12,8 @@ ASFLAGS = -felf32
 CXX = clang++-5.0
 MARCH = "--target=i686-saturn -march=i686"
 WARNINGS = -Wall -Wextra 
-#CXXPATHS = -isysroot sysroot/ -iwithsysroot /system/include -iwithsysroot /libraries/include/freetype2 -I src -I src/libc/include -I src/libc++/include -I src/kernel -I src/kernel/arch/i386 -I .
 CXXPATHS = -isysroot sysroot/ -iwithsysroot /system/include -iwithsysroot /libraries/include/freetype2 -I src -I src/libc/include -I ../saturn-libc++/include/c++/v1 -I src/kernel -I src/kernel/arch/i386 -I .
 	
-#FLAGS = -fno-omit-frame-pointer -ffreestanding -fno-exceptions -fno-rtti -fno-builtin -nostdinc 
 FLAGS = -fno-omit-frame-pointer -ffreestanding -fno-exceptions -fno-rtti -fno-builtin -nostdinc
 EXTRA_FLAGS = -D__ELF__ -D_LIBCPP_HAS_NO_THREADS -ferror-limit=0
 CXXFLAGS = -O0 $(FLAGS) $(EXTRA_FLAGS) -g $(MARCH) $(DEPENDENCYFLAGS) $(WARNINGS) -std=c++1z  $(CXXPATHS) -masm=intel -Drestrict=__restrict
@@ -56,8 +54,6 @@ DEPS = \
 	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(LIBC_FREE_OBJS))) \
 	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(TEST_LIBC_FREE_OBJS))) \
 	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(LIBC_HOSTED_OBJS))) \
-	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(LIBC++_FREE_OBJS))) \
-	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(TEST_LIBC++_FREE_OBJS))) \
 	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(USERLAND_OBJS))) \
 	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(LIB_WINDOW_OBJS))) \
 	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(LIB_SATURN_OBJS)))
@@ -65,12 +61,8 @@ DEPS = \
 include src/libc/make.config
 include test/libc/make.config
 
-include src/libc++/make.config
-include test/libc++/make.config
-
 $(shell mkdir -p $(dir $(DEPS)) >/dev/null)
 
-#LIBS = -luserland -lwindows -lfreetype -lsaturn -lc_test_freestanding -lc++_test_freestanding -lc++_freestanding -lc_freestanding 
 LIBS = -luserland -lwindows -lfreetype -lsaturn -lc_test_freestanding -lc++ -lc++abi -lc_freestanding 
 
 LINK_LIST = \
@@ -94,7 +86,6 @@ sysroot:
 	$(MKDIR) sysroot/system/libraries
 	$(MKDIR) sysroot/system/include
 
-#saturn.bin: libc_freestanding libc_hosted test_libc libc++ test_libc++ userland libwindows libsaturn $(OBJS) $(ARCHDIR)/linker.ld
 saturn.bin: libc_freestanding libc_hosted test_libc userland libwindows libsaturn $(OBJS) $(ARCHDIR)/linker.ld
 	$(LD) -T $(ARCHDIR)/linker.ld -o sysroot/system/boot/$@ $(LDFLAGS) $(LINK_LIST)  
 
@@ -115,17 +106,6 @@ test_libc: $(TEST_LIBC_FREE_OBJS)
 	$(AR) rcs test/libc/libc_test_freestanding.a $(TEST_LIBC_FREE_OBJS)
 	ranlib test/libc/libc_test_freestanding.a
 	cp test/libc/libc_test_freestanding.a sysroot/system/libraries
-
-libc++: $(LIBC++_FREE_OBJS)
-	$(AR) rcs src/libc++/libc++_freestanding.a $(LIBC++_FREE_OBJS)
-	ranlib src/libc++/libc++_freestanding.a
-	cp src/libc++/libc++_freestanding.a sysroot/system/libraries
-	cp -R --preserve=timestamps src/libc++/include sysroot/system/
-
-test_libc++: $(TEST_LIBC++_FREE_OBJS)
-	$(AR) rcs test/libc++/libc++_test_freestanding.a $(TEST_LIBC++_FREE_OBJS)
-	ranlib test/libc++/libc++_test_freestanding.a
-	cp test/libc++/libc++_test_freestanding.a sysroot/system/libraries
 
 userland: $(USERLAND_OBJS)
 	$(AR) rcs src/userland/libuserland.a $(USERLAND_OBJS)
