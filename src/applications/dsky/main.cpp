@@ -31,19 +31,19 @@ Dsky (pronounced Diss-key) is Saturn's shell, named after the physical
 interface for the Apollo Guidance Computer.
 */
 #include "dsky.h"
-#include <services/windows/messages.h>
+#include <services/apollo/messages.h>
 #include <system_calls.h>
 #include <services.h>
-#include <services/windows/lib/text.h>
-#include <services/windows/lib/debug.h>
-#include <services/windows/lib/window.h>
-#include <services/windows/lib/application.h>
+#include <services/apollo/lib/text.h>
+#include <services/apollo/lib/debug.h>
+#include <services/apollo/lib/window.h>
+#include <services/apollo/lib/application.h>
 #include <services/keyboard/messages.h>
 #include <algorithm>
 #include <saturn/parsing.h>
 
-using namespace Window;
-using namespace Window::Debug;
+using namespace Apollo;
+using namespace Apollo::Debug;
 
 class Dsky : public Application {
 public:

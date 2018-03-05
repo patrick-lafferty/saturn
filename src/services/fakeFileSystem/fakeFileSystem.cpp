@@ -39,7 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <services/massStorageFileSystem/system.h>
 #include <applications/dsky/dsky.h>
 #include <applications/capcom/capcom.h>
-#include <services/windows/manager.h>
+#include <services/apollo/manager.h>
 
 using namespace VirtualFileSystem;
 
@@ -114,7 +114,7 @@ namespace FakeFileSystem {
                                 entryPoint = reinterpret_cast<uintptr_t>(dsky_main);
                             }
                             else if (strcmp(request.path, "/windows.service") == 0) {
-                                entryPoint = reinterpret_cast<uintptr_t>(Window::main);
+                                entryPoint = reinterpret_cast<uintptr_t>(Apollo::main);
                             }
                             else if (strcmp(request.path, "/capcom.bin") == 0) {
                                 entryPoint = reinterpret_cast<uintptr_t>(capcom_main);

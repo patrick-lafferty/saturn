@@ -26,7 +26,7 @@ MKDIR = mkdir -p
 include src/kernel/make.config
 include src/services/make.config
 include src/userland/make.config
-include src/services/windows/lib/make.config
+include src/services/apollo/lib/make.config
 include src/saturn/make.config
 
 OBJS = \
@@ -34,7 +34,7 @@ OBJS = \
 	$(shell $(CC) $(CFLAGS) -m32 -print-file-name=crtbegin.o) \
 	$(KERNEL_OBJS) \
 	$(SERVICES_OBJS) \
-	$(LIB_WINDOW_OBJS) \
+	$(LIB_APOLLO_OBJS) \
 	$(USERLAND_OBJS) \
 	$(LIB_SATURN_OBJS) \
 	$(shell $(CC) $(CFLAGS) -m32 -print-file-name=crtend.o) \
@@ -44,7 +44,7 @@ OBJS_WITHOUT_CRT = \
 	$(ARCHDIR)/crti.o \
 	$(KERNEL_OBJS) \
 	$(SERVICES_OBJS) \
-	$(LIB_WINDOW_OBJS) \
+	$(LIB_APOLLO_OBJS) \
 	$(USERLAND_OBJS) \
 	$(LIB_SATURN_OBJS) \
 	$(ARCHDIR)/crtn.o
@@ -55,7 +55,7 @@ DEPS = \
 	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(TEST_LIBC_FREE_OBJS))) \
 	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(LIBC_HOSTED_OBJS))) \
 	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(USERLAND_OBJS))) \
-	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(LIB_WINDOW_OBJS))) \
+	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(LIB_APOLLO_OBJS))) \
 	$(patsubst %,$(DEPENDENCYDIR)/%.Td,$(basename $(LIB_SATURN_OBJS)))
 
 include src/libc/make.config
@@ -63,7 +63,7 @@ include test/libc/make.config
 
 $(shell mkdir -p $(dir $(DEPS)) >/dev/null)
 
-LIBS = -luserland -lwindows -lfreetype -lsaturn -lc_test_freestanding -lc++ -lc++abi -lc_freestanding 
+LIBS = -luserland -lapollo -lfreetype -lsaturn -lc_test_freestanding -lc++ -lc++abi -lc_freestanding 
 
 LINK_LIST = \
 	$(ARCHDIR)/crti.o \
@@ -86,7 +86,7 @@ sysroot:
 	$(MKDIR) sysroot/system/libraries
 	$(MKDIR) sysroot/system/include
 
-saturn.bin: libc_freestanding libc_hosted test_libc userland libwindows libsaturn $(OBJS) $(ARCHDIR)/linker.ld
+saturn.bin: libc_freestanding libc_hosted test_libc userland libapollo libsaturn $(OBJS) $(ARCHDIR)/linker.ld
 	$(LD) -T $(ARCHDIR)/linker.ld -o sysroot/system/boot/$@ $(LDFLAGS) $(LINK_LIST)  
 
 libc_freestanding: $(LIBC_FREE_OBJS)
@@ -112,10 +112,10 @@ userland: $(USERLAND_OBJS)
 	ranlib src/userland/libuserland.a
 	cp src/userland/libuserland.a sysroot/system/libraries
 
-libwindows: $(LIB_WINDOW_OBJS)
-	$(AR) rcs src/services/windows/lib/libwindows.a $(LIB_WINDOW_OBJS)
-	ranlib src/services/windows/lib/libwindows.a
-	cp src/services/windows/lib/libwindows.a sysroot/system/libraries
+libapollo: $(LIB_APOLLO_OBJS)
+	$(AR) rcs src/services/apollo/lib/libapollo.a $(LIB_APOLLO_OBJS)
+	ranlib src/services/apollo/lib/libapollo.a
+	cp src/services/apollo/lib/libapollo.a sysroot/system/libraries
 
 libsaturn: $(LIB_SATURN_OBJS)
 	$(AR) rcs src/saturn/libsaturn.a $(LIB_SATURN_OBJS)

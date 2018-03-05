@@ -30,7 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdint.h>
 #include <ipc.h>
 
-namespace Window {
+namespace Apollo {
     enum class MessageId {
         CreateWindow,
         CreateWindowSucceeded,

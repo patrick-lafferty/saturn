@@ -31,11 +31,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include FT_GLYPH_H
 #include <vector>
 
-namespace Window {
+namespace Apollo {
     class Window;
 }
 
-namespace Window::Text {
+namespace Apollo::Text {
 
     struct Glyph {
         FT_Vector position;

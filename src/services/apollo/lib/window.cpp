@@ -31,7 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <services.h>
 #include <algorithm>
 
-namespace Window {
+namespace Apollo {
 
     Window* createWindow(uint32_t width, uint32_t height) {
         auto windowBuffer = new WindowBuffer;

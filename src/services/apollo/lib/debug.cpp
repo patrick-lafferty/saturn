@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "debug.h"
 
-namespace Window::Debug {
+namespace Apollo::Debug {
     void drawBox(uint32_t* buffer, uint32_t positionX, uint32_t positionY, uint32_t width, uint32_t height) {
         for (auto y = positionY; y < positionY + height; y++) {
 

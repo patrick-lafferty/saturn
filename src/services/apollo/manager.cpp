@@ -37,7 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using namespace Kernel;
 
-namespace Window {
+namespace Apollo {
 
     uint32_t registerService() {
         RegisterService registerRequest;

@@ -39,7 +39,8 @@ namespace Keyboard {
     struct CharacterInput;
 }
 
-namespace Window {
+namespace Apollo {
+
     int main();
 
     struct WindowHandle {

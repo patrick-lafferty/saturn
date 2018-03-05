@@ -26,32 +26,41 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #pragma once
+
 #include <stdint.h>
 
-namespace Window {
-    class Window;
+namespace Apollo {
 
-    namespace Text {
-        class Renderer;
-    }
-
-    class Application {
-    public:
-
-        Application(uint32_t width, uint32_t height, bool startHidden = false);
-
-        bool isValid();
-
-    protected:
-
-        void clear(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
-        void move(uint32_t x, uint32_t y);
-        void updateBackBuffer(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
-        void notifyReadyToRender();
-
-        Window* window;
-        Text::Renderer* textRenderer;
-        uint32_t screenWidth, screenHeight;
+    struct alignas(0x1000) WindowBuffer {
+        uint32_t buffer[800 * 600];
     };
 
+    struct DirtyArea {
+        uint32_t x, y;
+        uint32_t width, height;
+    };
+
+    class Window {
+    public:
+
+        Window(WindowBuffer* buffer, uint32_t width, uint32_t height); 
+
+        uint32_t* getFramebuffer();
+        uint32_t getBackgroundColour();
+        void setBackgroundColour(uint32_t colour);
+        uint32_t getWidth();
+        void blitBackBuffer();
+        void markAreaDirty(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
+
+    private:
+
+        WindowBuffer* buffer;
+        WindowBuffer* backBuffer;
+        uint32_t backgroundColour;
+        uint32_t width, height;
+        bool dirty;
+        DirtyArea dirtyArea;
+    };
+
+    Window* createWindow(uint32_t width, uint32_t height);
 }

@@ -33,7 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../messages.h"
 #include <algorithm>
 
-namespace Window {
+namespace Apollo {
 
     Application::Application(uint32_t width, uint32_t height, bool startHidden) 
         : screenWidth {width}, screenHeight {height} {

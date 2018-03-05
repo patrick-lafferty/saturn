@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <stdint.h>
 
-namespace Window::Debug {
+namespace Apollo::Debug {
     
     void drawBox(uint32_t* buffer, uint32_t x, uint32_t y, uint32_t width, uint32_t height);
 }

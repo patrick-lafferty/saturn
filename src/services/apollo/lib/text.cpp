@@ -31,7 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <services/terminal/terminal.h>
 #include "window.h"
 
-namespace Window::Text {
+namespace Apollo::Text {
     
     Renderer* createRenderer(Window* window) {
         FT_Library library;
