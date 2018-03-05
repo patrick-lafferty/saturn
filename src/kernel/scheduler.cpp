@@ -148,10 +148,6 @@ namespace Kernel {
         currentScheduler->exitKernelTask();
     }
 
-    struct alignas(0x1000) Stack {
-        char data[0x100000];
-    };
-
     uint32_t IdGenerator::generateId() {
         int blockId = 0;
 
@@ -247,15 +243,21 @@ namespace Kernel {
     void Scheduler::cleanupTasks() {
         while (true) {
             asm volatile("cli");
+            auto oldHeap = LibC_Implementation::KernelHeap;
+            LibC_Implementation::KernelHeap = kernelHeap;
+            auto oldVMM = Memory::currentVMM;
+            kernelVMM->activate();
             auto task = deleteQueue.getHead();
 
             while (task != nullptr) {
-                auto kernelStackAddress = (task->context.kernelESP & ~0xFFF);
-                delete reinterpret_cast<Stack*>(kernelStackAddress);
+                delete task->kernelStack; 
                 auto next = task->nextTask;
                 deleteQueue.remove(task);
                 task = next;
             }
+
+            oldVMM->activate();
+            LibC_Implementation::KernelHeap = oldHeap;
 
             asm volatile("sti");
             blockTask(BlockReason::WaitingForMessage, 0);
@@ -380,12 +382,9 @@ namespace Kernel {
         auto oldVMM = Memory::currentVMM;
         kernelVMM->activate();
 
-        uint32_t stackAddress {0};
-        {
-            auto stack = new Stack;
-            memset(stack->data, 0, sizeof(Stack));
-            stackAddress = reinterpret_cast<uint32_t>(stack);
-        }
+        auto kernelStack = new Stack;
+        memset(kernelStack->data, 0, sizeof(Stack));
+        auto stackAddress = reinterpret_cast<uint32_t>(kernelStack);
 
         uint8_t volatile* stackPointer = static_cast<uint8_t volatile*>
             (reinterpret_cast<void volatile*>(stackAddress + sizeof(Stack)));
@@ -402,6 +401,7 @@ namespace Kernel {
         task->virtualMemoryManager = kernelVMM;
         task->heap = kernelHeap;
         task->tss = kernelTSS;
+        task->kernelStack = kernelStack;
 
         const uint32_t mailboxSize = 2 * Memory::PageSize;
         auto mailboxMemory = task->heap->aligned_allocate(Memory::PageSize, mailboxSize);
@@ -416,7 +416,6 @@ namespace Kernel {
         *stackExtras = reinterpret_cast<uint32_t>(callExitKernelTask);
 
         taskBuffer++;
-
         oldVMM->activate();
         LibC_Implementation::KernelHeap = oldHeap;
 
@@ -776,14 +775,8 @@ namespace Kernel {
 
         user stack is at kernelStack - 8
         */
-       if (false) { 
-        auto kernelStackAddress = (currentTask->context.esp & ~0xFFF) + Memory::PageSize;
-        auto kernelStack = reinterpret_cast<uint32_t volatile*>(kernelStackAddress);
-        auto userStackAddress = *(kernelStack - 2) & ~0xFFF;
-        auto userStack = reinterpret_cast<Stack*>(userStackAddress);
-
-        delete userStack;
-        //currentTask->virtualMemoryManager->freePages(reinterpret_cast<uint32_t>(currentTask->heap), 1);
+        if (false) {
+        auto kernelStackAddress = reinterpret_cast<uint32_t>(currentTask->kernelStack);//(currentTask->context.esp & ~0xFFF) + Memory::PageSize;
         auto pageDirectory = currentTask->virtualMemoryManager->getPageDirectory();
         currentTask->virtualMemoryManager->cleanup();
         kernelVMM->activate();
@@ -791,20 +784,21 @@ namespace Kernel {
         kernelVMM->cleanupClonePageTables(pageDirectory, kernelStackAddress - Memory::PageSize);
         delete currentTask->virtualMemoryManager;
         kernelHeap->free(currentTask->mailbox);
-       }
+        }
 
         idGenerator.freeId(currentTask->id);
 
         currentTask->state = TaskState::Blocked;
         scheduleNextTask();
         readyQueue.remove(currentTask);
-        deleteQueue.append(currentTask);
-        unblockTask(cleanupTask);
+        //deleteQueue.append(currentTask);
+        //unblockTask(cleanupTask);
         
         runNextTask();
     }
 
     void Scheduler::exitKernelTask() {
+    
         /*
         for kernel tasks, the things we need to cleanup:
 
@@ -815,15 +809,15 @@ namespace Kernel {
         */
         kernelVMM->activate();
         LibC_Implementation::KernelHeap = kernelHeap;
-        kernelHeap->free(currentTask->mailbox);
+        //kernelHeap->free(currentTask->mailbox);
 
         idGenerator.freeId(currentTask->id);
 
         currentTask->state = TaskState::Blocked;
         scheduleNextTask();
         readyQueue.remove(currentTask);
-        deleteQueue.append(currentTask);
-        unblockTask(cleanupTask);
+        //deleteQueue.append(currentTask);
+        //unblockTask(cleanupTask);
         runNextTask();
     }
 
