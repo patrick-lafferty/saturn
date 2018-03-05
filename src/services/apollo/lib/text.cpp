@@ -78,7 +78,7 @@ namespace Apollo::Text {
 
     void Renderer::loadFont(uint32_t index) {
 
-        char* fonts[] = {
+        const char* fonts[] = {
             "/system/fonts/dejavu/DejaVuSans-Bold.ttf",
             "/system/fonts/dejavu/DejaVuSans-Oblique.ttf",
         };
@@ -182,9 +182,8 @@ namespace Apollo::Text {
         return result;
     }
 
-    void Renderer::drawText(TextLayout& layout, uint32_t x, uint32_t y) {
+    void Renderer::drawText(const TextLayout& layout, uint32_t x, uint32_t y) {
 
-        static uint32_t offset = 0;
         FT_Vector origin;
         origin.x = x;
         origin.y = y;
@@ -196,10 +195,9 @@ namespace Apollo::Text {
 
             auto bitmap = reinterpret_cast<FT_BitmapGlyph>(glyph.image);
             auto top = origin.y + glyph.position.y;
-            auto left = glyph.position.x + origin.x;
             auto ptr = bitmap->bitmap.buffer;
 
-            for (int row = 0; row < bitmap->bitmap.rows; row++) {
+            for (unsigned int row = 0; row < bitmap->bitmap.rows; row++) {
                 auto y = row + top;
 
                 if (y == windowHeight)
@@ -221,7 +219,7 @@ namespace Apollo::Text {
 
         if (layout.underline) {
 
-            for (int row = 0; row < layout.underlineThickness; row++) {
+            for (uint32_t row = 0; row < layout.underlineThickness; row++) {
                 auto y = row + origin.y + layout.underlinePosition;
 
                 for (int column = 0; column < layout.bounds.width; column++) {
@@ -378,7 +376,7 @@ namespace Apollo::Text {
         return buffer - start;
     }
 
-    TextLayout Renderer::layoutText(char* text, uint32_t allowedWidth, Style style, bool underline, uint32_t size) {
+    TextLayout Renderer::layoutText(const char* text, uint32_t allowedWidth, Style style, bool underline, uint32_t size) {
         TextLayout layout;
         layout.lines = 1;
 

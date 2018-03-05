@@ -233,15 +233,19 @@ int sprintf(char* buffer, const char* format, ...) {
 }
 
 //TODO
-int vfprintf(FILE* restrict stream, const char* restrict format, va_list arg) {
+int vfprintf(FILE* restrict /*stream*/, 
+    const char* restrict /*format*/, 
+    va_list /*arg*/) {
     return 0;
 }
 
-int fprintf(FILE* restrict stream,
-    const char* restrict format, ...) {
+int fprintf(FILE* restrict /*stream*/,
+    const char* restrict /*format*/, ...) {
     return 0;
 }
 
-int snprintf(char* restrict s, size_t n, const char* restrict format, ...) {
+int snprintf(char* restrict /*s*/, 
+    size_t /*n*/, 
+    const char* restrict /*format*/, ...) {
     return 0;
 }

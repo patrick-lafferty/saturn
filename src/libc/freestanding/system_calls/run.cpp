@@ -41,7 +41,7 @@ uint32_t run(uintptr_t entryPoint) {
     return IPC::extractMessage<RunResult>(buffer).pid;
 }
 
-uint32_t run(char* path) {
+uint32_t run(const char* path) {
     RunProgram run;
     memcpy(run.path, path, strlen(path));
     send(IPC::RecipientType::Scheduler, &run);

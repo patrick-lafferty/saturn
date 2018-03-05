@@ -125,9 +125,15 @@ public:
                                     memset(inputBuffer, '\0', 500);
                                     break;
                                 }
+                                default: {
+                                    printf("[Dsky] Unhandled key\n");
+                                }
                             }
 
                             break;
+                        }
+                        default: {
+                            printf("[Dsky] Unhandled Keyboard event\n");
                         }
                     }
                     break;
@@ -143,6 +149,9 @@ public:
                             break;
                         }
                     }
+                }
+                default: {
+                    printf("[Dsky] Unhandled message namespace\n");
                 }
             }
         }

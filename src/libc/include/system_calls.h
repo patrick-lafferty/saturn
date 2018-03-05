@@ -77,6 +77,6 @@ VirtualFileSystem::SeekResult seekSynchronous(uint32_t fileDescriptor, uint32_t 
 void waitForServiceRegistered(Kernel::ServiceType type);
 
 uint32_t run(uintptr_t entryPoint);
-uint32_t run(char* path);
+uint32_t run(const char* path);
 
 void* map(uint32_t address, uint32_t size, uint32_t flags);

@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "file.h"
 #include <system_calls.h>
 
-FILE* fopen(const char* restrict filename, const char* restrict mode) {
+FILE* fopen(const char* restrict filename, const char* restrict /*mode*/) {
     auto result = openSynchronous(filename);
 
     if (result.success) {

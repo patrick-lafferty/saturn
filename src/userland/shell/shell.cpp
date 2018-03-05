@@ -210,6 +210,9 @@ namespace Shell {
                     case Vostok::ArgTypes::EndArg: {
                         return;
                     }
+                    default: {
+                        printf("[Shell] Unhandled enumeration inside printResult\n");
+                    }
                 }
             }
         }
@@ -236,6 +239,9 @@ namespace Shell {
                     case Vostok::ArgTypes::Cstring: {
                         printf("char*");
                         break;
+                    }
+                    default: {
+                        printf("[Shell] Unhandled enumeration inside printResult\n");
                     }
                 }
 
@@ -284,7 +290,6 @@ namespace Shell {
                     }
 
                     ptr += 4;
-                    auto type = *ptr;
                     ptr++;
                     auto name = reinterpret_cast<char*>(ptr);
                     printf("%s\n", name);

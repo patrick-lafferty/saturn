@@ -132,9 +132,15 @@ public:
                                     memset(inputBuffer, '\0', 500);
                                     break;
                                 }
+                                default: {
+                                    printf("[Capcom] Unhandled key\n");
+                                }
                             }
 
                             break;
+                        }
+                        default: {
+                            printf("[Capcom] Unhandled keyboard event\n");
                         }
                     }
                     break;
@@ -150,6 +156,9 @@ public:
                             break;
                         }
                     }
+                }
+                default: {
+                    printf("[Capcom] Unhandled message namespace\n");
                 }
             }
         }

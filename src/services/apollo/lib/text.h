@@ -79,9 +79,8 @@ namespace Apollo::Text {
 
         Renderer(FT_Library library, FT_Face face, Window* window);
 
-        //TODO: should be const TextLayout& but vector is missing cbegin and const iterators
-        void drawText(TextLayout& layout, uint32_t x, uint32_t y);
-        TextLayout layoutText(char* text, uint32_t allowedWidth, Style style = Style::Normal, bool underline = false, uint32_t size = 18);
+        void drawText(const TextLayout& layout, uint32_t x, uint32_t y);
+        TextLayout layoutText(const char* text, uint32_t allowedWidth, Style style = Style::Normal, bool underline = false, uint32_t size = 18);
 
     private:
 

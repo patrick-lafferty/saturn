@@ -85,6 +85,8 @@ sysroot:
 	$(MKDIR) sysroot/system/boot
 	$(MKDIR) sysroot/system/libraries
 	$(MKDIR) sysroot/system/include
+	cp ../saturn-ports/build_abi/lib/libc++abi.a sysroot/system/libraries
+	cp ../saturn-ports/llvm_builds/lib/libc++.a sysroot/system/libraries
 
 saturn.bin: libc_freestanding libc_hosted test_libc userland libapollo libsaturn $(OBJS) $(ARCHDIR)/linker.ld
 	$(LD) -T $(ARCHDIR)/linker.ld -o sysroot/system/boot/$@ $(LDFLAGS) $(LINK_LIST)  
