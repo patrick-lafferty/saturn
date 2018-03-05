@@ -33,10 +33,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdio.h>
 #include "permissions.h"
 #include <cpu/tss.h>
+#include <heap.h>
 
 namespace Kernel {
 
     ServiceRegistry::ServiceRegistry() {
+
+        kernelHeap = LibC_Implementation::KernelHeap;
+        kernelVMM = Memory::currentVMM;
+
+
         auto count = static_cast<uint32_t>(ServiceType::ServiceTypeEnd) + 1;
         taskIds = new uint32_t[count];
         memset(taskIds, 0, count * sizeof(uint32_t));
@@ -53,6 +59,7 @@ namespace Kernel {
     }
 
     void ServiceRegistry::receiveMessage(IPC::Message* message) {
+
         switch(message->messageNamespace) {
             case IPC::MessageNamespace::ServiceRegistry: {
                 switch(static_cast<MessageId>(message->messageId)) {
@@ -75,43 +82,24 @@ namespace Kernel {
                             *static_cast<IPC::MaximumMessageBuffer*>(message));
                         
                         auto index = static_cast<uint32_t>(request.type);
-                        
-                        subscribers[index].push_back(request.senderTaskId);
-
-                        if (meta[index].ready) {
-                            notifySubscribers(index);
-                        }
+                        subscribe(index, request.senderTaskId); 
 
                         break;
                     }
                     case MessageId::RunProgram: {
-                        
 
                         break;
                     }
                     case MessageId::NotifyServiceReady: {
-                        auto lastService = static_cast<uint32_t>(ServiceType::ServiceTypeEnd);
-                        auto index = lastService;
-
-                        for (auto i = 0u; i < lastService; i++) {
-                            if (taskIds[i] == message->senderTaskId) {
-                                index = i;
-                                break;
-                            }
-                        }
-
-                        if (index != lastService) {
-                            meta[index].ready = true;
-                            notifySubscribers(index);
-                        }
-
+                        
+                        handleNotifyServiceReady(message->senderTaskId);
                         break;
                     }
                     case MessageId::LinearFrameBufferFound: {
                         auto msg = IPC::extractMessage<LinearFrameBufferFound>(
                                 *static_cast<IPC::MaximumMessageBuffer*>(message));
 
-                        addresses.linearFrameBuffer = msg.address;
+                        handleLinearFramebufferFound(msg.address);
 
                         break;
                     }
@@ -126,23 +114,8 @@ namespace Kernel {
                     case MessageId::MapMemory: {
                         auto request = IPC::extractMessage<MapMemory>(
                             *static_cast<IPC::MaximumMessageBuffer*>(message));
-
-                        auto currentTask = currentScheduler->getTask(message->senderTaskId);
-                        auto vmm = currentTask->virtualMemoryManager;
-                        auto cachedNextAddress = vmm->HACK_getNextAddress();
-
-                        /*
-                        TODO: just a hacked up implementation to get the elf loader test working
-                        */
-                        vmm->HACK_setNextAddress(request.address);
-                        auto allocatedAddress = vmm->allocatePages(request.size, request.flags);
-                        vmm->HACK_setNextAddress(cachedNextAddress);
-
-                        MapMemoryResult result;
-                        result.recipientId = request.senderTaskId;
-                        result.start = reinterpret_cast<void*>(allocatedAddress);
-
-                        currentTask->mailbox->send(&result);
+                        
+                        handleMapMemory(request);
                         
                         break;
                     }
@@ -150,21 +123,9 @@ namespace Kernel {
                         auto request = IPC::extractMessage<ShareMemory>(
                             *static_cast<IPC::MaximumMessageBuffer*>(message));
 
-                        auto currentTask = currentScheduler->getTask(message->senderTaskId);
-                        auto recipientTask = currentScheduler->getTask(request.sharedTaskId);
+                        handleShareMemory(request);
 
-                        currentTask->virtualMemoryManager->sharePages(
-                            request.ownerAddress,
-                            recipientTask->virtualMemoryManager,
-                            request.sharedAddress,
-                            request.size / Memory::PageSize
-                        );
-
-                        ShareMemoryResult result;
-                        result.recipientId = request.senderTaskId;
-                        result.sharedTaskId = request.sharedTaskId;
-
-                        currentTask->mailbox->send(&result);
+                        break;
                     }
                 }
                 break;
@@ -173,6 +134,9 @@ namespace Kernel {
     }
 
     void ServiceRegistry::receivePseudoMessage(ServiceType type, IPC::Message* message) {
+
+        MemoryGuard guard {kernelVMM, kernelHeap};
+
         auto index = static_cast<uint32_t>(type);
 
         if (pseudoMessageHandlers[index] != nullptr) {
@@ -235,7 +199,100 @@ namespace Kernel {
         return true;
     }
 
+    void ServiceRegistry::subscribe(uint32_t index, uint32_t senderTaskId) {
+
+        MemoryGuard guard {kernelVMM, kernelHeap};
+
+        auto& subs = subscribers[index];
+        subs.push_back(senderTaskId);
+
+        if (meta[index].ready) {
+            notifySubscribers(index);
+        }
+    }
+
+    void ServiceRegistry::handleNotifyServiceReady(uint32_t senderTaskId) {
+
+        MemoryGuard guard {kernelVMM, kernelHeap};
+
+        auto lastService = static_cast<uint32_t>(ServiceType::ServiceTypeEnd);
+        auto index = lastService;
+
+        for (auto i = 0u; i < lastService; i++) {
+            if (taskIds[i] == senderTaskId) {
+                index = i;
+                break;
+            }
+        }
+
+        if (index != lastService) {
+            meta[index].ready = true;
+            notifySubscribers(index);
+        }
+    }
+
+    void ServiceRegistry::handleLinearFramebufferFound(uint32_t address) {
+
+        MemoryGuard guard {kernelVMM, kernelHeap};
+
+        addresses.linearFrameBuffer = address;
+    }
+
+    void handleMapMemory(MapMemory request) {
+
+        /*
+        handleMapMemory doesn't need a MemoryGuard because it
+        doesn't touch any member variables, and indeed it expects
+        currentTask's VMM to be activated, not the kernelVMM
+        */
+
+        auto currentTask = currentScheduler->getTask(request.senderTaskId);
+        auto vmm = currentTask->virtualMemoryManager;
+        auto cachedNextAddress = vmm->HACK_getNextAddress();
+
+        /*
+        TODO: just a hacked up implementation to get the elf loader test working
+        */
+        vmm->HACK_setNextAddress(request.address);
+        auto allocatedAddress = vmm->allocatePages(request.size, request.flags);
+        vmm->HACK_setNextAddress(cachedNextAddress);
+
+        MapMemoryResult result;
+        result.recipientId = request.senderTaskId;
+        result.start = reinterpret_cast<void*>(allocatedAddress);
+
+        currentTask->mailbox->send(&result);
+    }
+
+    void handleShareMemory(ShareMemory request) {
+
+        /*
+        handleShareMemory doesn't need a MemoryGuard because it
+        doesn't touch any member variables, and indeed it expects
+        currentTask's VMM to be activated, not the kernelVMM
+        */
+
+        auto currentTask = currentScheduler->getTask(request.senderTaskId);
+        auto recipientTask = currentScheduler->getTask(request.sharedTaskId);
+
+        currentTask->virtualMemoryManager->sharePages(
+            request.ownerAddress,
+            recipientTask->virtualMemoryManager,
+            request.sharedAddress,
+            request.size / Memory::PageSize
+        );
+
+        ShareMemoryResult result;
+        result.recipientId = request.senderTaskId;
+        result.sharedTaskId = request.sharedTaskId;
+
+        currentTask->mailbox->send(&result);
+    }
+
     uint32_t ServiceRegistry::getServiceTaskId(ServiceType type) {
+
+        MemoryGuard guard {kernelVMM, kernelHeap};
+
         if (type == ServiceType::ServiceTypeEnd) {
             kprintf("[ServiceRegistry] Tried to get ServiceTypeEnd taskId\n");
             return 0;
@@ -245,12 +302,18 @@ namespace Kernel {
     }
 
     bool ServiceRegistry::isPseudoService(ServiceType type) {
+
+        MemoryGuard guard {kernelVMM, kernelHeap};
+
         auto index = static_cast<uint32_t>(type);
 
         return pseudoMessageHandlers[index] != nullptr;
     }
 
     bool ServiceRegistry::handleDriverIrq(uint32_t irq) {
+
+        MemoryGuard guard {kernelVMM, kernelHeap};
+
         switch(irq) {
             case 53: {
                 auto taskId = driverTaskIds[static_cast<uint32_t>(DriverType::ATA)];
@@ -420,5 +483,19 @@ asm("cli");
             }
         }
 asm("sti");
+    }
+    
+    MemoryGuard::MemoryGuard(Memory::VirtualMemoryManager* kernelVMM, LibC_Implementation::Heap* kernelHeap) {
+        
+        oldHeap = LibC_Implementation::KernelHeap;
+        oldVMM = Memory::currentVMM;
+
+        LibC_Implementation::KernelHeap = kernelHeap;
+        kernelVMM->activate();
+    }
+
+    MemoryGuard::~MemoryGuard() {
+        oldVMM->activate();
+        LibC_Implementation::KernelHeap = oldHeap;
     }
 }

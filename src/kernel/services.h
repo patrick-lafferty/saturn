@@ -31,6 +31,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ipc.h>
 #include <vector>
 
+namespace Memory {
+    class VirtualMemoryManager;
+}
+
+namespace LibC_Implementation {
+    class Heap;
+}
+
 namespace Kernel {
 
     enum class ServiceType {
@@ -288,6 +296,15 @@ namespace Kernel {
         
         ServiceRegistry();
         
+        /*
+        All public functions must create a MemoryGuard at the beginning
+        of the function.
+
+        ServiceRegistry allocates memory on the kernel heap, but doesn't run
+        in its own service, so the current heap when invoking a registry
+        function is most likely a user task's heap, so the registry's
+        member variables would be garbage.
+        */
         void receiveMessage(IPC::Message* message);
         void receivePseudoMessage(ServiceType type, IPC::Message* message);
         uint32_t getServiceTaskId(ServiceType type);
@@ -299,6 +316,9 @@ namespace Kernel {
         bool registerService(uint32_t taskId, ServiceType type);
         bool registerDriver(uint32_t taskId, DriverType type);
         bool registerPseudoService(ServiceType type, PseudoMessageHandler handler);
+        void subscribe(uint32_t index, uint32_t senderTaskId);
+        void handleNotifyServiceReady(uint32_t senderTaskId);
+        void handleLinearFramebufferFound(uint32_t address);
         void notifySubscribers(uint32_t index);
         void setupService(uint32_t taskId, ServiceType type);
         void setupDriver(uint32_t taskId, DriverType type);
@@ -310,5 +330,24 @@ namespace Kernel {
         uint32_t* driverTaskIds;
 
         KnownHardwareAddresses addresses;
+
+        Memory::VirtualMemoryManager* kernelVMM;
+        LibC_Implementation::Heap* kernelHeap;
+
+    };
+
+    void handleMapMemory(MapMemory request);
+    void handleShareMemory(ShareMemory request);
+
+    class MemoryGuard {
+    public:
+
+        MemoryGuard(Memory::VirtualMemoryManager* kernelVMM, LibC_Implementation::Heap* kernelHeap);
+        ~MemoryGuard();
+
+    private:
+        
+        Memory::VirtualMemoryManager* oldVMM;
+        LibC_Implementation::Heap* oldHeap;
     };
 }
