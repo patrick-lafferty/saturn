@@ -190,8 +190,14 @@ namespace Memory {
     #endif
 
     void VirtualMemoryManager::map(uintptr_t virtualAddress, uintptr_t physicalAddress, uint32_t flags) {
-        
+
+        auto directoryIndex = extractDirectoryIndex(virtualAddress);
         auto pageTableAddress = calculatePageTableAddress(virtualAddress);
+
+        if (directory->pageTableAddresses[directoryIndex] == 0) {
+            allocatePageTable(pageTableAddress, directoryIndex);
+        }
+
         auto pageTable = static_cast<PageTable*>(reinterpret_cast<void*>(pageTableAddress));
         auto tableIndex = extractTableIndex(virtualAddress);
 
