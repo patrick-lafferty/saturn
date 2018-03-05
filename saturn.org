@@ -58,7 +58,7 @@ for page tables and directories
 ** DONE - page fault handler
 *** detect if its an invalid memory access, or an unallocated one
 *** allocate physical pages on demand
-** switch to higher half kernel
+** DONE - switch to higher half kernel
 
 * Step 5: APIC & Interrupts
 
@@ -474,7 +474,7 @@ todo:
 ** [ ] ATA driver
 ** [ ] ext2 filesystem
 ** [ ] elf loader
-
+   
 * Interlude
 
 -need to develop a good debugger

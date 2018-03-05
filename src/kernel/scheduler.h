@@ -145,6 +145,10 @@ namespace Kernel {
         WaitingForMessage
     };
 
+    struct alignas(0x1000) Stack {
+        char data[0x100000];
+    };
+
     struct Task {
         TaskContext context;
         Task* nextTask {nullptr};
@@ -156,6 +160,7 @@ namespace Kernel {
         LibC_Implementation::Heap* heap;
         IPC::Mailbox* mailbox;
         CPU::TSS* tss;
+        Stack* kernelStack;
     };
 
     enum class EFlags {

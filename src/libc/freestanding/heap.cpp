@@ -55,10 +55,15 @@ namespace LibC_Implementation {
         remainingPageSpace = PageSize - sizeof(ChunkHeader);
     }
 
+    void uhoh() {
+        while (true) {}
+    }
+
     void* Heap::aligned_allocate(size_t alignment, size_t size) {
 
         auto chunk = findFreeAlignedChunk(size, alignment);
         if (chunk == nullptr) {
+            uhoh();
             return nullptr;
         }
 
@@ -72,6 +77,7 @@ namespace LibC_Implementation {
             //TODO: this should never be true
             if ((alignedAddress - startingAddress) < sizeof(ChunkHeader)) {
                 //TODO: not enough space to split chunk, wat do
+                uhoh();
                 kprintf("[HEAP] aligned_allocate not enough space in this chunk??\n");
                 return nullptr;
             }
@@ -110,6 +116,8 @@ namespace LibC_Implementation {
                 chunk = chunk->next;
             }
         }
+
+        uhoh();
 
         kprintf("[Heap] findFreeChunk for %d size returned null\n", size);
 
@@ -154,6 +162,8 @@ namespace LibC_Implementation {
             }
         }
 
+        uhoh();
+
         kprintf("[HEAP] couldn't find free aligned chunk\n");
         return nullptr;
     }
@@ -183,6 +193,9 @@ namespace LibC_Implementation {
 
             nextFreeChunk = nextChunk;
         }
+        else {
+            uhoh();
+        }
 
         return reinterpret_cast<void*>(allocatedAddress);
     }
@@ -193,6 +206,7 @@ namespace LibC_Implementation {
         auto chunk = findFreeChunk(size);
 
         if (chunk == nullptr) {
+            uhoh();
             return nullptr;
         }
 
@@ -228,6 +242,8 @@ namespace LibC_Implementation {
     void Heap::free(void* ptr) {
         auto chunk = reinterpret_cast<ChunkHeader*>(reinterpret_cast<uint32_t>(ptr) - sizeof(ChunkHeader));
         chunk->free = true;
+
+        return;
 
         /*
         TODO: rethink this
