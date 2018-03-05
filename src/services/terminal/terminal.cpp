@@ -153,7 +153,7 @@ namespace Terminal {
                             break;
                         }
                         case ::VirtualFileSystem::MessageId::ReadRequest: {
-                            auto request = IPC::extractMessage<ReadRequest>(buffer);
+                            //auto request = IPC::extractMessage<ReadRequest>(buffer);
                             //handleReadRequest(request, openDescriptors);
                             break;
                         }
@@ -197,6 +197,9 @@ namespace Terminal {
                                 taskIdWaitingForInput = 0;    
                             }
                             break;
+                        }
+                        default: {
+                            printf("[Terminal] Unhandled keyboard event\n");
                         }
                     }
 
@@ -250,6 +253,9 @@ namespace Terminal {
                     }
 
                     break;
+                }
+                default: {
+                    printf("[Terminal] Unhandled message namespace\n");
                 }
             }
         }
@@ -513,7 +519,7 @@ namespace Terminal {
         dirty.overflowed = false;
         dirty.linesOverflowed = 0;
 
-        while (count >= 0 && *buffer != 0) {
+        while (count > 0 && *buffer != 0) {
             count--;
 
             switch(*buffer) {

@@ -141,12 +141,15 @@ public:
                 case IPC::MessageNamespace::WindowManager: {
                     switch (static_cast<MessageId>(buffer.messageId)) {
                         case MessageId::Render: {
-                            updateBackBuffer(0, 0, screenWidth, screenHeight);
+                            window->blitBackBuffer();
                             break;
                         }
                         case MessageId::Show: {
-                            updateBackBuffer(0, 0, screenWidth, screenHeight);
+                            window->blitBackBuffer();
                             break;
+                        }
+                        default: {
+                            printf("[Dsky] Unhandled WM message\n");
                         }
                     }
                 }

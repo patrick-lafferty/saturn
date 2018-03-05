@@ -70,6 +70,9 @@ namespace VGA {
 
                     break;
                 }
+                default: {
+                    printf("[VGA] Unhandled message namespace\n");
+                }
             }
         }
     }
@@ -100,9 +103,15 @@ namespace VGA {
                         return vgaMeta.vgaAddress;
                         break;
                     }
+                    default: {
+                        printf("[VGA] Unhandled message id\n");
+                    }
                 }
 
                 break;
+            }
+            default: {
+                printf("[VGA] Unhandled message namespace\n");
             }
         }
 

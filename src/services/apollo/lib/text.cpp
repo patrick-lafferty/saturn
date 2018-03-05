@@ -222,7 +222,7 @@ namespace Apollo::Text {
             for (uint32_t row = 0; row < layout.underlineThickness; row++) {
                 auto y = row + origin.y + layout.underlinePosition;
 
-                for (int column = 0; column < layout.bounds.width; column++) {
+                for (uint32_t column = 0; column < layout.bounds.width; column++) {
                     auto x = column + origin.x;
                     auto index = x + y * windowWidth;
                     frameBuffer[index] = layout.glyphs[0].colour;
@@ -241,7 +241,7 @@ namespace Apollo::Text {
         FindChannel
     };
 
-    uint32_t handleSelectGraphicRendition(char* buffer) {
+    uint32_t handleSelectGraphicRendition(const char* buffer) {
         auto start = buffer;
         char* end {nullptr};
         long code {0};
@@ -326,7 +326,7 @@ namespace Apollo::Text {
     } 
 
     //TODO: pass a struct containing all things that are ansi escapable instead of the global foreground
-    uint32_t handleEscapeSequence(char* buffer) {
+    uint32_t handleEscapeSequence(const char* buffer) {
         auto start = buffer;
 
         switch (*buffer++) {
@@ -376,7 +376,7 @@ namespace Apollo::Text {
         return buffer - start;
     }
 
-    TextLayout Renderer::layoutText(const char* text, uint32_t allowedWidth, Style style, bool underline, uint32_t size) {
+    TextLayout Renderer::layoutText(const char* text, uint32_t allowedWidth, Style style, bool underline, uint32_t /*size*/) {
         TextLayout layout;
         layout.lines = 1;
 
@@ -414,7 +414,7 @@ namespace Apollo::Text {
                 continue;
             }
 
-            auto character = *text;
+            uint8_t character = *text;
 
             if (character < MaxCachedGlyphIndex && !cachedGlyphs[character].isValid()) {
                 auto glyphIndex = FT_Get_Char_Index(face, character); 
@@ -510,7 +510,7 @@ namespace Apollo::Text {
         }
 
         layout.bounds = calculateBoundingBox(layout.glyphs);
-        auto height = (face->size->metrics.height >> 6);
+        uint32_t height = (face->size->metrics.height >> 6);
         layout.bounds.height += height/ 2;
         
         if (layout.bounds.height < height) {

@@ -54,7 +54,7 @@ namespace Apollo {
         window->markAreaDirty(0, 0, width, height);
 
         if (!startHidden) {
-            updateBackBuffer(0, 0, width, height);
+            window->blitBackBuffer();
         }
     }
 
@@ -77,12 +77,6 @@ namespace Apollo {
         move.x = x;
         move.y = y;
         send(IPC::RecipientType::ServiceName, &move);
-    }
-
-    void Application::updateBackBuffer(uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
-
-        window->blitBackBuffer();
-        //updateWindowBuffer(x, y, width, height);
     }
 
     void Application::notifyReadyToRender() {

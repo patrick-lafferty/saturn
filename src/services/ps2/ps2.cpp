@@ -354,9 +354,9 @@ namespace PS2 {
     void identifyDevices() {
         asm volatile("clt");
 
-        auto firstId = identifyDevice(Port::First);
+        //auto firstId = identifyDevice(Port::First);
         //kprintf("[PS/2] First port identified as %x\n", firstId);
-        auto secondId = identifyDevice(Port::Second);
+        //auto secondId = identifyDevice(Port::Second);
         //kprintf("[PS/2] Second port identified as %x\n", secondId);
 
         asm volatile("sti");

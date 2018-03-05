@@ -80,8 +80,8 @@ struct ProgramHeader {
     uint32_t alignment;
 };
 
-extern "C" uint32_t loadElf(char* pah) {
-    char* path = "/applications/test/test.bin";
+extern "C" uint32_t loadElf(char* /*pah*/) {
+    const char* path = "/applications/test/test.bin";
     auto file = fopen(path, "");
 #if 0
     char* data = new char[0x2000];
@@ -212,7 +212,13 @@ namespace Kernel {
 
                             break;
                         }
+                        default: {
+                            kprintf("[Scheduler] Unhandled message\n");
+                        }
                     }
+                }
+                default: {
+                    kprintf("[Scheduler] Unhandled message namespace\n");
                 }
 
                 break;

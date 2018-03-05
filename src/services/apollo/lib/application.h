@@ -47,7 +47,6 @@ namespace Apollo {
 
         void clear(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
         void move(uint32_t x, uint32_t y);
-        void updateBackBuffer(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
         void notifyReadyToRender();
 
         Window* window;

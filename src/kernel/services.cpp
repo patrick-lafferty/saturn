@@ -127,8 +127,14 @@ namespace Kernel {
 
                         break;
                     }
+                    default: {
+                        printf("[ServiceRegistry] Unhandled message id\n");
+                    }
                 }
                 break;
+            }
+            default: {
+                printf("[ServiceRegistry] Unhandled message namespace\n");
             }
         }
     }
