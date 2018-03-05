@@ -61,6 +61,8 @@ namespace MassStorageFileSystem {
         uint32_t partitionEntrySize;
         uint32_t partitionArrayCRC;
         uint8_t remaining[164];
+
+        uint8_t extra[256];
     };
 
     enum class PendingDiskCommand {

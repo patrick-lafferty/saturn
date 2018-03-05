@@ -273,7 +273,7 @@ namespace MassStorageFileSystem {
                                     gptHeader.headerCRC32 = 0;
                                     auto ptr = reinterpret_cast<uint8_t*>(&gptHeader);
 
-                                    if (!Saturn::CRC::check32(headerCRC, ptr, sizeof(GPTHeader) - sizeof(GPTHeader::remaining))) {
+                                    if (!Saturn::CRC::check32(headerCRC, ptr, sizeof(GPTHeader) - sizeof(GPTHeader::remaining) - sizeof(GPTHeader::extra))) {
                                         printf("[Mass Storage] Invalid GPT Header, CRC32 check failed\n");
                                         asm("hlt");
                                     }
