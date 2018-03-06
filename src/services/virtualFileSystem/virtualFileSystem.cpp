@@ -520,7 +520,7 @@ namespace VirtualFileSystem {
     bool VirtualFileSystem::tryOpen(Cache::Entry* currentDirectory, PendingRequest& pendingRequest) {
 
         auto& pendingOpen = pendingRequest.open;
-        auto pathStart = pendingOpen.remainingPath.data();
+        //auto pathStart = pendingOpen.remainingPath.data();
         auto result = discoverPath(currentDirectory, pendingOpen);
         auto requestId = pendingRequest.id;
         
@@ -533,7 +533,7 @@ namespace VirtualFileSystem {
 
             pendingOpen.fullPath = new char[path.length()];
             path.copy(pendingOpen.fullPath, path.length());
-            auto offset = pendingOpen.remainingPath.data() - pathStart;
+            //auto offset = pendingOpen.remainingPath.data() - pathStart;
             //pendingOpen.remainingPath = std::string_view{pendingOpen.fullPath + offset, pendingOpen.remainingPath.length()};
             pendingOpen.remainingPath = std::string_view{pendingOpen.fullPath, path.length()};
         };
@@ -599,7 +599,8 @@ namespace VirtualFileSystem {
                 openFileDescriptors[processVirtualFileDescriptor] = {
                     result.fileDescriptor,
                     pendingRequest.open.parent->mount,
-                    pendingRequest.open.entry
+                    pendingRequest.open.entry,
+                    0
                 };
             }
             else {
@@ -607,7 +608,8 @@ namespace VirtualFileSystem {
                 openFileDescriptors.push_back({
                     result.fileDescriptor,
                     pendingRequest.open.parent->mount,
-                    pendingRequest.open.entry
+                    pendingRequest.open.entry,
+                    0
                 });
             }
 
@@ -645,7 +647,7 @@ namespace VirtualFileSystem {
     bool VirtualFileSystem::tryCreate(Cache::Entry* currentDirectory, PendingRequest& pendingRequest) {
 
         auto& pendingCreate = pendingRequest.create;
-        auto pathStart = pendingCreate.remainingPath.data();
+        //auto pathStart = pendingCreate.remainingPath.data();
         auto result = discoverPath(currentDirectory, pendingCreate);
         auto requestId = pendingRequest.id;
         
@@ -658,7 +660,8 @@ namespace VirtualFileSystem {
 
             pendingCreate.fullPath = new char[path.length()];
             path.copy(pendingCreate.fullPath, path.length());
-            auto offset = pendingCreate.remainingPath.data() - pathStart;
+            //TODO: is offset used anymore?
+            //auto offset = pendingCreate.remainingPath.data() - pathStart;
             //pendingCreate.remainingPath = std::string_view{pendingCreate.fullPath + offset, pendingCreate.remainingPath.length()};
             pendingCreate.remainingPath = std::string_view{pendingCreate.fullPath, path.length()};
         };
@@ -1135,6 +1138,9 @@ namespace VirtualFileSystem {
                             auto request = IPC::extractMessage<SubscribeMount>(buffer);
                             handleSubscribeMount(request);
                             break;
+                        }
+                        default: {
+                            printf("[VFS] Unhandled message id\n");
                         }
                     }
 

@@ -238,7 +238,7 @@ namespace HardwareFileSystem {
         openDescriptors[request.fileDescriptor].write(request.senderTaskId, request.requestId, args);
     }
 
-    void handleCloseRequest(CloseRequest& request, std::vector<FileDescriptor>& openDescriptors) {
+    void handleCloseRequest(CloseRequest& /*request*/, std::vector<FileDescriptor>& /*openDescriptors*/) {
         //TODO: this is broken
         //openDescriptors.erase(&openDescriptors[request.fileDescriptor]);
     }

@@ -163,7 +163,7 @@ namespace Discovery::PCI {
                 performHardwareTransaction("%s/subclassCode", functionName, classReg.subclass, Vostok::ArgTypes::Uint32);
                 performHardwareTransaction("%s/interface", functionName, classReg.programmingInterface, Vostok::ArgTypes::Uint32);
                 
-                Device device {id, classReg, deviceId, functionId};
+                Device device {id, classReg, deviceId, functionId, {}};
 
                 for (auto offset = 0x10u; offset < 0x28; offset += 4) {
                     char barName[100];

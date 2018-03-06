@@ -208,8 +208,8 @@ namespace MassStorageFileSystem::Ext2 {
         ReadRequest read;
         RequestType type;
 
-        uint32_t descriptor;
-        uint32_t length;
+        uint32_t descriptor {0};
+        uint32_t length {0};
     };
 
     struct FileDescriptor {
@@ -253,7 +253,7 @@ namespace MassStorageFileSystem::Ext2 {
         void handleReadInodeRequest(Request& request);
 
         SuperBlock superBlock;
-        ReadState readState;
+        //ReadState readState;
         uint32_t blockGroupCount;
         uint32_t blockSize;
         uint32_t blockGroupDescriptorTableId;

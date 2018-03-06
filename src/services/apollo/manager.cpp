@@ -71,8 +71,7 @@ namespace Apollo {
         return 0;
     }
 
-    uint32_t launch(char* path) {
-        uint32_t descriptor {0};
+    uint32_t launch(const char* path) {
         auto result = openSynchronous(path);
 
         auto entryPointResult = readSynchronous(result.fileDescriptor, 4);
@@ -263,6 +262,9 @@ namespace Apollo {
 
                                 break;
                             }
+                            default: {
+                                printf("[WindowManager] Unhandled Window message id\n");
+                            }
                         }
 
                         break;
@@ -276,6 +278,9 @@ namespace Apollo {
                                 handleShareMemoryResult(message); 
 
                                 break;
+                            }
+                            default: {
+                                printf("[WindowManager] Unhandled service registry message id\n");
                             }
                         }
 
@@ -297,9 +302,14 @@ namespace Apollo {
 
                                 break;
                             }
+                            default: {
+                                printf("[WindowManager] Unhandled keyboard message id\n");
+                            }
                         }
 
                         break;
+                    }
+                    default: {
                     }
                 }
             }

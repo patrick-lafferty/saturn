@@ -52,7 +52,7 @@ namespace Apollo {
     }
 
     Window::Window(WindowBuffer* buffer, uint32_t width, uint32_t height)
-        : backBuffer {buffer}, width {width}, height {height} {
+        : backBuffer {buffer}, width {width}/*, height {height}*/ {
         this->buffer = new WindowBuffer;
         memset(this->buffer->buffer, backgroundColour, width * height * 4);
         dirty = false;

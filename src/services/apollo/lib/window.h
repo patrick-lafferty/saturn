@@ -57,7 +57,7 @@ namespace Apollo {
         WindowBuffer* buffer;
         WindowBuffer* backBuffer;
         uint32_t backgroundColour;
-        uint32_t width, height;
+        uint32_t width/*, height*/;
         bool dirty;
         DirtyArea dirtyArea;
     };

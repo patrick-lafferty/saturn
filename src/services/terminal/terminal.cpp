@@ -250,6 +250,9 @@ namespace Terminal {
 
                             break;
                         }
+                        default: {
+                            printf("[Terminal] unhandled terminal message id\n");
+                        }
                     }
 
                     break;

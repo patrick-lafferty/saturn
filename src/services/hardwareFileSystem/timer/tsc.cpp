@@ -88,7 +88,7 @@ namespace HardwareFileSystem::Timer {
         send(IPC::RecipientType::TaskId, &result);
     }
 
-    void TSCObject::writeProperty(uint32_t requesterTaskId, uint32_t requestId, uint32_t propertyId, ArgBuffer& args) {
+    void TSCObject::writeProperty(uint32_t requesterTaskId, uint32_t requestId, uint32_t /*propertyId*/, ArgBuffer& args) {
         auto type = args.readType();
 
         if (type != ArgTypes::Property) {

@@ -152,6 +152,8 @@ public:
                             printf("[Dsky] Unhandled WM message\n");
                         }
                     }
+
+                    break;
                 }
                 default: {
                     printf("[Dsky] Unhandled message namespace\n");

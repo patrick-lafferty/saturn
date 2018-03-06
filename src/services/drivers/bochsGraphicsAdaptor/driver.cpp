@@ -34,7 +34,7 @@ using namespace Kernel;
 
 namespace BGA {
 
-    void messageLoop(uint32_t address) {
+    void messageLoop() {
         
         Startup::runProgram("/bin/windows.service");
 
@@ -138,10 +138,10 @@ namespace BGA {
     }
 
     void service() {
-        auto bgaAddress = registerService();
+        registerService();
         sleep(200);
         setupAdaptor();
 
-        messageLoop(bgaAddress);
+        messageLoop();
     }
 }

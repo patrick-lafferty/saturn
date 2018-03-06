@@ -139,7 +139,7 @@ namespace MassStorageFileSystem {
 
         auto descriptor = callFind();
 
-        if (descriptor == -1) {
+        if (descriptor == static_cast<uint32_t>(-1)) {
             return nullptr;
         }
 

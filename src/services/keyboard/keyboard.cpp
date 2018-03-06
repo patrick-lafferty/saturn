@@ -44,7 +44,7 @@ namespace Keyboard {
         uint8_t shift;
     };
 
-    KeymapEntry en_US[128];
+    KeymapEntry en_US[256];
 
     void loadKeymap() {
         en_US[0x1C] = {'a', 'A'};
@@ -221,9 +221,15 @@ namespace Keyboard {
                             characterMessage.serviceType = ServiceType::WindowManager;
                             break;
                         }
+                        default: {
+                            printf("[Keyboard] Unhandled key event\n");
+                        }
                     }
 
                     break;
+                }
+                default: {
+                    printf("[Keyboard] Unhandled message namespace\n");
                 }
             }    
         }

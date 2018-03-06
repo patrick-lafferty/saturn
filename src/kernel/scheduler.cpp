@@ -216,6 +216,8 @@ namespace Kernel {
                             kprintf("[Scheduler] Unhandled message\n");
                         }
                     }
+
+                    break;
                 }
                 default: {
                     kprintf("[Scheduler] Unhandled message namespace\n");

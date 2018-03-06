@@ -455,7 +455,7 @@ namespace MassStorageFileSystem::Ext2 {
                             break;
                         }
 
-                        auto remainingSectorsInBlock = sectorsPerBlock - (meta.startingPosition % blockSize) / sectorSize;
+                        //auto remainingSectorsInBlock = sectorsPerBlock - (meta.startingPosition % blockSize) / sectorSize;
                         auto sectorCount = std::min(sectorsPerBlock, meta.remainingSectors); 
                         auto lba = blockIdToLba(id);
 
@@ -487,6 +487,9 @@ namespace MassStorageFileSystem::Ext2 {
                     }
 
                     break;
+                }
+                default: {
+                    printf("[Ext2] Unhandled read state\n");
                 }
             }
 

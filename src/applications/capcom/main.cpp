@@ -159,6 +159,8 @@ public:
                             printf("[Capcom] Unhandled WM message\n");
                         }
                     }
+
+                    break;
                 }
                 default: {
                     printf("[Capcom] Unhandled message namespace\n");
