@@ -36,17 +36,50 @@ namespace Apollo {
         class Renderer;
     }
 
+    /*
+    The base class for all graphical Saturn applications, 
+    Application is responsible for setting up a window,
+    handling logic to update and render its window
+    */
     class Application {
     public:
 
+
+        /*
+        Creates a Window and TextRenderer and fills the window's
+        framebuffer with a default background colour
+
+        If startHidden is true, the constructor won't blit the
+        now-default-filled framebuffer to the backbuffer,
+        otherwise it will
+        */
         Application(uint32_t width, uint32_t height, bool startHidden = false);
 
+        /*
+        An Application is in a valid state if it successfully
+        created a Window and TextRenderer object
+        */
         bool isValid();
 
     protected:
 
+        /*
+        Sets every pixel of the window's framebuffer to be
+        the window's background colour
+        */
         void clear(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
+
+        /*
+        Sends a message to the window manager requesting that
+        it be drawn at the given offset anytime this application's
+        window is composited with the main buffer
+        */
         void move(uint32_t x, uint32_t y);
+
+        /*
+        Sends a message to the window manager indicating that
+        this application is ready to receive render messages
+        */
         void notifyReadyToRender();
 
         Window* window;
