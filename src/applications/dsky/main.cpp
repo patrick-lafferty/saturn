@@ -149,7 +149,13 @@ public:
     }
 
     void update() {
+        static int x = 0;
+        static int y = 0;
+        clear(x, y, 50, 50);
+        x++;
 
+        drawBox(window->getFramebuffer(), x, y, 50, 50);
+        window->markAreaDirty(x, y, 50, 50);
     }
 
 private:

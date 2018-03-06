@@ -37,6 +37,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace Apollo {
 
+    /*
+    Helper functions that determine whether T has a function update
+    taking no parameters. Used to determine at compile time whether
+    to add a call to update or not.
+    */
     template<class T>
     constexpr auto hasUpdateFunction(int)
         -> decltype(std::declval<T>().update(), std::true_type{}) {
@@ -105,7 +110,7 @@ namespace Apollo {
             double accumulator = 0.;
             double desiredFrameTime = 1.f / 30.f;
 
-            while (true) {
+            while (!finished) {
                 auto currentTime = Saturn::Time::getHighResolutionTimeSeconds();
                 accumulator += (currentTime - time);
                 time = currentTime;
@@ -116,12 +121,12 @@ namespace Apollo {
                     static_cast<T*>(this)->handleMessage(buffer);
                 }
 
-                if constexpr (hasUpdateFunction<T>(0)) {
-                    static_cast<T*>(this)->update();
-                }
-
                 while (accumulator >= desiredFrameTime) {
                     accumulator -= desiredFrameTime;
+
+                    if constexpr (hasUpdateFunction<T>(0)) {
+                        static_cast<T*>(this)->update();
+                    }
                     
                     window->blitBackBuffer();
                 }
@@ -166,9 +171,20 @@ namespace Apollo {
             send(IPC::RecipientType::ServiceName, &ready);
         }
 
+        /*
+        Shuts down the application and frees all resources
+        */
+        void close() {
+            finished = true;
+        }
+
         Window* window;
         Text::Renderer* textRenderer;
         uint32_t screenWidth, screenHeight;
+
+    private:
+
+        bool finished {false};
     };
 
 }
