@@ -155,11 +155,12 @@ namespace Apollo {
     }
 
     void Manager::handleShareMemoryResult(const ShareMemoryResult& message) {
-        auto it = windowsWaitingToShare.begin();
+        //auto it = windowsWaitingToShare.begin();
         CreateWindowSucceeded success;
         success.recipientId = 0;
 
-        while (it != windowsWaitingToShare.end()) {
+        //while (it != windowsWaitingToShare.end()) {
+        for (auto it = begin(windowsWaitingToShare); it != end(windowsWaitingToShare); ++it) {
             if (it->taskId == message.sharedTaskId) {
                 success.recipientId = it->taskId;
                 windows.push_back(*it);
@@ -168,11 +169,15 @@ namespace Apollo {
                 if (it->taskId == capcomTaskId) {
                     capcomWindowId = windows.size() - 1;
                 }
+                else if (!hasFocus) {
+                    activeWindow = windows.size() - 1;
+                    hasFocus = true;
+                }
 
                 break;
             }
 
-            it.operator++();
+            //it.operator++();
         }
 
         if (success.recipientId != 0) {
@@ -222,7 +227,7 @@ namespace Apollo {
 
         double time = Saturn::Time::getHighResolutionTimeSeconds(); 
         double accumulator = 0.;
-        double desiredFrameTime = 0.5;//1.f / 60.f;
+        double desiredFrameTime = 1.f / 60.f;
 
         while (true) {
 
@@ -317,7 +322,7 @@ namespace Apollo {
             while (accumulator >= desiredFrameTime) {
                 accumulator -= desiredFrameTime;
 
-                if (!windows.empty() && activeWindow < windows.size()) {
+                /*if (!windows.empty() && activeWindow < windows.size()) {
                     auto& window = windows[activeWindow];
 
                     if (!window.readyToRender) {
@@ -329,7 +334,7 @@ namespace Apollo {
                     Render render;
                     render.recipientId = windows[activeWindow].taskId;
                     send(IPC::RecipientType::TaskId, &render);
-                }
+                }*/
             }
         }
     }

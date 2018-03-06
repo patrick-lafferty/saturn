@@ -27,23 +27,24 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #pragma once
 #include <stdint.h>
+#include "window.h"
+#include "text.h"
+#include <system_calls.h>
+#include <services.h>
+#include "../messages.h"
+#include <algorithm>
+#include <saturn/time.h>
 
 namespace Apollo {
-
-    class Window;
-
-    namespace Text {
-        class Renderer;
-    }
 
     /*
     The base class for all graphical Saturn applications, 
     Application is responsible for setting up a window,
     handling logic to update and render its window
     */
+    template<class T>
     class Application {
     public:
-
 
         /*
         Creates a Window and TextRenderer and fills the window's
@@ -53,13 +54,64 @@ namespace Apollo {
         now-default-filled framebuffer to the backbuffer,
         otherwise it will
         */
-        Application(uint32_t width, uint32_t height, bool startHidden = false);
+        Application(uint32_t width, uint32_t height, bool startHidden = false) 
+            : screenWidth {width}, screenHeight {height} {
+            window = createWindow(width, height);
 
+            if (window == nullptr) {
+                return;
+            }
+
+            textRenderer = Text::createRenderer(window);
+
+            if (textRenderer == nullptr) {
+                return;
+            }
+
+            window->setBackgroundColour(0x00'20'20'20u);
+            clear(0, 0, width, height);
+            window->markAreaDirty(0, 0, width, height);
+
+            if (!startHidden) {
+                window->blitBackBuffer();
+            }
+        }
         /*
         An Application is in a valid state if it successfully
         created a Window and TextRenderer object
         */
-        bool isValid();
+        bool isValid() {
+            return window != nullptr && textRenderer != nullptr;
+        }
+
+        /*
+        The main loop for all graphical applications. Updates the
+        window at a fixed rate, and delegates all message handling
+        to the derived application.
+        */
+        void startMessageLoop() {
+            double time = Saturn::Time::getHighResolutionTimeSeconds(); 
+            double accumulator = 0.;
+            double desiredFrameTime = 1.f / 30.f;
+
+            while (true) {
+                auto currentTime = Saturn::Time::getHighResolutionTimeSeconds();
+                accumulator += (currentTime - time);
+                time = currentTime;
+
+                IPC::MaximumMessageBuffer buffer;
+
+                while (peekReceive(&buffer)) {
+                    static_cast<T*>(this)->handleMessage(buffer);
+                }
+
+                while (accumulator >= desiredFrameTime) {
+                    accumulator -= desiredFrameTime;
+                    
+                    window->blitBackBuffer();
+                }
+            }
+        }
 
     protected:
 
@@ -67,20 +119,37 @@ namespace Apollo {
         Sets every pixel of the window's framebuffer to be
         the window's background colour
         */
-        void clear(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
+        void clear(uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
+            auto backgroundColour = window->getBackgroundColour();
+            auto frameBuffer = window->getFramebuffer();
+
+            for (auto row = 0u; row < height; row++) {
+                std::fill_n(frameBuffer + x + (y + row) * screenWidth, width, backgroundColour);
+            }
+        }
 
         /*
         Sends a message to the window manager requesting that
         it be drawn at the given offset anytime this application's
         window is composited with the main buffer
         */
-        void move(uint32_t x, uint32_t y);
+        void move(uint32_t x, uint32_t y) {
+            Move move;
+            move.serviceType = Kernel::ServiceType::WindowManager;
+            move.x = x;
+            move.y = y;
+            send(IPC::RecipientType::ServiceName, &move);
+        }
 
         /*
         Sends a message to the window manager indicating that
         this application is ready to receive render messages
         */
-        void notifyReadyToRender();
+        void notifyReadyToRender() {
+            ReadyToRender ready;
+            ready.serviceType = Kernel::ServiceType::WindowManager;
+            send(IPC::RecipientType::ServiceName, &ready);
+        }
 
         Window* window;
         Text::Renderer* textRenderer;

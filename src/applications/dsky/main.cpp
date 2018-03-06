@@ -45,7 +45,7 @@ interface for the Apollo Guidance Computer.
 using namespace Apollo;
 using namespace Apollo::Debug;
 
-class Dsky : public Application {
+class Dsky : public Application<Dsky> {
 public:
 
     Dsky(uint32_t screenWidth, uint32_t screenHeight) 
@@ -56,108 +56,94 @@ public:
         }
 
         promptLayout = textRenderer->layoutText("\e[38;2;255;69;0m> \e[38;2;0;191;255m", screenWidth);
+        memset(inputBuffer, '\0', 500);
+        drawPrompt(); 
+        maxInputWidth = screenWidth - promptLayout.bounds.width;
     }
 
-    void messageLoop() {
-        char inputBuffer[500];
-        memset(inputBuffer, '\0', 500);
-        int index {0};
-        Text::TextLayout currentLayout;
+    void handleMessage(IPC::MaximumMessageBuffer& buffer) {
+        switch (buffer.messageNamespace) {
+            case IPC::MessageNamespace::Keyboard: {
+                switch (static_cast<Keyboard::MessageId>(buffer.messageId)) {
+                    case Keyboard::MessageId::CharacterInput: {
 
-        drawPrompt();
+                        auto input = IPC::extractMessage<Keyboard::CharacterInput>(buffer);
+                        inputBuffer[index] = input.character;
 
-        notifyReadyToRender();
+                        clear(cursorX, 
+                            cursorY, 
+                            currentLayout.bounds.width, 
+                            currentLayout.bounds.height);
 
-        auto maxInputWidth = screenWidth - promptLayout.bounds.width;
+                        auto maxWidth = currentLayout.bounds.width;
+                        currentLayout = textRenderer->layoutText(inputBuffer, maxInputWidth);
 
-        while (true) {
-
-            IPC::MaximumMessageBuffer buffer;
-            receive(&buffer);
-
-            switch (buffer.messageNamespace) {
-                case IPC::MessageNamespace::Keyboard: {
-                    switch (static_cast<Keyboard::MessageId>(buffer.messageId)) {
-                        case Keyboard::MessageId::CharacterInput: {
-
-                            auto input = IPC::extractMessage<Keyboard::CharacterInput>(buffer);
-                            inputBuffer[index] = input.character;
-
-                            clear(cursorX, 
-                                cursorY, 
-                                currentLayout.bounds.width, 
-                                currentLayout.bounds.height);
-
-                            auto maxWidth = currentLayout.bounds.width;
-                            currentLayout = textRenderer->layoutText(inputBuffer, maxInputWidth);
-
-                            if (needsToScroll(currentLayout.bounds.height)) {
-                                scroll(currentLayout.bounds.height);
-                            }
-
-                            maxWidth = std::max(maxWidth, currentLayout.bounds.width);
-                            textRenderer->drawText(currentLayout, cursorX, cursorY);
-                            window->markAreaDirty(cursorX, cursorY, maxWidth, currentLayout.bounds.height);
-
-                            index++;
-                            break;
+                        if (needsToScroll(currentLayout.bounds.height)) {
+                            scroll(currentLayout.bounds.height);
                         }
-                        case Keyboard::MessageId::KeyPress: {
-                            auto key = IPC::extractMessage<Keyboard::KeyPress>(buffer);
 
-                            switch (key.key) {
-                                case Keyboard::VirtualKey::Enter: {
+                        maxWidth = std::max(maxWidth, currentLayout.bounds.width);
+                        textRenderer->drawText(currentLayout, cursorX, cursorY);
+                        window->markAreaDirty(cursorX, cursorY, maxWidth, currentLayout.bounds.height);
 
-                                    auto amountToScroll = (currentLayout.lines + 1) * currentLayout.lineSpace;
-
-                                    if (needsToScroll(amountToScroll)) {
-                                        scroll(amountToScroll);
-                                        cursorY = screenHeight - currentLayout.lineSpace;
-                                    }
-                                    else {
-                                        cursorY += currentLayout.bounds.height;
-                                    }
-
-                                    currentLayout = textRenderer->layoutText("", maxInputWidth);
-
-                                    drawPrompt(); 
-                                    index = 0;
-                                    memset(inputBuffer, '\0', 500);
-                                    break;
-                                }
-                                default: {
-                                    printf("[Dsky] Unhandled key\n");
-                                }
-                            }
-
-                            break;
-                        }
-                        default: {
-                            printf("[Dsky] Unhandled Keyboard event\n");
-                        }
+                        index++;
+                        break;
                     }
-                    break;
-                }
-                case IPC::MessageNamespace::WindowManager: {
-                    switch (static_cast<MessageId>(buffer.messageId)) {
-                        case MessageId::Render: {
-                            window->blitBackBuffer();
-                            break;
-                        }
-                        case MessageId::Show: {
-                            window->blitBackBuffer();
-                            break;
-                        }
-                        default: {
-                            printf("[Dsky] Unhandled WM message\n");
-                        }
-                    }
+                    case Keyboard::MessageId::KeyPress: {
+                        auto key = IPC::extractMessage<Keyboard::KeyPress>(buffer);
 
-                    break;
+                        switch (key.key) {
+                            case Keyboard::VirtualKey::Enter: {
+
+                                auto amountToScroll = (currentLayout.lines + 1) * currentLayout.lineSpace;
+
+                                if (needsToScroll(amountToScroll)) {
+                                    scroll(amountToScroll);
+                                    cursorY = screenHeight - currentLayout.lineSpace;
+                                }
+                                else {
+                                    cursorY += currentLayout.bounds.height;
+                                }
+
+                                currentLayout = textRenderer->layoutText("", maxInputWidth);
+
+                                drawPrompt(); 
+                                index = 0;
+                                memset(inputBuffer, '\0', 500);
+                                break;
+                            }
+                            default: {
+                                printf("[Dsky] Unhandled key\n");
+                            }
+                        }
+
+                        break;
+                    }
+                    default: {
+                        printf("[Dsky] Unhandled Keyboard event\n");
+                    }
                 }
-                default: {
-                    printf("[Dsky] Unhandled message namespace\n");
+                break;
+            }
+            case IPC::MessageNamespace::WindowManager: {
+                switch (static_cast<MessageId>(buffer.messageId)) {
+                    case MessageId::Render: {
+                        window->blitBackBuffer();
+                        break;
+                    }
+                    case MessageId::Show: {
+                        window->blitBackBuffer();
+                        break;
+                    }
+                    default: {
+                        printf("[Dsky] Unhandled WM message\n");
+                    }
                 }
+
+                break;
+            }
+            default: {
+                printf("[Dsky] Unhandled message namespace\n");
             }
         }
     }
@@ -189,6 +175,10 @@ private:
 
     Text::TextLayout promptLayout;    
     uint32_t cursorX {0}, cursorY {0};
+    char inputBuffer[500];
+    int index {0};
+    Text::TextLayout currentLayout;
+    uint32_t maxInputWidth;
 };
 
 int dsky_main() {
@@ -202,7 +192,7 @@ int dsky_main() {
         return 1;
     }
 
-    dsky.messageLoop();
+    dsky.startMessageLoop();
 
     return 0;
 }

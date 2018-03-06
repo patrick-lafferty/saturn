@@ -44,7 +44,7 @@ CapCom is the main interface between the window manager and the user
 using namespace Apollo;
 using namespace Apollo::Debug;
 
-class CapCom : public Application {
+class CapCom : public Application<CapCom> {
 public:
 
     CapCom(uint32_t screenWidth, uint32_t screenHeight) 
@@ -56,18 +56,28 @@ public:
 
         promptLayout = textRenderer->layoutText("\e[38;2;255;69;0m> \e[38;2;0;191;255m", screenWidth);
         window->setBackgroundColour(0x00'00'00'80);
+        move(200, 200);
+        clear(0, 0, screenWidth, screenHeight);
+        memset(inputBuffer, '\0', 500);
+        currentLayout = textRenderer->layoutText("Menu", screenWidth);
+        maxInputWidth = screenWidth - promptLayout.bounds.width;
+        textRenderer->drawText(currentLayout, 10, 0);
+        cursorY += currentLayout.bounds.height;
+        window->setBackgroundColour(0x00'00'00'20);
+        clear(10, cursorY, screenWidth - 20, currentLayout.bounds.height);
+        drawPrompt();
+        currentLayout.bounds = {};
+        
     }
 
     void start() {
-        move(200, 200);
-        clear(0, 0, screenWidth, screenHeight);
+        
     }
 
-    void messageLoop() {
+    /*void messageLoop() {
         start();
 
         char inputBuffer[500];
-        memset(inputBuffer, '\0', 500);
         int index {0};
         Text::TextLayout currentLayout = textRenderer->layoutText("Menu", screenWidth);
         textRenderer->drawText(currentLayout, 10, 0);
@@ -83,90 +93,92 @@ public:
         while (true) {
 
             IPC::MaximumMessageBuffer buffer;
-            receive(&buffer);
+            receive(&buffer);*/
 
-            switch (buffer.messageNamespace) {
-                case IPC::MessageNamespace::Keyboard: {
-                    switch (static_cast<Keyboard::MessageId>(buffer.messageId)) {
-                        case Keyboard::MessageId::CharacterInput: {
+    void handleMessage(IPC::MaximumMessageBuffer& buffer) {
 
-                            auto input = IPC::extractMessage<Keyboard::CharacterInput>(buffer);
-                            inputBuffer[index] = input.character;
+        switch (buffer.messageNamespace) {
+            case IPC::MessageNamespace::Keyboard: {
+                switch (static_cast<Keyboard::MessageId>(buffer.messageId)) {
+                    case Keyboard::MessageId::CharacterInput: {
 
-                            clear(cursorX, cursorY, currentLayout.bounds.width, currentLayout.bounds.height);
+                        auto input = IPC::extractMessage<Keyboard::CharacterInput>(buffer);
+                        inputBuffer[index] = input.character;
 
-                            auto maxWidth = currentLayout.bounds.width;
-                            currentLayout = textRenderer->layoutText(inputBuffer, maxInputWidth);
+                        clear(cursorX, cursorY, currentLayout.bounds.width, currentLayout.bounds.height);
 
-                            if (needsToScroll(currentLayout.bounds.height)) {
-                                scroll(currentLayout.bounds.height);
-                            }
+                        auto maxWidth = currentLayout.bounds.width;
+                        currentLayout = textRenderer->layoutText(inputBuffer, maxInputWidth);
 
-                            maxWidth = std::max(maxWidth, currentLayout.bounds.width);
-                            textRenderer->drawText(currentLayout, cursorX, cursorY);
-                            window->markAreaDirty(cursorX, cursorY, maxWidth, currentLayout.bounds.height);
-
-                            index++;
-                            break;
+                        if (needsToScroll(currentLayout.bounds.height)) {
+                            scroll(currentLayout.bounds.height);
                         }
-                        case Keyboard::MessageId::KeyPress: {
-                            auto key = IPC::extractMessage<Keyboard::KeyPress>(buffer);
 
-                            switch (key.key) {
-                                case Keyboard::VirtualKey::Enter: {
+                        maxWidth = std::max(maxWidth, currentLayout.bounds.width);
+                        textRenderer->drawText(currentLayout, cursorX, cursorY);
+                        window->markAreaDirty(cursorX, cursorY, maxWidth, currentLayout.bounds.height);
 
-                                    auto amountToScroll = (currentLayout.lines + 1) * currentLayout.lineSpace;
-
-                                    if (needsToScroll(amountToScroll)) {
-                                        scroll(amountToScroll);
-                                        cursorY = screenHeight - currentLayout.lineSpace;
-                                    }
-                                    else {
-                                        cursorY += currentLayout.bounds.height;
-                                    }
-
-                                    currentLayout = textRenderer->layoutText("", maxInputWidth);
-
-                                    drawPrompt(); 
-                                    index = 0;
-                                    memset(inputBuffer, '\0', 500);
-                                    break;
-                                }
-                                default: {
-                                    printf("[Capcom] Unhandled key\n");
-                                }
-                            }
-
-                            break;
-                        }
-                        default: {
-                            printf("[Capcom] Unhandled keyboard event\n");
-                        }
+                        index++;
+                        break;
                     }
-                    break;
-                }
-                case IPC::MessageNamespace::WindowManager: {
-                    switch (static_cast<MessageId>(buffer.messageId)) {
-                        case MessageId::Render: {
-                            window->blitBackBuffer();
-                            break;
-                        }
-                        case MessageId::Show: {
-                            window->blitBackBuffer();
-                            break;
-                        }
-                        default: {
-                            printf("[Capcom] Unhandled WM message\n");
-                        }
-                    }
+                    case Keyboard::MessageId::KeyPress: {
+                        auto key = IPC::extractMessage<Keyboard::KeyPress>(buffer);
 
-                    break;
+                        switch (key.key) {
+                            case Keyboard::VirtualKey::Enter: {
+
+                                auto amountToScroll = (currentLayout.lines + 1) * currentLayout.lineSpace;
+
+                                if (needsToScroll(amountToScroll)) {
+                                    scroll(amountToScroll);
+                                    cursorY = screenHeight - currentLayout.lineSpace;
+                                }
+                                else {
+                                    cursorY += currentLayout.bounds.height;
+                                }
+
+                                currentLayout = textRenderer->layoutText("", maxInputWidth);
+
+                                drawPrompt(); 
+                                index = 0;
+                                memset(inputBuffer, '\0', 500);
+                                break;
+                            }
+                            default: {
+                                printf("[Capcom] Unhandled key\n");
+                            }
+                        }
+
+                        break;
+                    }
+                    default: {
+                        printf("[Capcom] Unhandled keyboard event\n");
+                    }
                 }
-                default: {
-                    printf("[Capcom] Unhandled message namespace\n");
+                break;
+            }
+            case IPC::MessageNamespace::WindowManager: {
+                switch (static_cast<MessageId>(buffer.messageId)) {
+                    case MessageId::Render: {
+                        window->blitBackBuffer();
+                        break;
+                    }
+                    case MessageId::Show: {
+                        window->blitBackBuffer();
+                        break;
+                    }
+                    default: {
+                        printf("[Capcom] Unhandled WM message\n");
+                    }
                 }
+
+                break;
+            }
+            default: {
+                printf("[Capcom] Unhandled message namespace\n");
             }
         }
+        
     }
 
 private:
@@ -195,6 +207,10 @@ private:
 
     Text::TextLayout promptLayout;    
     uint32_t cursorX {0}, cursorY {0};
+    char inputBuffer[500];
+    int index {0};
+    Text::TextLayout currentLayout;
+    uint32_t maxInputWidth;
 };
 
 int capcom_main() {
@@ -208,7 +224,7 @@ int capcom_main() {
         return 1;
     }
 
-    capcom.messageLoop();
+    capcom.startMessageLoop();
 
     return 0;
 }

@@ -80,5 +80,6 @@ namespace Apollo {
 
         uint32_t activeWindow {0};
         uint32_t previousActiveWindow {0};
+        bool hasFocus {false};
     };
 }
