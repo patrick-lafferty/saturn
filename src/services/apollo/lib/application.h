@@ -37,6 +37,17 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace Apollo {
 
+    template<class T>
+    constexpr auto hasUpdateFunction(int)
+        -> decltype(std::declval<T>().update(), std::true_type{}) {
+        return {};
+    }
+
+    template<class T>
+    constexpr std::false_type hasUpdateFunction(long) {
+        return {};
+    }
+
     /*
     The base class for all graphical Saturn applications, 
     Application is responsible for setting up a window,
@@ -103,6 +114,10 @@ namespace Apollo {
 
                 while (peekReceive(&buffer)) {
                     static_cast<T*>(this)->handleMessage(buffer);
+                }
+
+                if constexpr (hasUpdateFunction<T>(0)) {
+                    static_cast<T*>(this)->update();
                 }
 
                 while (accumulator >= desiredFrameTime) {

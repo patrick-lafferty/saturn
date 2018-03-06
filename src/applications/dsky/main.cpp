@@ -148,6 +148,10 @@ public:
         }
     }
 
+    void update() {
+
+    }
+
 private:
 
     void drawPrompt() {
