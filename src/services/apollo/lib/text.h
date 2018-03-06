@@ -37,6 +37,9 @@ namespace Apollo {
 
 namespace Apollo::Text {
 
+    /*
+    Represents a single printable character
+    */
     struct Glyph {
         FT_Vector position;
         FT_Glyph image {nullptr};
@@ -58,6 +61,11 @@ namespace Apollo::Text {
         uint32_t height {0};
     };
 
+    /*
+    Stores the info necessary to render some text.
+    If the text doesn't change then this can be cached
+    and reused
+    */
     struct TextLayout {
         std::vector<Glyph> glyphs;
         BoundingBox bounds;
@@ -74,12 +82,28 @@ namespace Apollo::Text {
         Italic
     };
 
+    /*
+    Renderer handles the layout, positioning and rendering of text
+    into a window's framebuffer
+    */
     class Renderer {
     public:
 
         Renderer(FT_Library library, FT_Face face, Window* window);
 
+        /*
+        Renders a prepared text layout to the stored window's framebuffer,
+        with alpha blending.
+        */
         void drawText(const TextLayout& layout, uint32_t x, uint32_t y);
+
+        /*
+        Prepares each glyph's bitmap with FreeType, positions each
+        glyph with optional kerning, and applies line wrapping.
+
+        Allows the use of ANSI escape sequences in text to change
+        the colour of glyphs.
+        */
         TextLayout layoutText(const char* text, uint32_t allowedWidth, Style style = Style::Normal, bool underline = false, uint32_t size = 18);
 
     private:

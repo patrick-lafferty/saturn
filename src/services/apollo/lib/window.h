@@ -40,16 +40,38 @@ namespace Apollo {
         uint32_t width, height;
     };
 
+    /*
+    Represents a GUI Window. Window uses double buffering,
+    all rendering is done with the front framebuffer and then
+    gets copied to the back buffer with blitBackBuffer, which
+    is a shared memory buffer from the Window Manager
+    */
     class Window {
     public:
 
         Window(WindowBuffer* buffer, uint32_t width, uint32_t height); 
 
+        /*
+        Gets the front buffer to render to
+        */
         uint32_t* getFramebuffer();
         uint32_t getBackgroundColour();
         void setBackgroundColour(uint32_t colour);
         uint32_t getWidth();
+
+        /*
+        Copies the front buffer's contents to the backbuffer,
+        only copying areas previously marked dirty with markAreaDirty
+        */
         void blitBackBuffer();
+
+        /*
+        Indicates that the given rectangle is dirty and should be
+        copied to the backbuffer on the next blitBackBuffer call.
+        Can be called multiple times before calling blit, which
+        will expand the dirty area to the min and max of the current
+        and new areas.
+        */
         void markAreaDirty(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
 
     private:
