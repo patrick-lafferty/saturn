@@ -29,6 +29,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdint.h>
 #include <vector>
 #include <list>
+#include <variant>
+#include <optional>
 
 namespace Kernel {
     struct ShareMemoryResult;
@@ -46,9 +48,87 @@ namespace Apollo {
     struct WindowHandle {
         struct WindowBuffer* buffer;
         uint32_t taskId;
+        /*uint32_t x {0}, y {0};
+        uint32_t width {800}, height {600};
+        bool readyToRender {false};*/
+    };
+
+    /*
+    A Tile is a rectangular area where content is rendered.
+    It can either be a Window, or a Container of Windows.
+    */
+    struct Bounds {
         uint32_t x {0}, y {0};
         uint32_t width {800}, height {600};
-        bool readyToRender {false};
+    };
+
+    struct Tile {
+        Bounds bounds;
+        WindowHandle handle;
+        //std::variant<WindowHandle, struct Container*> content;
+        struct Container* parent {nullptr};
+        bool canRender {false};
+    };
+
+    struct Overlay {
+        Tile tile;
+        bool visible {false};
+    };
+
+    enum class Split {
+        Horizontal,
+        Vertical
+    };
+
+    struct Container {
+        Bounds bounds;
+        std::vector<std::variant<Tile, Container*>> children;
+        Split split {Split::Horizontal};
+        Container* parent;
+        uint32_t activeTaskId {0};
+
+        void addChild(Tile tile);
+        void addChild(Container* container);
+        void layoutChildren();
+        uint32_t getChildrenCount();
+        std::optional<Tile> findTile(uint32_t taskId);
+    };
+
+    class Display {
+    public:
+
+        Display(Bounds screenBounds);
+
+        void addTile(Tile tile);
+        void enableRendering(uint32_t taskId);
+        void injectKeypress(Keyboard::KeyPress& message);
+        void injectCharacterInput(Keyboard::CharacterInput& message);
+        void composite(uint32_t volatile* frameBuffer, uint32_t taskId, Bounds dirty);
+
+    private:
+
+        Bounds screenBounds;
+        Container root;
+        Container* activeContainer;
+    };
+
+    struct RenderVisitor {
+        void operator()(WindowHandle) {}
+        void operator()(Container*) {}
+    };
+
+    struct LayoutVisitor {
+        void operator()(Tile);
+        void operator()(Container*);
+
+        LayoutVisitor(Bounds& b, Split s) 
+            : bounds {b}, split {s}
+            {}
+
+        void updateBounds();
+
+        Bounds& bounds;
+        Split split;
     };
 
     class Manager {
@@ -68,8 +148,9 @@ namespace Apollo {
 
         void handleKeyPress(Keyboard::KeyPress& message);
 
-        std::vector<WindowHandle> windows;
+        //std::vector<WindowHandle> windows;
         std::list<WindowHandle> windowsWaitingToShare;
+        std::list<Tile> tilesWaitingToShare;
         uint32_t volatile* linearFrameBuffer;
 
         uint32_t screenWidth {800u};
@@ -81,5 +162,9 @@ namespace Apollo {
         uint32_t activeWindow {0};
         uint32_t previousActiveWindow {0};
         bool hasFocus {false};
+
+        std::vector<Display> displays;
+        uint32_t currentDisplay {0};
+        Overlay capcom;
     };
 }

@@ -43,17 +43,17 @@
             }
         },
         {
-            "name": "Win32",
+            "name": "WSL",
             "includePath": [
-                "${localappdata}/lxss/rootfs/usr/lib/llvm-3.8/lib/clang/3.8.0/include",
+                "${localappdata}/lxss/rootfs/usr/include/clang/5.0.1/include",
                 "${workspaceRoot}",
                 "${workspaceRoot}/src",
                 "${workspaceRoot}/src/kernel",
                 "${workspaceRoot}/src/libc/include",
-                "${workspaceRoot}/src/libc++/include",
                 "${workspaceRoot}/src/kernel/arch/i386",
                 "${workspaceRoot}/sysroot/system/include",
-                "${workspaceRoot}/sysroot/libraries/include/freetype2"
+                "${workspaceRoot}/sysroot/libraries/include/freetype2",
+                "${workspaceRoot}/../saturn-ports/llvm/projects/libcxx/include"
             ],
             "defines": [
                 "__STDC_HOSTED__=0",
@@ -70,20 +70,20 @@
                 "__UINTMAX_TYPE__=long int",
                 "__SIZE_TYPE__=long unsigned int",
                 "__SCHAR_MAX__=127",
-                "__WCHAR_MAX__=2147483647"
+                "__WCHAR_MAX__=2147483647",
+                "__LITTLE_ENDIAN__"
             ],
             "intelliSenseMode": "clang-x64",
             "browse": {
                 "path": [
-                    "${localappdata}/lxss/rootfs/usr/lib/llvm-3.8/lib/clang/3.8.0/include",
-                    "${workspaceRoot}",
+                    "${localappdata}/lxss/rootfs/usr/include/clang/5.0.1/include",
                     "${workspaceRoot}/src",
                     "${workspaceRoot}/src/kernel",
                     "${workspaceRoot}/src/libc/include",
-                    "${workspaceRoot}/src/libc++/include",
                     "${workspaceRoot}/src/kernel/arch/i386",
                     "${workspaceRoot}/sysroot/system/include",
-                    "${workspaceRoot}/sysroot/libraries/include/freetype2"
+                    "${workspaceRoot}/sysroot/libraries/include/freetype2",
+                    "${workspaceRoot}/../saturn-ports/llvm/projects/libcxx/include"
                 ],
                 "limitSymbolsToIncludedHeaders": true,
                 "databaseFilename": ""

@@ -39,6 +39,138 @@ using namespace Kernel;
 
 namespace Apollo {
 
+    void LayoutVisitor::operator()(Tile tile) {
+        tile.bounds = bounds;
+        updateBounds();
+    }
+
+    void LayoutVisitor::operator()(Container* container) {
+        container->bounds = bounds;
+        container->layoutChildren();
+        updateBounds();
+    }
+
+    void LayoutVisitor::updateBounds() {
+
+        switch (split) {
+            case Split::Horizontal: {
+                bounds.y += bounds.height;
+                break;
+            }
+            case Split::Vertical: {
+                bounds.x += bounds.width;
+                break;
+            }
+        }
+    }
+
+    void Container::addChild(Tile tile) {
+        children.push_back(tile);
+        activeTaskId = tile.handle.taskId;
+        tile.parent = this;
+        layoutChildren();
+    }
+
+    void Container::addChild(Container* container) {
+        children.push_back(container);
+        container->parent = this;
+        layoutChildren();
+    }
+
+    void Container::layoutChildren() {
+        Bounds childBounds;
+
+        if (split == Split::Horizontal) {
+            childBounds.width = bounds.width / children.size();
+            childBounds.height = bounds.height;
+        }
+        else {
+            childBounds.width = bounds.width;
+            childBounds.height = bounds.height / children.size();
+        }
+
+        for (auto& child : children) {
+            std::visit(LayoutVisitor{childBounds, split}, child);
+        }
+    }
+
+    uint32_t Container::getChildrenCount() {
+        return children.size();
+    }
+
+    std::optional<Tile> Container::findTile(uint32_t taskId) {
+        for (auto& child : children) {
+            if (std::holds_alternative<Tile>(child)) {
+                auto& tile = std::get<Tile>(child);
+
+                if (tile.handle.taskId == taskId) {
+                    return tile;
+                }
+            }
+            else {
+                auto container = std::get<Container*>(child);
+
+                if (auto tile = container->findTile(taskId)) {
+                    return tile;
+                }
+            }
+        }
+
+        return {};
+    }
+
+    Display::Display(Bounds screenBounds)
+        : screenBounds {screenBounds} {
+        activeContainer = &root;
+    }
+
+    void Display::addTile(Tile tile) {
+        activeContainer->addChild(tile);
+    }
+
+    void Display::enableRendering(uint32_t taskId) {
+
+        if (auto tile = root.findTile(taskId)) {
+            tile->canRender = true;
+        }
+    }
+
+    void Display::injectKeypress(Keyboard::KeyPress& message) {
+
+        if (activeContainer->activeTaskId > 0) {
+            message.recipientId = activeContainer->activeTaskId;
+            send(IPC::RecipientType::TaskId, &message);
+        }
+    }
+
+    void Display::injectCharacterInput(Keyboard::CharacterInput& message) {
+
+       if (activeContainer->activeTaskId > 0) {
+            message.recipientId = activeContainer->activeTaskId;
+            send(IPC::RecipientType::TaskId, &message);
+        } 
+    }
+
+    void Display::composite(uint32_t volatile* frameBuffer, uint32_t taskId, Bounds dirty) {
+        auto maybeTile = root.findTile(taskId);
+
+        if (maybeTile && maybeTile->canRender) {
+            auto tile = maybeTile.value();
+            auto endY = std::min(tile.bounds.height, std::min(screenBounds.height, dirty.height + dirty.y));
+            auto endX = std::min(tile.bounds.width, std::min(screenBounds.width, dirty.width + dirty.x));
+            auto windowBuffer = tile.handle.buffer->buffer;
+
+            for (auto y = dirty.y; y < endY; y++) {
+                auto windowOffset = y * tile.bounds.width;
+                auto screenOffset = tile.bounds.x + (tile.bounds.y + y) * screenBounds.width;
+
+                for (auto x = dirty.x; x < endX; x++) {
+                    frameBuffer[x + screenOffset] = windowBuffer[x + windowOffset];
+                }
+            }
+        }
+    }
+
     uint32_t registerService() {
         RegisterService registerRequest;
         registerRequest.type = ServiceType::WindowManager;
@@ -91,6 +223,8 @@ namespace Apollo {
 
         launch("/bin/dsky.bin");
         capcomTaskId = launch("/bin/capcom.bin");
+
+        displays.push_back({{0, 0, 800, 600}});
     }
 
     void Manager::handleCreateWindow(const CreateWindow& message) {
@@ -98,10 +232,13 @@ namespace Apollo {
         auto backgroundColour = 0x00'20'20'20;
         memset(windowBuffer->buffer, backgroundColour, screenWidth * screenHeight * 4);
 
-        WindowHandle window {windowBuffer, message.senderTaskId};
-        window.width = message.width;
+        WindowHandle handle {windowBuffer, message.senderTaskId};
+        /*window.width = message.width;
         window.height = message.height;
-        windowsWaitingToShare.push_back(window);
+        windowsWaitingToShare.push_back(window);*/
+        Bounds bounds {0, 0, message.width, message.height};
+        //tilesWaitingToShare.push_back({bounds, handle});
+        displays[currentDisplay].addTile({bounds, handle});
 
         ShareMemory share;
         share.ownerAddress = reinterpret_cast<uintptr_t>(windowBuffer);
@@ -113,7 +250,7 @@ namespace Apollo {
     }
 
     void Manager::handleUpdate(const Update& message) {
-        for(auto& it : windows) {
+        /*for(auto& it : windows) {
             if (it.taskId == message.senderTaskId) {
                 it.readyToRender = true;
 
@@ -132,53 +269,58 @@ namespace Apollo {
 
                 break;
             }
-        }
+        }*/
+        Bounds dirty {message.x, message.y, message.width, message.height};
+        displays[currentDisplay].composite(linearFrameBuffer, message.senderTaskId, dirty);
     }
 
-    void Manager::handleMove(const Move& message) {
-        for(auto& it : windows) {
+    void Manager::handleMove(const Move& /*message*/) {
+        /*for(auto& it : windows) {
             if (it.taskId == message.senderTaskId) {
                 it.x = message.x;
                 it.y = message.y;
                 break;
             }
-        }
+        }*/
     }
 
-    void Manager::handleReadyToRender(const ReadyToRender& message) {
-        for(auto& it : windows) {
+    void Manager::handleReadyToRender(const ReadyToRender& /*message*/) {
+        /*for(auto& it : windows) {
             if (it.taskId == message.senderTaskId) {
                 it.readyToRender = true;
                 break;
             }
-        }
+        }*/
     }
 
     void Manager::handleShareMemoryResult(const ShareMemoryResult& message) {
-        //auto it = windowsWaitingToShare.begin();
+
         CreateWindowSucceeded success;
         success.recipientId = 0;
 
-        //while (it != windowsWaitingToShare.end()) {
-        for (auto it = begin(windowsWaitingToShare); it != end(windowsWaitingToShare); ++it) {
-            if (it->taskId == message.sharedTaskId) {
-                success.recipientId = it->taskId;
-                windows.push_back(*it);
-                windowsWaitingToShare.erase(it);
+        //TODO: check all displays
+        displays[currentDisplay].enableRendering(message.senderTaskId);
 
-                if (it->taskId == capcomTaskId) {
-                    capcomWindowId = windows.size() - 1;
+        /*for (auto it = begin(tilesWaitingToShare); it != end(tilesWaitingToShare); ++it) {
+            if (it->handle.taskId == message.sharedTaskId) {
+                success.recipientId = it->taskId;
+                tilesWaitingToShare.erase(it);
+
+                auto& display = displays[currentDisplay];
+                display.addChild(*it);
+
+                if (it->handle.taskId == capcomTaskId) {
+                    capcomWindowId = display.getChildrenCount() - 1;
                 }
                 else if (!hasFocus) {
-                    activeWindow = windows.size() - 1;
+                    activeWindow = display.getChildrenCount() - 1;
                     hasFocus = true;
                 }
 
                 break;
             }
+        }*/
 
-            //it.operator++();
-        }
 
         if (success.recipientId != 0) {
             send(IPC::RecipientType::TaskId, &success);
@@ -188,7 +330,7 @@ namespace Apollo {
     void Manager::handleKeyPress(Keyboard::KeyPress& message) {
         switch (message.key) {
             case Keyboard::VirtualKey::F1: {
-                Update update;
+                /*Update update;
                 auto& oldWindow = windows[activeWindow];
                 update.senderTaskId = oldWindow.taskId;
                 update.x = oldWindow.x;
@@ -211,13 +353,16 @@ namespace Apollo {
                 }
 
                 update.senderTaskId = windows[activeWindow].taskId;
-                handleUpdate(update);
+                handleUpdate(update);*/
+                capcom.visible = !capcom.visible;
 
                 break;
             }
             default: {
+                /*auto& activeDisplay = displays[currentDisplay];
                 message.recipientId = windows[activeWindow].taskId;
-                send(IPC::RecipientType::TaskId, &message);
+                send(IPC::RecipientType::TaskId, &message);*/
+                displays[currentDisplay].injectKeypress(message);
                 break;
             }
         }
@@ -302,8 +447,10 @@ namespace Apollo {
                             }
                             case Keyboard::MessageId::CharacterInput: {
 
-                                buffer.recipientId = windows[activeWindow].taskId;
-                                send(IPC::RecipientType::TaskId, &buffer);
+                                /*buffer.recipientId = windows[activeWindow].taskId;
+                                send(IPC::RecipientType::TaskId, &buffer);*/
+                                auto message = IPC::extractMessage<Keyboard::CharacterInput>(buffer);
+                                displays[currentDisplay].injectCharacterInput(message);
 
                                 break;
                             }
