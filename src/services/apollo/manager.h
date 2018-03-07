@@ -91,7 +91,7 @@ namespace Apollo {
         void addChild(Container* container);
         void layoutChildren();
         uint32_t getChildrenCount();
-        std::optional<Tile> findTile(uint32_t taskId);
+        std::optional<Tile*> findTile(uint32_t taskId);
     };
 
     class Display {
@@ -108,7 +108,7 @@ namespace Apollo {
     private:
 
         Bounds screenBounds;
-        Container root;
+        Container* root;
         Container* activeContainer;
     };
 

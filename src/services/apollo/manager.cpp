@@ -78,6 +78,9 @@ namespace Apollo {
     }
 
     void Container::layoutChildren() {
+        /*
+        TODO: need to send a resize message to all tiles
+        */
         Bounds childBounds;
 
         if (split == Split::Horizontal) {
@@ -98,13 +101,13 @@ namespace Apollo {
         return children.size();
     }
 
-    std::optional<Tile> Container::findTile(uint32_t taskId) {
+    std::optional<Tile*> Container::findTile(uint32_t taskId) {
         for (auto& child : children) {
             if (std::holds_alternative<Tile>(child)) {
                 auto& tile = std::get<Tile>(child);
 
                 if (tile.handle.taskId == taskId) {
-                    return tile;
+                    return &tile;
                 }
             }
             else {
@@ -121,7 +124,9 @@ namespace Apollo {
 
     Display::Display(Bounds screenBounds)
         : screenBounds {screenBounds} {
-        activeContainer = &root;
+        root = new Container;
+        activeContainer = root;
+        root->bounds = screenBounds;
     }
 
     void Display::addTile(Tile tile) {
@@ -130,8 +135,12 @@ namespace Apollo {
 
     void Display::enableRendering(uint32_t taskId) {
 
-        if (auto tile = root.findTile(taskId)) {
-            tile->canRender = true;
+        if (auto tile = root->findTile(taskId)) {
+            tile.value()->canRender = true;
+
+            CreateWindowSucceeded success;
+            success.recipientId = taskId;
+            send(IPC::RecipientType::TaskId, &success);
         }
     }
 
@@ -152,10 +161,10 @@ namespace Apollo {
     }
 
     void Display::composite(uint32_t volatile* frameBuffer, uint32_t taskId, Bounds dirty) {
-        auto maybeTile = root.findTile(taskId);
+        auto maybeTile = root->findTile(taskId);
 
-        if (maybeTile && maybeTile->canRender) {
-            auto tile = maybeTile.value();
+        if (maybeTile && (*maybeTile)->canRender) {
+            auto& tile = *maybeTile.value();
             auto endY = std::min(tile.bounds.height, std::min(screenBounds.height, dirty.height + dirty.y));
             auto endX = std::min(tile.bounds.width, std::min(screenBounds.width, dirty.width + dirty.x));
             auto windowBuffer = tile.handle.buffer->buffer;
@@ -222,7 +231,7 @@ namespace Apollo {
         linearFrameBuffer = reinterpret_cast<uint32_t volatile*>(framebufferAddress);
 
         launch("/bin/dsky.bin");
-        capcomTaskId = launch("/bin/capcom.bin");
+        //capcomTaskId = launch("/bin/capcom.bin");
 
         displays.push_back({{0, 0, 800, 600}});
     }
@@ -299,7 +308,7 @@ namespace Apollo {
         success.recipientId = 0;
 
         //TODO: check all displays
-        displays[currentDisplay].enableRendering(message.senderTaskId);
+        displays[currentDisplay].enableRendering(message.sharedTaskId);
 
         /*for (auto it = begin(tilesWaitingToShare); it != end(tilesWaitingToShare); ++it) {
             if (it->handle.taskId == message.sharedTaskId) {
