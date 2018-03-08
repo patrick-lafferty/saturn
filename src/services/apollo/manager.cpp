@@ -65,8 +65,6 @@ namespace Apollo {
     }
 
     void renderTile(uint32_t volatile* frameBuffer, Tile& tile, uint32_t displayWidth, Bounds dirty) {
-        //auto endY = std::min(tile.bounds.height, std::min(screenBounds.height, dirty.height + dirty.y));
-        //auto endX = std::min(tile.bounds.width, std::min(screenBounds.width, dirty.width + dirty.x));
         auto endY = dirty.y + dirty.height;
         auto endX = dirty.x + dirty.width;
         auto windowBuffer = tile.handle.buffer->buffer;
@@ -200,18 +198,6 @@ namespace Apollo {
         if (maybeTile && (*maybeTile)->canRender) {
             auto& tile = *maybeTile.value();
             renderTile(frameBuffer, tile, screenBounds.width, dirty);
-            /*auto endY = std::min(tile.bounds.height, std::min(screenBounds.height, dirty.height + dirty.y));
-            auto endX = std::min(tile.bounds.width, std::min(screenBounds.width, dirty.width + dirty.x));
-            auto windowBuffer = tile.handle.buffer->buffer;
-
-            for (auto y = dirty.y; y < endY; y++) {
-                auto windowOffset = y * tile.bounds.width;
-                auto screenOffset = tile.bounds.x + (tile.bounds.y + y) * screenBounds.width;
-
-                for (auto x = dirty.x; x < endX; x++) {
-                    frameBuffer[x + screenOffset] = windowBuffer[x + windowOffset];
-                }
-            }*/
         }
     }
 
@@ -307,26 +293,7 @@ namespace Apollo {
     }
 
     void Manager::handleUpdate(const Update& message) {
-        /*for(auto& it : windows) {
-            if (it.taskId == message.senderTaskId) {
-                it.readyToRender = true;
-
-                auto endY = std::min(it.height, std::min(screenHeight, message.height + message.y));
-                auto endX = std::min(it.width, std::min(screenWidth, message.width + message.x));
-                auto windowBuffer = it.buffer->buffer;
-
-                for (auto y = message.y; y < endY; y++) {
-                    auto windowOffset = y * it.width;
-                    auto screenOffset = it.x + (it.y + y) * screenWidth;
-
-                    for (auto x = message.x; x < endX; x++) {
-                        linearFrameBuffer[x + screenOffset] = windowBuffer[x + windowOffset];
-                    }
-                }
-
-                break;
-            }
-        }*/
+        
         Bounds dirty {message.x, message.y, message.width, message.height};
         displays[currentDisplay].composite(linearFrameBuffer, message.senderTaskId, dirty);
     }
@@ -352,74 +319,20 @@ namespace Apollo {
 
     void Manager::handleShareMemoryResult(const ShareMemoryResult& message) {
 
-        CreateWindowSucceeded success;
-        success.recipientId = 0;
-
         for(auto& display : displays) {
-            //displays[currentDisplay].enableRendering(message.sharedTaskId);
             if (display.enableRendering(message.sharedTaskId)) {
                 break;
             }
-        }
-
-        /*for (auto it = begin(tilesWaitingToShare); it != end(tilesWaitingToShare); ++it) {
-            if (it->handle.taskId == message.sharedTaskId) {
-                success.recipientId = it->taskId;
-                tilesWaitingToShare.erase(it);
-
-                auto& display = displays[currentDisplay];
-                display.addChild(*it);
-
-                if (it->handle.taskId == capcomTaskId) {
-                    capcomWindowId = display.getChildrenCount() - 1;
-                }
-                else if (!hasFocus) {
-                    activeWindow = display.getChildrenCount() - 1;
-                    hasFocus = true;
-                }
-
-                break;
-            }
-        }*/
-
-
-        if (success.recipientId != 0) {
-            send(IPC::RecipientType::TaskId, &success);
         }
     }
 
     void Manager::handleKeyPress(Keyboard::KeyPress& message) {
         switch (message.key) {
             case Keyboard::VirtualKey::F1: {
-                /*Update update;
-                auto& oldWindow = windows[activeWindow];
-                update.senderTaskId = oldWindow.taskId;
-                update.x = oldWindow.x;
-                update.y = oldWindow.y;
-                update.width = oldWindow.width;
-                update.height = oldWindow.height;
-
-                if (activeWindow != capcomWindowId) {
-                    previousActiveWindow = activeWindow;
-                    activeWindow = capcomWindowId;
-                    Show show;
-                    show.recipientId = capcomTaskId;
-                    send(IPC::RecipientType::TaskId, &show);
-                }
-                else {
-                    activeWindow = previousActiveWindow;
-                    Show show;
-                    show.recipientId = windows[activeWindow].taskId;
-                    send(IPC::RecipientType::TaskId, &show);
-                }
-
-                update.senderTaskId = windows[activeWindow].taskId;
-                handleUpdate(update);*/
-                //capcom.visible = !capcom.visible;
+                
                 showCapcom = !showCapcom;
 
                 if (showCapcom) {
-                    //displays[0].composite(linearFrameBuffer, capcomTaskId, {0, 0, screenWidth, screenHeight});
                     displays[0].renderAll(linearFrameBuffer);
                     previousDisplay = currentDisplay;
                     currentDisplay = 0;
@@ -432,9 +345,6 @@ namespace Apollo {
                 break;
             }
             default: {
-                /*auto& activeDisplay = displays[currentDisplay];
-                message.recipientId = windows[activeWindow].taskId;
-                send(IPC::RecipientType::TaskId, &message);*/
                 displays[currentDisplay].injectKeypress(message);
                 break;
             }
@@ -520,8 +430,6 @@ namespace Apollo {
                             }
                             case Keyboard::MessageId::CharacterInput: {
 
-                                /*buffer.recipientId = windows[activeWindow].taskId;
-                                send(IPC::RecipientType::TaskId, &buffer);*/
                                 auto message = IPC::extractMessage<Keyboard::CharacterInput>(buffer);
                                 displays[currentDisplay].injectCharacterInput(message);
 
