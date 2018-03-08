@@ -92,6 +92,7 @@ namespace Apollo {
         void layoutChildren();
         uint32_t getChildrenCount();
         std::optional<Tile*> findTile(uint32_t taskId);
+        void render(uint32_t volatile* frameBuffer, uint32_t displayWidth);
     };
 
     class Display {
@@ -100,10 +101,11 @@ namespace Apollo {
         Display(Bounds screenBounds);
 
         void addTile(Tile tile);
-        void enableRendering(uint32_t taskId);
+        bool enableRendering(uint32_t taskId);
         void injectKeypress(Keyboard::KeyPress& message);
         void injectCharacterInput(Keyboard::CharacterInput& message);
         void composite(uint32_t volatile* frameBuffer, uint32_t taskId, Bounds dirty);
+        void renderAll(uint32_t volatile* frameBuffer);
 
     private:
 
@@ -164,7 +166,10 @@ namespace Apollo {
         bool hasFocus {false};
 
         std::vector<Display> displays;
-        uint32_t currentDisplay {0};
-        Overlay capcom;
+        uint32_t currentDisplay {1};
+        uint32_t previousDisplay {1};
+        bool showCapcom {false};
+
+        //Overlay capcom;
     };
 }
