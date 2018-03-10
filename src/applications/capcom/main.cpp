@@ -56,7 +56,7 @@ public:
 
         promptLayout = textRenderer->layoutText("\e[38;2;255;69;0m> \e[38;2;0;191;255m", screenWidth);
         window->setBackgroundColour(0x00'00'00'80);
-        move(200, 200);
+        //move(200, 200);
         clear(0, 0, screenWidth, screenHeight);
         memset(inputBuffer, '\0', 500);
         currentLayout = textRenderer->layoutText("Menu", screenWidth);
@@ -142,6 +142,15 @@ public:
                                 drawPrompt(); 
                                 index = 0;
                                 memset(inputBuffer, '\0', 500);
+
+                                HideOverlay h;
+                                h.serviceType = Kernel::ServiceType::WindowManager;
+                                send(IPC::RecipientType::ServiceName, &h);
+
+                                LaunchProgram l;
+                                l.serviceType = Kernel::ServiceType::WindowManager;
+                                send(IPC::RecipientType::ServiceName, &l);
+
                                 break;
                             }
                             default: {
@@ -215,8 +224,8 @@ private:
 
 int capcom_main() {
 
-    auto screenWidth = 500u;
-    auto screenHeight = 200u;
+    auto screenWidth = 800u;
+    auto screenHeight = 600u;
 
     CapCom capcom {screenWidth, screenHeight};
 
