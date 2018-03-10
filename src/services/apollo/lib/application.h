@@ -128,7 +128,7 @@ namespace Apollo {
                         static_cast<T*>(this)->update();
                     }
                     
-                    window->blitBackBuffer();
+                    //window->blitBackBuffer();
                 }
             }
         }

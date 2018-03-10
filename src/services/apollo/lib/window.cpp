@@ -102,6 +102,9 @@ namespace Apollo {
             dirty = false;
             dirtyArea = {};
         }
+        else {
+            updateWindowBuffer(0, 0, 0, 0);
+        }
     }
 
     void Window::markAreaDirty(uint32_t x, uint32_t y, uint32_t width, uint32_t height) {

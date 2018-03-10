@@ -148,9 +148,10 @@ public:
         }
     }
 
+    int x {50};
+    int y {0};
+
     void update() {
-        static int x = 0;
-        static int y = 0;
         clear(x, y, 50, 50);
         x++;
 

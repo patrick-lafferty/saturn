@@ -39,12 +39,12 @@ using namespace Kernel;
 
 namespace Apollo {
 
-    void LayoutVisitor::operator()(Tile tile) {
+    void LayoutVisitor::visit(Tile& tile) {
         tile.bounds = bounds;
         updateBounds();
     }
 
-    void LayoutVisitor::operator()(Container* container) {
+    void LayoutVisitor::visit(Container* container) {
         container->bounds = bounds;
         container->layoutChildren();
         updateBounds();
@@ -65,24 +65,29 @@ namespace Apollo {
     }
 
     void renderTile(uint32_t volatile* frameBuffer, Tile& tile, uint32_t displayWidth, Bounds dirty) {
-        auto endY = dirty.y + dirty.height;
-        auto endX = dirty.x + dirty.width;
+        auto endY = dirty.y + std::min(tile.bounds.height, dirty.height);
+        auto endX = dirty.x + std::min(tile.bounds.width, dirty.width);
         auto windowBuffer = tile.handle.buffer->buffer;
 
         for (auto y = dirty.y; y < endY; y++) {
             auto windowOffset = y * tile.bounds.width;
             auto screenOffset = tile.bounds.x + (tile.bounds.y + y) * displayWidth;
+            //screenOffset = windowOffset;
 
-            memcpy(const_cast<uint32_t*>(frameBuffer + screenOffset), 
-                windowBuffer + windowOffset, 
+            void* dest = const_cast<uint32_t*>(frameBuffer) + screenOffset;
+            void* source = windowBuffer + windowOffset;
+
+            /*memcpy(const_cast<uint32_t*>(frameBuffer + screenOffset), 
+                windowBuffer + windowOffset, */
+            memcpy(dest, source,
                 sizeof(uint32_t) * (endX - dirty.x)); 
         }
     }
 
     void Container::addChild(Tile tile) {
+        tile.parent = this;
         children.push_back(tile);
         activeTaskId = tile.handle.taskId;
-        tile.parent = this;
         layoutChildren();
     }
 
@@ -98,7 +103,7 @@ namespace Apollo {
         */
         Bounds childBounds;
 
-        if (split == Split::Horizontal) {
+        if (split == Split::Vertical) {
             childBounds.width = bounds.width / children.size();
             childBounds.height = bounds.height;
         }
@@ -107,8 +112,19 @@ namespace Apollo {
             childBounds.height = bounds.height / children.size();
         }
 
+        LayoutVisitor visitor{childBounds, split};
+
         for (auto& child : children) {
-            std::visit(LayoutVisitor{childBounds, split}, child);
+            //std::visit(LayoutVisitor{childBounds, split}, child);
+            if (std::holds_alternative<Tile>(child)) {
+                /*auto& tile = std::get<Tile>(child);
+                visitor.visit(tile);*/
+                visitor.visit(std::get<Tile>(child));
+            }
+            else {
+                auto container = std::get<Container*>(child);
+                visitor.visit(container);
+            }
         }
     }
 
@@ -137,22 +153,42 @@ namespace Apollo {
         return {};
     }
 
-    void Container::render(uint32_t volatile* frameBuffer, uint32_t displayWidth) {
+    void Container::composite(uint32_t volatile* frameBuffer, uint32_t displayWidth) {
         for (auto& child : children) {
            if (std::holds_alternative<Tile>(child)) {
                 auto& tile = std::get<Tile>(child); 
-                renderTile(frameBuffer, tile, displayWidth, tile.bounds);
+                renderTile(frameBuffer, tile, displayWidth, {0, 0, tile.bounds.width, tile.bounds.height}); //tile.bounds);
            }
            else {
                 auto container = std::get<Container*>(child); 
-                container->render(frameBuffer, displayWidth);
+                container->composite(frameBuffer, displayWidth);
            }
         }
+    }
+
+    void Container::dispatchRenderMessages() {
+       for (auto& child : children) {
+           if (std::holds_alternative<Tile>(child)) {
+                auto& tile = std::get<Tile>(child); 
+
+                if (tile.canRender) {
+                    tile.canRender = false;
+                    Render render;
+                    render.recipientId = tile.handle.taskId;
+                    send(IPC::RecipientType::TaskId, &render);
+                }
+           }
+           else {
+                auto container = std::get<Container*>(child); 
+                container->dispatchRenderMessages();
+           }
+        } 
     }
 
     Display::Display(Bounds screenBounds)
         : screenBounds {screenBounds} {
         root = new Container;
+        root->split = Split::Horizontal;
         activeContainer = root;
         root->bounds = screenBounds;
     }
@@ -195,14 +231,26 @@ namespace Apollo {
     void Display::composite(uint32_t volatile* frameBuffer, uint32_t taskId, Bounds dirty) {
         auto maybeTile = root->findTile(taskId);
 
-        if (maybeTile && (*maybeTile)->canRender) {
+        if (maybeTile) { // && (*maybeTile)->canRender) {
             auto& tile = *maybeTile.value();
             renderTile(frameBuffer, tile, screenBounds.width, dirty);
+            tile.canRender = true;
         }
+        /*else if (maybeTile) {
+            (*maybeTile)->canRender = true;
+        }*/
     }
 
     void Display::renderAll(uint32_t volatile* frameBuffer) {
-        root->render(frameBuffer, screenBounds.width);
+        root->composite(frameBuffer, screenBounds.width);
+    }
+
+    void Display::splitContainer(Split split) {
+        //activeContainer->
+    }
+
+    void Display::render() {
+        root->dispatchRenderMessages();
     }
 
     uint32_t registerService() {
@@ -317,6 +365,25 @@ namespace Apollo {
         }*/
     }
 
+    void Manager::handleSplitContainer(const SplitContainer& message) {
+        auto index = currentDisplay;
+
+        if (index == 0) {
+            index = previousDisplay;
+        }
+
+        displays[index].splitContainer(message.direction);
+    }
+
+    void Manager::handleLaunchProgram(const LaunchProgram& message) {
+        launch("/bin/dsky.bin");
+    }
+
+    void Manager::handleHideOverlay() {
+        currentDisplay = previousDisplay;
+        displays[currentDisplay].renderAll(linearFrameBuffer);
+    }
+
     void Manager::handleShareMemoryResult(const ShareMemoryResult& message) {
 
         for(auto& display : displays) {
@@ -338,8 +405,7 @@ namespace Apollo {
                     currentDisplay = 0;
                 }
                 else {
-                    currentDisplay = previousDisplay;
-                    displays[currentDisplay].renderAll(linearFrameBuffer);
+                    handleHideOverlay();
                 }
 
                 break;
@@ -355,7 +421,7 @@ namespace Apollo {
 
         double time = Saturn::Time::getHighResolutionTimeSeconds(); 
         double accumulator = 0.;
-        double desiredFrameTime = 1.f / 60.f;
+        double desiredFrameTime = 1.f / 30.f;
 
         while (true) {
 
@@ -393,6 +459,22 @@ namespace Apollo {
                                 auto message = IPC::extractMessage<Move>(buffer);
                                 handleMove(message);
 
+                                break;
+                            }
+                            case MessageId::SplitContainer: {
+                                auto message = IPC::extractMessage<SplitContainer>(buffer);
+                                handleSplitContainer(message);
+
+                                break;
+                            }
+                            case MessageId::LaunchProgram: {
+                                auto message = IPC::extractMessage<LaunchProgram>(buffer);
+                                handleLaunchProgram(message);
+
+                                break;
+                            }
+                            case MessageId::HideOverlay: {
+                                handleHideOverlay();
                                 break;
                             }
                             default: {
@@ -449,6 +531,8 @@ namespace Apollo {
 
             while (accumulator >= desiredFrameTime) {
                 accumulator -= desiredFrameTime;
+
+                displays[currentDisplay].render();
 
                 /*if (!windows.empty() && activeWindow < windows.size()) {
                     auto& window = windows[activeWindow];

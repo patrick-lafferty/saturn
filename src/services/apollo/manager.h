@@ -70,20 +70,12 @@ namespace Apollo {
         bool canRender {false};
     };
 
-    struct Overlay {
-        Tile tile;
-        bool visible {false};
-    };
-
-    enum class Split {
-        Horizontal,
-        Vertical
-    };
+    enum class Split;
 
     struct Container {
         Bounds bounds;
         std::vector<std::variant<Tile, Container*>> children;
-        Split split {Split::Horizontal};
+        Split split;// {Split::Horizontal};
         Container* parent;
         uint32_t activeTaskId {0};
 
@@ -92,7 +84,8 @@ namespace Apollo {
         void layoutChildren();
         uint32_t getChildrenCount();
         std::optional<Tile*> findTile(uint32_t taskId);
-        void render(uint32_t volatile* frameBuffer, uint32_t displayWidth);
+        void composite(uint32_t volatile* frameBuffer, uint32_t displayWidth);
+        void dispatchRenderMessages();
     };
 
     class Display {
@@ -106,6 +99,8 @@ namespace Apollo {
         void injectCharacterInput(Keyboard::CharacterInput& message);
         void composite(uint32_t volatile* frameBuffer, uint32_t taskId, Bounds dirty);
         void renderAll(uint32_t volatile* frameBuffer);
+        void splitContainer(Split split);
+        void render();
 
     private:
 
@@ -120,16 +115,18 @@ namespace Apollo {
     };
 
     struct LayoutVisitor {
-        void operator()(Tile);
-        void operator()(Container*);
+        //void operator()(Tile&);
+        //void operator()(Container*);
+        void visit(Tile&);
+        void visit(Container*);
 
-        LayoutVisitor(Bounds& b, Split s) 
+        LayoutVisitor(Bounds b, Split s) 
             : bounds {b}, split {s}
             {}
 
         void updateBounds();
 
-        Bounds& bounds;
+        Bounds bounds;
         Split split;
     };
 
@@ -145,31 +142,26 @@ namespace Apollo {
         void handleUpdate(const struct Update& message);
         void handleMove(const struct Move& message);
         void handleReadyToRender(const struct ReadyToRender& message);
+        void handleSplitContainer(const struct SplitContainer& message);
+        void handleLaunchProgram(const struct LaunchProgram& message);
+        void handleHideOverlay();
 
         void handleShareMemoryResult(const Kernel::ShareMemoryResult& message);
 
         void handleKeyPress(Keyboard::KeyPress& message);
 
-        //std::vector<WindowHandle> windows;
-        std::list<WindowHandle> windowsWaitingToShare;
-        std::list<Tile> tilesWaitingToShare;
         uint32_t volatile* linearFrameBuffer;
 
         uint32_t screenWidth {800u};
         uint32_t screenHeight {600u};
 
         uint32_t capcomTaskId;
-        uint32_t capcomWindowId {0};
 
-        uint32_t activeWindow {0};
-        uint32_t previousActiveWindow {0};
         bool hasFocus {false};
 
         std::vector<Display> displays;
         uint32_t currentDisplay {1};
         uint32_t previousDisplay {1};
         bool showCapcom {false};
-
-        //Overlay capcom;
     };
 }
