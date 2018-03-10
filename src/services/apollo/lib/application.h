@@ -127,8 +127,6 @@ namespace Apollo {
                     if constexpr (hasUpdateFunction<T>(0)) {
                         static_cast<T*>(this)->update();
                     }
-                    
-                    //window->blitBackBuffer();
                 }
             }
         }

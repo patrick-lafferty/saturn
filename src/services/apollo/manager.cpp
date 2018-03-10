@@ -72,13 +72,10 @@ namespace Apollo {
         for (auto y = dirty.y; y < endY; y++) {
             auto windowOffset = y * tile.bounds.width;
             auto screenOffset = tile.bounds.x + (tile.bounds.y + y) * displayWidth;
-            //screenOffset = windowOffset;
 
             void* dest = const_cast<uint32_t*>(frameBuffer) + screenOffset;
             void* source = windowBuffer + windowOffset;
 
-            /*memcpy(const_cast<uint32_t*>(frameBuffer + screenOffset), 
-                windowBuffer + windowOffset, */
             memcpy(dest, source,
                 sizeof(uint32_t) * (endX - dirty.x)); 
         }
@@ -115,10 +112,7 @@ namespace Apollo {
         LayoutVisitor visitor{childBounds, split};
 
         for (auto& child : children) {
-            //std::visit(LayoutVisitor{childBounds, split}, child);
             if (std::holds_alternative<Tile>(child)) {
-                /*auto& tile = std::get<Tile>(child);
-                visitor.visit(tile);*/
                 visitor.visit(std::get<Tile>(child));
             }
             else {
@@ -157,7 +151,7 @@ namespace Apollo {
         for (auto& child : children) {
            if (std::holds_alternative<Tile>(child)) {
                 auto& tile = std::get<Tile>(child); 
-                renderTile(frameBuffer, tile, displayWidth, {0, 0, tile.bounds.width, tile.bounds.height}); //tile.bounds);
+                renderTile(frameBuffer, tile, displayWidth, {0, 0, tile.bounds.width, tile.bounds.height});
            }
            else {
                 auto container = std::get<Container*>(child); 
@@ -231,14 +225,12 @@ namespace Apollo {
     void Display::composite(uint32_t volatile* frameBuffer, uint32_t taskId, Bounds dirty) {
         auto maybeTile = root->findTile(taskId);
 
-        if (maybeTile) { // && (*maybeTile)->canRender) {
+        if (maybeTile) { 
             auto& tile = *maybeTile.value();
             renderTile(frameBuffer, tile, screenBounds.width, dirty);
             tile.canRender = true;
         }
-        /*else if (maybeTile) {
-            (*maybeTile)->canRender = true;
-        }*/
+        
     }
 
     void Display::renderAll(uint32_t volatile* frameBuffer) {
@@ -533,20 +525,6 @@ namespace Apollo {
                 accumulator -= desiredFrameTime;
 
                 displays[currentDisplay].render();
-
-                /*if (!windows.empty() && activeWindow < windows.size()) {
-                    auto& window = windows[activeWindow];
-
-                    if (!window.readyToRender) {
-                        continue;
-                    }
-
-                    window.readyToRender = false;
-
-                    Render render;
-                    render.recipientId = windows[activeWindow].taskId;
-                    send(IPC::RecipientType::TaskId, &render);
-                }*/
             }
         }
     }

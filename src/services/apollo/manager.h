@@ -48,9 +48,6 @@ namespace Apollo {
     struct WindowHandle {
         struct WindowBuffer* buffer;
         uint32_t taskId;
-        /*uint32_t x {0}, y {0};
-        uint32_t width {800}, height {600};
-        bool readyToRender {false};*/
     };
 
     /*
@@ -65,7 +62,6 @@ namespace Apollo {
     struct Tile {
         Bounds bounds;
         WindowHandle handle;
-        //std::variant<WindowHandle, struct Container*> content;
         struct Container* parent {nullptr};
         bool canRender {false};
     };
@@ -75,7 +71,7 @@ namespace Apollo {
     struct Container {
         Bounds bounds;
         std::vector<std::variant<Tile, Container*>> children;
-        Split split;// {Split::Horizontal};
+        Split split;
         Container* parent;
         uint32_t activeTaskId {0};
 
@@ -109,14 +105,7 @@ namespace Apollo {
         Container* activeContainer;
     };
 
-    struct RenderVisitor {
-        void operator()(WindowHandle) {}
-        void operator()(Container*) {}
-    };
-
     struct LayoutVisitor {
-        //void operator()(Tile&);
-        //void operator()(Container*);
         void visit(Tile&);
         void visit(Container*);
 

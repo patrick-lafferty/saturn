@@ -74,27 +74,6 @@ public:
         
     }
 
-    /*void messageLoop() {
-        start();
-
-        char inputBuffer[500];
-        int index {0};
-        Text::TextLayout currentLayout = textRenderer->layoutText("Menu", screenWidth);
-        textRenderer->drawText(currentLayout, 10, 0);
-        cursorY += currentLayout.bounds.height;
-        window->setBackgroundColour(0x00'00'00'20);
-        clear(10, cursorY, screenWidth - 20, currentLayout.bounds.height);
-        drawPrompt();
-        currentLayout.bounds = {};
-        notifyReadyToRender();
-
-        auto maxInputWidth = screenWidth - promptLayout.bounds.width;
-
-        while (true) {
-
-            IPC::MaximumMessageBuffer buffer;
-            receive(&buffer);*/
-
     void handleMessage(IPC::MaximumMessageBuffer& buffer) {
 
         switch (buffer.messageNamespace) {
@@ -208,8 +187,6 @@ private:
 
         memcpy(frameBuffer, frameBuffer + screenWidth * (scroll), byteCount);
         clear(0, screenHeight - scroll - 1, screenWidth, scroll);
-        
-        //updateWindowBuffer(0, 0, screenWidth, screenHeight);
         
         cursorY = screenHeight - spaceRequired - 1;
     }
