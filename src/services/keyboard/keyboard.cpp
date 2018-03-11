@@ -88,13 +88,13 @@ namespace Keyboard {
         //keypad
         en_US[0x70] = {'0', 0};
         en_US[0x69] = {'1', 0};
-        en_US[0x72] = {16, 6}; //down arrow
+        en_US[0x72] = {static_cast<uint8_t>(VirtualKey::Down), static_cast<uint8_t>(VirtualKey::Down)}; //{16, 6}; //down arrow
         en_US[0x7A] = {'3', 0};
-        en_US[0x6B] = {14, 14}; //left arrow (should be keypad 4)
+        en_US[0x6B] = {static_cast<uint8_t>(VirtualKey::Left), static_cast<uint8_t>(VirtualKey::Left)}; //{14, 14}; //left arrow (should be keypad 4)
         en_US[0x73] = {'5', 0};
-        en_US[0x74] = {17, 17}; //right arrow
+        en_US[0x74] = {static_cast<uint8_t>(VirtualKey::Right), static_cast<uint8_t>(VirtualKey::Right)}; //{17, 17}; //right arrow
         en_US[0x6C] = {'7', 0};
-        en_US[0x75] = {15, 15}; //up arrow (should be keypad 8 but qemu has a bug)
+        en_US[0x75] = {static_cast<uint8_t>(VirtualKey::Up), static_cast<uint8_t>(VirtualKey::Up)}; //{15, 15}; //up arrow (should be keypad 8 but qemu has a bug)
         en_US[0x7D] = {'9', 0};
         en_US[0x71] = {'.', 0};
         en_US[0x79] = {'+', 0};
@@ -135,6 +135,7 @@ namespace Keyboard {
         bool leftShiftPressed {false};
         bool rightShiftPressed {false};
         bool capsLockPressed {false};
+        bool leftAltPressed {false};
     };
 
     uint8_t translateKeyEvent(PhysicalKey key, ModifierStatus& status) {
@@ -196,6 +197,10 @@ namespace Keyboard {
                                     }
                                     break;
                                 }
+                                case PhysicalKey::LeftAlt: {
+                                    modifiers.leftAltPressed = event.status == KeyStatus::Pressed;
+                                    break;
+                                }
                                 default: {
                                     
                                     if (event.status == KeyStatus::Pressed) {
@@ -207,6 +212,7 @@ namespace Keyboard {
                                         }
                                         else {
                                             keyMessage.key = static_cast<VirtualKey>(key);
+                                            keyMessage.altPressed = modifiers.leftAltPressed;
                                             send(IPC::RecipientType::ServiceName, &keyMessage);
                                         }
 

@@ -59,6 +59,7 @@ namespace Keyboard {
         }
 
         VirtualKey key;
+        bool altPressed;
     };
 
     struct CharacterInput : IPC::Message {
