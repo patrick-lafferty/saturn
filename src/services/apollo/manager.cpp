@@ -55,10 +55,12 @@ namespace Apollo {
         switch (split) {
             case Split::Horizontal: {
                 bounds.y += bounds.height;
+                bounds.y += 5;
                 break;
             }
             case Split::Vertical: {
                 bounds.x += bounds.width;
+                bounds.x += 5;
                 break;
             }
         }
@@ -99,14 +101,23 @@ namespace Apollo {
         TODO: need to send a resize message to all tiles
         */
         Bounds childBounds;
+        auto numberOfChildren = children.size();
+        auto numberOfGaps = 0;
+        auto gapPixelWidth = 5;
+
+        if (numberOfChildren > 1) {
+            numberOfGaps = numberOfChildren - 1;
+        }
 
         if (split == Split::Vertical) {
-            childBounds.width = bounds.width / children.size();
+            auto availableSpace = bounds.width - gapPixelWidth * numberOfGaps;
+            childBounds.width = availableSpace / numberOfChildren;
             childBounds.height = bounds.height;
         }
         else {
+            auto availableSpace = bounds.height - gapPixelWidth * numberOfGaps;
             childBounds.width = bounds.width;
-            childBounds.height = bounds.height / children.size();
+            childBounds.height = availableSpace / numberOfChildren;
         }
 
         LayoutVisitor visitor{childBounds, split};
@@ -179,6 +190,44 @@ namespace Apollo {
         } 
     }
 
+    void Container::focusPreviousTile() {
+        auto previous {activeTaskId};
+
+        for (auto& child : children) {
+            if (std::holds_alternative<Tile>(child)) {
+                auto& tile = std::get<Tile>(child); 
+
+                if (tile.handle.taskId == activeTaskId) {
+                    break;
+                }
+                else {
+                    previous = tile.handle.taskId;
+                }
+            }
+        }
+
+        activeTaskId = previous;
+    }
+
+    void Container::focusNextTile() {
+        auto next {activeTaskId};
+
+        for (auto it = rbegin(children); it != rend(children); ++it) {
+            if (std::holds_alternative<Tile>(*it)) {
+                auto& tile = std::get<Tile>(*it); 
+
+                if (tile.handle.taskId == activeTaskId) {
+                    break;
+                }
+                else {
+                    next = tile.handle.taskId;
+                }
+            }
+        }
+
+        activeTaskId = next;
+    }
+
     Display::Display(Bounds screenBounds)
         : screenBounds {screenBounds} {
         root = new Container;
@@ -243,6 +292,14 @@ namespace Apollo {
 
     void Display::render() {
         root->dispatchRenderMessages();
+    }
+
+    void Display::focusPreviousTile() {
+        root->focusPreviousTile();
+    }
+
+    void Display::focusNextTile() {
+        root->focusNextTile();
     }
 
     uint32_t registerService() {
@@ -321,6 +378,8 @@ namespace Apollo {
         }
         else {
             displays[currentDisplay].addTile({bounds, handle});
+            std::fill_n(linearFrameBuffer, screenWidth * screenHeight, 0x00'62'AF'F0);
+            displays[currentDisplay].renderAll(linearFrameBuffer);
         }
 
         ShareMemory share;
@@ -386,25 +445,41 @@ namespace Apollo {
     }
 
     void Manager::handleKeyPress(Keyboard::KeyPress& message) {
-        switch (message.key) {
-            case Keyboard::VirtualKey::F1: {
-                
-                showCapcom = !showCapcom;
+        if (message.altPressed) {
+            switch (message.key) { 
+                case Keyboard::VirtualKey::Up: {
 
-                if (showCapcom) {
-                    displays[0].renderAll(linearFrameBuffer);
-                    previousDisplay = currentDisplay;
-                    currentDisplay = 0;
+                    displays[currentDisplay].focusPreviousTile();
+                    break;
                 }
-                else {
-                    handleHideOverlay();
-                }
+                case Keyboard::VirtualKey::Down: {
 
-                break;
+                    displays[currentDisplay].focusNextTile();
+                    break;
+                }
             }
-            default: {
-                displays[currentDisplay].injectKeypress(message);
-                break;
+        }
+        else {
+            switch (message.key) {
+                case Keyboard::VirtualKey::F1: {
+                    
+                    showCapcom = !showCapcom;
+
+                    if (showCapcom) {
+                        displays[0].renderAll(linearFrameBuffer);
+                        previousDisplay = currentDisplay;
+                        currentDisplay = 0;
+                    }
+                    else {
+                        handleHideOverlay();
+                    }
+
+                    break;
+                }
+                default: {
+                    displays[currentDisplay].injectKeypress(message);
+                    break;
+                }
             }
         }
     }
