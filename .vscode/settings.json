@@ -19,6 +19,9 @@
         "utility": "cpp",
         "__split_buffer": "cpp",
         "array": "cpp",
-        "initializer_list": "cpp"
+        "initializer_list": "cpp",
+        "atomic": "cpp",
+        "deque": "cpp",
+        "memory": "cpp"
     }
 }
