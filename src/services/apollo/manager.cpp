@@ -613,71 +613,7 @@ namespace Apollo {
 
         Manager manager {framebufferAddress};
         manager.messageLoop();
+
         return 0;
-
-        /*auto size = 800 * 600 * 4;
-        double normal {0.};
-        double aligned {0.};
-        double movsb {0.};
-        double ssent {0.};
-
-        auto n1 = new WindowBuffer;
-        memset(n1, 0, size);
-        auto n2 = new WindowBuffer;
-        memset(n2, 0, size);
-        auto a1 = new x;
-        memset(a1, 0, size);
-        auto a2 = new x;
-        memset(a2, 0, size);
-
-        size = 100 * 100 * 4;
-
-        for (int i = 0; i < 100; i++)
-        {
-            auto before = Saturn::Time::getHighResolutionTimeSeconds();
-            memcpy(n1, n2, size);
-            auto after = Saturn::Time::getHighResolutionTimeSeconds();
-            normal += (after - before);
-        }
-
-        //~20MB/s
-        normal = size / (normal / 100);
-
-        for (int i = 0; i < 100; i++)
-        {
-            auto before = Saturn::Time::getHighResolutionTimeSeconds();
-            memcpy(a1, a2, size);
-            auto after = Saturn::Time::getHighResolutionTimeSeconds();
-            aligned += (after - before);
-        }
-
-        //~20MB/s
-        aligned = size / (aligned / 100);
-
-        for (int i = 0; i < 100; i++)
-        {
-            auto before = Saturn::Time::getHighResolutionTimeSeconds();
-            memcp(a1, a2, size);
-            auto after = Saturn::Time::getHighResolutionTimeSeconds();
-            movsb += (after - before);
-        }
-
-        //~62MB/s
-        movsb = size / (movsb / 100);
-
-        for (int i = 0; i < 100; i++)
-        {
-            auto before = Saturn::Time::getHighResolutionTimeSeconds();
-            mems(a1, a2, size);
-            auto after = Saturn::Time::getHighResolutionTimeSeconds();
-            ssent += (after - before);
-        }
-
-        //700MB/s??
-        ssent = size / (ssent / 100);
-
-        while (true) {}
-
-        return 0;*/
     }
 }
