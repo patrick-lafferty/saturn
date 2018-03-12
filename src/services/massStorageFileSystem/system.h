@@ -92,6 +92,7 @@ namespace MassStorageFileSystem {
         void handleGetDirectoryEntries(VirtualFileSystem::GetDirectoryEntries& request);
         void handleReadRequest(VirtualFileSystem::ReadRequest& request);
         void handleSeekRequest(VirtualFileSystem::SeekRequest& request);
+        void handleSyncPositionWithCache(VirtualFileSystem::SyncPositionWithCache& request);
 
         ATA::Driver* driver;
         GPTHeader gptHeader;

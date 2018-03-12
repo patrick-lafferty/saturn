@@ -50,6 +50,7 @@ namespace VirtualFileSystem {
         CloseResult,
         SeekRequest,
         SeekResult,
+        SyncPositionWithCache,
         SubscribeMount,
         MountNotification
     };
@@ -138,6 +139,7 @@ namespace VirtualFileSystem {
 
         uint32_t fileDescriptor;
         uint32_t requestId;
+        uint32_t fileLength;
         bool success;
     };
 
@@ -291,6 +293,17 @@ namespace VirtualFileSystem {
 
         uint32_t requestId;
         bool success;
+        uint32_t filePosition;
+    };
+
+    struct SyncPositionWithCache : IPC::Message {
+        SyncPositionWithCache() {
+            messageId = static_cast<uint32_t>(MessageId::SyncPositionWithCache);
+            length = sizeof(SyncPositionWithCache);
+            messageNamespace = IPC::MessageNamespace::VFS;
+        }
+
+        uint32_t fileDescriptor;
         uint32_t filePosition;
     };
 

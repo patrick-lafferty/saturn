@@ -137,6 +137,7 @@ namespace MassStorageFileSystem {
         virtual void readDirectory(uint32_t index, uint32_t requestId) = 0;
         virtual void readFile(uint32_t index, uint32_t requestId, uint32_t byteCount) = 0;
         virtual void seekFile(uint32_t index, uint32_t requestId, uint32_t offset, Origin origin) = 0;
+        virtual void syncPositionWithCache(uint32_t index, uint32_t position) = 0;
 
     protected: 
         IBlockDevice* blockDevice;

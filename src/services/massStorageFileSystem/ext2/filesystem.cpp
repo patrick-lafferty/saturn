@@ -142,6 +142,16 @@ namespace MassStorageFileSystem::Ext2 {
         return totalSectors;
     }
 
+    FileDescriptor* findDescriptor(uint32_t id, std::vector<FileDescriptor>& descriptors) {
+        for (auto& descriptor : descriptors) {
+            if (descriptor.id == id) {
+                return &descriptor;
+            }
+        }
+
+        return nullptr;
+    }
+
     void Ext2FileSystem::handleRequest(Request& request) {
         switch(request.type) {
             case RequestType::ReadSuperblock: {
@@ -162,6 +172,17 @@ namespace MassStorageFileSystem::Ext2 {
             }
             case RequestType::ReadInode: {
                 handleReadInodeRequest(request);
+                break;
+            }
+            case RequestType::SyncPositionWithCache: {
+                auto descriptor = findDescriptor(request.descriptor, openFileDescriptors);
+
+                if (descriptor != nullptr) {
+                    descriptor->filePosition = request.position;
+                }
+
+                //finishRequest();
+
                 break;
             }
         }
@@ -265,16 +286,6 @@ namespace MassStorageFileSystem::Ext2 {
                 finishRequest();
             }
         }
-    }
-
-    FileDescriptor* findDescriptor(uint32_t id, std::vector<FileDescriptor>& descriptors) {
-        for (auto& descriptor : descriptors) {
-            if (descriptor.id == id) {
-                return &descriptor;
-            }
-        }
-
-        return nullptr;
     }
 
     void Ext2FileSystem::handleReadFileRequest(Request& request) {
@@ -538,6 +549,14 @@ namespace MassStorageFileSystem::Ext2 {
                     descriptor.inode = inode;
                     descriptor.length = inode.sizeLower32Bits;
 
+                    VirtualFileSystem::OpenResult result;
+                    result.success = true;
+                    result.serviceType = Kernel::ServiceType::VFS;
+                    result.fileDescriptor = request.descriptor;
+                    result.requestId = descriptor.requestId;
+                    result.fileLength = descriptor.length;
+                    send(IPC::RecipientType::ServiceName, &result);
+
                     finishRequest();
                     return;
                 }
@@ -675,6 +694,19 @@ namespace MassStorageFileSystem::Ext2 {
         }
 
         send(IPC::RecipientType::ServiceName, &result);
+    }
+
+    void Ext2FileSystem::syncPositionWithCache(uint32_t index, uint32_t position) {
+        Request request;
+        request.type = RequestType::SyncPositionWithCache;
+        request.descriptor = index;
+        request.position = position;        
+
+        //if (queuedRequests.empty()) {
+            handleRequest(request);
+        //}
+
+        //queuedRequests.push(request);
     }
 
     RequestMeta Ext2FileSystem::prepareFileReadRequest(FileDescriptor* descriptor, uint32_t length) {

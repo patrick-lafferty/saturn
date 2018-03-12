@@ -201,7 +201,8 @@ namespace MassStorageFileSystem::Ext2 {
         ReadBlockGroupDescriptorTable,
         ReadDirectory,
         ReadFile,
-        ReadInode
+        ReadInode,
+        SyncPositionWithCache
     };
 
     struct Request {
@@ -210,6 +211,7 @@ namespace MassStorageFileSystem::Ext2 {
 
         uint32_t descriptor {0};
         uint32_t length {0};
+        uint32_t position {0};
     };
 
     struct FileDescriptor {
@@ -235,6 +237,7 @@ namespace MassStorageFileSystem::Ext2 {
         void readDirectory(uint32_t index, uint32_t requestId) override;
         void readFile(uint32_t index, uint32_t requestId, uint32_t byteCount) override;
         void seekFile(uint32_t index, uint32_t requestId, uint32_t offset, Origin origin) override;
+        void syncPositionWithCache(uint32_t index, uint32_t position) override;
 
     private:
 

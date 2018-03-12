@@ -214,12 +214,14 @@ namespace MassStorageFileSystem {
                         }
                         case MessageId::OpenRequest: {
                             auto request = IPC::extractMessage<OpenRequest>(buffer);
-                            OpenResult result;
+                            /*OpenResult result;
                             result.success = true;
                             result.serviceType = Kernel::ServiceType::VFS;
                             result.fileDescriptor = fileSystems[0]->openFile(request.index, request.requestId);
                             result.requestId = request.requestId;
                             send(IPC::RecipientType::ServiceName, &result);
+                            */
+                            fileSystems[0]->openFile(request.index, request.requestId); 
                             break;
                         }
                         case MessageId::ReadRequest: {
@@ -230,6 +232,11 @@ namespace MassStorageFileSystem {
                         case MessageId::SeekRequest: {
                             auto request = IPC::extractMessage<::VirtualFileSystem::SeekRequest>(buffer);
                             handleSeekRequest(request);
+                            break;
+                        }
+                        case MessageId::SyncPositionWithCache: {
+                            auto request = IPC::extractMessage<::VirtualFileSystem::SyncPositionWithCache>(buffer);
+                            handleSyncPositionWithCache(request);
                             break;
                         }
                         default:
@@ -389,6 +396,13 @@ namespace MassStorageFileSystem {
         TODO: for now assume fileSystems[0] is the only mount
         */
         fileSystems[0]->seekFile(request.fileDescriptor, request.requestId, request.offset, static_cast<Origin>(request.origin));
+    }
+
+    void MassStorageController::handleSyncPositionWithCache(::VirtualFileSystem::SyncPositionWithCache& request) {
+        /*
+        TODO: for now assume fileSystems[0] is the only mount
+        */
+        fileSystems[0]->syncPositionWithCache(request.fileDescriptor, request.filePosition);
     }
 
     void service() {
