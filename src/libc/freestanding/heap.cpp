@@ -68,7 +68,7 @@ namespace LibC_Implementation {
         }
 
         auto startingAddress = reinterpret_cast<uint32_t>(chunk) + sizeof(ChunkHeader);
-        auto alignedAddress = (startingAddress + alignment - 1) & -alignment;
+        auto alignedAddress = (startingAddress + alignment - 1) & ~(alignment - 1);
 
         if (startingAddress != alignedAddress) {
             //can we fit it inside the chunk?
@@ -76,11 +76,22 @@ namespace LibC_Implementation {
 
             //TODO: this should never be true
             if ((alignedAddress - startingAddress) < sizeof(ChunkHeader)) {
+                alignedAddress = (startingAddress + sizeof(ChunkHeader) + alignment - 1) & ~(alignment - 1);
+
+                if ((alignedAddress + size) > chunkEndAddress) {
+                    uhoh();
+                }
+            }
+
+            if ((alignedAddress - startingAddress) < sizeof(ChunkHeader)) {
                 //TODO: not enough space to split chunk, wat do
                 uhoh();
                 kprintf("[HEAP] aligned_allocate not enough space in this chunk??\n");
                 return nullptr;
             }
+            else if ((alignedAddress + size) > chunkEndAddress) {
+                    uhoh();
+                }
             else {
                 auto alignedChunk = reinterpret_cast<ChunkHeader*>(alignedAddress - sizeof(ChunkHeader));
                 alignedChunk->magic = 0xabababab;
@@ -127,7 +138,7 @@ namespace LibC_Implementation {
     ChunkHeader* Heap::findFreeAlignedChunk(size_t size, size_t alignment) {
         auto chunk = findFreeChunk(size);
         auto startingAddress = reinterpret_cast<uint32_t>(chunk) + sizeof(ChunkHeader);
-        auto alignedAddress = (startingAddress + alignment - 1) & -alignment;
+        auto alignedAddress = (startingAddress + alignment - 1) & ~(alignment -  1);
 
         if (startingAddress != alignedAddress) {
             //can we fit it inside the chunk?
@@ -142,7 +153,7 @@ namespace LibC_Implementation {
                 while (chunk != nullptr) {
                     if (chunk != nextFreeChunk && chunk->size >= size) {
                         startingAddress = reinterpret_cast<uint32_t>(chunk) + sizeof(ChunkHeader); 
-                        alignedAddress = (startingAddress + alignment - 1) & -alignment;
+                        alignedAddress = (startingAddress + alignment - 1) & ~(alignment - 1);
 
                         if (startingAddress != alignedAddress) {
                             //can we fit it inside the chunk?
