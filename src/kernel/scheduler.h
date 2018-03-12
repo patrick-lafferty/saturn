@@ -149,8 +149,13 @@ namespace Kernel {
         char data[0x100000];
     };
 
+    struct alignas(16) SSEContext {
+        uint8_t data[512];
+    };
+
     struct Task {
         TaskContext context;
+        SSEContext* sseContext;
         Task* nextTask {nullptr};
         Task* previousTask {nullptr};
         uint32_t id {0};

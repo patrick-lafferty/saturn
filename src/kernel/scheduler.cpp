@@ -423,6 +423,9 @@ namespace Kernel {
         auto stackExtras = reinterpret_cast<uint32_t volatile*>(kernelStackPointer);
         *stackExtras = reinterpret_cast<uint32_t>(callExitKernelTask);
 
+        //auto sseMemory = task->heap->aligned_allocate(16, sizeof(SSEContext));
+        //task->sseContext = new (sseMemory) SSEContext;
+
         taskBuffer++;
         oldVMM->activate();
         LibC_Implementation::KernelHeap = oldHeap;
@@ -462,6 +465,9 @@ namespace Kernel {
 
         LibC_Implementation::createHeap(Memory::PageSize * Memory::PageSize, vmm);
         task->heap = LibC_Implementation::KernelHeap;
+
+        //auto sseMemory = task->heap->aligned_allocate(16, sizeof(SSEContext));
+        //task->sseContext = new (sseMemory) SSEContext;
 
         /*
         Need to adjust the kernel stack because we want to add

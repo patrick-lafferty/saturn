@@ -57,6 +57,10 @@ changeProcess:
     mov eax, [ebp + 8]
     mov [eax + 4], esp ; currentTask->context.kernelESP = esp
 
+    ;saving fpu/sse registers
+    ;mov eax, [eax + 8]
+    ;fxsave [eax]
+
     mov eax, [ebp + 12]
     push eax
     call activateVMM
@@ -64,6 +68,10 @@ changeProcess:
 
     mov eax, [ebp + 12]
     mov esp, [eax + 4] ; esp = nextTask->context.kernelESP
+
+    ;restoring fpu/sse registers
+    ;mov eax, [eax + 8]
+    ;fxrstor [eax]
 
     mov eax, [HACK_TSS_ADDRESS]
     mov ecx, [ebp + 12] ; nextTask->context                
