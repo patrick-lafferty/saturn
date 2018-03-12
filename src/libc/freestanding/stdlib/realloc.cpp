@@ -27,11 +27,19 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include <stdlib.h>
 #include <string.h>
+#include <heap.h>
 
 void* realloc(void* ptr, size_t size) {
     /*
     TODO: see if we can expand/contract the area, see cppreference:realloc a)
     */
+    auto address = reinterpret_cast<uintptr_t>(ptr) - sizeof(LibC_Implementation::ChunkHeader);
+    auto chunk = reinterpret_cast<LibC_Implementation::ChunkHeader*>(address);
+    
+    if (chunk->size >= size) {
+		return ptr;
+    }
+    
     auto replacement = malloc(size);
     memcpy(replacement, ptr, size);
     free(ptr);
