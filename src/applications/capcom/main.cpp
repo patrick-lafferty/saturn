@@ -40,9 +40,26 @@ CapCom is the main interface between the window manager and the user
 #include <services/keyboard/messages.h>
 #include <algorithm>
 #include <saturn/parsing.h>
+#include <map>
+#include <variant>
 
 using namespace Apollo;
 using namespace Apollo::Debug;
+
+enum class AvailableCommands {
+    Split,
+    ChangeSplit
+};
+
+struct Command {
+    AvailableCommands command;
+    char name[30];
+};
+
+struct Category {
+    char name[30];
+    std::map<char, std::variant<Category, Command>> children;
+};
 
 class CapCom : public Application<CapCom> {
 public:
@@ -50,28 +67,74 @@ public:
     CapCom(uint32_t screenWidth, uint32_t screenHeight) 
         : Application(screenWidth, screenHeight, true) {
 
+
         if (!isValid()) {
             return;
         }
 
         promptLayout = textRenderer->layoutText("\e[38;2;255;69;0m> \e[38;2;0;191;255m", screenWidth);
-        window->setBackgroundColour(0x00'00'00'80);
-        //move(200, 200);
+        mainBackgroundColour = 0x00'00'00'80; 
+        window->setBackgroundColour(mainBackgroundColour);
         clear(0, 0, screenWidth, screenHeight);
         memset(inputBuffer, '\0', 500);
-        currentLayout = textRenderer->layoutText("Menu", screenWidth);
+        auto currentLayout = textRenderer->layoutText("Menu", screenWidth);
         maxInputWidth = screenWidth - promptLayout.bounds.width;
         textRenderer->drawText(currentLayout, 10, 0);
-        cursorY += currentLayout.bounds.height;
-        window->setBackgroundColour(0x00'00'00'20);
-        clear(10, cursorY, screenWidth - 20, currentLayout.bounds.height);
+        promptY = currentLayout.bounds.height;
+        textAreaBackgroundColour = 0x00'00'00'20; 
+        window->setBackgroundColour(textAreaBackgroundColour);
+        clear(10, promptY, screenWidth - 20, currentLayout.bounds.height);
         drawPrompt();
-        currentLayout.bounds = {};
-        
+        commandAreaY = promptY + 100;
+
+        Category container {"c => Container"};
+        container.children['s'] = Command {AvailableCommands::Split, "s => split"};
+        container.children['c'] = Command {AvailableCommands::ChangeSplit, "c => change split direction"};
+
+        topLevelCommands.children['c'] = container;
+        currentCategory = &topLevelCommands;
+        drawCategory();
     }
 
-    void start() {
-        
+    void handleInput() {
+
+        currentCategory = &topLevelCommands;
+
+        for (int i = 0; i < index; i++) {
+            if (inputBuffer[i] == '\0') {
+                break;
+            }
+
+            auto character = inputBuffer[i];
+
+            if (auto child = currentCategory->children.find(character);
+                child != end(currentCategory->children)) {
+                if (std::holds_alternative<Command>(child->second)) {
+                    auto& command = std::get<Command>(child->second);
+                }
+                else {
+                    auto& category = std::get<Category>(child->second);
+                    currentCategory = &category;
+                }
+            }
+            else {
+                currentCategory = nullptr;
+                break;
+            }
+        }
+
+        drawCategory();
+    }
+
+    void drawCommandLine() {
+        clear(10 + promptLayout.bounds.width, promptY, screenWidth - 20 - promptLayout.bounds.width, promptLayout.bounds.height);
+
+        auto maxWidth = commandLineLayout.bounds.width;
+        commandLineLayout = textRenderer->layoutText(inputBuffer, maxInputWidth);
+
+        maxWidth = std::max(maxWidth, commandLineLayout.bounds.width);
+        textRenderer->drawText(commandLineLayout, cursorX, promptY);
+        window->markAreaDirty(cursorX, promptY, maxWidth, commandLineLayout.bounds.height);
     }
 
     void handleMessage(IPC::MaximumMessageBuffer& buffer) {
@@ -84,20 +147,11 @@ public:
                         auto input = IPC::extractMessage<Keyboard::CharacterInput>(buffer);
                         inputBuffer[index] = input.character;
 
-                        clear(cursorX, cursorY, currentLayout.bounds.width, currentLayout.bounds.height);
-
-                        auto maxWidth = currentLayout.bounds.width;
-                        currentLayout = textRenderer->layoutText(inputBuffer, maxInputWidth);
-
-                        if (needsToScroll(currentLayout.bounds.height)) {
-                            scroll(currentLayout.bounds.height);
-                        }
-
-                        maxWidth = std::max(maxWidth, currentLayout.bounds.width);
-                        textRenderer->drawText(currentLayout, cursorX, cursorY);
-                        window->markAreaDirty(cursorX, cursorY, maxWidth, currentLayout.bounds.height);
-
+                        drawCommandLine();
+                        
                         index++;
+
+                        handleInput();
                         break;
                     }
                     case Keyboard::MessageId::KeyPress: {
@@ -105,18 +159,6 @@ public:
 
                         switch (key.key) {
                             case Keyboard::VirtualKey::Enter: {
-
-                                auto amountToScroll = (currentLayout.lines + 1) * currentLayout.lineSpace;
-
-                                if (needsToScroll(amountToScroll)) {
-                                    scroll(amountToScroll);
-                                    cursorY = screenHeight - currentLayout.lineSpace;
-                                }
-                                else {
-                                    cursorY += currentLayout.bounds.height;
-                                }
-
-                                currentLayout = textRenderer->layoutText("", maxInputWidth);
 
                                 drawPrompt(); 
                                 index = 0;
@@ -130,6 +172,16 @@ public:
                                 l.serviceType = Kernel::ServiceType::WindowManager;
                                 send(IPC::RecipientType::ServiceName, &l);
 
+                                break;
+                            }
+                            case Keyboard::VirtualKey::Backspace: {
+                                if (index > 0) {
+                                    index--;
+                                    inputBuffer[index] = '\0';
+
+                                    drawCommandLine();
+                                    handleInput();
+                                }
                                 break;
                             }
                             default: {
@@ -172,31 +224,56 @@ public:
 private:
 
     void drawPrompt() {
-        textRenderer->drawText(promptLayout, 10, cursorY);
+        textRenderer->drawText(promptLayout, 10, promptY);
         cursorX = promptLayout.bounds.width + 10;
     }
 
-    bool needsToScroll(uint32_t spaceRequired) {
-        return (cursorY + spaceRequired) >= screenHeight;
-    }
+    void drawCategory() {
+        clear(10, commandAreaY, screenWidth - 20, 300);
+        char commandText[1000];
+        memset(commandText, 0, sizeof(commandText));
+        auto index = 0;
 
-    void scroll(uint32_t spaceRequired) {
-        auto scroll = spaceRequired - (screenHeight - cursorY);
-        auto byteCount = screenWidth * (screenHeight - scroll) * 4;
-        auto frameBuffer = window->getFramebuffer();
+        if (currentCategory != nullptr) {
 
-        memcpy(frameBuffer, frameBuffer + screenWidth * (scroll), byteCount);
-        clear(0, screenHeight - scroll - 1, screenWidth, scroll);
-        
-        cursorY = screenHeight - spaceRequired - 1;
+            for (const auto& [key, value]  : currentCategory->children) {
+                if (std::holds_alternative<Command>(value)) {
+                    auto& command = std::get<Command>(value);
+                    strcat(commandText + index, command.name);
+                    auto length = strlen(command.name);
+                    index += length;
+                    commandText[index] = ' ';
+                    index++;
+                }
+                else {
+                    auto& category = std::get<Category>(value);
+                    strcat(commandText + index, category.name);
+                    index += 30;
+                }
+            }
+
+            auto layout = textRenderer->layoutText(commandText, screenWidth - 20);
+            textRenderer->drawText(layout, 10, commandAreaY);
+            window->markAreaDirty(10, commandAreaY, screenWidth - 20, layout.bounds.height);
+        }
+        else {
+            window->markAreaDirty(10, commandAreaY, screenWidth - 20, 300);
+        }
     }
 
     Text::TextLayout promptLayout;    
+    Text::TextLayout commandLineLayout;
     uint32_t cursorX {0}, cursorY {0};
     char inputBuffer[500];
     int index {0};
-    Text::TextLayout currentLayout;
     uint32_t maxInputWidth;
+    uint32_t mainBackgroundColour;
+    uint32_t textAreaBackgroundColour;
+    uint32_t promptY;
+    uint32_t commandAreaY;
+
+    Category topLevelCommands;
+    Category* currentCategory;
 };
 
 int capcom_main() {
