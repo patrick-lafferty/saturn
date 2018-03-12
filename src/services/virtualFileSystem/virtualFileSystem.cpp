@@ -49,6 +49,8 @@ namespace VirtualFileSystem {
     VirtualFileSystem::VirtualFileSystem() {
         root.path[0] = '/';
         root.path[1] = '\0';
+        //nextId = new uint32_t;
+        nextId = 0;
     }
 
     int findEmptyDescriptor(std::vector<VirtualFileDescriptor>& descriptors) {
@@ -86,15 +88,10 @@ namespace VirtualFileSystem {
     }
 
     std::list<PendingRequest>::iterator getPendingRequest(uint32_t requestId, std::list<PendingRequest>& requests) {
-        for(auto it = requests.begin(); it != requests.end(); ++it) {
-            if (it->id == requestId) {
-                return it;
-            }
-        }
-
-        printf("[VFS] getPendingRequest failed to find requestId %d\n", requestId);
-
-        return requests.end();
+        
+        return std::find_if(begin(requests), end(requests), [&](const auto& a) {
+            return a.id == requestId;
+        });
     }
 
     Cache::Directory* createDummyMountDirectory(MountRequest& request, std::string_view path) {
@@ -502,7 +499,7 @@ namespace VirtualFileSystem {
         pendingOpen.remainingPath = path;
         pendingOpen.fullPath = nullptr;
 
-        auto requestId = nextRequestId++;    
+        auto requestId = getNextRequestId();    
         PendingRequest pendingRequest;
         pendingRequest.open = pendingOpen;
         pendingRequest.type = RequestType::Open;
@@ -591,10 +588,22 @@ namespace VirtualFileSystem {
     
     void VirtualFileSystem::handleOpenResult(OpenResult& result) {
         auto request = getPendingRequest(result.requestId, pendingRequests);
+
+        if (request == pendingRequests.end()) {
+            printf("[VFS] Invalid pending request %d, handleOpenResult\n", result.requestId);
+            return;
+        }
+
+        if (request->type != RequestType::Open) {
+            printf("[VFS] Wrong request type, handleOpenResult\n");
+            return;
+        }
+
         auto& pendingRequest = *request;
 
         if (result.success) {
             auto processVirtualFileDescriptor = findEmptyDescriptor(openFileDescriptors);
+
             if (processVirtualFileDescriptor >= 0) {                            
                 openFileDescriptors[processVirtualFileDescriptor] = {
                     result.fileDescriptor,
@@ -611,6 +620,14 @@ namespace VirtualFileSystem {
                     pendingRequest.open.entry,
                     0
                 });
+            }
+
+            if (pendingRequest.open.entry->type == Cache::Type::File) {
+                auto file = static_cast<Cache::File*>(pendingRequest.open.entry);
+
+                if (file->data.empty()) {
+                    file->data.resize(1 + result.fileLength / 512);
+                }
             }
 
             result.fileDescriptor = processVirtualFileDescriptor;
@@ -735,7 +752,7 @@ namespace VirtualFileSystem {
         pendingCreate.remainingPath = path;
         pendingCreate.fullPath = nullptr;
 
-        auto requestId = nextRequestId++;    
+        auto requestId = getNextRequestId();    
         PendingRequest pendingRequest;
         pendingRequest.create = pendingCreate;
         pendingRequest.type = RequestType::Create;
@@ -752,6 +769,12 @@ namespace VirtualFileSystem {
 
     void VirtualFileSystem::handleCreateResult(CreateResult& result) {
         auto request = getPendingRequest(result.requestId, pendingRequests);
+
+        if (request->type != RequestType::Create) {
+            printf("[VFS] Wrong request type, handleCreateResult\n");
+            return;
+        }
+
         auto& pendingRequest = *request;
 
         if (result.success) {
@@ -781,6 +804,10 @@ namespace VirtualFileSystem {
         }
     }
 
+    uint32_t VirtualFileSystem::getNextRequestId() {
+        return nextId++;
+    }
+
     void VirtualFileSystem::handleReadRequest(ReadRequest& request) {
         bool failed {false};
         if (request.fileDescriptor < openFileDescriptors.size()) {
@@ -788,6 +815,10 @@ namespace VirtualFileSystem {
 
             if (descriptor.isOpen()) {
                 bool usedCache {false};
+                bool needsSync {false};
+                bool isPreparingCache {false};
+
+                int remainingBlocks = 0;
 
                 if (descriptor.entry->cacheable) {
                     if (descriptor.entry->type == Cache::Type::Directory
@@ -795,19 +826,111 @@ namespace VirtualFileSystem {
                         usedCache = true;
                         readDirectoryFromCache(request, descriptor);
                     }
+                    else if (descriptor.entry->type == Cache::Type::File) {
+                        auto file = static_cast<Cache::File*>(descriptor.entry);
+                        auto currentBlock = descriptor.filePosition / 512;
+                        auto endBlock = (descriptor.filePosition + request.readLength) / 512;
+                        auto currentByte = descriptor.filePosition % 512;
+                        auto remainingBytesInBlock = std::min(512 - currentByte, request.readLength);
+
+                        if (file->data[currentBlock].hasValue) {
+                            Read512Result result;
+                            result.success = true;
+                            memcpy(result.buffer, file->data[currentBlock].data + currentByte, remainingBytesInBlock);
+                            result.bytesWritten = remainingBytesInBlock;
+                            result.expectMore = false;
+                            result.recipientId = request.senderTaskId;
+                            descriptor.filePosition += result.bytesWritten;
+
+                            if (endBlock != currentBlock) {
+                                if (file->data[endBlock].hasValue) {
+                                    auto remaining = request.readLength - remainingBytesInBlock;
+                                    memcpy(result.buffer + remainingBytesInBlock, 
+                                        file->data[endBlock].data,
+                                        remaining);
+                                    
+                                    result.bytesWritten += remaining;
+                                    descriptor.filePosition += remaining;
+                                    usedCache = true;
+                                }
+                                else {
+                                    result.expectMore = true;
+                                    request.readLength -= result.bytesWritten;
+                                    remainingBlocks = 1;
+                                    isPreparingCache = true;
+                                }
+
+                            }
+                            else {
+                                usedCache = true;
+                            }
+
+                            needsSync = true;
+
+                            send(IPC::RecipientType::TaskId, &result);
+
+                        }
+                        else {
+                            remainingBlocks = 1;
+                            isPreparingCache = true;
+                            needsSync = true;
+
+                            if (endBlock != currentBlock && (request.readLength - remainingBytesInBlock) > 0) {
+                                remainingBlocks = 2;
+                            }
+                        }
+                        
+                    }
+                }
+
+                if (needsSync) {
+                    SyncPositionWithCache sync;
+                    sync.fileDescriptor = descriptor.descriptor;
+                    sync.recipientId = descriptor.mountTaskId;
+                    
+                    if (isPreparingCache) {
+                        sync.filePosition = 512 * (descriptor.filePosition / 512);
+                    }
+                    else {
+                        sync.filePosition = descriptor.filePosition;
+                    }
+
+                    send(IPC::RecipientType::TaskId, &sync);
                 }
 
                 if (!usedCache) {
-                    request.requestId = nextRequestId++;
+                    auto requestId = getNextRequestId();
+                    request.requestId = requestId;
+
                     PendingRequest pending;
                     pending.type = RequestType::Read;
-                    pending.id = request.requestId;
+                    pending.id = requestId;
                     pending.requesterTaskId = request.senderTaskId;
                     pending.virtualFileDescriptor = request.fileDescriptor;
+                    pending.read.remainingBlocks = remainingBlocks;
+                    pending.read.currentBlock = 0;
+                    pending.read.blocks[0].index = descriptor.filePosition / 512;
+
+                    if (remainingBlocks > 1) {
+                        pending.read.blocks[1].index = pending.read.blocks[0].index + 1;
+                    }
+
+                    pending.read.filePosition = descriptor.filePosition;
+                    pending.read.readLength = request.readLength;
                     pendingRequests.push_back(pending);
+
                     request.recipientId = descriptor.mountTaskId;
                     request.fileDescriptor = descriptor.descriptor;
+
+                    if (isPreparingCache) {
+                        request.readLength = 512;
+                    }
+
                     send(IPC::RecipientType::TaskId, &request);
+
+                    if (remainingBlocks > 1) {
+                        send(IPC::RecipientType::TaskId, &request);
+                    }
                 }
             }
             else {
@@ -834,8 +957,13 @@ namespace VirtualFileSystem {
             return;
         }
 
+        if (pendingRequest->type != RequestType::Read) {
+            printf("[VFS] Wrong request type, handleReadResult\n");
+            return;
+        }
+
         result.recipientId = pendingRequest->requesterTaskId;
-        //pendingRequests.erase(pendingRequest);
+        pendingRequests.erase(pendingRequest);
         send(IPC::RecipientType::TaskId, &result);
     }
 
@@ -847,15 +975,85 @@ namespace VirtualFileSystem {
             return;
         }
 
-        openFileDescriptors[pendingRequest->virtualFileDescriptor].filePosition += result.bytesWritten;
+        if (pendingRequest->type != RequestType::Read) {
+            printf("[VFS] Wrong request type, handleRead512Result\n");
+            return;
+        }
+        
+        if (pendingRequest->virtualFileDescriptor >= openFileDescriptors.size()) {
+            printf("[VFS] Missing openFileDescriptor, read512Result\n");
+        }
+
+        auto& descriptor = openFileDescriptors[pendingRequest->virtualFileDescriptor];
+        bool canSend {true};
+
+        if (descriptor.entry->type == Cache::Type::File) {
+            
+            if (pendingRequest->read.currentBlock < pendingRequest->read.remainingBlocks) {
+
+                auto file = static_cast<Cache::File*>(descriptor.entry);
+                auto block = pendingRequest->read.blocks[pendingRequest->read.currentBlock].index;
+
+                memcpy(file->data[block].data,
+                    result.buffer, 
+                    512
+                    );
+
+                if (file->data[block].hasValue) {
+                    //printf("[VFS] Updating file block cache\n");
+                }
+
+                file->data[block].hasValue = true;
+
+                pendingRequest->read.currentBlock++;
+
+                if (pendingRequest->read.remainingBlocks == pendingRequest->read.currentBlock) {
+                    auto startingBlock = pendingRequest->read.filePosition / 512;
+                    auto endingBlock = (pendingRequest->read.filePosition + pendingRequest->read.readLength) / 512;
+                    auto startingByte = pendingRequest->read.filePosition % 512;
+
+                    memset(result.buffer, 0, 512);
+                    auto bytesToEnd = std::min(512 - startingByte, pendingRequest->read.readLength);
+
+                    memcpy(result.buffer, 
+                        file->data[startingBlock].data + startingByte,
+                        bytesToEnd);
+
+                    if (endingBlock != startingBlock && (pendingRequest->read.readLength - bytesToEnd) > 0) {
+                        memcpy(result.buffer + bytesToEnd,
+                            file->data[endingBlock].data,
+                            pendingRequest->read.readLength - bytesToEnd);
+                    }
+
+                    result.bytesWritten = pendingRequest->read.readLength;
+                    result.expectMore = false;
+                    canSend = true;
+
+                    SyncPositionWithCache sync;
+                    sync.fileDescriptor = descriptor.descriptor;
+                    sync.recipientId = descriptor.mountTaskId;
+                    sync.filePosition = pendingRequest->read.filePosition + pendingRequest->read.readLength;
+                    descriptor.filePosition = sync.filePosition;
+                    send(IPC::RecipientType::TaskId, &sync);
+                }
+                else {
+                    canSend = false;
+                }
+            }
+        }
+        else {
+            descriptor.filePosition += result.bytesWritten;
+        }
 
         result.recipientId = pendingRequest->requesterTaskId;
         
-        if (!result.expectMore) {
+        if (canSend && !result.expectMore) {
             pendingRequests.erase(pendingRequest);
         }
 
-        send(IPC::RecipientType::TaskId, &result);
+        if (canSend) {
+            send(IPC::RecipientType::TaskId, &result);
+        }
     }
 
     void VirtualFileSystem::handleWriteRequest(WriteRequest& request) {
@@ -865,7 +1063,7 @@ namespace VirtualFileSystem {
             auto descriptor = openFileDescriptors[request.fileDescriptor];
 
             if (descriptor.isOpen()) {
-                request.requestId = nextRequestId++;
+                request.requestId = getNextRequestId();
                 PendingRequest pending;
                 pending.type = RequestType::Write;
                 pending.id = request.requestId;
@@ -897,6 +1095,9 @@ namespace VirtualFileSystem {
 
         if (!result.expectReadResult) {
             pendingRequests.erase(pendingRequest);
+        }
+        else {
+            pendingRequest->type = RequestType::Read;
         }
 
         send(IPC::RecipientType::TaskId, &result);
@@ -944,7 +1145,7 @@ namespace VirtualFileSystem {
             auto& descriptor = openFileDescriptors[request.fileDescriptor];
 
             if (descriptor.isOpen()) {
-                request.requestId = nextRequestId++;
+                request.requestId = getNextRequestId();
                 PendingRequest pending;
                 pending.type = RequestType::Seek;
                 pending.id = request.requestId;
@@ -975,6 +1176,14 @@ namespace VirtualFileSystem {
     void VirtualFileSystem::handleSeekResult(SeekResult& result) {
         auto pendingRequest = getPendingRequest(result.requestId, pendingRequests);
         result.recipientId = pendingRequest->requesterTaskId;
+
+        if (pendingRequest->virtualFileDescriptor< openFileDescriptors.size()) {
+
+            auto& descriptor = openFileDescriptors[pendingRequest->virtualFileDescriptor]; 
+            if (descriptor.isOpen()) {
+                descriptor.filePosition = result.filePosition;
+            }
+        }
 
         pendingRequests.erase(pendingRequest);
 

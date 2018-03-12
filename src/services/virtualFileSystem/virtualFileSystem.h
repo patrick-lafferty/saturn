@@ -57,6 +57,18 @@ namespace VirtualFileSystem {
         std::stack<Cache::Entry*, std::vector<Cache::Entry*>> breadcrumbs;
     };
 
+    struct PendingBlock {
+        uint32_t index;
+    };
+
+    struct PendingRead {
+        int remainingBlocks;
+        int currentBlock;
+        PendingBlock blocks[2];
+        uint32_t filePosition;
+        uint32_t readLength;
+    };
+
     enum class RequestType {
         Open,
         Create,
@@ -67,19 +79,15 @@ namespace VirtualFileSystem {
 
     struct PendingRequest {
 
-        PendingRequest() {
-
-        }
-
-        //union {
-            PendingOpen open;
-            PendingOpen create;
-        //};
-
         uint32_t id;
         uint32_t requesterTaskId;
         RequestType type;
         uint32_t virtualFileDescriptor;
+
+            PendingOpen open;
+            PendingOpen create;
+            PendingRead read;
+
     };
 
     struct VirtualFileDescriptor {
@@ -130,12 +138,16 @@ namespace VirtualFileSystem {
         void handleSubscribeMount(SubscribeMount& request);
 
         void readDirectoryFromCache(ReadRequest& request, VirtualFileDescriptor& descriptor);
+        void readFileFromCache(ReadRequest& request, VirtualFileDescriptor& descriptor);
+        uint32_t getNextRequestId();
+
+        uint32_t nextId;
 
         Cache::Union root;
         std::list<PendingRequest> pendingRequests;
-        uint32_t nextRequestId;
         std::vector<VirtualFileDescriptor> openFileDescriptors;
         std::list<MountObserver> mountObservers;
+
     };
 
     void service();

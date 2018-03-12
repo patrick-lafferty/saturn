@@ -63,9 +63,13 @@ namespace VirtualFileSystem::Cache {
 
     */
 
-    struct File : Entry {
-        //data
+    struct DataBlock {
+        uint8_t data[512];
+        bool hasValue {false};
+    };
 
+    struct File : Entry {
+        std::vector<DataBlock> data;
     };
 
     struct Directory : Entry {
