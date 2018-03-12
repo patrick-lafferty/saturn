@@ -452,6 +452,8 @@ namespace Apollo::Text {
                 glyph.position.y += diff;
                 glyph.index = character;
                 glyph.glyphIndex = glyphIndex;
+                glyph.advance = face->glyph->advance.x >> 6;
+                glyph.width = face->glyph->metrics.width >> 6;
 
                 error = FT_Get_Glyph(face->glyph, &glyph.image);
                 error = FT_Glyph_Transform(glyph.image, nullptr, &glyph.position);
@@ -491,7 +493,7 @@ namespace Apollo::Text {
                 x += kerning.x >> 6;
             }
 
-            auto widthRequired = (face->glyph->metrics.width >> 6) + (face->glyph->advance.x >> 6); 
+            auto widthRequired = glyph.width + glyph.advance;
             if ((x + widthRequired) >= allowedWidth) {
                 x = 0;
                 y += face->size->metrics.height >> 6;
@@ -502,7 +504,7 @@ namespace Apollo::Text {
             glyph.position.y += y;
             glyph.colour = foreground;
 
-            x += face->glyph->advance.x >> 6;
+            x += glyph.advance;
 
             layout.glyphs.push_back(glyph);
             text++;

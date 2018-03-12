@@ -47,6 +47,8 @@ namespace Apollo::Text {
         uint32_t colour;
         uint8_t index;
         uint32_t glyphIndex;
+        uint32_t advance;
+        uint32_t width;
 
         FT_Glyph copyImage();
 
