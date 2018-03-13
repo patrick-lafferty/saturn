@@ -71,7 +71,9 @@ namespace Kernel {
         LinearFrameBufferFound,
         MapMemory,
         MapMemoryResult,
-        ShareMemory,
+        ShareMemoryRequest,
+        ShareMemoryInvitation,
+        ShareMemoryResponse,
         ShareMemoryResult
     };
 
@@ -253,17 +255,37 @@ namespace Kernel {
         void* start;
     };
 
-    struct ShareMemory : IPC::Message {
-        ShareMemory() {
-            messageId = static_cast<uint32_t>(MessageId::ShareMemory);
-            length = sizeof(ShareMemory);
+    struct ShareMemoryRequest : IPC::Message {
+        ShareMemoryRequest() {
+            messageId = static_cast<uint32_t>(MessageId::ShareMemoryRequest);
+            length = sizeof(ShareMemoryRequest);
             messageNamespace = IPC::MessageNamespace::ServiceRegistry;
         }
 
-        uint32_t ownerAddress;
-        uint32_t sharedAddress;
+        uintptr_t ownerAddress;
         uint32_t sharedTaskId;
         uint32_t size;
+    };
+
+    struct ShareMemoryInvitation : IPC::Message {
+        ShareMemoryInvitation() {
+            messageId = static_cast<uint32_t>(MessageId::ShareMemoryInvitation);
+            length = sizeof(ShareMemoryInvitation);
+            messageNamespace = IPC::MessageNamespace::ServiceRegistry;
+        }
+
+        uint32_t size;
+    };
+
+    struct ShareMemoryResponse : IPC::Message {
+        ShareMemoryResponse() {
+            messageId = static_cast<uint32_t>(MessageId::ShareMemoryResponse);
+            length = sizeof(ShareMemoryResponse);
+            messageNamespace = IPC::MessageNamespace::ServiceRegistry;
+        }
+
+        uintptr_t sharedAddress;
+        bool accepted;
     };
 
     struct ShareMemoryResult : IPC::Message {
@@ -274,6 +296,7 @@ namespace Kernel {
         }
 
         uint32_t sharedTaskId;
+        bool succeeded;
     };
 
     struct KnownHardwareAddresses {
@@ -337,7 +360,7 @@ namespace Kernel {
     };
 
     void handleMapMemory(MapMemory request);
-    void handleShareMemory(ShareMemory request);
+    void handleShareMemoryRequest(ShareMemoryRequest request);
 
     class MemoryGuard {
     public:

@@ -402,9 +402,8 @@ namespace Apollo {
             displays[currentDisplay].renderAll(linearFrameBuffer);
         }
 
-        ShareMemory share;
+        ShareMemoryRequest share;
         share.ownerAddress = reinterpret_cast<uintptr_t>(windowBuffer);
-        share.sharedAddress = message.bufferAddress;
         share.sharedTaskId = message.senderTaskId;
         share.size = 800 * 600 * 4;
 
@@ -465,7 +464,7 @@ namespace Apollo {
     void Manager::handleShareMemoryResult(const ShareMemoryResult& message) {
 
         for(auto& display : displays) {
-            if (display.enableRendering(message.sharedTaskId)) {
+            if (message.succeeded && display.enableRendering(message.sharedTaskId)) {
                 break;
             }
         }

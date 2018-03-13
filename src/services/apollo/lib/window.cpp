@@ -44,9 +44,27 @@ namespace Apollo {
         create.height = height;
         
         send(IPC::RecipientType::ServiceName, &create);
-        
-        IPC::MaximumMessageBuffer buffer;
-        filteredReceive(&buffer, IPC::MessageNamespace::WindowManager, static_cast<uint32_t>(MessageId::CreateWindowSucceeded));
+
+        {
+            IPC::MaximumMessageBuffer buffer;
+            filteredReceive(&buffer, 
+                IPC::MessageNamespace::ServiceRegistry, 
+                static_cast<uint32_t>(Kernel::MessageId::ShareMemoryInvitation));
+
+            auto invitation = IPC::extractMessage<Kernel::ShareMemoryInvitation>(buffer);
+            Kernel::ShareMemoryResponse response;
+            response.sharedAddress = address;
+            response.accepted = true;
+            response.recipientId = invitation.senderTaskId;
+            send(IPC::RecipientType::TaskId, &response);
+        }
+
+        { 
+            IPC::MaximumMessageBuffer buffer;
+            filteredReceive(&buffer, 
+                IPC::MessageNamespace::WindowManager, 
+                static_cast<uint32_t>(MessageId::CreateWindowSucceeded));
+        }
 
         return new Window(windowBuffer, width, height);
     }

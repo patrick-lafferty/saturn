@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "permissions.h"
 #include <cpu/tss.h>
 #include <heap.h>
+#include <system_calls.h>
 
 namespace Kernel {
 
@@ -119,11 +120,11 @@ namespace Kernel {
                         
                         break;
                     }
-                    case MessageId::ShareMemory: {
-                        auto request = IPC::extractMessage<ShareMemory>(
+                    case MessageId::ShareMemoryRequest: {
+                        auto request = IPC::extractMessage<ShareMemoryRequest>(
                             *static_cast<IPC::MaximumMessageBuffer*>(message));
 
-                        handleShareMemory(request);
+                        handleShareMemoryRequest(request);
 
                         break;
                     }
@@ -270,7 +271,7 @@ namespace Kernel {
         currentTask->mailbox->send(&result);
     }
 
-    void handleShareMemory(ShareMemory request) {
+    void handleShareMemoryRequest(ShareMemoryRequest request) {
 
         /*
         handleShareMemory doesn't need a MemoryGuard because it
@@ -279,18 +280,33 @@ namespace Kernel {
         */
 
         auto currentTask = currentScheduler->getTask(request.senderTaskId);
-        auto recipientTask = currentScheduler->getTask(request.sharedTaskId);
 
-        currentTask->virtualMemoryManager->sharePages(
-            request.ownerAddress,
-            recipientTask->virtualMemoryManager,
-            request.sharedAddress,
-            request.size / Memory::PageSize
-        );
+        ShareMemoryInvitation invitation;
+        invitation.size = request.size;
+        invitation.recipientId = request.sharedTaskId;
+
+        send(IPC::RecipientType::TaskId, &invitation);
+
+        IPC::MaximumMessageBuffer buffer;
+        filteredReceive(&buffer, IPC::MessageNamespace::ServiceRegistry, static_cast<uint32_t>(MessageId::ShareMemoryResponse));
+
+        auto response = IPC::extractMessage<ShareMemoryResponse>(buffer);
+
+        if (response.accepted) {
+            auto recipientTask = currentScheduler->getTask(request.sharedTaskId);
+
+            currentTask->virtualMemoryManager->sharePages(
+                request.ownerAddress,
+                recipientTask->virtualMemoryManager,
+                response.sharedAddress,
+                request.size / Memory::PageSize
+            );
+        }
 
         ShareMemoryResult result;
         result.recipientId = request.senderTaskId;
         result.sharedTaskId = request.sharedTaskId;
+        result.succeeded = response.accepted;
 
         currentTask->mailbox->send(&result);
     }
