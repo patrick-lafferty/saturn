@@ -116,4 +116,10 @@ namespace Apollo {
         dirtyArea.width = std::max(dirtyArea.width + dirtyArea.x, width + x) - dirtyArea.x;
         dirtyArea.height = std::max(dirtyArea.height + dirtyArea.y, height + y) - dirtyArea.y;
     }
+
+    void Window::resize(uint32_t width, uint32_t height) {
+        this->width = width;
+        //this->height = height;
+    }
+    
 }

@@ -64,6 +64,7 @@ namespace Apollo {
         WindowHandle handle;
         struct Container* parent {nullptr};
         bool canRender {false};
+        uint32_t stride {800};
     };
 
     enum class Split;
@@ -101,6 +102,7 @@ namespace Apollo {
         void render();
         void focusPreviousTile();
         void focusNextTile();
+        void changeSplitDirection(Split split);
 
     private:
 
@@ -138,6 +140,7 @@ namespace Apollo {
         void handleSplitContainer(const struct SplitContainer& message);
         void handleLaunchProgram(const struct LaunchProgram& message);
         void handleHideOverlay();
+        void handleChangeSplitDirection(const struct ChangeSplitDirection& message);
 
         void handleShareMemoryResult(const Kernel::ShareMemoryResult& message);
 

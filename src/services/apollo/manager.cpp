@@ -72,7 +72,7 @@ namespace Apollo {
         auto windowBuffer = tile.handle.buffer->buffer;
 
         for (auto y = dirty.y; y < endY; y++) {
-            auto windowOffset = y * tile.bounds.width;
+            auto windowOffset = y * tile.stride;//tile.bounds.width;
             auto screenOffset = tile.bounds.x + (tile.bounds.y + y) * displayWidth;
 
             void* dest = const_cast<uint32_t*>(frameBuffer) + screenOffset;
@@ -122,9 +122,16 @@ namespace Apollo {
 
         LayoutVisitor visitor{childBounds, split};
 
+        Resize resize;
+        resize.width = childBounds.width;
+        resize.height = childBounds.height;
+
         for (auto& child : children) {
             if (std::holds_alternative<Tile>(child)) {
-                visitor.visit(std::get<Tile>(child));
+                auto& tile = std::get<Tile>(child);
+                visitor.visit(tile);
+                resize.recipientId = tile.handle.taskId;
+                send(IPC::RecipientType::TaskId, &resize);
             }
             else {
                 auto container = std::get<Container*>(child);
@@ -302,6 +309,11 @@ namespace Apollo {
         root->focusNextTile();
     }
 
+    void Display::changeSplitDirection(Split split) {
+        activeContainer->split = split;
+        activeContainer->layoutChildren();
+    }
+
     uint32_t registerService() {
         RegisterService registerRequest;
         registerRequest.type = ServiceType::WindowManager;
@@ -435,6 +447,12 @@ namespace Apollo {
         displays[currentDisplay].renderAll(linearFrameBuffer);
     }
 
+    void Manager::handleChangeSplitDirection(const struct ChangeSplitDirection& message) {
+        displays[currentDisplay].changeSplitDirection(message.direction);
+        std::fill_n(linearFrameBuffer, screenWidth * screenHeight, 0x00'62'AF'F0);
+        displays[currentDisplay].renderAll(linearFrameBuffer);
+    }
+
     void Manager::handleShareMemoryResult(const ShareMemoryResult& message) {
 
         for(auto& display : displays) {
@@ -542,6 +560,11 @@ namespace Apollo {
                             }
                             case MessageId::HideOverlay: {
                                 handleHideOverlay();
+                                break;
+                            }
+                            case MessageId::ChangeSplitDirection: {
+                                auto message = IPC::extractMessage<ChangeSplitDirection>(buffer);
+                                handleChangeSplitDirection(message);
                                 break;
                             }
                             default: {

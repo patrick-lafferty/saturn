@@ -74,6 +74,8 @@ namespace Apollo {
         */
         void markAreaDirty(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
 
+        void resize(uint32_t width, uint32_t height);
+
     private:
 
         WindowBuffer* buffer;

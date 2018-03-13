@@ -61,6 +61,24 @@ public:
         maxInputWidth = screenWidth - promptLayout.bounds.width;
     }
 
+    void drawInput() {
+        clear(cursorX, 
+            cursorY, 
+            currentLayout.bounds.width, 
+            currentLayout.bounds.height);
+
+        auto maxWidth = currentLayout.bounds.width;
+        currentLayout = textRenderer->layoutText(inputBuffer, maxInputWidth);
+
+        if (needsToScroll(currentLayout.bounds.height)) {
+            scroll(currentLayout.bounds.height);
+        }
+
+        maxWidth = std::max(maxWidth, currentLayout.bounds.width);
+        textRenderer->drawText(currentLayout, cursorX, cursorY);
+        window->markAreaDirty(cursorX, cursorY, maxWidth, currentLayout.bounds.height);
+    }
+
     void handleMessage(IPC::MaximumMessageBuffer& buffer) {
         switch (buffer.messageNamespace) {
             case IPC::MessageNamespace::Keyboard: {
@@ -70,21 +88,7 @@ public:
                         auto input = IPC::extractMessage<Keyboard::CharacterInput>(buffer);
                         inputBuffer[index] = input.character;
 
-                        clear(cursorX, 
-                            cursorY, 
-                            currentLayout.bounds.width, 
-                            currentLayout.bounds.height);
-
-                        auto maxWidth = currentLayout.bounds.width;
-                        currentLayout = textRenderer->layoutText(inputBuffer, maxInputWidth);
-
-                        if (needsToScroll(currentLayout.bounds.height)) {
-                            scroll(currentLayout.bounds.height);
-                        }
-
-                        maxWidth = std::max(maxWidth, currentLayout.bounds.width);
-                        textRenderer->drawText(currentLayout, cursorX, cursorY);
-                        window->markAreaDirty(cursorX, cursorY, maxWidth, currentLayout.bounds.height);
+                        drawInput(); 
 
                         index++;
                         break;
@@ -133,6 +137,16 @@ public:
                     }
                     case MessageId::Show: {
                         window->blitBackBuffer();
+                        break;
+                    }
+                    case MessageId::Resize: {
+                        auto message = IPC::extractMessage<Resize>(buffer);
+                        //screenWidth = message.width;
+                        //screenHeight = message.height;
+                        maxInputWidth = message.width - promptLayout.bounds.width;
+                        drawInput();
+                        //window->resize(screenWidth, screenHeight);
+
                         break;
                     }
                     default: {

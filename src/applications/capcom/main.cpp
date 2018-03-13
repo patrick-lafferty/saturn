@@ -48,7 +48,8 @@ using namespace Apollo::Debug;
 
 enum class AvailableCommands {
     Split,
-    ChangeSplit
+    ChangeSplitHorizontal,
+    ChangeSplitVertical
 };
 
 struct Command {
@@ -87,13 +88,55 @@ public:
         drawPrompt();
         commandAreaY = promptY + 100;
 
+        Category splitCat {"c => change split direction"};
+        splitCat.children['h'] = Command {AvailableCommands::ChangeSplitHorizontal, "h => horizontal"};
+        splitCat.children['v'] = Command {AvailableCommands::ChangeSplitVertical, "v => vertical"};
+
         Category container {"c => Container"};
         container.children['s'] = Command {AvailableCommands::Split, "s => split"};
-        container.children['c'] = Command {AvailableCommands::ChangeSplit, "c => change split direction"};
+        container.children['c'] = splitCat;
 
         topLevelCommands.children['c'] = container;
         currentCategory = &topLevelCommands;
         drawCategory();
+    }
+
+    void doCommand(AvailableCommands command) {
+        index = 0;
+        memset(inputBuffer, '\0', 500);
+
+        drawCommandLine();
+
+        HideOverlay h;
+        h.serviceType = Kernel::ServiceType::WindowManager;
+        send(IPC::RecipientType::ServiceName, &h);
+
+        switch (command) {
+            case AvailableCommands::Split: {
+
+                LaunchProgram l;
+                l.serviceType = Kernel::ServiceType::WindowManager;
+                send(IPC::RecipientType::ServiceName, &l);
+
+                break;
+            }
+            case AvailableCommands::ChangeSplitHorizontal: {
+                ChangeSplitDirection changeSplit;
+                changeSplit.serviceType = Kernel::ServiceType::WindowManager;
+                changeSplit.direction = Split::Horizontal;
+                send(IPC::RecipientType::ServiceName, &changeSplit);
+
+                break;
+            }
+            case AvailableCommands::ChangeSplitVertical: {
+                ChangeSplitDirection changeSplit;
+                changeSplit.serviceType = Kernel::ServiceType::WindowManager;
+                changeSplit.direction = Split::Vertical;
+                send(IPC::RecipientType::ServiceName, &changeSplit);
+
+                break;
+            }
+        }
     }
 
     void handleInput() {
@@ -111,6 +154,8 @@ public:
                 child != end(currentCategory->children)) {
                 if (std::holds_alternative<Command>(child->second)) {
                     auto& command = std::get<Command>(child->second);
+                    doCommand(command.command);
+                    return;
                 }
                 else {
                     auto& category = std::get<Category>(child->second);
@@ -164,14 +209,6 @@ public:
                                 index = 0;
                                 memset(inputBuffer, '\0', 500);
 
-                                HideOverlay h;
-                                h.serviceType = Kernel::ServiceType::WindowManager;
-                                send(IPC::RecipientType::ServiceName, &h);
-
-                                LaunchProgram l;
-                                l.serviceType = Kernel::ServiceType::WindowManager;
-                                send(IPC::RecipientType::ServiceName, &l);
-
                                 break;
                             }
                             case Keyboard::VirtualKey::Backspace: {
@@ -205,6 +242,10 @@ public:
                     }
                     case MessageId::Show: {
                         window->blitBackBuffer();
+                        break;
+                    }
+                    case MessageId::Resize: {
+                        //ignore since CapCom is a full screen overlay
                         break;
                     }
                     default: {
@@ -248,7 +289,10 @@ private:
                 else {
                     auto& category = std::get<Category>(value);
                     strcat(commandText + index, category.name);
-                    index += 30;
+                    auto length = strlen(category.name);
+                    index += length;
+                    commandText[index] = ' ';
+                    index++;
                 }
             }
 
