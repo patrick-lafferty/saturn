@@ -49,7 +49,8 @@ using namespace Apollo::Debug;
 enum class AvailableCommands {
     Split,
     ChangeSplitHorizontal,
-    ChangeSplitVertical
+    ChangeSplitVertical,
+    Launch
 };
 
 struct Command {
@@ -92,11 +93,15 @@ public:
         splitCat.children['h'] = Command {AvailableCommands::ChangeSplitHorizontal, "h => horizontal"};
         splitCat.children['v'] = Command {AvailableCommands::ChangeSplitVertical, "v => vertical"};
 
-        Category container {"c => Container"};
+        Category container {"c => container"};
         container.children['s'] = Command {AvailableCommands::Split, "s => split"};
         container.children['c'] = splitCat;
 
+        Category launch {"l => launch"};
+        launch.children['d'] = Command {AvailableCommands::Launch, "d => dsky"};
+
         topLevelCommands.children['c'] = container;
+        topLevelCommands.children['l'] = launch;
         currentCategory = &topLevelCommands;
         drawCategory();
     }
@@ -113,11 +118,10 @@ public:
 
         switch (command) {
             case AvailableCommands::Split: {
-
-                LaunchProgram l;
-                l.serviceType = Kernel::ServiceType::WindowManager;
-                send(IPC::RecipientType::ServiceName, &l);
-
+                SplitContainer split;
+                split.serviceType = Kernel::ServiceType::WindowManager;
+                split.direction = Split::Horizontal;
+                send(IPC::RecipientType::ServiceName, &split);
                 break;
             }
             case AvailableCommands::ChangeSplitHorizontal: {
@@ -133,6 +137,14 @@ public:
                 changeSplit.serviceType = Kernel::ServiceType::WindowManager;
                 changeSplit.direction = Split::Vertical;
                 send(IPC::RecipientType::ServiceName, &changeSplit);
+
+                break;
+            }
+            case AvailableCommands::Launch: {
+
+                LaunchProgram l;
+                l.serviceType = Kernel::ServiceType::WindowManager;
+                send(IPC::RecipientType::ServiceName, &l);
 
                 break;
             }

@@ -97,10 +97,14 @@ namespace Apollo {
     }
 
     void Container::layoutChildren() {
+        if (children.empty()) {
+            return;
+        }
+
         /*
         TODO: need to send a resize message to all tiles
         */
-        Bounds childBounds;
+        Bounds childBounds {bounds.x, bounds.y};
         auto numberOfChildren = children.size();
         auto numberOfGaps = 0;
         auto gapPixelWidth = 5;
@@ -295,6 +299,10 @@ namespace Apollo {
 
     void Display::splitContainer(Split split) {
         //activeContainer->
+        auto container = new Container;
+        container->split = split;
+        activeContainer->addChild(container);
+        activeContainer = container;
     }
 
     void Display::render() {
@@ -435,7 +443,8 @@ namespace Apollo {
             index = previousDisplay;
         }
 
-        displays[index].splitContainer(message.direction);
+        displays[currentDisplay].splitContainer(message.direction);
+        displays[currentDisplay].renderAll(linearFrameBuffer);
     }
 
     void Manager::handleLaunchProgram(const LaunchProgram& message) {

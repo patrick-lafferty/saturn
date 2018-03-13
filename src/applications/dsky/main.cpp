@@ -165,13 +165,13 @@ public:
     int x {50};
     int y {0};
 
-    void update() {
+    /*void update() {
         clear(x, y, 50, 50);
         x++;
 
         drawBox(window->getFramebuffer(), x, y, 50, 50);
         window->markAreaDirty(x, y, 50, 50);
-    }
+    }*/
 
 private:
 
