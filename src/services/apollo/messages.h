@@ -41,7 +41,9 @@ namespace Apollo {
         Move,
         SplitContainer,
         LaunchProgram,
-        HideOverlay
+        HideOverlay,
+        ChangeSplitDirection,
+        Resize
     };
 
     struct CreateWindow : IPC::Message {
@@ -132,11 +134,31 @@ namespace Apollo {
         }
     };
 
+    struct ChangeSplitDirection : IPC::Message {
+        ChangeSplitDirection() {
+            messageId = static_cast<uint32_t>(MessageId::ChangeSplitDirection);
+            length = sizeof(ChangeSplitDirection);
+            messageNamespace = IPC::MessageNamespace::WindowManager;
+        }
+
+        Split direction;
+    };
+
     struct LaunchProgram : IPC::Message {
         LaunchProgram() {
             messageId = static_cast<uint32_t>(MessageId::LaunchProgram);
             length = sizeof(LaunchProgram);
             messageNamespace = IPC::MessageNamespace::WindowManager;
         }
+    };
+
+    struct Resize : IPC::Message {
+        Resize() {
+            messageId = static_cast<uint32_t>(MessageId::Resize);
+            length = sizeof(Resize);
+            messageNamespace = IPC::MessageNamespace::WindowManager;
+        }
+
+        uint32_t width, height;
     };
 }
