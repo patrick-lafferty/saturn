@@ -1,6 +1,6 @@
-| ![Latest Screenshot](https://github.com/patrick-lafferty/saturn/blob/master/screenshots/parrot.PNG) |
+| ![Latest Screenshot](https://github.com/patrick-lafferty/saturn/blob/master/screenshots/apollo%20tiles.PNG) |
 | :-: |
-| *Testing the limits of the text renderer, using FreeType* |
+| *Three separate Dsky applications running, demonstrating Apollo's tiling window manager* |
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
 # Saturn
@@ -28,7 +28,7 @@ Saturn is a new operating system I started in late 2017. It currently features:
   * ATA PIO (readonly)
   * Bochs VBE
 * Minimal C Standard Library implementation
-* Minimal C++ Standard Library implementation
+* GUI Framework and Window Manager (Apollo)
 
 ## What's different about Saturn?
 
@@ -44,7 +44,7 @@ This is all handled via the virtual file system in a language agnostic way. Esse
 
 ## Userspace
 
-Saturn's userspace will be designed for a graphical environment, using a tiled compositing window manager. It, the UI framework and text renderer are still being designed. 
+Saturn's userspace will be designed for a graphical environment, using a tiled compositing window manager called Apollo. Apollo currently supports multiple tiles (application windows) in a container that can be split either horizontally or vertically. Containers can be nested inside other containers, allowing you to divide up the screen however you want. You can find Apollo in src/services/apollo.
 
 ## Testing
 
