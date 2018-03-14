@@ -44,6 +44,8 @@ namespace VirtualFileSystem {
         ReadRequest,
         ReadResult,
         Read512Result,
+        ReadStreamRequest,
+        ReadStreamResult,
         WriteRequest,
         WriteResult,
         CloseRequest,
@@ -216,6 +218,31 @@ namespace VirtualFileSystem {
         uint8_t buffer[512];
         uint32_t bytesWritten;
         bool expectMore;
+    };
+
+    struct ReadStreamRequest : IPC::Message {
+        ReadStreamRequest() {
+            messageId = static_cast<uint32_t>(MessageId::ReadStreamRequest);
+            length = sizeof(ReadStreamRequest);
+            messageNamespace = IPC::MessageNamespace::VFS;
+        }
+
+        uint32_t requestId;
+        uint32_t fileDescriptor;
+        uint32_t readLength;
+    };
+
+    struct ReadStreamResult : IPC::Message {
+        ReadStreamResult() {
+            messageId = static_cast<uint32_t>(MessageId::ReadStreamResult);
+            length = sizeof(ReadStreamResult);
+            bytesWritten = 0;
+            messageNamespace = IPC::MessageNamespace::VFS;
+        }
+
+        uint32_t requestId;
+        bool success;
+        uint32_t bytesWritten;
     };
 
     struct WriteRequest : IPC::Message {

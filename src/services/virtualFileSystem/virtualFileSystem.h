@@ -37,6 +37,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "cache.h"
 #include "messages.h"
 
+namespace Kernel {
+    struct ShareMemoryInvitation;
+    struct ShareMemoryResult;
+}
+
 namespace VirtualFileSystem {
 
     struct PendingOpen {
@@ -59,6 +64,7 @@ namespace VirtualFileSystem {
 
     struct PendingBlock {
         uint32_t index;
+        bool finishedReading {false};
     };
 
     struct PendingRead {
@@ -69,12 +75,23 @@ namespace VirtualFileSystem {
         uint32_t readLength;
     };
 
+    struct PendingStream {
+        uint32_t startingFilePosition;
+        uint32_t readLength;
+        std::vector<PendingBlock> blocks;
+        int remainingBlocks;
+        int currentBlock {0};
+        uint8_t* buffer {nullptr};
+        bool bufferShareWasSuccessful {false};
+    };
+
     enum class RequestType {
         Open,
         Create,
         Read,
         Write,
-        Seek
+        Seek,
+        Stream
     };
 
     struct PendingRequest {
@@ -87,6 +104,7 @@ namespace VirtualFileSystem {
             PendingOpen open;
             PendingOpen create;
             PendingRead read;
+            PendingStream stream;
 
     };
 
@@ -130,12 +148,16 @@ namespace VirtualFileSystem {
         void handleReadRequest(ReadRequest& request);
         void handleReadResult(ReadResult& result);
         void handleRead512Result(Read512Result& result);
+        void handleReadStreamRequest(ReadStreamRequest& request);
         void handleWriteRequest(WriteRequest& request);
         void handleWriteResult(WriteResult& result);
         void handleCloseRequest(CloseRequest& request);
         void handleSeekRequest(SeekRequest& request);
         void handleSeekResult(SeekResult& request);
         void handleSubscribeMount(SubscribeMount& request);
+
+        void handleShareMemoryInvitation(Kernel::ShareMemoryInvitation& invitation);
+        void handleShareMemoryResult(Kernel::ShareMemoryResult& result);
 
         void readDirectoryFromCache(ReadRequest& request, VirtualFileDescriptor& descriptor);
         void readFileFromCache(ReadRequest& request, VirtualFileDescriptor& descriptor);
@@ -149,6 +171,8 @@ namespace VirtualFileSystem {
         std::list<MountObserver> mountObservers;
 
     };
+
+    void completeReadStreamRequest(PendingRequest& request, VirtualFileDescriptor& descriptor);
 
     void service();
 }

@@ -809,7 +809,9 @@ namespace VirtualFileSystem {
     }
 
     void VirtualFileSystem::handleReadRequest(ReadRequest& request) {
+
         bool failed {false};
+
         if (request.fileDescriptor < openFileDescriptors.size()) {
             auto& descriptor = openFileDescriptors[request.fileDescriptor];
 
@@ -975,7 +977,8 @@ namespace VirtualFileSystem {
             return;
         }
 
-        if (pendingRequest->type != RequestType::Read) {
+        if (pendingRequest->type != RequestType::Read
+            || pendingRequest->type != RequestType::Stream) {
             printf("[VFS] Wrong request type, handleRead512Result\n");
             return;
         }
@@ -988,56 +991,79 @@ namespace VirtualFileSystem {
         bool canSend {true};
 
         if (descriptor.entry->type == Cache::Type::File) {
-            
-            if (pendingRequest->read.currentBlock < pendingRequest->read.remainingBlocks) {
+
+            if (pendingRequest->type == RequestType::Read) {
+
+                if (pendingRequest->read.currentBlock < pendingRequest->read.remainingBlocks) {
+
+                    auto file = static_cast<Cache::File*>(descriptor.entry);
+                    auto block = pendingRequest->read.blocks[pendingRequest->read.currentBlock].index;
+
+                    memcpy(file->data[block].data,
+                        result.buffer, 
+                        512);
+
+                    if (file->data[block].hasValue) {
+                        //printf("[VFS] Updating file block cache\n");
+                    }
+
+                    file->data[block].hasValue = true;
+
+                    pendingRequest->read.currentBlock++;
+
+                    if (pendingRequest->read.remainingBlocks == pendingRequest->read.currentBlock) {
+                        auto startingBlock = pendingRequest->read.filePosition / 512;
+                        auto endingBlock = (pendingRequest->read.filePosition + pendingRequest->read.readLength) / 512;
+                        auto startingByte = pendingRequest->read.filePosition % 512;
+
+                        memset(result.buffer, 0, 512);
+                        auto bytesToEnd = std::min(512 - startingByte, pendingRequest->read.readLength);
+
+                        memcpy(result.buffer, 
+                            file->data[startingBlock].data + startingByte,
+                            bytesToEnd);
+
+                        if (endingBlock != startingBlock && (pendingRequest->read.readLength - bytesToEnd) > 0) {
+                            memcpy(result.buffer + bytesToEnd,
+                                file->data[endingBlock].data,
+                                pendingRequest->read.readLength - bytesToEnd);
+                        }
+
+                        result.bytesWritten = pendingRequest->read.readLength;
+                        result.expectMore = false;
+                        canSend = true;
+
+                        SyncPositionWithCache sync;
+                        sync.fileDescriptor = descriptor.descriptor;
+                        sync.recipientId = descriptor.mountTaskId;
+                        sync.filePosition = pendingRequest->read.filePosition + pendingRequest->read.readLength;
+                        descriptor.filePosition = sync.filePosition;
+                        send(IPC::RecipientType::TaskId, &sync);
+                    }
+                    else {
+                        canSend = false;
+                    }
+                }
+            }
+            else {
+                canSend = false;
 
                 auto file = static_cast<Cache::File*>(descriptor.entry);
-                auto block = pendingRequest->read.blocks[pendingRequest->read.currentBlock].index;
+                auto block = pendingRequest->stream.blocks[pendingRequest->stream.currentBlock].index;
 
                 memcpy(file->data[block].data,
                     result.buffer, 
-                    512
-                    );
-
-                if (file->data[block].hasValue) {
-                    //printf("[VFS] Updating file block cache\n");
-                }
+                    512);
 
                 file->data[block].hasValue = true;
 
-                pendingRequest->read.currentBlock++;
+                pendingRequest->stream.currentBlock++;
+                pendingRequest->stream.remainingBlocks--;
 
-                if (pendingRequest->read.remainingBlocks == pendingRequest->read.currentBlock) {
-                    auto startingBlock = pendingRequest->read.filePosition / 512;
-                    auto endingBlock = (pendingRequest->read.filePosition + pendingRequest->read.readLength) / 512;
-                    auto startingByte = pendingRequest->read.filePosition % 512;
-
-                    memset(result.buffer, 0, 512);
-                    auto bytesToEnd = std::min(512 - startingByte, pendingRequest->read.readLength);
-
-                    memcpy(result.buffer, 
-                        file->data[startingBlock].data + startingByte,
-                        bytesToEnd);
-
-                    if (endingBlock != startingBlock && (pendingRequest->read.readLength - bytesToEnd) > 0) {
-                        memcpy(result.buffer + bytesToEnd,
-                            file->data[endingBlock].data,
-                            pendingRequest->read.readLength - bytesToEnd);
-                    }
-
-                    result.bytesWritten = pendingRequest->read.readLength;
-                    result.expectMore = false;
-                    canSend = true;
-
-                    SyncPositionWithCache sync;
-                    sync.fileDescriptor = descriptor.descriptor;
-                    sync.recipientId = descriptor.mountTaskId;
-                    sync.filePosition = pendingRequest->read.filePosition + pendingRequest->read.readLength;
-                    descriptor.filePosition = sync.filePosition;
-                    send(IPC::RecipientType::TaskId, &sync);
-                }
-                else {
-                    canSend = false;
+                if (pendingRequest->stream.remainingBlocks == 0
+                    && pendingRequest->stream.bufferShareWasSuccessful) {
+                    completeReadStreamRequest(*pendingRequest, descriptor);
+                    pendingRequests.erase(pendingRequest);
                 }
             }
         }
@@ -1052,6 +1078,80 @@ namespace VirtualFileSystem {
         }
 
         if (canSend) {
+            send(IPC::RecipientType::TaskId, &result);
+        }
+    }
+
+    void VirtualFileSystem::handleReadStreamRequest(ReadStreamRequest& request) {
+
+        bool failed {true};
+
+        if (request.fileDescriptor < openFileDescriptors.size()) {
+            auto& descriptor = openFileDescriptors[request.fileDescriptor];
+
+            if (descriptor.isOpen()) {
+                if (descriptor.entry->cacheable) {
+                    if (descriptor.entry->type == Cache::Type::File) {
+
+                        auto file = static_cast<Cache::File*>(descriptor.entry);
+                        auto currentBlock = descriptor.filePosition / 512;
+                        auto endBlock = (descriptor.filePosition + request.readLength) / 512;
+                        auto currentByte = descriptor.filePosition % 512;
+                        auto remainingBytesInBlock = std::min(512 - currentByte, request.readLength);
+                        auto blocksToRead = 0;
+
+                        PendingRequest pending;
+                        pending.id = getNextRequestId();
+                        pending.type = RequestType::Stream;
+
+                        auto currentFilePosition = currentBlock * 512;
+
+                        /*
+                        Check if the file's cache has all of the required blocks,
+                        and send read requests to populate the cache if necessary.
+                        */
+                        for (auto block = currentBlock; block <= endBlock; block++) {
+                            if (!file->data[block].hasValue) {
+                                blocksToRead++;
+                                pending.stream.blocks.push_back({block, false});
+
+                                if (currentFilePosition != (block * 512)) {
+                                    currentFilePosition = block * 512;
+                                    SyncPositionWithCache sync;
+                                    sync.fileDescriptor = descriptor.descriptor;
+                                    sync.filePosition = currentFilePosition;
+                                    sync.recipientId = descriptor.mountTaskId;
+                                    send(IPC::RecipientType::TaskId, &sync);
+                                }
+
+                                ReadRequest read;
+                                read.requestId = pending.id;
+                                read.fileDescriptor = descriptor.descriptor;
+                                read.readLength = 512;
+                                read.recipientId = descriptor.mountTaskId;
+                                send(IPC::RecipientType::TaskId, &read);
+                            }
+                        }
+
+                        pending.requesterTaskId = request.senderTaskId;
+                        pending.stream.startingFilePosition = descriptor.filePosition;
+                        pending.stream.readLength = request.readLength;
+                        pending.stream.remainingBlocks = blocksToRead;
+                        pendingRequests.push_back(pending);
+
+                        failed = false;
+                    }
+                }
+                else {
+                    //TODO: handle non-cacheable things
+                }
+            }
+        }
+
+        if (failed) {
+            ReadStreamResult result;
+            result.success = false;
+            result.recipientId = request.senderTaskId;
             send(IPC::RecipientType::TaskId, &result);
         }
     }
@@ -1216,6 +1316,115 @@ namespace VirtualFileSystem {
         }
     }
 
+    void VirtualFileSystem::handleShareMemoryInvitation(Kernel::ShareMemoryInvitation& invitation) {
+        auto request = std::find_if(begin(pendingRequests), end(pendingRequests), [&](const auto& a) {
+            return a.requesterTaskId == invitation.senderTaskId
+                && a.type == RequestType::Stream;
+        });
+
+        Kernel::ShareMemoryResponse response;
+
+        if (request != end(pendingRequests)) {
+            response.accepted = true;
+            auto buffer = new uint8_t[request->stream.readLength];
+            request->stream.buffer = buffer;
+            response.sharedAddress = reinterpret_cast<uintptr_t>(buffer);
+        }
+        else {
+            response.accepted = false;
+        }
+
+        send(IPC::RecipientType::TaskId, &response);
+    }
+
+    void completeReadStreamRequest(PendingRequest& request, VirtualFileDescriptor& descriptor) {
+        auto file = static_cast<Cache::File*>(descriptor.entry);
+
+        auto startingBlock = request.stream.startingFilePosition / 512;
+        auto endingBlock = (request.stream.startingFilePosition + request.stream.readLength) / 512;
+        auto startingByte = request.stream.startingFilePosition % 512;
+        auto bufferOffset = 0;
+        auto remainingBytes = request.stream.readLength;
+        auto buffer = request.stream.buffer;
+
+        for (auto block = startingBlock; block <= endingBlock; block++) {
+            uint32_t copiedBytes {0};
+
+            if (block == startingBlock && startingByte > 0) {
+                copiedBytes = std::min(remainingBytes, 512 - startingByte);
+
+                memcpy(buffer + bufferOffset, 
+                    file->data[block].data + startingByte,
+                    copiedBytes
+                );
+            }
+            else {
+                copiedBytes = std::min(remainingBytes, 512u);
+
+                memcpy(buffer + bufferOffset, 
+                    file->data[block].data,
+                    copiedBytes
+                );
+            }
+
+            remainingBytes -= copiedBytes;
+            bufferOffset += copiedBytes;
+        }
+
+        ReadStreamResult streamResult;
+        streamResult.success = true;
+        streamResult.bytesWritten = request.stream.readLength;
+        streamResult.recipientId = request.requesterTaskId;
+
+        send(IPC::RecipientType::TaskId, &streamResult);
+        delete request.stream.buffer;
+
+        SyncPositionWithCache sync;
+        sync.fileDescriptor = descriptor.descriptor;
+        sync.recipientId = descriptor.mountTaskId;
+        sync.filePosition = request.stream.startingFilePosition + request.stream.readLength;
+        descriptor.filePosition = sync.filePosition;
+        send(IPC::RecipientType::TaskId, &sync);
+    }
+
+    void VirtualFileSystem::handleShareMemoryResult(Kernel::ShareMemoryResult& result) {
+
+        auto request = std::find_if(begin(pendingRequests), end(pendingRequests), [&](const auto& a) {
+            return a.requesterTaskId == result.senderTaskId
+                && a.type == RequestType::Stream;
+        });
+
+        if (request != end(pendingRequests)) {
+            if (result.succeeded) {
+
+                request->stream.bufferShareWasSuccessful = true;
+
+                if (request->stream.remainingBlocks == 0) {
+
+                    if (request->virtualFileDescriptor < openFileDescriptors.size()) {
+                        auto& descriptor = openFileDescriptors[request->virtualFileDescriptor];
+
+                        completeReadStreamRequest(*request, descriptor);
+                        pendingRequests.erase(request);
+                    }
+                }
+            }
+            else {
+
+                ReadStreamResult streamResult;
+                streamResult.success = false;
+                streamResult.bytesWritten = 0;
+                streamResult.recipientId = request->requesterTaskId;
+
+                send(IPC::RecipientType::TaskId, &streamResult);
+
+                delete request->stream.buffer;
+
+                pendingRequests.erase(request);
+            }
+        }
+    }
+
     void VirtualFileSystem::readDirectoryFromCache(ReadRequest& request, VirtualFileDescriptor& descriptor) {
         ReadResult result;
         result.requestId = request.requestId;
@@ -1314,8 +1523,13 @@ namespace VirtualFileSystem {
                             break;
                         }
                         case MessageId::Read512Result: {
-                             auto result = IPC::extractMessage<Read512Result>(buffer);
+                            auto result = IPC::extractMessage<Read512Result>(buffer);
                             handleRead512Result(result);
+                            break;
+                        }
+                        case MessageId::ReadStreamRequest: {
+                            auto request = IPC::extractMessage<ReadStreamRequest>(buffer);
+                            handleReadStreamRequest(request);
                             break;
                         }
                         case MessageId::WriteRequest: {
@@ -1351,6 +1565,19 @@ namespace VirtualFileSystem {
                         default: {
                             printf("[VFS] Unhandled message id\n");
                         }
+                    }
+
+                    break;
+                }
+                case IPC::MessageNamespace::ServiceRegistry: {
+                    switch(static_cast<Kernel::MessageId>(buffer.messageId)) {
+                        case Kernel::MessageId::ShareMemoryInvitation: {
+                        }
+                        case Kernel::MessageId::ShareMemoryResult: {
+                            break;
+                        }
+                        default:
+                            break;
                     }
 
                     break;
