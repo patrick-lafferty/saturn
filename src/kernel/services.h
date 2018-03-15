@@ -255,6 +255,11 @@ namespace Kernel {
         void* start;
     };
 
+    /*
+    NOTE: For the ShareXY messages,
+    A refers to the task that wants to share memory
+    B refers to the task that A wants to share with
+    */
     struct ShareMemoryRequest : IPC::Message {
         ShareMemoryRequest() {
             messageId = static_cast<uint32_t>(MessageId::ShareMemoryRequest);
@@ -263,10 +268,30 @@ namespace Kernel {
         }
 
         uintptr_t ownerAddress;
-        uint32_t sharedTaskId;
+
+        union {
+            uint32_t sharedTaskId;
+            Kernel::ServiceType sharedServiceType;
+        };
+
+        bool recipientIsTaskId;
         uint32_t size;
     };
 
+    /*
+    Sent by ServiceRegistry on behalf of the task (A) that sent
+    the initial ShareMemoryRequest, to the task (B) that A wants
+    to share memory with.
+
+    NOTE: Since memory sharing works per-page, size is always
+    a multiple of Memory::PageSize. B must allocate page-aligned space
+    to ensure it allocates completely unused pages. Don't just allocate
+    <size> bytes, pretend you are allocating <size / PageSize> pages.
+
+    Since the starting address of the space A wants to share might
+    not be page aligned, eg its just a random buffer, ShareMemoryResult
+    will give B the offset to the start of the buffer.
+    */
     struct ShareMemoryInvitation : IPC::Message {
         ShareMemoryInvitation() {
             messageId = static_cast<uint32_t>(MessageId::ShareMemoryInvitation);
@@ -274,9 +299,19 @@ namespace Kernel {
             messageNamespace = IPC::MessageNamespace::ServiceRegistry;
         }
 
+        /*
+        Note: Always an integer multiple of Memory::PageSize.
+        Allocate a page-aligned buffer with this size.
+        */
         uint32_t size;
     };
 
+    /*
+    Upon receiving a ShareMemoryInvitation, B must send A 
+    a response, with the address of the buffer B allocated
+    when handling the invitation if accepted, or nothing
+    if not accepted.
+    */
     struct ShareMemoryResponse : IPC::Message {
         ShareMemoryResponse() {
             messageId = static_cast<uint32_t>(MessageId::ShareMemoryResponse);
@@ -288,6 +323,10 @@ namespace Kernel {
         bool accepted;
     };
 
+    /*
+    Both A and B receive ShareMemoryResult once B sends
+    a ShareMemoryResponse.
+    */
     struct ShareMemoryResult : IPC::Message {
         ShareMemoryResult() {
             messageId = static_cast<uint32_t>(MessageId::ShareMemoryResult);
@@ -297,6 +336,14 @@ namespace Kernel {
 
         uint32_t sharedTaskId;
         bool succeeded;
+
+        /*
+        Since B needs to allocate a page-aligned buffer, and A's
+        starting address might not be page aligned, this stores
+        the offset from the first page to the starting byte of
+        A's shared address.
+        */
+        uint32_t pageOffset;
     };
 
     struct KnownHardwareAddresses {
