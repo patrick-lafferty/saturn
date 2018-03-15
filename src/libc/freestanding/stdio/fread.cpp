@@ -28,6 +28,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdio.h>
 #include "file.h"
 #include <system_calls.h>
+#include <services.h>
+
+using namespace VirtualFileSystem;
 
 size_t fread(void* restrict ptr, size_t size, size_t count, FILE* restrict stream) {
 
@@ -35,45 +38,93 @@ size_t fread(void* restrict ptr, size_t size, size_t count, FILE* restrict strea
         return 0;
     }
 
-    auto maxSizePerRequest = sizeof(VirtualFileSystem::Read512Result::buffer);
+    auto maxSizePerRequest = sizeof(Read512Result::buffer);
     auto bytesRead = 0;
     auto remainingBytes = size * count;
     auto buffer = static_cast<unsigned char*>(ptr);
 
-    while (remainingBytes > 0) {
-        uint32_t length {0};
+    if (remainingBytes > 4096) {
 
-        if (maxSizePerRequest < remainingBytes) {
-            length = maxSizePerRequest;
+        ReadStreamRequest streamRequest;
+        streamRequest.fileDescriptor = stream->descriptor;
+        streamRequest.readLength = remainingBytes;
+        streamRequest.serviceType = Kernel::ServiceType::VFS;
+
+        send(IPC::RecipientType::ServiceName, &streamRequest);
+
+        Kernel::ShareMemoryRequest shareRequest;
+        shareRequest.ownerAddress = reinterpret_cast<uintptr_t>(ptr);
+        shareRequest.sharedServiceType = Kernel::ServiceType::VFS;
+        shareRequest.recipientIsTaskId = false;
+        shareRequest.size = remainingBytes;
+
+        //make sure that all the pages have been allocated before sharing them
+        memset(ptr, 0, remainingBytes);
+
+        send(IPC::RecipientType::ServiceRegistryMailbox, &shareRequest);
+
+        {
+            IPC::MaximumMessageBuffer buffer;
+            filteredReceive(&buffer, 
+                IPC::MessageNamespace::ServiceRegistry,
+                static_cast<uint32_t>(Kernel::MessageId::ShareMemoryResult));
         }
-        else {
-            length = remainingBytes;
-        }
 
-        auto result = read512Synchronous(stream->descriptor, length);
+        {
+            IPC::MaximumMessageBuffer buffer;
+            filteredReceive(&buffer,
+                IPC::MessageNamespace::VFS,
+                static_cast<uint32_t>(MessageId::ReadStreamResult));
 
-        if (result.success) {
-            
-            for (int i = 0; i < 2; i++) {
+            auto result = IPC::extractMessage<ReadStreamResult>(buffer);
 
-                memcpy(buffer + bytesRead, result.buffer, result.bytesWritten);
-                bytesRead += result.bytesWritten;
-                remainingBytes -= result.bytesWritten;
-                stream->position += result.bytesWritten;
-
-                if (result.expectMore) {
-                    IPC::MaximumMessageBuffer messageBuffer;
-                    filteredReceive(&messageBuffer, IPC::MessageNamespace::VFS, static_cast<uint32_t>(VirtualFileSystem::MessageId::Read512Result));
-
-                    result = IPC::extractMessage<VirtualFileSystem::Read512Result>(messageBuffer);
-                }
-                else {
-                    break;
-                }
+            if (result.success) {
+                //TODO: stop sharing
+                return result.bytesWritten;
+            }
+            else {
+                return 0;
             }
         }
-        else {
-            break;
+
+    }
+    else {
+
+        while (remainingBytes > 0) {
+            uint32_t length {0};
+
+            if (maxSizePerRequest < remainingBytes) {
+                length = maxSizePerRequest;
+            }
+            else {
+                length = remainingBytes;
+            }
+
+            auto result = read512Synchronous(stream->descriptor, length);
+
+            if (result.success) {
+                
+                for (int i = 0; i < 2; i++) {
+
+                    memcpy(buffer + bytesRead, result.buffer, result.bytesWritten);
+                    bytesRead += result.bytesWritten;
+                    remainingBytes -= result.bytesWritten;
+                    stream->position += result.bytesWritten;
+
+                    if (result.expectMore) {
+                        IPC::MaximumMessageBuffer messageBuffer;
+                        filteredReceive(&messageBuffer, IPC::MessageNamespace::VFS, static_cast<uint32_t>(MessageId::Read512Result));
+
+                        result = IPC::extractMessage<Read512Result>(messageBuffer);
+                    }
+                    else {
+                        break;
+                    }
+                }
+            }
+            else {
+                break;
+            }
         }
     }
 
