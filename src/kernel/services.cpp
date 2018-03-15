@@ -282,33 +282,56 @@ namespace Kernel {
         auto currentTask = currentScheduler->getTask(request.senderTaskId);
 
         ShareMemoryInvitation invitation;
-        invitation.size = request.size;
-        invitation.recipientId = request.sharedTaskId;
+        auto startTableIndex = request.ownerAddress / Memory::PageSize;
+        auto endTableIndex = (request.ownerAddress + request.size) / Memory::PageSize;
+        auto tablesRequired = 1 + (endTableIndex - startTableIndex);
 
-        send(IPC::RecipientType::TaskId, &invitation);
+        invitation.size = tablesRequired * Memory::PageSize;
+
+        if (request.recipientIsTaskId) {
+
+            invitation.recipientId = request.sharedTaskId;
+            send(IPC::RecipientType::TaskId, &invitation);
+        }
+        else {
+            invitation.serviceType = request.sharedServiceType;
+            send(IPC::RecipientType::ServiceName, &invitation);
+        }
 
         IPC::MaximumMessageBuffer buffer;
         filteredReceive(&buffer, IPC::MessageNamespace::ServiceRegistry, static_cast<uint32_t>(MessageId::ShareMemoryResponse));
 
         auto response = IPC::extractMessage<ShareMemoryResponse>(buffer);
 
+        ShareMemoryResult result;
+        result.recipientId = request.senderTaskId;
+        result.sharedTaskId = request.sharedTaskId;
+        result.succeeded = response.accepted;
+        result.senderTaskId = request.senderTaskId;
+        result.pageOffset = request.ownerAddress % Memory::PageSize;
+
+        currentTask->mailbox->send(&result);
+
         if (response.accepted) {
-            auto recipientTask = currentScheduler->getTask(request.sharedTaskId);
+            Task* recipientTask;
+
+            if (request.recipientIsTaskId) {
+                recipientTask = currentScheduler->getTask(request.sharedTaskId);
+            }
+            else {
+                auto serviceId = ServiceRegistryInstance->getServiceTaskId(request.sharedServiceType);
+                recipientTask = currentScheduler->getTask(serviceId);
+            }
 
             currentTask->virtualMemoryManager->sharePages(
                 request.ownerAddress,
                 recipientTask->virtualMemoryManager,
                 response.sharedAddress,
-                request.size / Memory::PageSize
+                1 + request.size / Memory::PageSize
             );
+
+            recipientTask->mailbox->send(&result);
         }
-
-        ShareMemoryResult result;
-        result.recipientId = request.senderTaskId;
-        result.sharedTaskId = request.sharedTaskId;
-        result.succeeded = response.accepted;
-
-        currentTask->mailbox->send(&result);
     }
 
     uint32_t ServiceRegistry::getServiceTaskId(ServiceType type) {
