@@ -978,7 +978,7 @@ namespace VirtualFileSystem {
         }
 
         if (pendingRequest->type != RequestType::Read
-            || pendingRequest->type != RequestType::Stream) {
+            && pendingRequest->type != RequestType::Stream) {
             printf("[VFS] Wrong request type, handleRead512Result\n");
             return;
         }
@@ -1102,7 +1102,9 @@ namespace VirtualFileSystem {
 
                         PendingRequest pending;
                         pending.id = getNextRequestId();
+                        pending.requesterTaskId = request.senderTaskId;
                         pending.type = RequestType::Stream;
+                        pending.virtualFileDescriptor = request.fileDescriptor;
 
                         auto currentFilePosition = currentBlock * 512;
 
@@ -1114,30 +1116,26 @@ namespace VirtualFileSystem {
                             if (!file->data[block].hasValue) {
                                 blocksToRead++;
                                 pending.stream.blocks.push_back({block, false});
+                            }
+                        }
 
-                                if (currentFilePosition != (block * 512)) {
-                                    currentFilePosition = block * 512;
-                                    SyncPositionWithCache sync;
-                                    sync.fileDescriptor = descriptor.descriptor;
-                                    sync.filePosition = currentFilePosition;
-                                    sync.recipientId = descriptor.mountTaskId;
-                                    send(IPC::RecipientType::TaskId, &sync);
-                                }
+                        pending.stream.startingFilePosition = descriptor.filePosition;
+                        pending.stream.readLength = request.readLength;
+                        pending.stream.remainingBlocks = blocksToRead;
+                        pendingRequests.push_back(pending);
+
+                        for (auto block = currentBlock; block <= endBlock; block++) {
+                            if (!file->data[block].hasValue) {
 
                                 ReadRequest read;
                                 read.requestId = pending.id;
                                 read.fileDescriptor = descriptor.descriptor;
                                 read.readLength = 512;
                                 read.recipientId = descriptor.mountTaskId;
+                                read.filePosition = block * 512;
                                 send(IPC::RecipientType::TaskId, &read);
                             }
                         }
-
-                        pending.requesterTaskId = request.senderTaskId;
-                        pending.stream.startingFilePosition = descriptor.filePosition;
-                        pending.stream.readLength = request.readLength;
-                        pending.stream.remainingBlocks = blocksToRead;
-                        pendingRequests.push_back(pending);
 
                         failed = false;
                     }
@@ -1323,10 +1321,12 @@ namespace VirtualFileSystem {
         });
 
         Kernel::ShareMemoryResponse response;
+        response.recipientId = invitation.senderTaskId;
 
         if (request != end(pendingRequests)) {
             response.accepted = true;
-            auto buffer = new uint8_t[request->stream.readLength];
+            auto space = invitation.size;
+            auto buffer = (uint8_t*)aligned_alloc(0x1000, space);
             request->stream.buffer = buffer;
             response.sharedAddress = reinterpret_cast<uintptr_t>(buffer);
         }
@@ -1343,7 +1343,7 @@ namespace VirtualFileSystem {
         auto startingBlock = request.stream.startingFilePosition / 512;
         auto endingBlock = (request.stream.startingFilePosition + request.stream.readLength) / 512;
         auto startingByte = request.stream.startingFilePosition % 512;
-        auto bufferOffset = 0;
+        auto bufferOffset = request.stream.pageOffset;
         auto remainingBytes = request.stream.readLength;
         auto buffer = request.stream.buffer;
 
@@ -1377,7 +1377,8 @@ namespace VirtualFileSystem {
         streamResult.recipientId = request.requesterTaskId;
 
         send(IPC::RecipientType::TaskId, &streamResult);
-        delete request.stream.buffer;
+        //free request.stream.buffer;
+
 
         SyncPositionWithCache sync;
         sync.fileDescriptor = descriptor.descriptor;
@@ -1398,6 +1399,7 @@ namespace VirtualFileSystem {
             if (result.succeeded) {
 
                 request->stream.bufferShareWasSuccessful = true;
+                request->stream.pageOffset = result.pageOffset;
 
                 if (request->stream.remainingBlocks == 0) {
 
@@ -1572,8 +1574,13 @@ namespace VirtualFileSystem {
                 case IPC::MessageNamespace::ServiceRegistry: {
                     switch(static_cast<Kernel::MessageId>(buffer.messageId)) {
                         case Kernel::MessageId::ShareMemoryInvitation: {
+                            auto message = IPC::extractMessage<Kernel::ShareMemoryInvitation>(buffer);
+                            handleShareMemoryInvitation(message);
+                            break;
                         }
                         case Kernel::MessageId::ShareMemoryResult: {
+                            auto message = IPC::extractMessage<Kernel::ShareMemoryResult>(buffer);
+                            handleShareMemoryResult(message);
                             break;
                         }
                         default:

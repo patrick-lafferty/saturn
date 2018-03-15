@@ -83,6 +83,7 @@ namespace VirtualFileSystem {
         int currentBlock {0};
         uint8_t* buffer {nullptr};
         bool bufferShareWasSuccessful {false};
+        uint32_t pageOffset;
     };
 
     enum class RequestType {
