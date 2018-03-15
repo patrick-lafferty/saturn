@@ -1,5 +1,6 @@
-/*
-Copyright (c) 2017, Patrick Lafferty
+%if 0
+
+Copyright (c) 2018, Patrick Lafferty
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -24,19 +25,25 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
 ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-#include <string.h>
-__attribute__((section(".setup")))
-void* prekernel_memset(void* destination, int fillByte, size_t count) {
-    if (destination == nullptr) {
-        return destination;
-    }
 
-    auto buffer = static_cast<unsigned char*>(destination);
+%endif
 
-    while (count--) {
-        *buffer++ = fillByte;
-    }
+section .text
+global memset
+memset:
 
-    return destination;
-}
+push ebp
+mov ebp, esp
+
+mov edi, [ebp + 8]
+mov eax, [ebp + 12]
+mov ecx, [ebp + 16]
+
+rep stosb
+
+mov eax, edi
+
+mov esp, ebp
+pop ebp
+
+ret
