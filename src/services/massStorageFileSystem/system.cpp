@@ -388,7 +388,10 @@ namespace MassStorageFileSystem {
         /*
         TODO: for now assume fileSystems[0] is the only mount
         */
-        fileSystems[0]->readFile(request.fileDescriptor, request.requestId, request.readLength);
+        fileSystems[0]->readFile(request.fileDescriptor, 
+            request.requestId, 
+            request.readLength,
+            request.filePosition);
     }
 
     void MassStorageController::handleSeekRequest(::VirtualFileSystem::SeekRequest& request) {

@@ -235,7 +235,7 @@ namespace MassStorageFileSystem::Ext2 {
         bool receiveSector() override;
         uint32_t openFile(uint32_t index, uint32_t requestId) override;
         void readDirectory(uint32_t index, uint32_t requestId) override;
-        void readFile(uint32_t index, uint32_t requestId, uint32_t byteCount) override;
+        void readFile(uint32_t index, uint32_t requestId, uint32_t byteCount, uint32_t position) override;
         void seekFile(uint32_t index, uint32_t requestId, uint32_t offset, Origin origin) override;
         void syncPositionWithCache(uint32_t index, uint32_t position) override;
 

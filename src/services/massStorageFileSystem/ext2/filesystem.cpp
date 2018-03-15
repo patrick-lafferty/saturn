@@ -295,6 +295,10 @@ namespace MassStorageFileSystem::Ext2 {
             finishRequest();
             return;
         }
+
+        if (0 != request.position) {
+            descriptor->filePosition = request.position;
+        }
         
         if (!request.read.finishedReadingBlocks) {
             request.read.finishedReadingBlocks = true;
@@ -642,7 +646,7 @@ namespace MassStorageFileSystem::Ext2 {
         queuedRequests.push(request);
     }
 
-    void Ext2FileSystem::readFile(uint32_t index, uint32_t requestId, uint32_t byteCount) {
+    void Ext2FileSystem::readFile(uint32_t index, uint32_t requestId, uint32_t byteCount, uint32_t position) {
 
         #ifdef VERBOSE_DEBUG
         printf("[ATA] readFile\n");
@@ -653,6 +657,7 @@ namespace MassStorageFileSystem::Ext2 {
         request.type = RequestType::ReadFile;
         request.descriptor = index;
         request.length = byteCount;
+        request.position = position;
 
         if (queuedRequests.empty()) {
             handleRequest(request);

@@ -182,11 +182,13 @@ namespace VirtualFileSystem {
             messageId = static_cast<uint32_t>(MessageId::ReadRequest);
             length = sizeof(ReadRequest);
             messageNamespace = IPC::MessageNamespace::VFS;
+            filePosition = 0;
         }
 
         uint32_t requestId;
         uint32_t fileDescriptor;
         uint32_t readLength;
+        uint32_t filePosition;
     };
 
     struct ReadResult : IPC::Message {
