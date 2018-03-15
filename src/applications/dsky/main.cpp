@@ -156,6 +156,9 @@ public:
 
                 break;
             }
+            case IPC::MessageNamespace::ServiceRegistry: {
+                break;
+            }
             default: {
                 printf("[Dsky] Unhandled message namespace\n");
             }

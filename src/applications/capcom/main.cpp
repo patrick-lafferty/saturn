@@ -267,6 +267,9 @@ public:
 
                 break;
             }
+            case IPC::MessageNamespace::ServiceRegistry: {
+                break;
+            }
             default: {
                 printf("[Capcom] Unhandled message namespace\n");
             }
