@@ -34,16 +34,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace Apollo {
 
     Window* createWindow(uint32_t width, uint32_t height) {
-        auto windowBuffer = new WindowBuffer;
-        auto address = reinterpret_cast<uintptr_t>(windowBuffer);
 
         CreateWindow create;
         create.serviceType = Kernel::ServiceType::WindowManager;
-        create.bufferAddress = address;
         create.width = width;
         create.height = height;
         
         send(IPC::RecipientType::ServiceName, &create);
+
+        uintptr_t address {0};
 
         {
             IPC::MaximumMessageBuffer buffer;
@@ -52,6 +51,7 @@ namespace Apollo {
                 static_cast<uint32_t>(Kernel::MessageId::ShareMemoryInvitation));
 
             auto invitation = IPC::extractMessage<Kernel::ShareMemoryInvitation>(buffer);
+            address = reinterpret_cast<uintptr_t>(aligned_alloc(0x1000, invitation.size));
             Kernel::ShareMemoryResponse response;
             response.sharedAddress = address;
             response.accepted = true;
@@ -65,6 +65,8 @@ namespace Apollo {
                 IPC::MessageNamespace::WindowManager, 
                 static_cast<uint32_t>(MessageId::CreateWindowSucceeded));
         }
+
+        auto windowBuffer = reinterpret_cast<WindowBuffer*>(address);
 
         return new Window(windowBuffer, width, height);
     }

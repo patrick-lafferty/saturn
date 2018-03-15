@@ -72,6 +72,7 @@ namespace Apollo {
         */
         Application(uint32_t width, uint32_t height, bool startHidden = false) 
             : screenWidth {width}, screenHeight {height} {
+
             window = createWindow(width, height);
 
             if (window == nullptr) {
