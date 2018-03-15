@@ -626,7 +626,9 @@ namespace VirtualFileSystem {
                 auto file = static_cast<Cache::File*>(pendingRequest.open.entry);
 
                 if (file->data.empty()) {
-                    file->data.resize(1 + result.fileLength / 512);
+                    auto blockCount = 1 + result.fileLength / 512;
+                    file->data.resize(blockCount);
+                    file->hasValue.resize(blockCount);
                 }
             }
 
@@ -835,7 +837,7 @@ namespace VirtualFileSystem {
                         auto currentByte = descriptor.filePosition % 512;
                         auto remainingBytesInBlock = std::min(512 - currentByte, request.readLength);
 
-                        if (file->data[currentBlock].hasValue) {
+                        if (file->hasValue[currentBlock]) {
                             Read512Result result;
                             result.success = true;
                             memcpy(result.buffer, file->data[currentBlock].data + currentByte, remainingBytesInBlock);
@@ -845,7 +847,7 @@ namespace VirtualFileSystem {
                             descriptor.filePosition += result.bytesWritten;
 
                             if (endBlock != currentBlock) {
-                                if (file->data[endBlock].hasValue) {
+                                if (file->hasValue[endBlock]) {
                                     auto remaining = request.readLength - remainingBytesInBlock;
                                     memcpy(result.buffer + remainingBytesInBlock, 
                                         file->data[endBlock].data,
@@ -999,15 +1001,13 @@ namespace VirtualFileSystem {
                     auto file = static_cast<Cache::File*>(descriptor.entry);
                     auto block = pendingRequest->read.blocks[pendingRequest->read.currentBlock].index;
 
-                    memcpy(file->data[block].data,
-                        result.buffer, 
-                        512);
+                    if (!file->hasValue[block]) {
+                        memcpy(file->data[block].data,
+                            result.buffer, 
+                            512);
 
-                    if (file->data[block].hasValue) {
-                        //printf("[VFS] Updating file block cache\n");
+                        file->hasValue[block] = true;
                     }
-
-                    file->data[block].hasValue = true;
 
                     pendingRequest->read.currentBlock++;
 
@@ -1051,11 +1051,14 @@ namespace VirtualFileSystem {
                 auto file = static_cast<Cache::File*>(descriptor.entry);
                 auto block = pendingRequest->stream.blocks[pendingRequest->stream.currentBlock].index;
 
-                memcpy(file->data[block].data,
-                    result.buffer, 
-                    512);
+                if (!file->hasValue[block]) {
 
-                file->data[block].hasValue = true;
+                    memcpy(file->data[block].data,
+                        result.buffer, 
+                        512);
+
+                    file->hasValue[block] = true;
+                }
 
                 pendingRequest->stream.currentBlock++;
                 pendingRequest->stream.remainingBlocks--;
@@ -1113,7 +1116,7 @@ namespace VirtualFileSystem {
                         and send read requests to populate the cache if necessary.
                         */
                         for (auto block = currentBlock; block <= endBlock; block++) {
-                            if (!file->data[block].hasValue) {
+                            if (!file->hasValue[block]) {
                                 blocksToRead++;
                                 pending.stream.blocks.push_back({block, false});
                             }
@@ -1125,7 +1128,7 @@ namespace VirtualFileSystem {
                         pendingRequests.push_back(pending);
 
                         for (auto block = currentBlock; block <= endBlock; block++) {
-                            if (!file->data[block].hasValue) {
+                            if (!file->hasValue[block]) {
 
                                 ReadRequest read;
                                 read.requestId = pending.id;
@@ -1338,38 +1341,14 @@ namespace VirtualFileSystem {
     }
 
     void completeReadStreamRequest(PendingRequest& request, VirtualFileDescriptor& descriptor) {
+
         auto file = static_cast<Cache::File*>(descriptor.entry);
-
-        auto startingBlock = request.stream.startingFilePosition / 512;
-        auto endingBlock = (request.stream.startingFilePosition + request.stream.readLength) / 512;
-        auto startingByte = request.stream.startingFilePosition % 512;
-        auto bufferOffset = request.stream.pageOffset;
-        auto remainingBytes = request.stream.readLength;
         auto buffer = request.stream.buffer;
+        auto source = reinterpret_cast<uint8_t*>(&file->data[0]);
 
-        for (auto block = startingBlock; block <= endingBlock; block++) {
-            uint32_t copiedBytes {0};
-
-            if (block == startingBlock && startingByte > 0) {
-                copiedBytes = std::min(remainingBytes, 512 - startingByte);
-
-                memcpy(buffer + bufferOffset, 
-                    file->data[block].data + startingByte,
-                    copiedBytes
-                );
-            }
-            else {
-                copiedBytes = std::min(remainingBytes, 512u);
-
-                memcpy(buffer + bufferOffset, 
-                    file->data[block].data,
-                    copiedBytes
-                );
-            }
-
-            remainingBytes -= copiedBytes;
-            bufferOffset += copiedBytes;
-        }
+        memcpy(buffer + request.stream.pageOffset,
+            source + request.stream.startingFilePosition,
+            request.stream.readLength);
 
         ReadStreamResult streamResult;
         streamResult.success = true;
@@ -1378,7 +1357,6 @@ namespace VirtualFileSystem {
 
         send(IPC::RecipientType::TaskId, &streamResult);
         //free request.stream.buffer;
-
 
         SyncPositionWithCache sync;
         sync.fileDescriptor = descriptor.descriptor;

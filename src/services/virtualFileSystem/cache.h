@@ -65,11 +65,11 @@ namespace VirtualFileSystem::Cache {
 
     struct DataBlock {
         uint8_t data[512];
-        bool hasValue {false};
     };
 
     struct File : Entry {
         std::vector<DataBlock> data;
+        std::vector<bool> hasValue;
     };
 
     struct Directory : Entry {
