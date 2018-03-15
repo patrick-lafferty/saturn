@@ -204,9 +204,6 @@ namespace LibC_Implementation {
 
             nextFreeChunk = nextChunk;
         }
-        else {
-            uhoh();
-        }
 
         return reinterpret_cast<void*>(allocatedAddress);
     }

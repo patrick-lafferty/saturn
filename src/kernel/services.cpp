@@ -327,7 +327,7 @@ namespace Kernel {
                 request.ownerAddress,
                 recipientTask->virtualMemoryManager,
                 response.sharedAddress,
-                1 + request.size / Memory::PageSize
+                tablesRequired
             );
 
             recipientTask->mailbox->send(&result);

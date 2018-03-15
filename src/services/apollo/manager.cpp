@@ -405,6 +405,7 @@ namespace Apollo {
         ShareMemoryRequest share;
         share.ownerAddress = reinterpret_cast<uintptr_t>(windowBuffer);
         share.sharedTaskId = message.senderTaskId;
+        share.recipientIsTaskId = true;
         share.size = 800 * 600 * 4;
 
         send(IPC::RecipientType::ServiceRegistryMailbox, &share);
