@@ -178,8 +178,15 @@ namespace MassStorageFileSystem::Ext2 {
         Inode,
         DirectBlock,
         IndirectBlockList,
+        SinglyIndirectBlockListCache,
         DoublyIndirectBlockList,
         IndirectBlock
+    };
+
+    enum class CacheStatus {
+        NotCaching,
+        ReadSinglyIndirectLower,
+        ReadSinglyIndirectHigher,
     };
 
     struct ReadRequest {
@@ -194,6 +201,7 @@ namespace MassStorageFileSystem::Ext2 {
         ReadProgress state;
         uint32_t currentBlockId;
         uint32_t indirectSectorsRemaining;
+        CacheStatus cacheStatus {CacheStatus::NotCaching};
     };
 
     enum class RequestType {
@@ -214,12 +222,22 @@ namespace MassStorageFileSystem::Ext2 {
         uint32_t position {0};
     };
 
+    struct CachedBlock {
+        uint8_t data[1024];
+        bool hasLowerHalf {false};
+        bool hasHigherHalf {false};
+        int cacheHits {0};
+    };
+
     struct FileDescriptor {
         Inode inode;
         uint32_t id;
         uint32_t filePosition;
         uint32_t requestId;
         uint32_t length;
+
+        CachedBlock singlyIndirectCache;
+        CachedBlock doublyIndirectCache;
     };
 
     struct RequestMeta {
@@ -254,6 +272,9 @@ namespace MassStorageFileSystem::Ext2 {
         void handleReadDirectoryRequest(ReadRequest& request);
         void handleReadFileRequest(Request& request);
         void handleReadInodeRequest(Request& request);
+
+        void readSinglyIndirectList(FileDescriptor* descriptor, Request& request, uint32_t* blockIds);
+        void afterFileReadBlock(Request& request);
 
         SuperBlock superBlock;
         //ReadState readState;

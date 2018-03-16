@@ -288,6 +288,51 @@ namespace MassStorageFileSystem::Ext2 {
         }
     }
 
+    void Ext2FileSystem::readSinglyIndirectList(FileDescriptor* descriptor, Request& request, uint32_t* blockIds) {
+        auto meta = prepareFileReadRequest(descriptor, request.read.remainingBytes);
+        auto startingId = meta.startingBlock - 12;
+
+        if (meta.startingBlock > 268) {
+            startingId = (meta.startingBlock - 268) % 256;
+
+            if (startingId >= 128) {
+                startingId -= 128;
+            }
+
+            meta.blocksToRead = std::min(255u, meta.blocksToRead);
+        }
+
+        for (auto i = 0u; i < meta.blocksToRead; i++) {
+            auto blockId = startingId + i;
+            auto id = *(blockIds + blockId);
+
+            if (id == 0) {
+                break;
+            }
+
+            auto remainingSectorsInBlock = sectorsPerBlock - (meta.startingPosition % blockSize) / sectorSize;
+            auto sectorCount = std::min(sectorsPerBlock, meta.remainingSectors); 
+            auto lba = blockIdToLba(id);
+
+            lba += (sectorsPerBlock - remainingSectorsInBlock);
+            blockDevice->queueReadSector(lba, sectorCount);
+            meta.remainingSectors -= sectorCount;
+
+            request.read.remainingBlocks++;
+            meta.startingPosition = ((meta.startingPosition / blockSize) + 1) * blockSize;
+
+            if (meta.remainingSectors == 0) {
+                break;
+            }
+        }
+
+        request.read.indirectSectorsRemaining--;
+
+        if (request.read.indirectSectorsRemaining == 0) {
+            request.read.state = ReadProgress::IndirectBlock;
+        }
+    }
+
     void Ext2FileSystem::handleReadFileRequest(Request& request) {
         auto descriptor = findDescriptor(request.descriptor, openFileDescriptors);
 
@@ -308,12 +353,14 @@ namespace MassStorageFileSystem::Ext2 {
             request.read.totalRemainingSectors = meta.remainingSectors;
             request.read.remainingBlocks = meta.blocksToRead;
             request.read.remainingSectorsInBlock = sectorsPerBlock - (descriptor->filePosition % blockSize) / sectorSize;
+            request.read.remainingBytes = request.length;
 
             for (auto i = 0u; i < meta.blocksToRead; i++) {
                 auto blockId = meta.startingBlock + i;
                 auto remainingSectorsInBlock = sectorsPerBlock - (meta.startingPosition % blockSize) / sectorSize;               
                 auto sectorCount = std::min(remainingSectorsInBlock, meta.remainingSectors);
                 meta.remainingSectors -= sectorCount;
+                meta.startingPosition = ((meta.startingPosition / blockSize) + 1) * blockSize;
 
                 if (blockId < 12) {
                     auto lba = blockIdToLba(descriptor->inode.directBlock[blockId]);
@@ -328,15 +375,43 @@ namespace MassStorageFileSystem::Ext2 {
                     if (blockId > 128) {
                         lba++;
                         indirectSectors = 1;
+
+                        if (!descriptor->singlyIndirectCache.hasHigherHalf) {
+                            request.read.cacheStatus = CacheStatus::ReadSinglyIndirectHigher;
+                        }
                     }
                     else if ((blockId + sectorCount / sectorsPerBlock) < 128) {
                         indirectSectors = 1;
+
+                        if (!descriptor->singlyIndirectCache.hasLowerHalf) {
+                            request.read.cacheStatus = CacheStatus::ReadSinglyIndirectLower;
+                        }
+                    }
+                    else {
+                        auto pause = 0;
                     }
 
-                    blockDevice->queueReadSector(lba, indirectSectors);
                     request.read.indirectSectorsRemaining = indirectSectors;
                     request.read.totalRemainingSectors += indirectSectors;
                     request.read.remainingSectorsInBlock = indirectSectors;
+
+                    if (request.read.cacheStatus == CacheStatus::NotCaching) {
+                        uint32_t* blockIds = reinterpret_cast<uint32_t*>(descriptor->singlyIndirectCache.data);
+
+                        if (blockId > 128) {
+                            blockIds += 128;
+                        }
+
+                        descriptor->singlyIndirectCache.cacheHits++;
+
+                        readSinglyIndirectList(descriptor, request, blockIds);
+                        afterFileReadBlock(request);
+                        return;
+                    }
+                    else {
+                        blockDevice->queueReadSector(lba, indirectSectors);
+                    }
+
                     break;
                 }
                 else if (blockId > 268 && blockId < 65804) {
@@ -372,20 +447,18 @@ namespace MassStorageFileSystem::Ext2 {
                     break;
                 }
 
-                meta.startingPosition = ((meta.startingPosition / blockSize) + 1) * blockSize;
             }
         
             if (meta.startingBlock < 12) {
                 request.read.state = ReadProgress::DirectBlock;
             }
-            else if (meta.startingBlock < 266) {
+            else if (meta.startingBlock < 266 && request.read.cacheStatus != CacheStatus::NotCaching) {
                 request.read.state = ReadProgress::IndirectBlockList;
             }
             else {
                 request.read.state = ReadProgress::DoublyIndirectBlockList;
             }
 
-            request.read.remainingBytes = request.length;
         }
         else {
 
@@ -410,49 +483,21 @@ namespace MassStorageFileSystem::Ext2 {
                 }
                 case ReadProgress::IndirectBlockList: {
 
+                    if (request.read.cacheStatus == CacheStatus::ReadSinglyIndirectLower) {
+                        memcpy(descriptor->singlyIndirectCache.data,
+                            buffer, 
+                            sectorSize);
+                        descriptor->singlyIndirectCache.hasLowerHalf = true;
+                    }
+                    else if (request.read.cacheStatus == CacheStatus::ReadSinglyIndirectHigher) {
+                        memcpy(descriptor->singlyIndirectCache.data + sectorSize,
+                            buffer, 
+                            sectorSize);
+                        descriptor->singlyIndirectCache.hasHigherHalf = true;
+                    }
+
                     auto blockIds = reinterpret_cast<uint32_t*>(buffer);
-                    auto meta = prepareFileReadRequest(descriptor, request.read.remainingBytes);
-                    auto startingId = meta.startingBlock - 12;
-
-                    if (meta.startingBlock > 268) {
-                        startingId = (meta.startingBlock - 268) % 256;
-
-                        if (startingId >= 128) {
-                            startingId -= 128;
-                        }
-
-                        meta.blocksToRead = std::min(255u, meta.blocksToRead);
-                    }
-
-                    for (auto i = 0u; i < meta.blocksToRead; i++) {
-                        auto blockId = startingId + i;
-                        auto id = *(blockIds + blockId);
-
-                        if (id == 0) {
-                            break;
-                        }
-
-                        auto remainingSectorsInBlock = sectorsPerBlock - (meta.startingPosition % blockSize) / sectorSize;
-                        auto sectorCount = std::min(sectorsPerBlock, meta.remainingSectors); 
-                        auto lba = blockIdToLba(id);
-
-                        lba += (sectorsPerBlock - remainingSectorsInBlock);
-                        blockDevice->queueReadSector(lba, sectorCount);
-                        meta.remainingSectors -= sectorCount;
-
-                        request.read.remainingBlocks++;
-                        meta.startingPosition = ((meta.startingPosition / blockSize) + 1) * blockSize;
-
-                        if (meta.remainingSectors == 0) {
-                            break;
-                        }
-                    }
-
-                    request.read.indirectSectorsRemaining--;
-
-                    if (request.read.indirectSectorsRemaining == 0) {
-                        request.read.state = ReadProgress::IndirectBlock;
-                    }
+                    readSinglyIndirectList(descriptor, request, blockIds); 
 
                     break;
                 }
@@ -508,23 +553,28 @@ namespace MassStorageFileSystem::Ext2 {
                 }
             }
 
-            request.read.totalRemainingSectors--;
-            request.read.remainingSectorsInBlock--;
+            afterFileReadBlock(request);
+        }
+    }
 
-            if (request.read.remainingSectorsInBlock == 0) {
-                request.read.currentBlockId++;
-                request.read.remainingSectorsInBlock = std::min(sectorsPerBlock, request.read.totalRemainingSectors);
+    void Ext2FileSystem::afterFileReadBlock(Request& request) {
 
-                if (request.read.state == ReadProgress::DirectBlock
-                    && request.read.currentBlockId == 12) {
-                    request.read.state = ReadProgress::IndirectBlockList;
-                }
-                //todo: doubly indirect block list
-            }      
+        request.read.totalRemainingSectors--;
+        request.read.remainingSectorsInBlock--;
 
-            if (request.read.totalRemainingSectors == 0) {
-                finishRequest();
+        if (request.read.remainingSectorsInBlock == 0) {
+            request.read.currentBlockId++;
+            request.read.remainingSectorsInBlock = std::min(sectorsPerBlock, request.read.totalRemainingSectors);
+
+            if (request.read.state == ReadProgress::DirectBlock
+                && request.read.currentBlockId == 12) {
+                request.read.state = ReadProgress::IndirectBlockList;
             }
+            //todo: doubly indirect block list
+        }      
+
+        if (request.read.totalRemainingSectors == 0) {
+            finishRequest();
         }
     }
 
@@ -601,6 +651,8 @@ namespace MassStorageFileSystem::Ext2 {
         descriptor.filePosition = 0;
         descriptor.requestId = requestId;
         descriptor.id = nextFileDescriptor++;
+        memset(descriptor.singlyIndirectCache.data, 0, blockSize);
+        memset(descriptor.doublyIndirectCache.data, 0, blockSize);
 
         openFileDescriptors.push_back(descriptor);
 

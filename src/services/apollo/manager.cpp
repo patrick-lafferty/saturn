@@ -373,7 +373,7 @@ namespace Apollo {
         linearFrameBuffer = reinterpret_cast<uint32_t volatile*>(framebufferAddress);
 
         launch("/bin/dsky.bin");
-        capcomTaskId = launch("/bin/capcom.bin");
+        //capcomTaskId = launch("/bin/capcom.bin");
 
         /*
         Display 0 is capcom
