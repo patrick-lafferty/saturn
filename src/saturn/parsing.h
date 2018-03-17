@@ -29,5 +29,71 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <string_view>
 #include <vector>
+#include <variant>
+#include <string>
 
 std::vector<std::string_view> split(std::string_view s, char separator, bool includeSeparator = false);
+
+namespace Saturn::Parse {
+
+	enum class SExpType {
+		Symbol,
+		IntLiteral,
+		FloatLiteral,
+		StringLiteral,
+		BoolLiteral,
+		List
+	};
+
+	struct SExpression {
+		SExpression(SExpType t)
+			: type {t} {}
+
+		SExpType type;
+	};
+
+	struct Symbol : SExpression {
+		Symbol() : SExpression(SExpType::Symbol) {}
+
+		std::string value;
+	};
+
+	template<class T>
+	struct Literal : SExpression {
+		T value;
+
+	protected:
+
+		Literal(SExpType t) : SExpression(t) {}
+	};
+
+	struct IntLiteral : Literal<int> {
+		IntLiteral() : Literal(SExpType::IntLiteral) {}
+	};
+
+	struct FloatLiteral : Literal<float> {
+		FloatLiteral() : Literal(SExpType::FloatLiteral) {}
+	};
+
+	struct StringLiteral : Literal<char*> {
+		StringLiteral() : Literal(SExpType::StringLiteral) {}
+	};
+
+	struct BoolLiteral : Literal<bool> {
+		BoolLiteral() : Literal(SExpType::BoolLiteral) {}
+	};
+
+	struct List : SExpression {
+		List() : SExpression(SExpType::List) {}
+
+		std::vector<SExpression*> items;
+	};
+
+	struct ParseError {
+		char message[60];
+		int lineNumber;
+		int columnNumber;
+	};
+
+	std::variant<SExpression*, ParseError> read(std::string_view input);
+}

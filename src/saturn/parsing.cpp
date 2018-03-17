@@ -26,6 +26,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "parsing.h"
+#include <stack>
 
 using namespace std;
 
@@ -57,4 +58,62 @@ vector<string_view> split(string_view s, char separator, bool includeSeparator) 
     }
 
     return substrings;
+}
+
+namespace Saturn::Parse {
+
+    bool bracketMatches(char opener, char closer) {
+        if (opener == '(') {
+            return closer == ')';
+        }
+        else if (opener == '[') {
+            return closer == ']';
+        }
+        else if (opener == '{') {
+            return closer == '}';
+        }
+        else {
+            return false;
+        }
+    }
+
+    std::variant<SExpression*, ParseError> read(std::string_view input) {
+        auto length = input.length();
+        std::stack<char> brackets;
+        std::stack<SExpression*> expressions;
+        int currentLine {0};
+        int currentColumn {0};
+        List topLevelExpressions;
+
+        for (unsigned int i = 0u; i < length; i++) {
+            auto c = input[i];
+            currentColumn++;
+
+            if (c == '(' || c == '[' || c == '{') {
+                brackets.push(c);
+                expressions.push(new List);
+            }
+            else if (c == ')' || c == ']' || c == '}') {
+                if (brackets.empty() || expressions.empty()) {
+                    return ParseError {"Unexpected closing bracket", currentLine, currentColumn};
+                }
+
+                if (!bracketMatches(brackets.top(), c)) {
+                    return ParseError {"Mismatched bracket", currentLine, currentColumn};
+                }
+
+                auto completedExpression = expressions.top();
+                expressions.pop();
+
+                if (expressions.empty()) {
+                    topLevelExpressions.items.push_back(completedExpression);
+                }
+                else {
+                    
+                }
+            }
+        }
+
+        return new List{topLevelExpressions};
+    }
 }
