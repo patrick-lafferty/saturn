@@ -44,6 +44,39 @@ interface for the Apollo Guidance Computer.
 
 using namespace Apollo;
 using namespace Apollo::Debug;
+using namespace Saturn::Parse;
+
+void visit(SExpression*);
+void visit(IntLiteral& i) {
+
+}
+
+void visit(Symbol& s) {
+
+}
+
+void visit(List& s) {
+    for (auto i : s.items) {
+        visit(i);
+    }
+}
+
+void visit(SExpression* s) {
+    switch (s->type) {
+        case SExpType::IntLiteral: {
+            visit(*static_cast<IntLiteral*>(s));
+            break;
+        }
+        case SExpType::Symbol: {
+            visit(*static_cast<Symbol*>(s));
+            break;
+        }
+        case SExpType::List: {
+            visit(*static_cast<List*>(s));
+            break;
+        }
+    }
+}
 
 class Dsky : public Application<Dsky> {
 public:
@@ -59,6 +92,26 @@ public:
         memset(inputBuffer, '\0', 500);
         drawPrompt(); 
         maxInputWidth = screenWidth - promptLayout.bounds.width;
+
+        const char* data = R"(
+(grid
+    (margin 5)
+
+    (children 
+        (label "Menu")
+        (textbox )
+        (grid 
+            (auto-columns 1 1)
+            (column-gap 3))))
+        )";
+
+        auto result = read(data);
+
+        if (std::holds_alternative<SExpression*>(result)) {
+            auto topLevel = std::get<SExpression*>(result);
+
+            visit(topLevel);
+        }
     }
 
     void drawInput() {

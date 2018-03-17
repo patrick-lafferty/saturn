@@ -27,6 +27,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "parsing.h"
 #include <stack>
+#include <ctype.h>
+#include <stdlib.h>
 
 using namespace std;
 
@@ -77,6 +79,13 @@ namespace Saturn::Parse {
         }
     }
 
+    enum class LiteralType {
+        Int,
+        Float,
+        String,
+        None
+    };
+
     std::variant<SExpression*, ParseError> read(std::string_view input) {
         auto length = input.length();
         std::stack<char> brackets;
@@ -89,27 +98,170 @@ namespace Saturn::Parse {
             auto c = input[i];
             currentColumn++;
 
-            if (c == '(' || c == '[' || c == '{') {
-                brackets.push(c);
-                expressions.push(new List);
-            }
-            else if (c == ')' || c == ']' || c == '}') {
-                if (brackets.empty() || expressions.empty()) {
-                    return ParseError {"Unexpected closing bracket", currentLine, currentColumn};
-                }
+            switch (c) {
+                case '(':
+                case '[':
+                case '{': {
 
-                if (!bracketMatches(brackets.top(), c)) {
-                    return ParseError {"Mismatched bracket", currentLine, currentColumn};
+                    brackets.push(c);
+                    expressions.push(new List);
+                    break;
                 }
+                case ')':
+                case ']':
+                case '}': {
 
-                auto completedExpression = expressions.top();
-                expressions.pop();
+                    if (brackets.empty() || expressions.empty()) {
+                        return ParseError {"Unexpected closing bracket", currentLine, currentColumn};
+                    }
 
-                if (expressions.empty()) {
-                    topLevelExpressions.items.push_back(completedExpression);
+                    if (!bracketMatches(brackets.top(), c)) {
+                        return ParseError {"Mismatched bracket", currentLine, currentColumn};
+                    }
+
+                    auto completedExpression = expressions.top();
+                    expressions.pop();
+
+                    if (expressions.empty()) {
+                        topLevelExpressions.items.push_back(completedExpression);
+                    }
+                    else {
+                        if (expressions.top()->type == SExpType::List) {
+                            auto list = static_cast<List*>(expressions.top());
+                            list->items.push_back(completedExpression);
+                        }
+                        else {
+                            return ParseError {"Expected list", currentLine, currentColumn};
+                        }
+                    }
+
+                    break;
                 }
-                else {
-                    
+                case '\n': {
+                    currentLine++;
+                    currentColumn = 0;
+                    break;
+                }
+                case ' ':
+                case '\t': {
+                    continue;
+                }
+                default: {
+
+                    if (expressions.top()->type != SExpType::List) {
+                        return ParseError {"Expected list", currentLine, currentColumn};
+                    }
+
+                    auto list = static_cast<List*>(expressions.top());
+
+                    LiteralType type {LiteralType::None};
+
+                    if (isdigit(c)) {
+                        type = LiteralType::Int;
+                    }
+                    else if (c == '"') {
+                        type = LiteralType::String;
+                    }
+                    else {
+                        auto substring = input.substr(i);
+
+                        if (substring.compare(0, 4, "true") == 0
+                            && substring.find_first_of(" )]}") == 4) {
+                            list->items.push_back(new BoolLiteral {true});
+                            i += 4;
+                            continue;
+                        }
+                        else if (substring.compare(0, 5, "false") == 0
+                            && substring.find_first_of(" )]}") == 5) {
+                            list->items.push_back(new BoolLiteral {false});
+                            i += 5;
+                            continue;
+                        }
+                    }
+
+                    bool done {false};
+                    auto j = i;
+
+                    for (; j < length; j++) {
+
+                        c = input[j];
+
+                        switch (type) {
+                            case LiteralType::Int: {
+                                
+                                if (c == '.') {
+                                    type = LiteralType::Float;
+                                }
+                                else if (!isdigit(c)) {
+                                    done = true;
+                                    break;
+                                }
+
+                                break;
+                            }
+                            case LiteralType::Float: {
+
+                                if (c == '.') {
+                                    return ParseError {"Unexpected second '.' in float literal", currentLine, currentColumn};
+                                }
+                                else if (!isdigit(c)) {
+                                    done = true;
+                                    break;
+                                }
+
+                                break;
+                            }
+                            case LiteralType::String: {
+                                if (c == '"' && j > i) {
+                                    j++;
+                                    done = true;
+                                }
+
+                                break;
+                            }
+                            case LiteralType::None: {
+                                if (c == '(' || c == ')' || c == '\n' || c == ' ' || c == '\t') {
+                                    done = true;
+                                }
+
+                                break;
+                            }
+                        }
+
+                        if (done) {
+                            break;
+                        }
+                    }
+
+                    auto value = input.substr(i, j - i);
+
+                    switch (type) {
+                        case LiteralType::Int: {
+                            list->items.push_back(new IntLiteral {strtol(value.data(), nullptr, 10)});
+                            break;
+                        }
+                        case LiteralType::Float: {
+                            return ParseError {"Float parsing not implemented", currentLine, currentColumn};
+                            break;
+                        }
+                        case LiteralType::String: {
+                            list->items.push_back(new StringLiteral {value});
+                            break;
+                        }
+                        case LiteralType::None: {
+                            auto symbol = new Symbol {value};
+                            list->items.push_back(symbol);
+
+                            for (auto s : list->items) {
+                                auto pause = 0;
+                            }
+                            break;
+                        }
+                    }
+
+                    i += (j - i) - 1;
+
+                    break;
                 }
             }
         }

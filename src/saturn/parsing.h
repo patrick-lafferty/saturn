@@ -30,7 +30,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string_view>
 #include <vector>
 #include <variant>
-#include <string>
 
 std::vector<std::string_view> split(std::string_view s, char separator, bool includeSeparator = false);
 
@@ -46,6 +45,7 @@ namespace Saturn::Parse {
 	};
 
 	struct SExpression {
+		SExpression() {}
 		SExpression(SExpType t)
 			: type {t} {}
 
@@ -53,9 +53,15 @@ namespace Saturn::Parse {
 	};
 
 	struct Symbol : SExpression {
+
 		Symbol() : SExpression(SExpType::Symbol) {}
 
-		std::string value;
+		Symbol(std::string_view value) 
+			: SExpression(SExpType::Symbol) {
+			this->value = value;
+		}
+
+		std::string_view value;
 	};
 
 	template<class T>
@@ -68,19 +74,31 @@ namespace Saturn::Parse {
 	};
 
 	struct IntLiteral : Literal<int> {
-		IntLiteral() : Literal(SExpType::IntLiteral) {}
+		IntLiteral(int value = 0) 	
+			: Literal(SExpType::IntLiteral) {
+			this->value = value;
+		}
 	};
 
 	struct FloatLiteral : Literal<float> {
-		FloatLiteral() : Literal(SExpType::FloatLiteral) {}
+		FloatLiteral(float value = 0.f) 
+			: Literal(SExpType::FloatLiteral) {
+			this->value = value;
+		}
 	};
 
-	struct StringLiteral : Literal<char*> {
-		StringLiteral() : Literal(SExpType::StringLiteral) {}
+	struct StringLiteral : Literal<std::string_view> {
+		StringLiteral(std::string_view value = {}) 
+			: Literal(SExpType::StringLiteral) {
+			this->value = value;
+		}
 	};
 
 	struct BoolLiteral : Literal<bool> {
-		BoolLiteral() : Literal(SExpType::BoolLiteral) {}
+		BoolLiteral(bool value = false) 
+			: Literal(SExpType::BoolLiteral) {
+			this->value = value;
+		}
 	};
 
 	struct List : SExpression {
