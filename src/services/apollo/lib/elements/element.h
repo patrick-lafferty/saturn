@@ -30,12 +30,30 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace Apollo::Elements {
 
+	struct Bounds {
+		int x, y;
+		int width, height;
+	};
+
+	class Container;
+
     /*
     Base class for all elements
     */
     class UIElement {
     public:
 
+		int getDesiredWidth();
+		int getDesiredHeight();
+
+		Container* getParent();
+		void setParent(Container* parent);
+
+		Bounds getBounds();
+
     private:
+
+		int desiredWidth, desiredHeight;
+		Container* parent;
     };
 }

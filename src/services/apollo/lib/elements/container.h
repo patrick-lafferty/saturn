@@ -29,8 +29,28 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
 #include "element.h"
+#include <variant>
+#include <vector>
 
 namespace Apollo::Elements {
+
+	class Control;
+
+	enum class MetaNamespace {
+		Grid		
+	};
+
+	struct MetaData {
+		MetaNamespace containerNamespace;
+		uint32_t metaId;
+
+		int value;
+	};
+
+	struct ContainedElement {
+		std::variant<Control*, Container*> element;
+		Bounds bounds;
+	};
 
     /*
     A Container is an element that arranges multiple child
@@ -38,6 +58,13 @@ namespace Apollo::Elements {
     */
     class Container : public UIElement {
     public:
+
+		virtual void addChild(Control* control) = 0;
+		virtual void addChild(Control* control, const std::vector<MetaData>& meta) = 0;
+		virtual void addChild(Container* container) = 0;
+		virtual void addChild(Container* container, const std::vector<MetaData>& meta) = 0;
+
+		virtual void layoutChildren() = 0;
 
     private:
     };
