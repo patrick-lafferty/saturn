@@ -134,6 +134,9 @@ namespace Apollo {
             });
         }
 
+        //TODO: store an Observable*
+        //two way binding
+
     private:
 
         /*

@@ -41,6 +41,7 @@ interface for the Apollo Guidance Computer.
 #include <services/keyboard/messages.h>
 #include <algorithm>
 #include <saturn/parsing.h>
+#include <services/apollo/lib/databinding.h>
 
 using namespace Apollo;
 using namespace Apollo::Debug;
@@ -77,78 +78,6 @@ void visit(SExpression* s) {
         }
     }
 }
-
-#include <functional>
-
-template<class T>
-class Observable {
-public:
-
-    /*void setValue(T value) {
-        propagateValue(value);
-    }*/
-
-    void subscribe(std::function<void()> s) {
-        propagateValue = s;
-    }
-
-    std::function<T(void)> makeGetter() {
-        return [&]() {return value;};
-    }
-
-    std::function<void()> propagateValue;
-
-    T value;
-};
-
-template<class T>
-class ObservableCollection
-    : Observable<T> {
-public:
-
-    void add() {}
-};
-
-template<class T, class B, class C>
-class Bindable {
-public:
-
-    /*void setValue(C value) {
-        if (owner) {
-            owner->onChange(binding);
-        }
-
-        this->value = value;
-    }*/
-
-    void notifyChange() {
-        if (owner) {
-            owner->onChange(binding);
-        }
-    }
-
-    C getValue() {
-        getter();
-    }
-
-    void bindTo(Observable<C>& o) {
-        o.subscribe([&]() {
-            notifyChange();
-        });
-
-        getter = o.makeGetter();
-    }
-
-    Bindable(T* owner, B binding)
-        : owner {owner}, binding {binding} {}
-
-    T* owner;
-    B binding;
-    //C value;
-    std::function<C(void)> getter;
-
-    using ValueType = C;
-};
 
 class TextBox {
 public:
@@ -212,9 +141,6 @@ void test() {
 
         if constexpr(std::is_same<char*, BindingType>::value) {
             if (name.compare("commandLine")) {
-                /*a.subscribe([=](auto value) {
-                    binding->setValue(value);
-                });*/
                 binding->bindTo(a);
             }
 
@@ -222,10 +148,6 @@ void test() {
         else if constexpr(std::is_same<int, BindingType>::value) {
 
             if (name.compare("availableCommands")) {
-                /*b.subscribe([=](auto value) {
-                    binding->setValue(value);
-                });*/
-                //binding->bindTo(b);
                 binding->bindTo(c);
             }
         }
