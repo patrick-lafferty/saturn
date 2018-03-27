@@ -26,14 +26,21 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#pragma once
-
 #include "grid.h"
+#include <algorithm>
 
 namespace Apollo::Elements {
 
+    Grid::Grid() {
+
+        calculateGridDimensions();
+    }
+
     void Grid::addChild(Control* control) {
-        addChild({control}); 
+        GridElement element;
+        element.element = control;
+
+        addChild(element); 
     }
 
     void Grid::addChild(Control* control, const std::vector<MetaData>& meta) {
@@ -45,7 +52,10 @@ namespace Apollo::Elements {
     }
 
     void Grid::addChild(Container* container) {
-        addChild({container});
+        GridElement element;
+        element.element = container;
+
+        addChild(element);
     }
 
     void Grid::addChild(Container* container, const std::vector<MetaData>& meta) {
@@ -80,6 +90,45 @@ namespace Apollo::Elements {
         }
     }
 
+    void allocateDefinitionSpace(std::vector<RowColumnDefinition>& definitions, int unallocatedSpace) {
+        int totalProportionalUnits = 0;
+
+        for (auto& definition : definitions) {
+            if (definition.unit == Unit::Fixed) {
+                if (unallocatedSpace > 0) {
+                    auto space = std::min(unallocatedSpace, definition.desiredSpace);
+                    definition.actualSpace = space;
+                    unallocatedSpace -= space;
+                }
+                else {
+                    break;
+                }
+            }
+            else {
+                totalProportionalUnits += definition.desiredSpace;
+            }
+        }
+
+        if (totalProportionalUnits > 0 
+            && unallocatedSpace > 0) {
+
+            auto proportionalSpace = unallocatedSpace / totalProportionalUnits;
+            
+            for (auto& definition : definitions) {
+                if (definition.unit == Unit::Proportional) {
+                    definition.actualSpace = proportionalSpace * definition.desiredSpace;
+                }
+            }
+        }
+    }
+
+    void Grid::calculateGridDimensions() {
+        auto bounds = getBounds();
+
+        allocateDefinitionSpace(rows, bounds.height);
+        allocateDefinitionSpace(columns, bounds.width);
+    }
+
     void Grid::applyMetaData(GridElement& element, const std::vector<MetaData>& meta) {
 
         for (auto& data : meta) {
@@ -89,11 +138,13 @@ namespace Apollo::Elements {
 
             switch (static_cast<GridMetaId>(data.metaId)) {
                 case GridMetaId::Row: {
-                    element.row = data.value;
+                    element.row = std::max(0, 
+                        std::min(data.value, static_cast<int>(rows.size()) - 1));
                     break;
                 }
                 case GridMetaId::Column: {
-                    element.column = data.value;
+                    element.column = std::max(0, 
+                        std::min(data.value, static_cast<int>(columns.size()) - 1));
                     break;
                 }
             }

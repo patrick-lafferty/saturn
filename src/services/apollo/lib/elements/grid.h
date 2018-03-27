@@ -43,12 +43,25 @@ namespace Apollo::Elements {
         int row {0}, column {0};
     };
 
+    enum class Unit {
+        Proportional,
+        Fixed
+    };
+
+    struct RowColumnDefinition {
+        Unit unit;
+        int desiredSpace {0};
+        int actualSpace {0};
+    };
+
     /*
     A Grid is a container that arranges multiple child
     elements in rows and columns.
     */
     class Grid : public Container {
     public:
+
+        Grid();
 
 		virtual void addChild(Control* control) override;
 		virtual void addChild(Control* control, const std::vector<MetaData>& meta) override;
@@ -59,10 +72,12 @@ namespace Apollo::Elements {
 
     private:
         
+        void calculateGridDimensions();
         void addChild(GridElement element);
         void applyMetaData(GridElement& element, const std::vector<MetaData>& meta);
 
         std::vector<GridElement> children;
-
+        std::vector<RowColumnDefinition> rows;
+        std::vector<RowColumnDefinition> columns;
     };
 }
