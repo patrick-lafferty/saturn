@@ -268,4 +268,26 @@ namespace Saturn::Parse {
 
         return new List{topLevelExpressions};
     }
+
+    std::optional<Constructor> getConstructor(SExpression* s) {
+        if (s->type != SExpType::List) {
+            return {};
+        }
+
+        auto values = static_cast<List*>(s);
+
+        if (values->items.empty()) {
+            return {};
+        }
+
+        if (values->items[0]->type != SExpType::Symbol) {
+            return {};
+        }
+
+        return Constructor {static_cast<Symbol*>(values->items[0]), values};
+    }
+
+    bool Constructor::startsWith(const char* str) {
+        return name->value.compare(str) == 0;
+    }
 }

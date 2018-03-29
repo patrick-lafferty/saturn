@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string_view>
 #include <vector>
 #include <variant>
+#include <optional>
 
 std::vector<std::string_view> split(std::string_view s, char separator, bool includeSeparator = false);
 
@@ -113,5 +114,24 @@ namespace Saturn::Parse {
 		int columnNumber;
 	};
 
+	struct Constructor {
+		Symbol* name;
+		List* values;
+
+		bool startsWith(const char* str);
+
+		template<typename T>
+		std::optional<T> get(int index, SExpType type) {
+			if (values->items[index]->type == type) {
+				return {static_cast<T>(values->items[index])};
+			}
+			else {
+				return {};
+			}
+		}
+	};
+
 	std::variant<SExpression*, ParseError> read(std::string_view input);
+
+	std::optional<Constructor> getConstructor(SExpression* s);
 }
