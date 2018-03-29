@@ -29,6 +29,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
 #include "container.h"
+#include <optional>
+
+namespace Saturn::Parse {
+    struct SExpression;
+}
 
 namespace Apollo::Elements {
 
@@ -52,7 +57,16 @@ namespace Apollo::Elements {
         Unit unit;
         int desiredSpace {0};
         int actualSpace {0};
+        int startingPosition {0};
     };
+
+    struct GridConfiguration {
+        std::vector<RowColumnDefinition> rows;
+        std::vector<RowColumnDefinition> columns;
+        Saturn::Parse::SExpression* items;
+    };
+
+    std::optional<GridConfiguration> parseGrid(Saturn::Parse::SExpression* grid);
 
     /*
     A Grid is a container that arranges multiple child
@@ -61,7 +75,7 @@ namespace Apollo::Elements {
     class Grid : public Container {
     public:
 
-        Grid();
+        Grid(GridConfiguration config);
 
 		virtual void addChild(Control* control) override;
 		virtual void addChild(Control* control, const std::vector<MetaData>& meta) override;

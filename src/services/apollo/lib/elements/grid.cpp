@@ -28,10 +28,100 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "grid.h"
 #include <algorithm>
+#include <saturn/parsing.h>
+
+using namespace Saturn::Parse;
 
 namespace Apollo::Elements {
 
-    Grid::Grid() {
+    bool parseRowColumn(List* config, std::vector<RowColumnDefinition>& definitions,
+        const char* proportional, const char* fixed) {
+
+        if (config->items.size() == 1) {
+            return false;
+        }
+
+        auto count = static_cast<int>(config->items.size());
+        for (int i = 1; i < count; i++) {
+            if (auto constructor = getConstructor(config->items[i])) {
+                auto& c = constructor.value();
+
+                if (c.values->items.size() != 2) {
+                    return false;
+                }
+
+                if (auto value = c.get<IntLiteral*>(1, SExpType::IntLiteral)) {
+                    if (c.startsWith(proportional)) {
+                        definitions.push_back({Unit::Proportional, value.value()->value});
+                    }
+                    else if (c.startsWith(fixed)) {
+                        definitions.push_back({Unit::Fixed, value.value()->value});
+                    }
+                    else {
+                        return false;
+                    }
+                }
+                else {
+                    return false;
+                }
+            }
+            else {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    std::optional<GridConfiguration> parseGrid(SExpression* grid) {
+        GridConfiguration config;
+
+        if (grid->type != SExpType::List) {
+            return {};
+        }
+
+        bool first = true;
+        for (auto s : static_cast<List*>(grid)->items) {
+            if (first) {
+                first = false;
+
+                if (s->type != SExpType::Symbol
+                    || static_cast<Symbol*>(s)->value.compare("grid") != 0) {
+                    return {};
+                }
+
+                continue;
+            }
+
+            if (auto constructor = getConstructor(s)) {
+                auto& c = constructor.value();
+
+                if (c.startsWith("rows")) {
+                    if (!parseRowColumn(c.values, config.rows, "proportional-height", "fixed-height")) {
+                        return {};
+                    }
+                }
+                else if (c.startsWith("columns")) {
+                    if (!parseRowColumn(c.values, config.columns, "proportional-width", "fixed-width")) {
+                        return {};
+                    }
+                }
+                else if (c.startsWith("items")) {
+                    config.items = c.values;
+                }
+            }
+            else {
+                return {};
+            }
+        }
+
+        return config;
+    }
+
+    Grid::Grid(GridConfiguration config) {
+
+        rows = std::move(config.rows);
+        columns = std::move(config.columns);
 
         calculateGridDimensions();
     }
@@ -66,9 +156,14 @@ namespace Apollo::Elements {
         addChild(element);
     }
 
+    Bounds getChildBounds(RowColumnDefinition& row, RowColumnDefinition& column) {
+        return {column.startingPosition, row.startingPosition,
+                column.actualSpace, row.actualSpace};
+    }
+
     void Grid::addChild(GridElement element) {
+        element.bounds = getChildBounds(rows[element.row], columns[element.column]);
         children.push_back(element);
-        layoutChildren();
     }
 
     void Grid::layoutChildren() {
@@ -77,15 +172,17 @@ namespace Apollo::Elements {
             return;
         }
 
-        auto bounds = getBounds();
+        calculateGridDimensions();
 
         for (auto& child : children) {
+            child.bounds = getChildBounds(rows[child.row], columns[child.column]);
+
             if (std::holds_alternative<Control*>(child.element)) {
                 auto control = std::get<Control*>(child.element);
-                child.bounds = bounds;
             }
             else {
                 auto container = std::get<Container*>(child.element);
+                container->layoutChildren();
             }
         }
     }
@@ -119,6 +216,13 @@ namespace Apollo::Elements {
                     definition.actualSpace = proportionalSpace * definition.desiredSpace;
                 }
             }
+        }
+
+        int currentPosition = 0;
+
+        for (auto& definition : definitions) {
+            definition.startingPosition = currentPosition;
+            currentPosition += definition.actualSpace;
         }
     }
 
