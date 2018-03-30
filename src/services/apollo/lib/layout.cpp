@@ -30,14 +30,89 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "elements/grid.h"
 #include "elements/label.h"
 
+using namespace Saturn::Parse;
+
 namespace Apollo::Elements {
+
+    bool parseGridMeta(Constructor grid, std::vector<MetaData>& meta) {
+        auto count = grid.values->items.size();
+
+        if (count <= 2) {
+            return false;
+        }
+
+        for (auto i = 1u; i < count; i++) {
+            bool failed = true;
+
+            if (auto maybeConstructor = getConstructor(grid.values->items[i])) {
+                auto& constructor = maybeConstructor.value();
+
+                if (constructor.startsWith("row") 
+                    && constructor.length == 2) {
+                    if (auto value = constructor.get<IntLiteral*>(1, SExpType::IntLiteral)) {
+                        meta.push_back({MetaNamespace::Grid, static_Cast<int>(GridMetaId::Row), value->value});
+                        failed = false;
+                    }
+                }
+                else if (constructor.startsWith("column")
+                    && constructor.length == 2) {
+                    if (auto value = constructor.get<IntLiteral*>(1, SExpType::IntLiteral)) {
+                        meta.push_back({MetaNamespace::Grid, static_Cast<int>(GridMetaId::Column), value->value});
+                        failed = false;
+                    }
+                }
+            }
+
+            if (failed) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+	std::optional<std::vector<MetaData>> parseMeta(List* config) {
+
+        if (config->items.size() <= 2) {
+            return {};
+        }
+
+        std::vector<MetaData> meta;
+
+        for (auto i = 1u; i < config->items.size(); i++) {
+            if (auto maybeConstructor = getConstructor(config->items[i])) {
+                auto& constructor = maybeConstructor.value();
+
+                if (constructor.startsWith("grid")) {
+                    auto success = parseGridMeta(constructor, meta);
+
+                    if (!success) {
+                        return {};
+                    }
+                }
+            }
+        }
+
+        return meta;
+    }
 
     std::optional<UIElement*> createElement(Container* parent, KnownElements type, Constructor constructor) {
         switch (type) {
             case KnownElements::Label: {
                 if (auto config = parseLabel(constructor.values)) {
                     auto label = new Label(config.value();
-                    parent->addChild(label);
+
+                    if (config.meta != nullptr) {
+                        if (auto meta = parseMeta(config.meta)) {
+                            parent->addChild(label, meta.value());
+                        }
+                        else {
+                            parent->addChild(label);
+                        }
+                    }
+                    else {
+                        parent->addChild(label);
+                    }
 
                     return label;
                 }
