@@ -28,11 +28,19 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
+namespace Saturn::Parse {
+	struct List;
+}
+
 namespace Apollo::Elements {
 
 	struct Bounds {
 		int x, y;
 		int width, height;
+	};
+
+	struct Configuration {
+		Saturn::Parse::List* meta;
 	};
 
 	class Container;

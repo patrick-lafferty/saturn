@@ -43,6 +43,8 @@ namespace Apollo::Elements {
 
         auto count = static_cast<int>(config->items.size());
         for (int i = 1; i < count; i++) {
+            bool failed = true;
+            
             if (auto constructor = getConstructor(config->items[i])) {
                 auto& c = constructor.value();
 
@@ -53,19 +55,16 @@ namespace Apollo::Elements {
                 if (auto value = c.get<IntLiteral*>(1, SExpType::IntLiteral)) {
                     if (c.startsWith(proportional)) {
                         definitions.push_back({Unit::Proportional, value.value()->value});
+                        failed = false;
                     }
                     else if (c.startsWith(fixed)) {
                         definitions.push_back({Unit::Fixed, value.value()->value});
+                        failed = false;
                     }
-                    else {
-                        return false;
-                    }
-                }
-                else {
-                    return false;
                 }
             }
-            else {
+
+            if (failed) {
                 return false;
             }
         }

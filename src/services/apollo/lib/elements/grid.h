@@ -60,7 +60,7 @@ namespace Apollo::Elements {
         int startingPosition {0};
     };
 
-    struct GridConfiguration {
+    struct GridConfiguration : Configuration {
         std::vector<RowColumnDefinition> rows;
         std::vector<RowColumnDefinition> columns;
         Saturn::Parse::SExpression* items;

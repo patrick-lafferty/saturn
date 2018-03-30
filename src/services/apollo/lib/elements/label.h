@@ -38,7 +38,7 @@ namespace Saturn::Parse {
 
 namespace Apollo::Elements {
 
-    struct LabelConfiguration {
+    struct LabelConfiguration : Configuration {
         Saturn::Parse::StringLiteral* caption;
     };
 
