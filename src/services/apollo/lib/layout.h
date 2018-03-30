@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include <vector>
+#include <optional>
 
 namespace Saturn::Parse {
     struct SExpression;
@@ -44,5 +44,7 @@ namespace Apollo::Elements {
         Label
     };
 
-    class Container* loadLayout(Saturn::Parse::SExpression* root);
+    class Container;
+
+    std::optional<Container*> loadLayout(Saturn::Parse::SExpression* root);
 }

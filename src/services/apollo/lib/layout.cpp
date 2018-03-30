@@ -31,14 +31,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace Apollo::Elements {
 
-    UIElement* createElement(Container* parent, KnownElements type, Constructor constructor) {
+    std::optional<UIElement*> createElement(Container* parent, KnownElements type, Constructor constructor) {
         switch (type) {
             case KnownElements::Label: {
                 break;
             }
         }
 
-        return nullptr;
+        return {};
     }
 
     std::optional<std::variant<KnownContainers, KnownElements>>
@@ -55,7 +55,7 @@ namespace Apollo::Elements {
         }
     }
 
-    Container* createContainerItems(Container* parent, std::vector<SExpression*>& items) {
+    bool createContainerItems(Container* parent, std::vector<SExpression*>& items) {
         for (auto item : items) {
             if (auto c = getConstructor(item)) {
                 auto childConstructor = c.value();
@@ -66,58 +66,66 @@ namespace Apollo::Elements {
                     if (std::holds_variant<KnownContainers>(childType) {
                         auto child = createContainer(parent, std::get<KnownContainers>(childType), childConstructor);
 
-                        if (child == nullptr) {
-                            //TODO: leak, see below
-                            return nullptr;
+                        if (!child) {
+                            return false;
                         }
                     }
                     else {
                         auto child = createElement(parent, std::get<KnownElements>(childType), childConstructor);
 
-                        if (child == nullptr) {
-                            //TODO: leak, see below
-                            return nullptr;
+                        if (!child) {
+                            return false;
                         }
                     }
                 }
+                else {
+                    return false;
+                }
             }  
             else {
-                //TODO: memory leak - grid and possible children
-                return nullptr;
+                return false;
             }
         }
 
-        return parent;
+        return true;
     }
 
-    Container* createContainer(KnownContainers type, Constructor constructor) {
+    std::optional<Container*> createContainer(KnownContainers type, Constructor constructor) {
         switch (type) {
             case KnownContainers::Grid: {
                 if (auto config = parseGrid(constructor.values)) {
                     auto grid = new Grid(config.value());
-                    return createContainerItems(grid, config.items);                    
+                    auto success = createContainerItems(grid, config.items);                    
+
+                    if (success) {
+                        return grid;
+                    }
+                    else {
+                        delete grid;
+                    }
                 }
 
                 break;
             }
         }
 
-        return nullptr;            
+        return {};            
     }
 
-    Container* createContainer(Container* parent, KnownContainers type, Constructor constructor) {
-        auto container = createContainer(type, constructor);
+    std::optional<Container*> createContainer(Container* parent, KnownContainers type, Constructor constructor) {
+        auto maybeContainer = createContainer(type, constructor);
 
-        if (constainer != nullptr) {
+        if (maybeContainer) {
+            auto container = maybeContainer.value();
             parent->addChild(container);
             return parent;
         }
         else {
-            return nullptr;
+            return {};
         }
     }
 
-    Container* loadLayout(SExpression* root) {
+    std::optional<Container*> loadLayout(SExpression* root) {
         Layout layout;
 
         if (auto c = getConstructor(root)) {
@@ -130,11 +138,11 @@ namespace Apollo::Elements {
                     return createContainer(std::get<KnownContainers>(type), constructor);
                 }
                 else {
-                    return nullptr;
+                    return {};
                 }
             }
         }
 
-        return nullptr;
+        return {};
     }
 }
