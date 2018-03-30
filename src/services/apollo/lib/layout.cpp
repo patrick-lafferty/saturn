@@ -28,12 +28,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "layout.h"
 #include <saturn/parsing.h>
 #include "elements/grid.h"
+#include "elements/label.h"
 
 namespace Apollo::Elements {
 
     std::optional<UIElement*> createElement(Container* parent, KnownElements type, Constructor constructor) {
         switch (type) {
             case KnownElements::Label: {
+                if (auto config = parseLabel(constructor.values)) {
+                    auto label = new Label(config.value();
+                    parent->addChild(label);
+
+                    return label;
+                }
+
                 break;
             }
         }
