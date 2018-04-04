@@ -142,4 +142,29 @@ namespace Apollo {
         //this->height = height;
     }
     
+    void Window::addChild(Elements::UIElement*) {
+
+    }
+
+    void Window::addChild(Elements::UIElement*, const std::vector<Elements::MetaData>&) {
+
+    }
+
+    void Window::addChild(Elements::Container* container) {
+        child = container;
+    }
+
+    void Window::addChild(Elements::Container* container, const std::vector<Elements::MetaData>&) {
+        child = container;
+    }
+
+    void Window::layoutChildren() {
+        if (child != nullptr) {
+            child->layoutChildren();
+        }
+    }
+
+    Elements::Bounds Window::getChildBounds(const Elements::UIElement* child) {
+        return {0, 0, (int)width, 600};
+    }
 }

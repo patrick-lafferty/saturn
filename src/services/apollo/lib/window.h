@@ -28,6 +28,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
 #include <stdint.h>
+#include <vector>
+#include "elements/container.h"
 
 namespace Apollo {
 
@@ -46,7 +48,7 @@ namespace Apollo {
     gets copied to the back buffer with blitBackBuffer, which
     is a shared memory buffer from the Window Manager
     */
-    class Window {
+    class Window : public Elements::Container {
     public:
 
         Window(WindowBuffer* buffer, uint32_t width, uint32_t height); 
@@ -76,6 +78,14 @@ namespace Apollo {
 
         void resize(uint32_t width, uint32_t height);
 
+		virtual void addChild(Elements::UIElement* element) override;
+		virtual void addChild(Elements::UIElement* element, const std::vector<Elements::MetaData>& meta) override;
+		virtual void addChild(Elements::Container* container) override;
+		virtual void addChild(Elements::Container* container, const std::vector<Elements::MetaData>& meta) override;
+
+		virtual void layoutChildren() override;
+		virtual Elements::Bounds getChildBounds(const Elements::UIElement* child) override;
+
     private:
 
         WindowBuffer* buffer;
@@ -84,6 +94,7 @@ namespace Apollo {
         uint32_t width/*, height*/;
         bool dirty;
         DirtyArea dirtyArea;
+        Elements::Container* child; 
     };
 
     Window* createWindow(uint32_t width, uint32_t height);
