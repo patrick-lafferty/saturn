@@ -46,5 +46,5 @@ namespace Apollo::Elements {
 
     class Container;
 
-    std::optional<Container*> loadLayout(Saturn::Parse::SExpression* root);
+    std::optional<Container*> loadLayout(Saturn::Parse::SExpression* root, Container* window);
 }

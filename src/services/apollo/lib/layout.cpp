@@ -49,15 +49,17 @@ namespace Apollo::Elements {
 
                 if (constructor.startsWith("row") 
                     && constructor.length == 2) {
-                    if (auto value = constructor.get<IntLiteral*>(1, SExpType::IntLiteral)) {
-                        meta.push_back({MetaNamespace::Grid, static_Cast<int>(GridMetaId::Row), value->value});
+                    if (auto maybeValue = constructor.get<IntLiteral*>(1, SExpType::IntLiteral)) {
+                        auto value = maybeValue.value();
+                        meta.push_back({MetaNamespace::Grid, static_cast<int>(GridMetaId::Row), value->value});
                         failed = false;
                     }
                 }
                 else if (constructor.startsWith("column")
                     && constructor.length == 2) {
-                    if (auto value = constructor.get<IntLiteral*>(1, SExpType::IntLiteral)) {
-                        meta.push_back({MetaNamespace::Grid, static_Cast<int>(GridMetaId::Column), value->value});
+                    if (auto maybeValue = constructor.get<IntLiteral*>(1, SExpType::IntLiteral)) {
+                        auto value = maybeValue.value();
+                        meta.push_back({MetaNamespace::Grid, static_cast<int>(GridMetaId::Column), value->value});
                         failed = false;
                     }
                 }
@@ -99,8 +101,9 @@ namespace Apollo::Elements {
     std::optional<UIElement*> createElement(Container* parent, KnownElements type, Constructor constructor) {
         switch (type) {
             case KnownElements::Label: {
-                if (auto config = parseLabel(constructor.values)) {
-                    auto label = new Label(config.value();
+                if (auto maybeConfig = parseLabel(constructor.values)) {
+                    auto config = maybeConfig.value();
+                    auto label = new Label(config);
 
                     if (config.meta != nullptr) {
                         if (auto meta = parseMeta(config.meta)) {
@@ -138,7 +141,16 @@ namespace Apollo::Elements {
         }
     }
 
-    bool createContainerItems(Container* parent, std::vector<SExpression*>& items) {
+    std::optional<Container*> createContainer(Container* parent, KnownContainers type, Constructor constructor);
+
+    bool createContainerItems(Container* parent, SExpression* itemList) {
+
+        if (itemList->type != SExpType::List) {
+            return false;
+        }
+
+        std::vector<SExpression*>& items = static_cast<List*>(itemList)->items;
+
         for (auto item : items) {
             if (auto c = getConstructor(item)) {
                 auto childConstructor = c.value();
@@ -146,7 +158,7 @@ namespace Apollo::Elements {
                 if (auto maybeChildType = getConstructorType(childConstructor)) {
                     auto childType = maybeChildType.value();
 
-                    if (std::holds_variant<KnownContainers>(childType) {
+                    if (std::holds_alternative<KnownContainers>(childType)) {
                         auto child = createContainer(parent, std::get<KnownContainers>(childType), childConstructor);
 
                         if (!child) {
@@ -176,8 +188,9 @@ namespace Apollo::Elements {
     std::optional<Container*> createContainer(KnownContainers type, Constructor constructor) {
         switch (type) {
             case KnownContainers::Grid: {
-                if (auto config = parseGrid(constructor.values)) {
-                    auto grid = new Grid(config.value());
+                if (auto maybeConfig = parseGrid(constructor.values)) {
+                    auto config = maybeConfig.value();
+                    auto grid = new Grid(config);
                     auto success = createContainerItems(grid, config.items);                    
 
                     if (success) {
@@ -208,8 +221,7 @@ namespace Apollo::Elements {
         }
     }
 
-    std::optional<Container*> loadLayout(SExpression* root) {
-        Layout layout;
+    std::optional<Container*> loadLayout(SExpression* root, Container* window) {
 
         if (auto c = getConstructor(root)) {
             auto constructor = c.value();
@@ -217,8 +229,8 @@ namespace Apollo::Elements {
             if (auto maybeType = getConstructorType(constructor)) {
                 auto type = maybeType.value();
 
-                if (std::holds_variant<KnownContainers>(type)) {
-                    return createContainer(std::get<KnownContainers>(type), constructor);
+                if (std::holds_alternative<KnownContainers>(type)) {
+                    return createContainer(window, std::get<KnownContainers>(type), constructor);
                 }
                 else {
                     return {};
