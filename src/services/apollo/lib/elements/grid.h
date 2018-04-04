@@ -37,8 +37,6 @@ namespace Saturn::Parse {
 
 namespace Apollo::Elements {
 
-    class Control;
-
     enum class GridMetaId {
         Row,
         Column
@@ -77,12 +75,14 @@ namespace Apollo::Elements {
 
         Grid(GridConfiguration config);
 
-		virtual void addChild(Control* control) override;
-		virtual void addChild(Control* control, const std::vector<MetaData>& meta) override;
+		virtual void addChild(UIElement* element) override;
+		virtual void addChild(UIElement* element, const std::vector<MetaData>& meta) override;
 		virtual void addChild(Container* container) override;
 		virtual void addChild(Container* container, const std::vector<MetaData>&  meta) override;
 
 		virtual void layoutChildren() override;
+
+		virtual Bounds getChildBounds(const UIElement* child) override;
 
     private:
         

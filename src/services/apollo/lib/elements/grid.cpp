@@ -125,16 +125,16 @@ namespace Apollo::Elements {
         calculateGridDimensions();
     }
 
-    void Grid::addChild(Control* control) {
+    void Grid::addChild(UIElement* child) {
         GridElement element;
-        element.element = control;
+        element.element = child;
 
         addChild(element); 
     }
 
-    void Grid::addChild(Control* control, const std::vector<MetaData>& meta) {
+    void Grid::addChild(UIElement* child, const std::vector<MetaData>& meta) {
         GridElement element;
-        element.element = control;
+        element.element = child;
 
         applyMetaData(element, meta);
         addChild(element);
@@ -155,13 +155,13 @@ namespace Apollo::Elements {
         addChild(element);
     }
 
-    Bounds getChildBounds(RowColumnDefinition& row, RowColumnDefinition& column) {
+    Bounds getCellBounds(RowColumnDefinition& row, RowColumnDefinition& column) {
         return {column.startingPosition, row.startingPosition,
                 column.actualSpace, row.actualSpace};
     }
 
     void Grid::addChild(GridElement element) {
-        element.bounds = getChildBounds(rows[element.row], columns[element.column]);
+        element.bounds = getCellBounds(rows[element.row], columns[element.column]);
         children.push_back(element);
     }
 
@@ -174,10 +174,10 @@ namespace Apollo::Elements {
         calculateGridDimensions();
 
         for (auto& child : children) {
-            child.bounds = getChildBounds(rows[child.row], columns[child.column]);
+            child.bounds = getCellBounds(rows[child.row], columns[child.column]);
 
-            if (std::holds_alternative<Control*>(child.element)) {
-                auto control = std::get<Control*>(child.element);
+            if (std::holds_alternative<UIElement*>(child.element)) {
+                auto control = std::get<UIElement*>(child.element);
             }
             else {
                 auto container = std::get<Container*>(child.element);
@@ -252,5 +252,22 @@ namespace Apollo::Elements {
                 }
             }
         }
+    }
+
+    Bounds Grid::getChildBounds(const UIElement* child) {
+        for (auto& element : children) {
+            if (std::holds_alternative<UIElement*>(element.element)) {
+                UIElement* base = std::get<UIElement*>(element.element);
+
+                if (base == child) {
+                    return element.bounds;
+                }
+            }
+            else if (std::get<Container*>(element.element) == child) {
+                return element.bounds;
+            }
+        }
+
+        return {};
     }
 }

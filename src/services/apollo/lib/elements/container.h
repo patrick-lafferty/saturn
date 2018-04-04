@@ -29,12 +29,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
 #include "element.h"
+#include "control.h"
 #include <variant>
 #include <vector>
 
 namespace Apollo::Elements {
-
-	class Control;
 
 	enum class MetaNamespace {
 		Grid		
@@ -48,7 +47,7 @@ namespace Apollo::Elements {
 	};
 
 	struct ContainedElement {
-		std::variant<Control*, Container*> element;
+		std::variant<UIElement*, Container*> element;
 		Bounds bounds;
 	};
 
@@ -59,12 +58,14 @@ namespace Apollo::Elements {
     class Container : public UIElement {
     public:
 
-		virtual void addChild(Control* control) = 0;
-		virtual void addChild(Control* control, const std::vector<MetaData>& meta) = 0;
+		virtual void addChild(UIElement* element) = 0;
+		virtual void addChild(UIElement* element, const std::vector<MetaData>& meta) = 0;
 		virtual void addChild(Container* container) = 0;
 		virtual void addChild(Container* container, const std::vector<MetaData>& meta) = 0;
 
 		virtual void layoutChildren() = 0;
+
+		virtual Bounds getChildBounds(const UIElement* child) = 0;
 
     private:
     };
