@@ -97,7 +97,7 @@ namespace Apollo::Text {
         Renders a prepared text layout to the stored window's framebuffer,
         with alpha blending.
         */
-        void drawText(const TextLayout& layout, uint32_t x, uint32_t y);
+        void drawText(const TextLayout& layout, uint32_t x, uint32_t y, uint32_t backgroundColour = 0);
 
         /*
         Prepares each glyph's bitmap with FreeType, positions each

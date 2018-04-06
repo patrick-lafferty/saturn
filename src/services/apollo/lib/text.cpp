@@ -182,13 +182,16 @@ namespace Apollo::Text {
         return result;
     }
 
-    void Renderer::drawText(const TextLayout& layout, uint32_t x, uint32_t y) {
+    void Renderer::drawText(const TextLayout& layout, uint32_t x, uint32_t y, uint32_t backgroundColour) {
 
         FT_Vector origin;
         origin.x = x;
         origin.y = y;
 
-        auto backgroundColour = window->getBackgroundColour();
+        if (backgroundColour == 0) {
+            backgroundColour = window->getBackgroundColour();
+        }
+
         windowWidth = window->getWidth();
 
         for (auto& glyph : layout.glyphs) {
