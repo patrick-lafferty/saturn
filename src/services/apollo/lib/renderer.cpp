@@ -27,7 +27,32 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "renderer.h"
+#include "window.h"
+#include <algorithm>
 
 namespace Apollo {
 
+    Renderer::Renderer(Window* window) 
+        : window {window} {
+
+    }
+
+    void Renderer::drawRectangle(uint32_t colour, int x, int y, int width, int height) {
+        auto windowWidth = static_cast<int>(window->getWidth());
+        auto windowHeight = 600;
+
+        if (x >= windowWidth || y >= windowHeight) {
+            return;
+        }
+
+        auto clippedWidth = (x + width > windowWidth) ? (windowWidth - x) : width;
+        auto clippedHeight = (y + height > windowHeight) ?  (windowHeight - y) : height;
+        auto frameBuffer = window->getFramebuffer();
+
+        for (auto row = y; row < clippedHeight; row++) {
+            std::fill_n(frameBuffer + x + (row * windowWidth), clippedWidth, colour);
+        }
+
+        window->markAreaDirty(x, y, clippedWidth, clippedHeight);
+    }
 }

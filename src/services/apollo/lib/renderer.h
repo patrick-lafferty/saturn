@@ -28,10 +28,21 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
+#include <stdint.h>
+
 namespace Apollo {
+
+    class Window;
 
     class Renderer {
     public:
+
+        Renderer(Window* window);
+
+        void drawRectangle(uint32_t colour, int x, int y, int width, int height);
+
     private:
+
+        Window* window;
     };
 }
