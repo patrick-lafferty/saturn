@@ -117,6 +117,7 @@ namespace Saturn::Parse {
 	struct Constructor {
 		Symbol* name;
 		List* values;
+		int length;
 
 		bool startsWith(const char* str);
 
