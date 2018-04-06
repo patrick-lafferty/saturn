@@ -152,10 +152,12 @@ namespace Apollo {
 
     void Window::addChild(Elements::Container* container) {
         child = container;
+        child->setParent(this);
     }
 
     void Window::addChild(Elements::Container* container, const std::vector<Elements::MetaData>&) {
         child = container;
+        child->setParent(this);
     }
 
     void Window::layoutChildren() {

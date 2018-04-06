@@ -40,7 +40,7 @@ namespace Apollo::Elements {
 	};
 
 	struct Configuration {
-		Saturn::Parse::List* meta;
+		Saturn::Parse::List* meta {nullptr};
 	};
 
 	class Container;
@@ -48,22 +48,22 @@ namespace Apollo::Elements {
     /*
     Base class for all elements
     */
-    class UIElement {
-    public:
+	class UIElement {
+	public:
 
-		virtual ~UIElement() {}
+        virtual ~UIElement() {}
 
-		int getDesiredWidth();
-		int getDesiredHeight();
+        int getDesiredWidth();
+        int getDesiredHeight();
 
-		Container* getParent();
-		void setParent(Container* parent);
+        Container* getParent();
+        void setParent(Container* parent);
 
-		Bounds getBounds() const;
+        Bounds getBounds() const;
 
-    private:
+        private:
 
-		int desiredWidth, desiredHeight;
-		Container* parent;
+        int desiredWidth, desiredHeight;
+        Container* parent;
     };
 }

@@ -121,8 +121,6 @@ namespace Apollo::Elements {
 
         rows = std::move(config.rows);
         columns = std::move(config.columns);
-
-        calculateGridDimensions();
     }
 
     void Grid::addChild(UIElement* child) {
@@ -163,6 +161,15 @@ namespace Apollo::Elements {
     void Grid::addChild(GridElement element) {
         element.bounds = getCellBounds(rows[element.row], columns[element.column]);
         children.push_back(element);
+
+        if (std::holds_alternative<UIElement*>(element.element)) {
+            auto child = std::get<UIElement*>(element.element);
+            child->setParent(this);
+        }
+        else if (std::holds_alternative<Container*>(element.element)) {
+            auto child = std::get<Container*>(element.element);
+            child->setParent(this);
+        }
     }
 
     void Grid::layoutChildren() {

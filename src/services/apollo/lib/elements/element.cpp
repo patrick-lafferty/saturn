@@ -34,4 +34,8 @@ namespace Apollo::Elements {
     Bounds UIElement::getBounds() const {
         return parent->getChildBounds(this);
     }
+
+    void UIElement::setParent(Container* parent) {
+        this->parent = parent;
+    }
 }
