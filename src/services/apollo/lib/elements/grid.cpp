@@ -108,6 +108,9 @@ namespace Apollo::Elements {
                 else if (c.startsWith("items")) {
                     config.items = c.values;
                 }
+                else if (c.startsWith("meta")) {
+                    config.meta = c.values;
+                }
             }
             else {
                 return {};

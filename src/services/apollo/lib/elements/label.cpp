@@ -66,6 +66,9 @@ namespace Apollo::Elements {
                         config.caption = value.value();
                     }
                 }
+                else if (c.startsWith("meta")) {
+                    config.meta = c.values;
+                }
             }
             else {
                 return {};
