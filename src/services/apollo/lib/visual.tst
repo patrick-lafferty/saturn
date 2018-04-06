@@ -11,14 +11,24 @@
         (proportional-width 1))
 
     (items 
-        (label (caption "Menu"))
+        (label (caption "First")
+            (background (rgb 38 66 251)))
+        (label (caption "Second")
+            (background (rgb 24 205 4))
+            (meta (grid (column 1))))
 
-        (textbox
-            (bind text commandLine)
-            (meta (grid (row 0) (column 0))))
+        (label (caption "Third")
+            (background (rgb 69 69 69))
+            (meta (grid (row 1))))
+        (label (caption "$NUMBER")
+            (background (rgb 37 13 37))
+            (meta (grid (row 1) (column 1))))
 
-        (grid 
-            (meta (grid (row 1)))
-            (bind items availableCommands)
-            (auto-columns 1 1)
-            (column-gap 3))))
+        (label (caption "Eth")
+            (background (rgb 248 121 82))
+            (meta (grid (row 2))))
+        (label (caption "Sixthstnd")
+            (background (rgb 207 95 33))
+            (meta (grid (row 2) (column 1))))
+
+        ))
