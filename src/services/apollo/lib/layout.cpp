@@ -37,7 +37,7 @@ namespace Apollo::Elements {
     bool parseGridMeta(Constructor grid, std::vector<MetaData>& meta) {
         auto count = grid.values->items.size();
 
-        if (count <= 2) {
+        if (count < 2) {
             return false;
         }
 
@@ -75,7 +75,7 @@ namespace Apollo::Elements {
 
 	std::optional<std::vector<MetaData>> parseMeta(List* config) {
 
-        if (config->items.size() <= 2) {
+        if (config->items.size() < 2) {
             return {};
         }
 
@@ -149,36 +149,53 @@ namespace Apollo::Elements {
             return false;
         }
 
-        std::vector<SExpression*>& items = static_cast<List*>(itemList)->items;
+        if (auto maybeConstructor = getConstructor(itemList)) {
+            auto& items = maybeConstructor.value();
 
-        for (auto item : items) {
-            if (auto c = getConstructor(item)) {
-                auto childConstructor = c.value();
+            bool first = true;
+            for (auto item : items.values->items) {
 
-                if (auto maybeChildType = getConstructorType(childConstructor)) {
-                    auto childType = maybeChildType.value();
+                if (first) {
+                    if (item->type == SExpType::Symbol) {
+                        auto symbol = static_cast<Symbol*>(item);
 
-                    if (std::holds_alternative<KnownContainers>(childType)) {
-                        auto child = createContainer(parent, std::get<KnownContainers>(childType), childConstructor);
-
-                        if (!child) {
+                        if (symbol->value.compare("items") != 0) {
                             return false;
+                        }
+                    }
+
+                    first = false;
+                    continue;
+                }
+
+                if (auto c = getConstructor(item)) {
+                    auto childConstructor = c.value();
+
+                    if (auto maybeChildType = getConstructorType(childConstructor)) {
+                        auto childType = maybeChildType.value();
+
+                        if (std::holds_alternative<KnownContainers>(childType)) {
+                            auto child = createContainer(parent, std::get<KnownContainers>(childType), childConstructor);
+
+                            if (!child) {
+                                return false;
+                            }
+                        }
+                        else {
+                            auto child = createElement(parent, std::get<KnownElements>(childType), childConstructor);
+
+                            if (!child) {
+                                return false;
+                            }
                         }
                     }
                     else {
-                        auto child = createElement(parent, std::get<KnownElements>(childType), childConstructor);
-
-                        if (!child) {
-                            return false;
-                        }
+                        return false;
                     }
-                }
+                }  
                 else {
                     return false;
                 }
-            }  
-            else {
-                return false;
             }
         }
 
