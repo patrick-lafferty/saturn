@@ -26,50 +26,8 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#pragma once
-
-namespace Saturn::Parse {
-	struct List;
-}
+#include "renderer.h"
 
 namespace Apollo {
-    class Renderer;
-}
 
-namespace Apollo::Elements {
-
-	struct Bounds {
-		int x, y;
-		int width, height;
-	};
-
-	struct Configuration {
-		Saturn::Parse::List* meta {nullptr};
-	};
-
-	class Container;
-
-    /*
-    Base class for all elements
-    */
-	class UIElement {
-	public:
-
-        virtual ~UIElement() {}
-
-        int getDesiredWidth();
-        int getDesiredHeight();
-
-        Container* getParent();
-        void setParent(Container* parent);
-
-        Bounds getBounds() const;
-
-        virtual void render(Renderer* renderer) = 0;
-
-    private:
-
-        int desiredWidth, desiredHeight;
-        Container* parent;
-    };
 }

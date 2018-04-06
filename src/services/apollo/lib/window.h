@@ -86,6 +86,8 @@ namespace Apollo {
 		virtual void layoutChildren() override;
 		virtual Elements::Bounds getChildBounds(const Elements::UIElement* child) override;
 
+        virtual void render(Renderer* renderer) override;
+
     private:
 
         WindowBuffer* buffer;

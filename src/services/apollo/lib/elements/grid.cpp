@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "grid.h"
 #include <algorithm>
 #include <saturn/parsing.h>
+#include "../renderer.h"
 
 using namespace Saturn::Parse;
 
@@ -267,7 +268,7 @@ namespace Apollo::Elements {
     Bounds Grid::getChildBounds(const UIElement* child) {
         for (auto& element : children) {
             if (std::holds_alternative<UIElement*>(element.element)) {
-                UIElement* base = std::get<UIElement*>(element.element);
+                auto base = std::get<UIElement*>(element.element);
 
                 if (base == child) {
                     return element.bounds;
@@ -279,5 +280,18 @@ namespace Apollo::Elements {
         }
 
         return {};
+    }
+
+    void Grid::render(Renderer* renderer) {
+        for (auto& element : children) {
+            if (std::holds_alternative<UIElement*>(element.element)) {
+                auto child = std::get<UIElement*>(element.element); 
+                child->render(renderer);
+            }
+            else if (std::holds_alternative<UIElement*>(element.element)) {
+                auto child = std::get<Container*>(element.element); 
+                child->render(renderer);
+            }
+        }
     }
 }

@@ -53,6 +53,8 @@ namespace Apollo::Elements {
 
         Label(LabelConfiguration config);
 
+        virtual void render(Renderer* renderer) override;
+
     private:
         
     };

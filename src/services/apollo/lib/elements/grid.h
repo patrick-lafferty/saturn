@@ -84,6 +84,8 @@ namespace Apollo::Elements {
 
 		virtual Bounds getChildBounds(const UIElement* child) override;
 
+        virtual void render(Renderer* renderer) override;
+
     private:
         
         void calculateGridDimensions();

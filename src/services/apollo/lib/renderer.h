@@ -28,48 +28,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-namespace Saturn::Parse {
-	struct List;
-}
-
 namespace Apollo {
-    class Renderer;
-}
 
-namespace Apollo::Elements {
-
-	struct Bounds {
-		int x, y;
-		int width, height;
-	};
-
-	struct Configuration {
-		Saturn::Parse::List* meta {nullptr};
-	};
-
-	class Container;
-
-    /*
-    Base class for all elements
-    */
-	class UIElement {
-	public:
-
-        virtual ~UIElement() {}
-
-        int getDesiredWidth();
-        int getDesiredHeight();
-
-        Container* getParent();
-        void setParent(Container* parent);
-
-        Bounds getBounds() const;
-
-        virtual void render(Renderer* renderer) = 0;
-
+    class Renderer {
+    public:
     private:
-
-        int desiredWidth, desiredHeight;
-        Container* parent;
     };
 }

@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "label.h"
 #include <algorithm>
 #include <saturn/parsing.h>
+#include "../renderer.h"
 
 using namespace Saturn::Parse;
 
@@ -79,6 +80,10 @@ namespace Apollo::Elements {
     }
 
     Label::Label(LabelConfiguration config) {
+
+    }
+
+    void Label::render(Renderer* renderer) {
 
     }
     

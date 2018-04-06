@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../messages.h"
 #include <services.h>
 #include <algorithm>
+#include "renderer.h"
 
 namespace Apollo {
 
@@ -168,5 +169,11 @@ namespace Apollo {
 
     Elements::Bounds Window::getChildBounds(const Elements::UIElement* child) {
         return {0, 0, (int)width, 600};
+    }
+
+    void Window::render(Renderer* renderer) {
+        if (child != nullptr) {
+            child->render(renderer);
+        }
     }
 }
