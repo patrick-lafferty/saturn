@@ -27,6 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #pragma once
+#include <stdint.h>
 
 namespace Saturn::Parse {
 	struct List;
@@ -45,6 +46,7 @@ namespace Apollo::Elements {
 
 	struct Configuration {
 		Saturn::Parse::List* meta {nullptr};
+        uint32_t backgroundColour {0};
 	};
 
 	class Container;
@@ -71,5 +73,9 @@ namespace Apollo::Elements {
 
         int desiredWidth, desiredHeight;
         Container* parent;
+
+    protected:
+
+        uint32_t backgroundColour;
     };
 }

@@ -42,42 +42,12 @@ interface for the Apollo Guidance Computer.
 #include <algorithm>
 #include <saturn/parsing.h>
 #include <services/apollo/lib/databinding.h>
+#include <services/apollo/lib/layout.h>
+#include <services/apollo/lib/renderer.h>
 
 using namespace Apollo;
 using namespace Apollo::Debug;
 using namespace Saturn::Parse;
-
-void visit(SExpression*);
-void visit(IntLiteral& i) {
-
-}
-
-void visit(Symbol& s) {
-
-}
-
-void visit(List& s) {
-    for (auto i : s.items) {
-        visit(i);
-    }
-}
-
-void visit(SExpression* s) {
-    switch (s->type) {
-        case SExpType::IntLiteral: {
-            visit(*static_cast<IntLiteral*>(s));
-            break;
-        }
-        case SExpType::Symbol: {
-            visit(*static_cast<Symbol*>(s));
-            break;
-        }
-        case SExpType::List: {
-            visit(*static_cast<List*>(s));
-            break;
-        }
-    }
-}
 
 class TextBox {
 public:
@@ -166,19 +136,31 @@ public:
 
         promptLayout = textRenderer->layoutText("\e[38;2;255;69;0m> \e[38;2;0;191;255m", screenWidth);
         memset(inputBuffer, '\0', 500);
-        drawPrompt(); 
+        //drawPrompt(); 
         maxInputWidth = screenWidth - promptLayout.bounds.width;
-test();
+
         const char* data = R"(
 (grid
     (margin 5)
 
-    (children 
-        (label "Menu")
-        (textbox )
-        (grid 
-            (auto-columns 1 1)
-            (column-gap 3))))
+    (rows 
+        (proportional-height 1)
+        (fixed-height 50)
+        (proportional-height 2))
+
+    (columns 
+        (proportional-width 1)
+        (proportional-width 1))
+
+    (items 
+        (label (caption "1")
+            (background (rgb 122 5 200)))
+        (label (caption "2")
+            (background (rgb 25 165 69))
+            (meta (grid (column 1))))
+
+        ))
+
         )";
 
         auto result = read(data);
@@ -186,7 +168,15 @@ test();
         if (std::holds_alternative<SExpression*>(result)) {
             auto topLevel = std::get<SExpression*>(result);
 
-            visit(topLevel);
+            if (topLevel->type == SExpType::List) {
+                auto root = static_cast<List*>(topLevel)->items[0];
+
+                if (auto r = Apollo::Elements::loadLayout(root, window)) {
+                    window->layoutChildren();
+                    auto renderer = new Renderer(window);
+                    window->render(renderer);
+                }
+            }
         }
     }
 
