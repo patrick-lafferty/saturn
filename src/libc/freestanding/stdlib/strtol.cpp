@@ -104,8 +104,9 @@ long strtol(const char* str, char** str_end, int base) {
         else {
             if (str_end != nullptr) {
                 *str_end = const_cast<char*>(str);
-                goto end;
             }
+
+            goto end;
         }
 
         str++;
