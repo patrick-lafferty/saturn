@@ -286,7 +286,7 @@ namespace Saturn::Parse {
                             break;
                         }
                         case LiteralType::String: {
-                            list->items.push_back(new StringLiteral {value});
+                            list->items.push_back(new StringLiteral {input.substr(i + 1, j - i - 2)});
                             break;
                         }
                         case LiteralType::None: {

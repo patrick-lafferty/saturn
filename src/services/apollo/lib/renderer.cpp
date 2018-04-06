@@ -27,13 +27,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "renderer.h"
+#include "text.h"
 #include "window.h"
 #include <algorithm>
 
 namespace Apollo {
 
-    Renderer::Renderer(Window* window) 
-        : window {window} {
+    Renderer::Renderer(Window* window, Text::Renderer* renderer) 
+        : window {window}, textRenderer{renderer} {
 
     }
 
@@ -49,10 +50,14 @@ namespace Apollo {
         auto clippedHeight = (y + height > windowHeight) ?  (windowHeight - y) : height;
         auto frameBuffer = window->getFramebuffer();
 
-        for (auto row = y; row < clippedHeight; row++) {
-            std::fill_n(frameBuffer + x + (row * windowWidth), clippedWidth, colour);
+        for (auto row = 0; row < clippedHeight; row++) {
+            std::fill_n(frameBuffer + x + ((y + row) * windowWidth), clippedWidth, colour);
         }
 
         window->markAreaDirty(x, y, clippedWidth, clippedHeight);
+    }
+
+    void Renderer::drawText(const Apollo::Text::TextLayout& layout, uint32_t x, uint32_t y, uint32_t backgroundColour) {
+        textRenderer->drawText(layout, x, y, backgroundColour);
     }
 }

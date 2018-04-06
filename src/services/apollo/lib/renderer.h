@@ -34,15 +34,22 @@ namespace Apollo {
 
     class Window;
 
+    namespace Text {
+        struct TextLayout;
+        class Renderer;
+    }
+
     class Renderer {
     public:
 
-        Renderer(Window* window);
+        Renderer(Window* window, Text::Renderer* renderer);
 
         void drawRectangle(uint32_t colour, int x, int y, int width, int height);
+        void drawText(const Apollo::Text::TextLayout& layout, uint32_t x, uint32_t y, uint32_t backgroundColour);
 
     private:
 
         Window* window;
+        Text::Renderer* textRenderer;
     };
 }
