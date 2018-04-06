@@ -171,6 +171,12 @@ namespace Apollo {
         return {0, 0, (int)width, 600};
     }
 
+    void Window::layoutText(Apollo::Text::Renderer* renderer) {
+        if (child != nullptr) {
+            child->layoutText(renderer);
+        }
+    }
+
     void Window::render(Renderer* renderer) {
         if (child != nullptr) {
             child->render(renderer);

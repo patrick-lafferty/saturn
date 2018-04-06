@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "element.h"
 #include <optional>
+#include "../text.h"
 
 namespace Saturn::Parse {
     struct SExpression;
@@ -53,9 +54,12 @@ namespace Apollo::Elements {
 
         Label(LabelConfiguration config);
 
+        virtual void layoutText(Apollo::Text::Renderer* renderer) override;
         virtual void render(Renderer* renderer) override;
 
     private:
-        
+
+        char* caption {nullptr};
+        Apollo::Text::TextLayout captionLayout;        
     };
 }

@@ -35,6 +35,10 @@ namespace Saturn::Parse {
 
 namespace Apollo {
     class Renderer;
+
+    namespace Text {
+        class Renderer;
+    }
 }
 
 namespace Apollo::Elements {
@@ -67,6 +71,7 @@ namespace Apollo::Elements {
 
         Bounds getBounds() const;
 
+        virtual void layoutText(Apollo::Text::Renderer* renderer) = 0; 
         virtual void render(Renderer* renderer) = 0;
 
     private:

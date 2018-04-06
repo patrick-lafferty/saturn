@@ -282,6 +282,19 @@ namespace Apollo::Elements {
         return {};
     }
 
+    void Grid::layoutText(Apollo::Text::Renderer* renderer) {
+        for (auto& element : children) {
+            if (std::holds_alternative<UIElement*>(element.element)) {
+                auto child = std::get<UIElement*>(element.element); 
+                child->layoutText(renderer);
+            }
+            else if (std::holds_alternative<UIElement*>(element.element)) {
+                auto child = std::get<Container*>(element.element); 
+                child->layoutText(renderer);
+            }
+        }
+    }
+
     void Grid::render(Renderer* renderer) {
         for (auto& element : children) {
             if (std::holds_alternative<UIElement*>(element.element)) {

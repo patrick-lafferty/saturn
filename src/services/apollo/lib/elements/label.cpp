@@ -110,12 +110,32 @@ namespace Apollo::Elements {
 
     Label::Label(LabelConfiguration config) {
         backgroundColour = config.backgroundColour;
+
+        if (!config.caption->value.empty()) {
+            auto captionLength = config.caption->value.length();
+            caption = new char[captionLength + 1];
+            memset(caption, '\0', captionLength + 1);
+            config.caption->value.copy(caption, captionLength);
+        }
     }
+
+    void Label::layoutText(Apollo::Text::Renderer* renderer) {
+        if (caption == nullptr) {
+            return;
+        }
+
+        auto bounds = getBounds();
+        captionLayout = renderer->layoutText(caption, bounds.width);
+    } 
 
     void Label::render(Renderer* renderer) {
         auto bounds = getBounds();
 
         renderer->drawRectangle(backgroundColour, bounds.x, bounds.y, bounds.width, bounds.height);
+
+        if (caption != nullptr) {
+            renderer->drawText(captionLayout, bounds.x, bounds.y, backgroundColour);
+        }
     }
     
 }
