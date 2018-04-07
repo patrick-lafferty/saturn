@@ -84,10 +84,13 @@ namespace Apollo::Elements {
         virtual void layoutText(Apollo::Text::Renderer* renderer) = 0; 
         virtual void render(Renderer* renderer) = 0;
 
+        void requestLayoutText();
+        void requestRender();
+
     private:
 
         int desiredWidth, desiredHeight;
-        Container* parent;
+        Container* parent {nullptr};
 
     protected:
 

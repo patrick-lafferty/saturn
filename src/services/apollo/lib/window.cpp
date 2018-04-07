@@ -142,6 +142,10 @@ namespace Apollo {
         this->width = width;
         //this->height = height;
     }
+
+    void Window::setRenderer(Renderer* renderer) {
+        this->elementRenderer = renderer;
+    }
     
     void Window::addChild(Elements::UIElement*) {
 
@@ -181,5 +185,13 @@ namespace Apollo {
         if (child != nullptr) {
             child->render(renderer);
         }
+    }
+
+    void Window::requestLayoutText(UIElement* element) {
+        element->layoutText(elementRenderer->getTextRenderer());
+    }
+
+    void Window::requestRender(UIElement* element) {
+        element->render(elementRenderer);
     }
 }

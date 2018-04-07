@@ -78,6 +78,8 @@ namespace Apollo {
 
         void resize(uint32_t width, uint32_t height);
 
+        void setRenderer(Renderer* renderer);
+
 		virtual void addChild(Elements::UIElement* element) override;
 		virtual void addChild(Elements::UIElement* element, const std::vector<Elements::MetaData>& meta) override;
 		virtual void addChild(Elements::Container* container) override;
@@ -89,6 +91,9 @@ namespace Apollo {
         virtual void layoutText(Apollo::Text::Renderer* renderer) override;
         virtual void render(Renderer* renderer) override;
 
+        virtual void requestLayoutText(UIElement* element) override;
+        virtual void requestRender(UIElement* element) override;
+
     private:
 
         WindowBuffer* buffer;
@@ -98,6 +103,7 @@ namespace Apollo {
         bool dirty;
         DirtyArea dirtyArea;
         Elements::Container* child; 
+        Renderer* elementRenderer;
     };
 
     Window* createWindow(uint32_t width, uint32_t height);

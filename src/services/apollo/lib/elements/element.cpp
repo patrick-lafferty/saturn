@@ -46,6 +46,10 @@ namespace Apollo::Elements {
         }
     }
 
+    Container* UIElement::getParent() {
+        return parent;
+    }
+
     Bounds UIElement::getBounds() const {
         auto bounds = parent->getChildBounds(this);
 
@@ -68,6 +72,18 @@ namespace Apollo::Elements {
 
     void UIElement::setParent(Container* parent) {
         this->parent = parent;
+    }
+
+    void UIElement::requestLayoutText() {
+        if (parent != nullptr) {
+            parent->requestLayoutText(this);
+        }
+    }
+
+    void UIElement::requestRender() {
+        if (parent != nullptr) {
+            parent->requestRender(this);
+        }
     }
 
     bool parseMargins(List* margins, Margins& config) {

@@ -47,6 +47,8 @@ namespace Apollo {
         void drawRectangle(uint32_t colour, int x, int y, int width, int height);
         void drawText(const Apollo::Text::TextLayout& layout, uint32_t x, uint32_t y, uint32_t backgroundColour);
 
+        Text::Renderer* getTextRenderer();
+
     private:
 
         Window* window;

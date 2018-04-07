@@ -70,6 +70,22 @@ namespace Apollo::Elements {
 
 		virtual Bounds getChildBounds(const UIElement* child) = 0;
 
+        virtual void requestLayoutText(UIElement* element) {
+			auto parent = getParent();
+
+			if (parent != nullptr) {
+				parent->requestLayoutText(element);
+			}
+		}
+
+        virtual void requestRender(UIElement* element) {
+			auto parent = getParent();
+
+			if (parent != nullptr) {
+				parent->requestRender(element);
+			}
+		}
+
     private:
     };
 }

@@ -60,4 +60,8 @@ namespace Apollo {
     void Renderer::drawText(const Apollo::Text::TextLayout& layout, uint32_t x, uint32_t y, uint32_t backgroundColour) {
         textRenderer->drawText(layout, x, y, backgroundColour);
     }
+
+    Text::Renderer* Renderer::getTextRenderer() {
+        return textRenderer;
+    }
 }
