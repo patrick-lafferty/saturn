@@ -121,7 +121,8 @@ namespace Apollo::Elements {
         return config;
     }
 
-    Grid::Grid(GridConfiguration config) {
+    Grid::Grid(GridConfiguration config)
+        : Container(config) {
 
         rows = std::move(config.rows);
         columns = std::move(config.columns);

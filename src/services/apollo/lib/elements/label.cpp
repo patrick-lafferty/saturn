@@ -82,8 +82,8 @@ namespace Apollo::Elements {
         return config;
     }
 
-    Label::Label(LabelConfiguration config) {
-        backgroundColour = config.backgroundColour;
+    Label::Label(LabelConfiguration config)
+        : UIElement(config) {
 
         if (!config.caption->value.empty()) {
             auto captionLength = config.caption->value.length();

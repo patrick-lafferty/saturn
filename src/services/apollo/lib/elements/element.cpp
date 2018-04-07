@@ -34,6 +34,11 @@ using namespace Saturn::Parse;
 
 namespace Apollo::Elements {
 
+    UIElement::UIElement(Configuration& config) {
+        backgroundColour = config.backgroundColour;
+        margins = config.margins;
+    }
+
     Bounds UIElement::getBounds() const {
         return parent->getChildBounds(this);
     }
@@ -42,12 +47,48 @@ namespace Apollo::Elements {
         this->parent = parent;
     }
 
+    bool parseMargins(List* margins, Configuration& config) {
+        if (margins->items.size() == 1) {
+            return false;
+        }
+
+        auto count = static_cast<int>(margins->items.size());
+        for (int i = 1; i < count; i++) {
+            bool failed = true;
+
+            if (auto maybeConstructor = getConstructor(margins->items[i])) {
+                auto& constructor = maybeConstructor.value();
+
+                if (constructor.length != 2) {
+                    return false;
+                }
+
+                if (auto maybeValue = constructor.get<IntLiteral*>(1, SExpType::IntLiteral)) {
+                    if (constructor.startsWith("vertical")) {
+                        config.margins.vertical = maybeValue.value()->value;
+                        failed = false;
+                    }
+                    else if (constructor.startsWith("horizontal")) {
+                        config.margins.horizontal = maybeValue.value()->value;
+                        failed = false;
+                    }
+                }
+            }
+
+            if (failed) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     bool parseElement(Saturn::Parse::SExpression* element, Configuration& config) {
         if (auto maybeConstructor = getConstructor(element)) {
             auto& constructor = maybeConstructor.value();
 
             if (constructor.startsWith("background")) {
-                if (constructor.values->items.size() != 2) {
+                if (constructor.length != 2) {
                     return false;
                 }
 
@@ -56,7 +97,7 @@ namespace Apollo::Elements {
                         auto& colourConstructor = maybeColourConstructor.value();
 
                         if (colourConstructor.startsWith("rgb")) {
-                            if (colourConstructor.values->items.size() != 4) {
+                            if (colourConstructor.length != 4) {
                                 return false;
                             }
 
@@ -75,8 +116,8 @@ namespace Apollo::Elements {
                     }
                 }
             }
-            else if (constructor.startsWith("margin")) {
-
+            else if (constructor.startsWith("margins")) {
+                return parseMargins(constructor.values, config);
             }
         }
 

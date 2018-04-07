@@ -58,6 +58,9 @@ namespace Apollo::Elements {
     class Container : public UIElement {
     public:
 
+		Container() = default;
+		Container(Configuration& config) : UIElement(config) {}
+
 		virtual void addChild(UIElement* element) = 0;
 		virtual void addChild(UIElement* element, const std::vector<MetaData>& meta) = 0;
 		virtual void addChild(Container* container) = 0;

@@ -49,9 +49,15 @@ namespace Apollo::Elements {
 		int width, height;
 	};
 
+    struct Margins {
+        int vertical;
+        int horizontal;
+    };
+
 	struct Configuration {
 		Saturn::Parse::List* meta {nullptr};
         uint32_t backgroundColour {0};
+        Margins margins;
 	};
 
 	class Container;
@@ -62,6 +68,8 @@ namespace Apollo::Elements {
 	class UIElement {
 	public:
 
+        UIElement() = default;
+        UIElement(Configuration& config);
         virtual ~UIElement() {}
 
         int getDesiredWidth();
@@ -83,6 +91,7 @@ namespace Apollo::Elements {
     protected:
 
         uint32_t backgroundColour;
+        Margins margins;
     };
 
     /*
