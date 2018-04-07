@@ -166,6 +166,24 @@ namespace Apollo::Elements {
                 column.actualSpace, row.actualSpace};
     }
 
+    Bounds getSpannedCellBounds(std::vector<RowColumnDefinition>& rows, 
+        std::vector<RowColumnDefinition>& columns,
+        GridElement& element) {
+        
+        Bounds bounds {columns[element.column].startingPosition, rows[element.row].startingPosition,
+                columns[element.column].actualSpace, rows[element.row].actualSpace};
+
+        for (auto i = 1; i < element.rowSpan; i++) {
+            bounds.height += rows[element.row + i].actualSpace;
+        }        
+
+        for (auto i = 1; i < element.columnSpan; i++) {
+            bounds.width += columns[element.column + i].actualSpace;
+        }        
+
+        return bounds;
+    }
+
     void Grid::addChild(GridElement element) {
         element.bounds = getCellBounds(rows[element.row], columns[element.column]);
         children.push_back(element);
@@ -189,7 +207,13 @@ namespace Apollo::Elements {
         calculateGridDimensions();
 
         for (auto& child : children) {
-            child.bounds = getCellBounds(rows[child.row], columns[child.column]);
+            
+            if (child.rowSpan > 0 || child.columnSpan > 0) {
+                child.bounds = getSpannedCellBounds(rows, columns, child);
+            }
+            else {
+                child.bounds = getCellBounds(rows[child.row], columns[child.column]);
+            }
 
             if (std::holds_alternative<UIElement*>(child.element)) {
                 auto control = std::get<UIElement*>(child.element);
@@ -263,6 +287,30 @@ namespace Apollo::Elements {
                         std::min(data.value, static_cast<int>(columns.size()) - 1));
                     break;
                 }
+                case GridMetaId::RowSpan: {
+                    element.rowSpan = data.value;
+                    break;
+                }
+                case GridMetaId::ColumnSpan: {
+                    element.columnSpan = data.value;
+                    break;
+                }
+            }
+        }
+
+        if (element.rowSpan > 0) {
+            auto maxRow = element.row + element.rowSpan;
+
+            if (maxRow > rows.size()) {
+                element.rowSpan = rows.size() - element.row;
+            }
+        }
+
+        if (element.columnSpan > 0) {
+            auto maxColumn = element.column + element.columnSpan;
+
+            if (maxColumn > columns.size()) {
+                element.columnSpan = columns.size() - element.column;
             }
         }
     }
@@ -290,7 +338,7 @@ namespace Apollo::Elements {
                 auto child = std::get<UIElement*>(element.element); 
                 child->layoutText(renderer);
             }
-            else if (std::holds_alternative<UIElement*>(element.element)) {
+            else if (std::holds_alternative<Container*>(element.element)) {
                 auto child = std::get<Container*>(element.element); 
                 child->layoutText(renderer);
             }
@@ -303,7 +351,7 @@ namespace Apollo::Elements {
                 auto child = std::get<UIElement*>(element.element); 
                 child->render(renderer);
             }
-            else if (std::holds_alternative<UIElement*>(element.element)) {
+            else if (std::holds_alternative<Container*>(element.element)) {
                 auto child = std::get<Container*>(element.element); 
                 child->render(renderer);
             }

@@ -39,11 +39,14 @@ namespace Apollo::Elements {
 
     enum class GridMetaId {
         Row,
-        Column
+        Column,
+        RowSpan,
+        ColumnSpan
     };
 
     struct GridElement : ContainedElement {
         int row {0}, column {0};
+        int rowSpan {0}, columnSpan {0};
     };
 
     enum class Unit {
