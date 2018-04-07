@@ -108,7 +108,7 @@ namespace Apollo::Elements {
         renderer->drawRectangle(backgroundColour, bounds.x, bounds.y, bounds.width, bounds.height);
 
         if (caption != nullptr) {
-            renderer->drawText(captionLayout, bounds.x, bounds.y, backgroundColour);
+            renderer->drawText(captionLayout, bounds.x + padding.horizontal, bounds.y + padding.vertical, backgroundColour);
         }
     }
     

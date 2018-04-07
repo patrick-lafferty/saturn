@@ -112,6 +112,9 @@ namespace Apollo::Elements {
                 else if (c.startsWith("meta")) {
                     config.meta = c.values;
                 }
+                else if (!parseElement(s, config)) {
+                    return {};
+                }
             }
             else {
                 return {};
@@ -198,7 +201,7 @@ namespace Apollo::Elements {
         }
     }
 
-    void allocateDefinitionSpace(std::vector<RowColumnDefinition>& definitions, int unallocatedSpace) {
+    void allocateDefinitionSpace(std::vector<RowColumnDefinition>& definitions, int unallocatedSpace, int currentPosition) {
         int totalProportionalUnits = 0;
 
         for (auto& definition : definitions) {
@@ -229,8 +232,6 @@ namespace Apollo::Elements {
             }
         }
 
-        int currentPosition = 0;
-
         for (auto& definition : definitions) {
             definition.startingPosition = currentPosition;
             currentPosition += definition.actualSpace;
@@ -240,8 +241,8 @@ namespace Apollo::Elements {
     void Grid::calculateGridDimensions() {
         auto bounds = getBounds();
 
-        allocateDefinitionSpace(rows, bounds.height);
-        allocateDefinitionSpace(columns, bounds.width);
+        allocateDefinitionSpace(rows, bounds.height, bounds.y);
+        allocateDefinitionSpace(columns, bounds.width, bounds.x);
     }
 
     void Grid::applyMetaData(GridElement& element, const std::vector<MetaData>& meta) {

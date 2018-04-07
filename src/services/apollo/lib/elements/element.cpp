@@ -36,18 +36,41 @@ namespace Apollo::Elements {
 
     UIElement::UIElement(Configuration& config) {
         backgroundColour = config.backgroundColour;
-        margins = config.margins;
+
+        if (!(config.margins.vertical < 0 || config.margins.horizontal < 0)) {
+            margins = config.margins;
+        }
+
+        if (!(config.padding.vertical < 0 || config.padding.horizontal < 0)) {
+            padding = config.padding;
+        }
     }
 
     Bounds UIElement::getBounds() const {
-        return parent->getChildBounds(this);
+        auto bounds = parent->getChildBounds(this);
+
+        auto horizontalMarginSpace = 2 * margins.horizontal;
+
+        if (bounds.width > horizontalMarginSpace) {
+            bounds.width -= horizontalMarginSpace;
+            bounds.x += margins.horizontal;
+        }
+
+        auto verticalMarginSpace = 2 * margins.vertical;
+
+        if (bounds.height > verticalMarginSpace) {
+            bounds.height -= verticalMarginSpace;
+            bounds.y += margins.vertical;
+        }
+
+        return bounds;
     }
 
     void UIElement::setParent(Container* parent) {
         this->parent = parent;
     }
 
-    bool parseMargins(List* margins, Configuration& config) {
+    bool parseMargins(List* margins, Margins& config) {
         if (margins->items.size() == 1) {
             return false;
         }
@@ -65,11 +88,11 @@ namespace Apollo::Elements {
 
                 if (auto maybeValue = constructor.get<IntLiteral*>(1, SExpType::IntLiteral)) {
                     if (constructor.startsWith("vertical")) {
-                        config.margins.vertical = maybeValue.value()->value;
+                        config.vertical = maybeValue.value()->value;
                         failed = false;
                     }
                     else if (constructor.startsWith("horizontal")) {
-                        config.margins.horizontal = maybeValue.value()->value;
+                        config.horizontal = maybeValue.value()->value;
                         failed = false;
                     }
                 }
@@ -117,7 +140,10 @@ namespace Apollo::Elements {
                 }
             }
             else if (constructor.startsWith("margins")) {
-                return parseMargins(constructor.values, config);
+                return parseMargins(constructor.values, config.margins);
+            }
+            else if (constructor.startsWith("padding")) {
+                return parseMargins(constructor.values, config.padding);
             }
         }
 

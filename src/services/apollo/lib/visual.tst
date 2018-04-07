@@ -1,5 +1,5 @@
 (grid
-    (margin 5)
+    (margins (vertical 20) (horizontal 20))
 
     (rows 
         (proportional-height 1)
@@ -26,6 +26,7 @@
 
         (label (caption "Eth")
             (background (rgb 248 121 82))
+            (margins (vertical 20) (horizontal 5))
             (meta (grid (row 2))))
         (label (caption "Sixthstnd")
             (background (rgb 207 95 33))

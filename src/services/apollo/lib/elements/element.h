@@ -50,14 +50,15 @@ namespace Apollo::Elements {
 	};
 
     struct Margins {
-        int vertical;
-        int horizontal;
+        int vertical {0};
+        int horizontal {0};
     };
 
 	struct Configuration {
 		Saturn::Parse::List* meta {nullptr};
         uint32_t backgroundColour {0};
         Margins margins;
+        Margins padding;
 	};
 
 	class Container;
@@ -92,6 +93,7 @@ namespace Apollo::Elements {
 
         uint32_t backgroundColour;
         Margins margins;
+        Margins padding;
     };
 
     /*
