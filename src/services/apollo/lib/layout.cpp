@@ -61,6 +61,22 @@ namespace Apollo::Elements {
                         failed = false;
                     }
                 }
+                else if (constructor.startsWith("row-span")
+                    && constructor.length == 2) {
+                    if (auto maybeValue = constructor.get<IntLiteral*>(1, SExpType::IntLiteral)) {
+                        auto value = maybeValue.value();
+                        meta.push_back({MetaNamespace::Grid, static_cast<int>(GridMetaId::RowSpan), value->value});
+                        failed = false;
+                    }
+                }
+                else if (constructor.startsWith("column-span")
+                    && constructor.length == 2) {
+                    if (auto maybeValue = constructor.get<IntLiteral*>(1, SExpType::IntLiteral)) {
+                        auto value = maybeValue.value();
+                        meta.push_back({MetaNamespace::Grid, static_cast<int>(GridMetaId::ColumnSpan), value->value});
+                        failed = false;
+                    }
+                }
             }
 
             if (failed) {
