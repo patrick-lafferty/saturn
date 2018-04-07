@@ -244,7 +244,11 @@ namespace Apollo::Text {
         FindChannel
     };
 
-    uint32_t handleSelectGraphicRendition(const char* buffer) {
+    struct EscapableValues {
+        uint32_t foreground;
+    };
+
+    uint32_t handleSelectGraphicRendition(const char* buffer, EscapableValues& values) {
         auto start = buffer;
         char* end {nullptr};
         long code {0};
@@ -312,7 +316,7 @@ namespace Apollo::Text {
                     if (channelIndex == 3) {
 
                         if (code == 38) {
-                            foreground = colour;
+                            values.foreground = colour;
                         }
 
                         done = true;
@@ -329,7 +333,7 @@ namespace Apollo::Text {
     } 
 
     //TODO: pass a struct containing all things that are ansi escapable instead of the global foreground
-    uint32_t handleEscapeSequence(const char* buffer) {
+    uint32_t handleEscapeSequence(const char* buffer, EscapableValues& values) {
         auto start = buffer;
 
         switch (*buffer++) {
@@ -368,7 +372,7 @@ namespace Apollo::Text {
 
                 switch(*buffer) {
                     case static_cast<char>(Terminal::CSIFinalByte::SelectGraphicRendition): {
-                        return 1 + handleSelectGraphicRendition(sequenceStart);
+                        return 1 + handleSelectGraphicRendition(sequenceStart, values);
                     }
                 }
 
@@ -379,7 +383,13 @@ namespace Apollo::Text {
         return buffer - start;
     }
 
-    TextLayout Renderer::layoutText(const char* text, uint32_t allowedWidth, Style style, bool underline, uint32_t /*size*/) {
+    TextLayout Renderer::layoutText(const char* text, 
+        uint32_t allowedWidth, 
+        uint32_t colour,
+        Style style, 
+        bool underline, 
+        uint32_t /*size*/) {
+
         TextLayout layout;
         layout.lines = 1;
 
@@ -409,10 +419,12 @@ namespace Apollo::Text {
         uint32_t previousIndex = 0;
         bool checkKerning = kernTableAvailable;
 
+        EscapableValues values {colour};
+
         while (*text != '\0') { 
 
             if (*text == 27) {
-                auto consumedChars = 0 + handleEscapeSequence(text + 1);
+                auto consumedChars = 0 + handleEscapeSequence(text + 1, values);
                 text += consumedChars + 1;
                 continue;
             }
@@ -505,7 +517,7 @@ namespace Apollo::Text {
 
             glyph.position.x = x;
             glyph.position.y += y;
-            glyph.colour = foreground;
+            glyph.colour = values.foreground;
 
             x += glyph.advance;
 

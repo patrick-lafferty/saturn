@@ -57,6 +57,7 @@ namespace Apollo::Elements {
 	struct Configuration {
 		Saturn::Parse::List* meta {nullptr};
         uint32_t backgroundColour {0};
+        uint32_t fontColour {0x00'64'95'EDu};
         Margins margins;
         Margins padding;
 	};
@@ -95,6 +96,7 @@ namespace Apollo::Elements {
     protected:
 
         uint32_t backgroundColour;
+        uint32_t fontColour;
         Margins margins;
         Margins padding;
     };

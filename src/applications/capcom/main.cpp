@@ -74,12 +74,12 @@ public:
             return;
         }
 
-        promptLayout = textRenderer->layoutText("\e[38;2;255;69;0m> \e[38;2;0;191;255m", screenWidth);
+        promptLayout = textRenderer->layoutText("\e[38;2;255;69;0m> \e[38;2;0;191;255m", screenWidth, 0x00'64'95'EDu);
         mainBackgroundColour = 0x00'00'00'80; 
         window->setBackgroundColour(mainBackgroundColour);
         clear(0, 0, screenWidth, screenHeight);
         memset(inputBuffer, '\0', 500);
-        auto currentLayout = textRenderer->layoutText("Menu", screenWidth);
+        auto currentLayout = textRenderer->layoutText("Menu", screenWidth, 0x00'64'95'EDu);
         maxInputWidth = screenWidth - promptLayout.bounds.width;
         textRenderer->drawText(currentLayout, 10, 0);
         promptY = currentLayout.bounds.height;
@@ -187,7 +187,7 @@ public:
         clear(10 + promptLayout.bounds.width, promptY, screenWidth - 20 - promptLayout.bounds.width, promptLayout.bounds.height);
 
         auto maxWidth = commandLineLayout.bounds.width;
-        commandLineLayout = textRenderer->layoutText(inputBuffer, maxInputWidth);
+        commandLineLayout = textRenderer->layoutText(inputBuffer, maxInputWidth, 0x00'64'95'EDu);
 
         maxWidth = std::max(maxWidth, commandLineLayout.bounds.width);
         textRenderer->drawText(commandLineLayout, cursorX, promptY);
@@ -311,7 +311,7 @@ private:
                 }
             }
 
-            auto layout = textRenderer->layoutText(commandText, screenWidth - 20);
+            auto layout = textRenderer->layoutText(commandText, screenWidth - 20, 0x00'64'95'EDu);
             textRenderer->drawText(layout, 10, commandAreaY);
             window->markAreaDirty(10, commandAreaY, screenWidth - 20, layout.bounds.height);
         }

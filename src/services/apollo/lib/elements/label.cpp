@@ -118,7 +118,7 @@ namespace Apollo::Elements {
         }
 
         auto bounds = getBounds();
-        captionLayout = renderer->layoutText(captionText, bounds.width);
+        captionLayout = renderer->layoutText(captionText, bounds.width, fontColour);
     } 
 
     void Label::render(Renderer* renderer) {

@@ -59,7 +59,7 @@ public:
             return;
         }
 
-        promptLayout = textRenderer->layoutText("\e[38;2;255;69;0m> \e[38;2;0;191;255m", screenWidth);
+        promptLayout = textRenderer->layoutText("\e[38;2;255;69;0m> \e[38;2;0;191;255m", screenWidth, 0x00'64'95'EDu);
         memset(inputBuffer, '\0', 500);
         //drawPrompt(); 
         maxInputWidth = screenWidth - promptLayout.bounds.width;
@@ -83,6 +83,7 @@ public:
             (background (rgb 38 66 251)))
         (label (caption "Second")
             (background (rgb 24 205 4))
+            (font-colour (rgb 0 0 0))
             (meta (grid (column 1))))
 
         (label (caption (bind "caption"))
@@ -166,7 +167,7 @@ public:
             currentLayout.bounds.height);
 
         auto maxWidth = currentLayout.bounds.width;
-        currentLayout = textRenderer->layoutText(inputBuffer, maxInputWidth);
+        currentLayout = textRenderer->layoutText(inputBuffer, maxInputWidth, 0x00'64'95'EDu);
 
         if (needsToScroll(currentLayout.bounds.height)) {
             scroll(currentLayout.bounds.height);
@@ -208,7 +209,7 @@ public:
                                     cursorY += currentLayout.bounds.height;
                                 }
 
-                                currentLayout = textRenderer->layoutText("", maxInputWidth);
+                                currentLayout = textRenderer->layoutText("", maxInputWidth, 0x00'64'95'EDu);
 
                                 drawPrompt(); 
                                 index = 0;

@@ -106,7 +106,12 @@ namespace Apollo::Text {
         Allows the use of ANSI escape sequences in text to change
         the colour of glyphs.
         */
-        TextLayout layoutText(const char* text, uint32_t allowedWidth, Style style = Style::Normal, bool underline = false, uint32_t size = 18);
+        TextLayout layoutText(const char* text, 
+            uint32_t allowedWidth, 
+            uint32_t colour,
+            Style style = Style::Normal, 
+            bool underline = false, 
+            uint32_t size = 18);
 
     private:
 

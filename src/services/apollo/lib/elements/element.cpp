@@ -36,6 +36,7 @@ namespace Apollo::Elements {
 
     UIElement::UIElement(Configuration& config) {
         backgroundColour = config.backgroundColour;
+        fontColour = config.fontColour;
 
         if (!(config.margins.vertical < 0 || config.margins.horizontal < 0)) {
             margins = config.margins;
@@ -122,6 +123,34 @@ namespace Apollo::Elements {
         return true;
     }
 
+    std::optional<uint32_t> parseColour(Constructor& constructor) {
+        if (auto maybeColour = constructor.get<List*>(1, SExpType::List)) {
+            if (auto maybeColourConstructor = getConstructor(maybeColour.value())) {
+                auto& colourConstructor = maybeColourConstructor.value();
+
+                if (colourConstructor.startsWith("rgb")) {
+                    if (colourConstructor.length != 4) {
+                        return false;
+                    }
+
+                    auto r = colourConstructor.get<IntLiteral*>(1, SExpType::IntLiteral);
+                    auto g = colourConstructor.get<IntLiteral*>(2, SExpType::IntLiteral);
+                    auto b = colourConstructor.get<IntLiteral*>(3, SExpType::IntLiteral);
+
+                    if (r && g && b) {
+                        return
+                            0xFF'00'00'00
+                            | ((r.value()->value & 0xFF) << 16)
+                            | ((g.value()->value & 0xFF) << 8)
+                            | ((b.value()->value & 0xFF));
+                    }
+                }
+            }
+        }
+
+        return {};
+    }
+
     bool parseElement(Saturn::Parse::SExpression* element, Configuration& config) {
         if (auto maybeConstructor = getConstructor(element)) {
             auto& constructor = maybeConstructor.value();
@@ -131,28 +160,23 @@ namespace Apollo::Elements {
                     return false;
                 }
 
-                if (auto maybeColour = constructor.get<List*>(1, SExpType::List)) {
-                    if (auto maybeColourConstructor = getConstructor(maybeColour.value())) {
-                        auto& colourConstructor = maybeColourConstructor.value();
+                if (auto colour = parseColour(constructor)) {
+                    config.backgroundColour = colour.value();
+                }
+                else {
+                    return false;
+                }
+            }
+            if (constructor.startsWith("font-colour")) {
+                if (constructor.length != 2) {
+                    return false;
+                }
 
-                        if (colourConstructor.startsWith("rgb")) {
-                            if (colourConstructor.length != 4) {
-                                return false;
-                            }
-
-                            auto r = colourConstructor.get<IntLiteral*>(1, SExpType::IntLiteral);
-                            auto g = colourConstructor.get<IntLiteral*>(2, SExpType::IntLiteral);
-                            auto b = colourConstructor.get<IntLiteral*>(3, SExpType::IntLiteral);
-
-                            if (r && g && b) {
-                                config.backgroundColour = 
-                                    0xFF'00'00'00
-                                    | ((r.value()->value & 0xFF) << 16)
-                                    | ((g.value()->value & 0xFF) << 8)
-                                    | ((b.value()->value & 0xFF));
-                            }
-                        }
-                    }
+                if (auto colour = parseColour(constructor)) {
+                    config.fontColour = colour.value();
+                }
+                else {
+                    return false;
                 }
             }
             else if (constructor.startsWith("margins")) {
