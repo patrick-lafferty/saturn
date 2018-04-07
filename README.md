@@ -1,6 +1,6 @@
-| ![Latest Screenshot](https://github.com/patrick-lafferty/saturn/blob/master/screenshots/apollo%20tiles.PNG) |
+| ![Latest Screenshot](https://github.com/patrick-lafferty/saturn/blob/master/screenshots/Advanced%20grid%20and%20databinding.PNG) |
 | :-: |
-| *Three separate Dsky applications running, demonstrating Apollo's tiling window manager* |
+| *UI Layout test with nested Grid containers and Label elements* |
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
 # Saturn
