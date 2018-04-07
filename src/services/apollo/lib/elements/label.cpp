@@ -134,6 +134,12 @@ namespace Apollo::Elements {
     }
 
     void Label::onChange(Bindings binding) {
-
+        switch (binding) {
+            case Bindings::Caption: {
+                requestLayoutText();
+                requestRender();
+                break;
+            }
+        }
     }
 }

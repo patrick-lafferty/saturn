@@ -112,7 +112,6 @@ public:
             if (topLevel->type == SExpType::List) {
                 auto root = static_cast<List*>(topLevel)->items[0];
 
-                Observable<char*> captionTest;
                 char* test = "hello, world";
                 captionTest.setValue(test);
 
@@ -128,9 +127,10 @@ public:
 
                 if (auto r = Apollo::Elements::loadLayout(root, window, bindy)) {
                     window->layoutChildren();
-                    auto renderer = new Renderer(window, textRenderer);
+                    elementRenderer = new Renderer(window, textRenderer);
                     window->layoutText(textRenderer);
-                    window->render(renderer);
+                    window->render(elementRenderer);
+                    window->setRenderer(elementRenderer);
                 }
             }
         }
@@ -163,7 +163,8 @@ public:
                         auto input = IPC::extractMessage<Keyboard::CharacterInput>(buffer);
                         inputBuffer[index] = input.character;
 
-                        drawInput(); 
+                        //drawInput(); 
+                        captionTest.setValue(inputBuffer);
 
                         index++;
                         break;
@@ -282,6 +283,9 @@ private:
     int index {0};
     Text::TextLayout currentLayout;
     uint32_t maxInputWidth;
+
+    Observable<char*> captionTest;
+    Renderer* elementRenderer;
 };
 
 int dsky_main() {

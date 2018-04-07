@@ -72,8 +72,10 @@ namespace Apollo::Elements {
                         if (constructor.length == 2) {
                             if (auto maybeTarget = constructor.get<StringLiteral*>(1, SExpType::StringLiteral)) {
                                 Bindable<Label, Bindings, char*> caption{label, Bindings::Caption}; 
-                                setupBinding(&caption, maybeTarget.value()->value);
-                                label->caption = std::move(caption);
+                                label->caption = caption;
+
+                                auto& cap = std::get<Bindable<Label, Bindings, char*>>(label->caption);
+                                setupBinding(&cap, maybeTarget.value()->value); 
                             }
                         }
                     }
