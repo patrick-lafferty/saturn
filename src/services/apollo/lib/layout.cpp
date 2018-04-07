@@ -26,15 +26,13 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "layout.h"
-#include <saturn/parsing.h>
-#include "elements/grid.h"
-#include "elements/label.h"
 
 using namespace Saturn::Parse;
 
 namespace Apollo::Elements {
 
     bool parseGridMeta(Constructor grid, std::vector<MetaData>& meta) {
+
         auto count = grid.values->items.size();
 
         if (count < 2) {
@@ -73,7 +71,7 @@ namespace Apollo::Elements {
         return true;
     }
 
-	std::optional<std::vector<MetaData>> parseMeta(List* config) {
+    std::optional<std::vector<MetaData>> parseMeta(List* config) {
 
         if (config->items.size() < 2) {
             return {};
@@ -98,35 +96,6 @@ namespace Apollo::Elements {
         return meta;
     }
 
-    std::optional<UIElement*> createElement(Container* parent, KnownElements type, Constructor constructor) {
-        switch (type) {
-            case KnownElements::Label: {
-                if (auto maybeConfig = parseLabel(constructor.values)) {
-                    auto config = maybeConfig.value();
-                    auto label = new Label(config);
-
-                    if (config.meta != nullptr) {
-                        if (auto meta = parseMeta(config.meta)) {
-                            parent->addChild(label, meta.value());
-                        }
-                        else {
-                            parent->addChild(label);
-                        }
-                    }
-                    else {
-                        parent->addChild(label);
-                    }
-
-                    return label;
-                }
-
-                break;
-            }
-        }
-
-        return {};
-    }
-
     std::optional<std::variant<KnownContainers, KnownElements>>
     getConstructorType(Constructor constructor) {
 
@@ -139,122 +108,5 @@ namespace Apollo::Elements {
         else {
             return {};
         }
-    }
-
-    std::optional<Container*> createContainer(Container* parent, KnownContainers type, Constructor constructor);
-
-    bool createContainerItems(Container* parent, SExpression* itemList) {
-
-        if (itemList->type != SExpType::List) {
-            return false;
-        }
-
-        if (auto maybeConstructor = getConstructor(itemList)) {
-            auto& items = maybeConstructor.value();
-
-            bool first = true;
-            for (auto item : items.values->items) {
-
-                if (first) {
-                    if (item->type == SExpType::Symbol) {
-                        auto symbol = static_cast<Symbol*>(item);
-
-                        if (symbol->value.compare("items") != 0) {
-                            return false;
-                        }
-                    }
-
-                    first = false;
-                    continue;
-                }
-
-                if (auto c = getConstructor(item)) {
-                    auto childConstructor = c.value();
-
-                    if (auto maybeChildType = getConstructorType(childConstructor)) {
-                        auto childType = maybeChildType.value();
-
-                        if (std::holds_alternative<KnownContainers>(childType)) {
-                            auto child = createContainer(parent, std::get<KnownContainers>(childType), childConstructor);
-
-                            if (!child) {
-                                return false;
-                            }
-                        }
-                        else {
-                            auto child = createElement(parent, std::get<KnownElements>(childType), childConstructor);
-
-                            if (!child) {
-                                return false;
-                            }
-                        }
-                    }
-                    else {
-                        return false;
-                    }
-                }  
-                else {
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    }
-
-    std::optional<Container*> createContainer(KnownContainers type, Constructor constructor) {
-        switch (type) {
-            case KnownContainers::Grid: {
-                if (auto maybeConfig = parseGrid(constructor.values)) {
-                    auto config = maybeConfig.value();
-                    auto grid = new Grid(config);
-                    auto success = createContainerItems(grid, config.items);                    
-
-                    if (success) {
-                        return grid;
-                    }
-                    else {
-                        delete grid;
-                    }
-                }
-
-                break;
-            }
-        }
-
-        return {};            
-    }
-
-    std::optional<Container*> createContainer(Container* parent, KnownContainers type, Constructor constructor) {
-        auto maybeContainer = createContainer(type, constructor);
-
-        if (maybeContainer) {
-            auto container = maybeContainer.value();
-            parent->addChild(container);
-            return parent;
-        }
-        else {
-            return {};
-        }
-    }
-
-    std::optional<Container*> loadLayout(SExpression* root, Container* window) {
-
-        if (auto c = getConstructor(root)) {
-            auto constructor = c.value();
-            
-            if (auto maybeType = getConstructorType(constructor)) {
-                auto type = maybeType.value();
-
-                if (std::holds_alternative<KnownContainers>(type)) {
-                    return createContainer(window, std::get<KnownContainers>(type), constructor);
-                }
-                else {
-                    return {};
-                }
-            }
-        }
-
-        return {};
     }
 }

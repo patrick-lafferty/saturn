@@ -41,7 +41,7 @@ namespace Apollo {
 
         std::function<T(void)> subscribe(std::function<void()> s) {
             onChange = s;
-            return [&]() {return value;};
+            return [&]() {return this->value;};
         }
 
         void setValue(T newValue) {
@@ -147,5 +147,4 @@ namespace Apollo {
         Binding binding;
         std::function<Value(void)> getter;
     };
-
 }
