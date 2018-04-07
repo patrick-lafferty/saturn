@@ -28,6 +28,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "element.h"
 #include "container.h"
+#include <saturn/parsing.h>
+
+using namespace Saturn::Parse;
 
 namespace Apollo::Elements {
 
@@ -37,5 +40,46 @@ namespace Apollo::Elements {
 
     void UIElement::setParent(Container* parent) {
         this->parent = parent;
+    }
+
+    bool parseElement(Saturn::Parse::SExpression* element, Configuration& config) {
+        if (auto maybeConstructor = getConstructor(element)) {
+            auto& constructor = maybeConstructor.value();
+
+            if (constructor.startsWith("background")) {
+                if (constructor.values->items.size() != 2) {
+                    return false;
+                }
+
+                if (auto maybeColour = constructor.get<List*>(1, SExpType::List)) {
+                    if (auto maybeColourConstructor = getConstructor(maybeColour.value())) {
+                        auto& colourConstructor = maybeColourConstructor.value();
+
+                        if (colourConstructor.startsWith("rgb")) {
+                            if (colourConstructor.values->items.size() != 4) {
+                                return false;
+                            }
+
+                            auto r = colourConstructor.get<IntLiteral*>(1, SExpType::IntLiteral);
+                            auto g = colourConstructor.get<IntLiteral*>(2, SExpType::IntLiteral);
+                            auto b = colourConstructor.get<IntLiteral*>(3, SExpType::IntLiteral);
+
+                            if (r && g && b) {
+                                config.backgroundColour = 
+                                    0xFF'00'00'00
+                                    | ((r.value()->value & 0xFF) << 16)
+                                    | ((g.value()->value & 0xFF) << 8)
+                                    | ((b.value()->value & 0xFF));
+                            }
+                        }
+                    }
+                }
+            }
+            else if (constructor.startsWith("margin")) {
+
+            }
+        }
+
+        return true;
     }
 }

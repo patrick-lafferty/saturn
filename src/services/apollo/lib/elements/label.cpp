@@ -67,37 +67,11 @@ namespace Apollo::Elements {
                         config.caption = value.value();
                     }
                 }
-                else if (c.startsWith("background")) {
-                    if (c.values->items.size() != 2) {
-                        return {};
-                    }
-
-                    if (auto maybeColour = c.get<List*>(1, SExpType::List)) {
-                        if (auto maybeColourConstructor = getConstructor(maybeColour.value())) {
-                            auto& colourConstructor = maybeColourConstructor.value();
-
-                            if (colourConstructor.startsWith("rgb")) {
-                                if (colourConstructor.values->items.size() != 4) {
-                                    return {};
-                                }
-
-                                auto r = colourConstructor.get<IntLiteral*>(1, SExpType::IntLiteral);
-                                auto g = colourConstructor.get<IntLiteral*>(2, SExpType::IntLiteral);
-                                auto b = colourConstructor.get<IntLiteral*>(3, SExpType::IntLiteral);
-
-                                if (r && g && b) {
-                                    config.backgroundColour = 
-                                        0xFF'00'00'00
-                                        | ((r.value()->value & 0xFF) << 16)
-                                        | ((g.value()->value & 0xFF) << 8)
-                                        | ((b.value()->value & 0xFF));
-                                }
-                            }
-                        }
-                    }
-                }
                 else if (c.startsWith("meta")) {
                     config.meta = c.values;
+                }
+                else if (!parseElement(s, config)) {
+                    return {};
                 }
             }
             else {

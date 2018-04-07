@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace Saturn::Parse {
 	struct List;
+    struct SExpression;
 }
 
 namespace Apollo {
@@ -83,4 +84,10 @@ namespace Apollo::Elements {
 
         uint32_t backgroundColour;
     };
+
+    /*
+    Base parsing function that dervied elements use as a 
+    fallback to parse a single constructor at a time
+    */
+    bool parseElement(Saturn::Parse::SExpression* element, Configuration& config);
 }
