@@ -30,17 +30,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "element.h"
 #include <optional>
+#include <variant>
 #include "../text.h"
-
-namespace Saturn::Parse {
-    struct SExpression;
-    struct StringLiteral;
-}
+#include "../databinding.h"
+#include <saturn/parsing.h>
 
 namespace Apollo::Elements {
 
     struct LabelConfiguration : Configuration {
-        Saturn::Parse::StringLiteral* caption;
+        std::variant<Saturn::Parse::StringLiteral*, Saturn::Parse::List*> caption;
     };
 
     std::optional<LabelConfiguration> parseLabel(Saturn::Parse::SExpression* label);
@@ -52,14 +50,47 @@ namespace Apollo::Elements {
     class Label : public UIElement {
     public:
 
+        enum class Bindings {
+            Caption
+        };
+
         Label(LabelConfiguration config);
+
+        template<class BindFunc>
+        static Label* create(LabelConfiguration config, BindFunc setupBinding) {
+            using namespace Saturn::Parse;
+
+            auto label = new Label(config);
+
+            if (std::holds_alternative<List*>(config.caption)) {
+                auto binding = std::get<List*>(config.caption);
+
+                if (auto maybeConstructor = getConstructor(binding)) {
+                    auto& constructor = maybeConstructor.value();
+
+                    if (constructor.startsWith("bind")) {
+                        if (constructor.length == 2) {
+                            if (auto maybeTarget = constructor.get<StringLiteral*>(1, SExpType::StringLiteral)) {
+                                Bindable<Label, Bindings, char*> caption{label, Bindings::Caption}; 
+                                setupBinding(&caption, maybeTarget.value()->value);
+                                label->caption = std::move(caption);
+                            }
+                        }
+                    }
+                }
+            }
+
+            return label;
+        }
 
         virtual void layoutText(Apollo::Text::Renderer* renderer) override;
         virtual void render(Renderer* renderer) override;
 
+        void onChange(Bindings binding);
+
     private:
 
-        char* caption {nullptr};
         Apollo::Text::TextLayout captionLayout;        
+        std::variant<char*, Bindable<Label, Bindings, char*>> caption;
     };
 }

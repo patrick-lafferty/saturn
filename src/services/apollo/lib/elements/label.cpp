@@ -66,6 +66,9 @@ namespace Apollo::Elements {
                     if (auto value = c.get<StringLiteral*>(1, SExpType::StringLiteral)) {
                         config.caption = value.value();
                     }
+                    else if (auto value = c.get<List*>(1, SExpType::List)) {
+                        config.caption = value.value();
+                    }
                 }
                 else if (c.startsWith("meta")) {
                     config.meta = c.values;
@@ -85,21 +88,37 @@ namespace Apollo::Elements {
     Label::Label(LabelConfiguration config)
         : UIElement(config) {
 
-        if (!config.caption->value.empty()) {
-            auto captionLength = config.caption->value.length();
-            caption = new char[captionLength + 1];
-            memset(caption, '\0', captionLength + 1);
-            config.caption->value.copy(caption, captionLength);
+        if (std::holds_alternative<StringLiteral*>(config.caption)) {
+            auto value = std::get<StringLiteral*>(config.caption);
+
+            if (!value->value.empty()) {
+                auto captionLength = value->value.length();
+                auto text = new char[captionLength + 1];
+                memset(text, '\0', captionLength + 1);
+                value->value.copy(text, captionLength);
+                caption = text;
+            }
         }
     }
 
     void Label::layoutText(Apollo::Text::Renderer* renderer) {
-        if (caption == nullptr) {
+        if (std::holds_alternative<char*>(caption)
+            && std::get<char*>(caption) == nullptr) {
             return;
         }
 
+        char* captionText {nullptr};
+
+        if (std::holds_alternative<char*>(caption)) {
+            captionText = std::get<char*>(caption);
+        }
+        else if (std::holds_alternative<Bindable<Label, Bindings, char*>>(caption)) {
+            auto& binding = std::get<Bindable<Label, Bindings, char*>>(caption);
+            captionText = binding.getValue();
+        }
+
         auto bounds = getBounds();
-        captionLayout = renderer->layoutText(caption, bounds.width);
+        captionLayout = renderer->layoutText(captionText, bounds.width);
     } 
 
     void Label::render(Renderer* renderer) {
@@ -107,9 +126,14 @@ namespace Apollo::Elements {
 
         renderer->drawRectangle(backgroundColour, bounds.x, bounds.y, bounds.width, bounds.height);
 
-        if (caption != nullptr) {
+        if ((std::holds_alternative<char*>(caption)
+            && std::get<char*>(caption) != nullptr)
+            || (std::holds_alternative<Bindable<Label, Bindings, char*>>(caption))) {
             renderer->drawText(captionLayout, bounds.x + padding.horizontal, bounds.y + padding.vertical, backgroundColour);
         }
     }
-    
+
+    void Label::onChange(Bindings binding) {
+
+    }
 }

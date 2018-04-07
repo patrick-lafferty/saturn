@@ -141,7 +141,7 @@ public:
 
         const char* data = R"(
 (grid
-    (margin 5)
+    (margins (vertical 20) (horizontal 20))
 
     (rows 
         (proportional-height 1)
@@ -153,11 +153,27 @@ public:
         (proportional-width 1))
 
     (items 
-        (label (caption "1")
-            (background (rgb 122 5 200)))
-        (label (caption "2")
-            (background (rgb 25 165 69))
+        (label (caption "First")
+            (padding (vertical 20) (horizontal 20))
+            (background (rgb 38 66 251)))
+        (label (caption "Second")
+            (background (rgb 24 205 4))
             (meta (grid (column 1))))
+
+        (label (caption "Third")
+            (background (rgb 69 69 69))
+            (meta (grid (row 1))))
+        (label (caption (bind "caption"))
+            (background (rgb 37 13 37))
+            (meta (grid (row 1) (column 1))))
+
+        (label (caption "Eth")
+            (background (rgb 248 121 82))
+            (margins (vertical 20) (horizontal 5))
+            (meta (grid (row 2))))
+        (label (caption "Sixthstnd")
+            (background (rgb 207 95 33))
+            (meta (grid (row 2) (column 1))))
 
         ))
 
@@ -171,9 +187,24 @@ public:
             if (topLevel->type == SExpType::List) {
                 auto root = static_cast<List*>(topLevel)->items[0];
 
-                if (auto r = Apollo::Elements::loadLayout(root, window)) {
+                Observable<char*> captionTest;
+                char* test = "hello, world";
+                captionTest.setValue(test);
+
+                auto bindy = [&](auto binding, std::string_view name) {
+                    using BindingType = typename std::remove_reference<decltype(*binding)>::type::ValueType;
+
+                    if constexpr(std::is_same<char*, BindingType>::value) {
+                        if (name.compare("caption") == 0) {
+                            binding->bindTo(captionTest);
+                        }
+                    }
+                };
+
+                if (auto r = Apollo::Elements::loadLayout(root, window, bindy)) {
                     window->layoutChildren();
-                    auto renderer = new Renderer(window);
+                    auto renderer = new Renderer(window, textRenderer);
+                    window->layoutText(textRenderer);
                     window->render(renderer);
                 }
             }
