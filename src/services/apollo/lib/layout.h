@@ -151,7 +151,8 @@ namespace Apollo::Elements {
     }
 
     template<class BindFunc>
-    std::optional<Container*> createContainer(KnownContainers type, 
+    std::optional<Container*> createContainer(Container* parent,
+        KnownContainers type, 
         Saturn::Parse::Constructor constructor, 
         BindFunc setupBinding) {
 
@@ -163,6 +164,19 @@ namespace Apollo::Elements {
                     auto success = createContainerItems(grid, config.items, setupBinding);                    
 
                     if (success) {
+
+                        if (config.meta != nullptr) {
+                            if (auto meta = parseMeta(config.meta)) {
+                                parent->addChild(grid, meta.value());
+                            }
+                            else {
+                                parent->addChild(grid);
+                            }
+                        }
+                        else {
+                            parent->addChild(grid);
+                        }
+
                         return grid;
                     }
                     else {
@@ -177,7 +191,7 @@ namespace Apollo::Elements {
         return {};            
     }
 
-    template<class BindFunc>
+    /*template<class BindFunc>
     std::optional<Container*> createContainer(Container* parent, 
         KnownContainers type, 
         Saturn::Parse::Constructor constructor, 
@@ -193,7 +207,7 @@ namespace Apollo::Elements {
         else {
             return {};
         }
-    }
+    }*/
 
     template<class BindFunc>
     std::optional<Container*> loadLayout(Saturn::Parse::SExpression* root, 
