@@ -83,6 +83,7 @@ public:
     (items 
         (label (caption "Padded Label")
             (padding (vertical 50) (horizontal 100))
+            (font-colour (rgb 122 22 23))
             (background (rgb 38 66 251)))
         (label (caption "Second")
             (background (rgb 24 205 4))
@@ -98,6 +99,7 @@ public:
 
         (label (caption "Margined Label")
             (background (rgb 248 121 82))
+            (font-colour (rgb 169 5 40))
             (margins (vertical 50) (horizontal 90))
             (meta (grid (row 2))))
 
@@ -117,11 +119,13 @@ public:
 
             (items 
                 (label (caption "a")
+                    (font-colour (rgb 10 10 10))
                     (background (rgb 33 146 195)))
                 (label (caption "b")
                     (background (rgb 62 16 140))
                     (meta (grid (column 1))))
                 (label (caption "3")
+                    (font-colour (rgb 100 0 0))
                     (background (rgb 241 220 69))
                     (meta (grid (column 2))))
 
@@ -141,9 +145,6 @@ public:
 
             if (topLevel->type == SExpType::List) {
                 auto root = static_cast<List*>(topLevel)->items[0];
-
-                char* test = "hello, world";
-                captionTest.setValue(test);
 
                 auto bindy = [&](auto binding, std::string_view name) {
                     using BindingType = typename std::remove_reference<decltype(*binding)>::type::ValueType;

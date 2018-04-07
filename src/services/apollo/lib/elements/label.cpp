@@ -117,6 +117,10 @@ namespace Apollo::Elements {
             captionText = binding.getValue();
         }
 
+        if (captionText == nullptr) {
+            return;
+        }
+
         auto bounds = getBounds();
         captionLayout = renderer->layoutText(captionText, bounds.width, fontColour);
     } 
