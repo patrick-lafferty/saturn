@@ -23,7 +23,7 @@
             (font-colour (rgb 0 0 0))
             (meta (grid (column 1))))
 
-        (label (caption (bind "caption"))
+        (label (caption (bind variableName))
             (background (rgb 69 69 69))
             (meta (grid (row 1))))
         (label (caption "<- that one was typed")

@@ -90,7 +90,7 @@ public:
             (font-colour (rgb 0 0 0))
             (meta (grid (column 1))))
 
-        (label (caption (bind "caption"))
+        (label (caption (bind variableName))
             (background (rgb 69 69 69))
             (meta (grid (row 1))))
         (label (caption "<- that one was typed")
@@ -146,17 +146,17 @@ public:
             if (topLevel->type == SExpType::List) {
                 auto root = static_cast<List*>(topLevel)->items[0];
 
-                auto bindy = [&](auto binding, std::string_view name) {
+                auto binder = [&](auto binding, std::string_view name) {
                     using BindingType = typename std::remove_reference<decltype(*binding)>::type::ValueType;
 
                     if constexpr(std::is_same<char*, BindingType>::value) {
-                        if (name.compare("caption") == 0) {
+                        if (name.compare("variableName") == 0) {
                             binding->bindTo(captionTest);
                         }
                     }
                 };
 
-                if (auto r = Apollo::Elements::loadLayout(root, window, bindy)) {
+                if (auto r = Apollo::Elements::loadLayout(root, window, binder)) {
                     window->layoutChildren();
                     elementRenderer = new Renderer(window, textRenderer);
                     window->layoutText(textRenderer);

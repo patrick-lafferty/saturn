@@ -70,7 +70,7 @@ namespace Apollo::Elements {
 
                     if (constructor.startsWith("bind")) {
                         if (constructor.length == 2) {
-                            if (auto maybeTarget = constructor.get<StringLiteral*>(1, SExpType::StringLiteral)) {
+                            if (auto maybeTarget = constructor.get<Symbol*>(1, SExpType::Symbol)) {
                                 Bindable<Label, Bindings, char*> caption{label, Bindings::Caption}; 
                                 label->caption = caption;
 
