@@ -77,6 +77,9 @@ public:
         (proportional-width 1)
         (proportional-width 1))
 
+    (row-gap 20)
+    (column-gap 10)
+
     (items 
         (label (caption "Padded Label")
             (padding (vertical 50) (horizontal 100))
@@ -108,6 +111,9 @@ public:
                 (proportional-width 1)
                 (proportional-width 1)
                 (proportional-width 1))
+
+            (row-gap 10)
+            (column-gap 10)
 
             (items 
                 (label (caption "a")

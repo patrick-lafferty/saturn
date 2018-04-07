@@ -46,19 +46,19 @@ namespace Apollo::Elements {
         for (int i = 1; i < count; i++) {
             bool failed = true;
             
-            if (auto constructor = getConstructor(config->items[i])) {
-                auto& c = constructor.value();
+            if (auto maybeConstructor = getConstructor(config->items[i])) {
+                auto& constructor = maybeConstructor.value();
 
-                if (c.values->items.size() != 2) {
+                if (constructor.length != 2) {
                     return false;
                 }
 
-                if (auto value = c.get<IntLiteral*>(1, SExpType::IntLiteral)) {
-                    if (c.startsWith(proportional)) {
+                if (auto value = constructor.get<IntLiteral*>(1, SExpType::IntLiteral)) {
+                    if (constructor.startsWith(proportional)) {
                         definitions.push_back({Unit::Proportional, value.value()->value});
                         failed = false;
                     }
-                    else if (c.startsWith(fixed)) {
+                    else if (constructor.startsWith(fixed)) {
                         definitions.push_back({Unit::Fixed, value.value()->value});
                         failed = false;
                     }
@@ -112,6 +112,30 @@ namespace Apollo::Elements {
                 else if (c.startsWith("meta")) {
                     config.meta = c.values;
                 }
+                else if (c.startsWith("row-gap")) {
+                    if (c.length != 2) {
+                        return {};
+                    }
+
+                    if (auto value = c.get<IntLiteral*>(1, SExpType::IntLiteral)) {
+                        config.rowGap = value.value()->value;
+                    }
+                    else {
+                        return {};
+                    }
+                }
+                else if (c.startsWith("column-gap")) {
+                    if (c.length != 2) {
+                        return {};
+                    }
+
+                    if (auto value = c.get<IntLiteral*>(1, SExpType::IntLiteral)) {
+                        config.columnGap = value.value()->value;
+                    }
+                    else {
+                        return {};
+                    }
+                }
                 else if (!parseElement(s, config)) {
                     return {};
                 }
@@ -129,6 +153,8 @@ namespace Apollo::Elements {
 
         rows = std::move(config.rows);
         columns = std::move(config.columns);
+        rowGap = config.rowGap;
+        columnGap = config.columnGap;
     }
 
     void Grid::addChild(UIElement* child) {
@@ -173,13 +199,15 @@ namespace Apollo::Elements {
         Bounds bounds {columns[element.column].startingPosition, rows[element.row].startingPosition,
                 columns[element.column].actualSpace, rows[element.row].actualSpace};
 
-        for (auto i = 1; i < element.rowSpan; i++) {
-            bounds.height += rows[element.row + i].actualSpace;
-        }        
+        if (element.rowSpan > 0) {
+            auto& row = rows[element.row + element.rowSpan - 1];
+            bounds.height = row.startingPosition + row.actualSpace - bounds.y;
+        }
 
-        for (auto i = 1; i < element.columnSpan; i++) {
-            bounds.width += columns[element.column + i].actualSpace;
-        }        
+        if (element.columnSpan > 0) {
+            auto& column = columns[element.column + element.columnSpan - 1];
+            bounds.width = column.startingPosition + column.actualSpace - bounds.x;
+        }
 
         return bounds;
     }
@@ -225,8 +253,12 @@ namespace Apollo::Elements {
         }
     }
 
-    void allocateDefinitionSpace(std::vector<RowColumnDefinition>& definitions, int unallocatedSpace, int currentPosition) {
+    void allocateDefinitionSpace(std::vector<RowColumnDefinition>& definitions, int unallocatedSpace, int currentPosition, int gap) {
         int totalProportionalUnits = 0;
+
+        if (gap > 0) {
+            unallocatedSpace -= gap * (definitions.size() - 1);
+        }
 
         for (auto& definition : definitions) {
             if (definition.unit == Unit::Fixed) {
@@ -258,15 +290,15 @@ namespace Apollo::Elements {
 
         for (auto& definition : definitions) {
             definition.startingPosition = currentPosition;
-            currentPosition += definition.actualSpace;
+            currentPosition += definition.actualSpace + gap;
         }
     }
 
     void Grid::calculateGridDimensions() {
         auto bounds = getBounds();
 
-        allocateDefinitionSpace(rows, bounds.height, bounds.y);
-        allocateDefinitionSpace(columns, bounds.width, bounds.x);
+        allocateDefinitionSpace(rows, bounds.height, bounds.y, rowGap);
+        allocateDefinitionSpace(columns, bounds.width, bounds.x, columnGap);
     }
 
     void Grid::applyMetaData(GridElement& element, const std::vector<MetaData>& meta) {

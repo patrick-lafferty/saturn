@@ -65,6 +65,8 @@ namespace Apollo::Elements {
         std::vector<RowColumnDefinition> rows;
         std::vector<RowColumnDefinition> columns;
         Saturn::Parse::SExpression* items;
+        int rowGap {0};
+        int columnGap {0};
     };
 
     std::optional<GridConfiguration> parseGrid(Saturn::Parse::SExpression* grid);
@@ -99,5 +101,7 @@ namespace Apollo::Elements {
         std::vector<GridElement> children;
         std::vector<RowColumnDefinition> rows;
         std::vector<RowColumnDefinition> columns;
+        int rowGap;
+        int columnGap;
     };
 }
