@@ -172,6 +172,9 @@ namespace LibC_Implementation {
                 }
             }
         }
+        else {
+            return chunk;
+        }
 
         uhoh();
 
