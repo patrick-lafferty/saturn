@@ -27,12 +27,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #pragma once
+#include <variant>
 #include <stdint.h>
-
-namespace Saturn::Parse {
-	struct List;
-    struct SExpression;
-}
+#include "../databinding.h"
+#include <saturn/parsing.h>
 
 namespace Apollo {
     class Renderer;
@@ -56,7 +54,7 @@ namespace Apollo::Elements {
 
 	struct Configuration {
 		Saturn::Parse::List* meta {nullptr};
-        uint32_t backgroundColour {0};
+        std::variant<uint32_t, Saturn::Parse::Symbol*> backgroundColour;
         uint32_t fontColour {0x00'64'95'EDu};
         Margins margins;
         Margins padding;
@@ -70,9 +68,32 @@ namespace Apollo::Elements {
 	class UIElement {
 	public:
 
+        enum class Bindings {
+            BackgroundColour
+        };
+
         UIElement() = default;
         UIElement(Configuration& config);
         virtual ~UIElement() {}
+
+        template<class BindFunc>
+        void setupBindings(Configuration& config, BindFunc binder) {
+            using namespace Saturn::Parse;
+
+            if (std::holds_alternative<Symbol*>(config.backgroundColour)) {
+                auto binding = std::get<Symbol*>(config.backgroundColour);
+
+                Bindable<UIElement, Bindings, uint32_t> background{this, Bindings::BackgroundColour};
+                backgroundColour = background;
+
+                auto& bindable = std::get<Bindable<UIElement, Bindings, uint32_t>>(backgroundColour);
+                binder(&bindable, binding->value);
+            }
+        }
+
+        void onChange(Bindings) {
+
+        }
 
         int getDesiredWidth();
         int getDesiredHeight();
@@ -93,12 +114,16 @@ namespace Apollo::Elements {
         int desiredWidth, desiredHeight;
         Container* parent {nullptr};
 
+        std::variant<uint32_t, Bindable<UIElement, Bindings, uint32_t>> backgroundColour;
+
     protected:
 
-        uint32_t backgroundColour;
+        uint32_t getBackgroundColour();
+
         uint32_t fontColour;
         Margins margins;
         Margins padding;
+
     };
 
     /*

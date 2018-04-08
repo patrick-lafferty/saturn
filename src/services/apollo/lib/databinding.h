@@ -40,6 +40,10 @@ namespace Apollo {
     class Observable {
     public:
 
+        Observable() = default;
+        Observable(T value) 
+            : value {value} {}
+
         std::function<T(void)> subscribe(std::function<void()> s) {
             onChange = s;
             return [&]() {return this->value;};

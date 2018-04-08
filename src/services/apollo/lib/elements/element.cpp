@@ -28,14 +28,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "element.h"
 #include "container.h"
-#include <saturn/parsing.h>
 
 using namespace Saturn::Parse;
 
 namespace Apollo::Elements {
 
     UIElement::UIElement(Configuration& config) {
-        backgroundColour = config.backgroundColour;
         fontColour = config.fontColour;
 
         if (!(config.margins.vertical < 0 || config.margins.horizontal < 0)) {
@@ -87,6 +85,16 @@ namespace Apollo::Elements {
         }
     }
 
+    uint32_t UIElement::getBackgroundColour() {
+        if (std::holds_alternative<uint32_t>(backgroundColour)) {
+            return std::get<uint32_t>(backgroundColour);
+        }
+        else {
+            auto& bindable = std::get<Bindable<UIElement, Bindings, uint32_t>>(backgroundColour);
+            return bindable.getValue();
+        }
+    }
+
     bool parseMargins(List* margins, Margins& config) {
         if (margins->items.size() == 1) {
             return false;
@@ -123,7 +131,7 @@ namespace Apollo::Elements {
         return true;
     }
 
-    std::optional<uint32_t> parseColour(Constructor& constructor) {
+    std::optional<std::variant<uint32_t, Symbol*>> parseColour(Constructor& constructor) {
         if (auto maybeColour = constructor.get<List*>(1, SExpType::List)) {
             if (auto maybeColourConstructor = getConstructor(maybeColour.value())) {
                 auto& colourConstructor = maybeColourConstructor.value();
@@ -143,6 +151,11 @@ namespace Apollo::Elements {
                             | ((r.value()->value & 0xFF) << 16)
                             | ((g.value()->value & 0xFF) << 8)
                             | ((b.value()->value & 0xFF));
+                    }
+                }
+                else if (colourConstructor.startsWith("bind")) {
+                    if (auto value = colourConstructor.get<Symbol*>(1, SExpType::Symbol)) {
+                        return value.value();
                     }
                 }
             }
@@ -173,7 +186,8 @@ namespace Apollo::Elements {
                 }
 
                 if (auto colour = parseColour(constructor)) {
-                    config.fontColour = colour.value();
+                    //TODO: make fontColour bindable
+                    config.fontColour = std::get<uint32_t>(colour.value());
                 }
                 else {
                     return false;
