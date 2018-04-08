@@ -124,20 +124,27 @@ namespace Apollo::Elements {
         void instantiateItemTemplate(Item item, BindFunc binder) {
             using namespace Saturn::Parse;
 
-            auto maybeLabel = createElement(this, 
-                KnownElements::Label, 
-                getConstructor(itemTemplate).value(),
-                binder,
-                [](auto, auto) {});
+            if (auto maybeConstructor = getConstructor(itemTemplate)) {
+                auto& constructor = maybeConstructor.value();
 
-            if (maybeLabel) {
-                auto& element = children.back();
-                auto numberOfChildren = children.size() - 1;
-                auto row = numberOfChildren / columns.size();
-                auto column = numberOfChildren % columns.size();
+                if (auto maybeChildType = getConstructorType(constructor)) {
+                    auto childType = maybeChildType.value();
 
-                element.row = row;
-                element.column = column;
+                    if (std::holds_alternative<KnownElements>(childType)) {
+                        auto child = createElement(this, 
+                            std::get<KnownElements>(childType), 
+                            constructor,
+                            binder,
+                            [](auto, auto) {});
+
+                        if (child) {
+                            auto& element = children.back();
+                            auto numberOfChildren = children.size() - 1;
+                            element.row = numberOfChildren / columns.size();
+                            element.column = numberOfChildren % columns.size();
+                        }
+                    }
+                }
             }
         }
 
