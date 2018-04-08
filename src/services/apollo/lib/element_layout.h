@@ -34,11 +34,18 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace Apollo::Elements {
 
+    enum class KnownContainers {
+        Grid
+    };
+
     enum class KnownElements {
         Label
     };
 
 	std::optional<std::vector<MetaData>> parseMeta(Saturn::Parse::List* config);
+
+    std::optional<std::variant<KnownContainers, KnownElements>>
+    getConstructorType(Saturn::Parse::Constructor constructor);
 
     template<class BindFunc, class CollectionBindFunc>
     std::optional<UIElement*> createElement(Container* parent, 

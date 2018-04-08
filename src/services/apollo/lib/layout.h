@@ -36,16 +36,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace Apollo::Elements {
 
-    enum class KnownContainers {
-        Grid
-    };
-
-
     bool parseGridMeta(Saturn::Parse::Constructor grid, std::vector<MetaData>& meta);
 	std::optional<std::vector<MetaData>> parseMeta(Saturn::Parse::List* config);
-
-    std::optional<std::variant<KnownContainers, KnownElements>>
-    getConstructorType(Saturn::Parse::Constructor constructor);
 
     template<class BindFunc, class CollectionBindFunc>
     std::optional<Container*> createContainer(Container* parent, 
@@ -133,7 +125,6 @@ namespace Apollo::Elements {
             case KnownContainers::Grid: {
                 if (auto maybeConfig = parseGrid(constructor.values)) {
                     auto config = maybeConfig.value();
-                    //auto grid = new Grid(config);
                     auto grid = Grid::create(config, setupBinding, setupCollectionBinding);
                     auto success = createContainerItems(grid, config.items, setupBinding, setupCollectionBinding);                    
 
@@ -164,24 +155,6 @@ namespace Apollo::Elements {
 
         return {};            
     }
-
-    /*template<class BindFunc>
-    std::optional<Container*> createContainer(Container* parent, 
-        KnownContainers type, 
-        Saturn::Parse::Constructor constructor, 
-        BindFunc setupBinding) {
-        
-        auto maybeContainer = createContainer(type, constructor, setupBinding);
-
-        if (maybeContainer) {
-            auto container = maybeContainer.value();
-            parent->addChild(container);
-            return parent;
-        }
-        else {
-            return {};
-        }
-    }*/
 
     template<class BindFunc, class CollectionBindFunc>
     std::optional<Container*> loadLayout(Saturn::Parse::SExpression* root, 
