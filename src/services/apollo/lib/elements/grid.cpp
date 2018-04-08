@@ -401,7 +401,7 @@ namespace Apollo::Elements {
 
         if (children.empty()) {
             auto bounds = getBounds();
-            renderer->drawRectangle(backgroundColour, bounds.x, bounds.y, bounds.width, bounds.height);
+            renderer->drawRectangle(getBackgroundColour(), bounds.x, bounds.y, bounds.width, bounds.height);
         }
     }
 

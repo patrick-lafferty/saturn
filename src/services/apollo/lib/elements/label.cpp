@@ -128,6 +128,8 @@ namespace Apollo::Elements {
     void Label::render(Renderer* renderer) {
         auto bounds = getBounds();
 
+        auto backgroundColour = getBackgroundColour();
+
         renderer->drawRectangle(backgroundColour, bounds.x, bounds.y, bounds.width, bounds.height);
 
         char* captionText {nullptr};

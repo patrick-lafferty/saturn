@@ -61,6 +61,7 @@ namespace Apollo::Elements {
             using namespace Saturn::Parse;
 
             auto label = new Label(config);
+            label->setupBindings(config, setupBinding);
 
             if (std::holds_alternative<List*>(config.caption)) {
                 auto binding = std::get<List*>(config.caption);
