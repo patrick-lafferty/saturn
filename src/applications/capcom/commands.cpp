@@ -88,20 +88,26 @@ void createDisplayItems(ObservableDisplays& items,
                     if (name.compare("background") == 0) {
                         binding->bindTo(item->background);
                     }
+                    else if (name.compare("fontColour") == 0) {
+                        binding->bindTo(item->fontColour);
+                    }
                 }
             };
         };
 
+        uint32_t darkBlue = 0x00'00'00'20u;
+        uint32_t lightBlue = 0x00'64'95'EDu;
+
         for (const auto& [key, value]  : currentCategory->children) {
             if (std::holds_alternative<Command>(value)) {
                 auto& command = std::get<Command>(value);
-                items.add(new DisplayItem{command.key, 0x00'00'00'20u}, itemBinder);
-                items.add(new DisplayItem{command.name, 0x00'64'95'EDu}, itemBinder);
+                items.add(new DisplayItem{command.key, darkBlue, lightBlue}, itemBinder);
+                items.add(new DisplayItem{command.name, lightBlue, darkBlue}, itemBinder);
             }
             else {
                 auto& category = std::get<Category>(value);
-                items.add(new DisplayItem{category.key, 0x00'00'00'20u}, itemBinder);
-                items.add(new DisplayItem{category.name, 0x00'64'95'EDu}, itemBinder);
+                items.add(new DisplayItem{category.key, darkBlue, lightBlue}, itemBinder);
+                items.add(new DisplayItem{category.name, lightBlue, darkBlue}, itemBinder);
             }
         }
 

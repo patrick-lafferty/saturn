@@ -59,11 +59,12 @@ struct Category {
 
 struct DisplayItem {
 
-    DisplayItem(char* content, uint32_t background)
-        : content {content}, background {background} {}
+    DisplayItem(char* content, uint32_t background, uint32_t fontColour)
+        : content {content}, background {background}, fontColour {fontColour} {}
 
     Apollo::Observable<char*> content;
     Apollo::Observable<uint32_t> background;
+    Apollo::Observable<uint32_t> fontColour;
 };
 
 void createCategories(Category& topLevelCommands);

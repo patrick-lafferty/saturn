@@ -64,8 +64,8 @@ const char* layout = R"(
 
                 (label (caption ">")
                     (alignment (horizontal center) (vertical center))
-                    (font-colour (rgb 5 5 5))
-                    (background (rgb 248 121 82)))
+                    (font-colour (rgb 0 0 20))
+                    (background (rgb 100 149 237)))
 
                 (label (caption (bind commandLine))
                     (alignment (vertical center))
@@ -88,7 +88,8 @@ const char* layout = R"(
             (items
                 (label (caption "Current category:")
                     (alignment (vertical center) (horizontal center))
-                    (background (rgb 248 121 82))
+                    (font-colour (rgb 0 0 20))
+                    (background (rgb 100 149 237))
                 )
 
                 (label (caption (bind currentCategoryName))
@@ -123,6 +124,7 @@ const char* layout = R"(
             (item-template
                 (label (caption (bind content))
                     (alignment (horizontal center) (vertical center))
+                    (font-colour (bind fontColour)) 
                     (background (bind background)) 
                 )
             )        
