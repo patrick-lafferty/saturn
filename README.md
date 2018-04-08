@@ -1,6 +1,6 @@
-| ![Latest Screenshot](https://github.com/patrick-lafferty/saturn/blob/master/screenshots/Advanced%20grid%20and%20databinding.PNG) |
+| ![Latest Screenshot](https://github.com/patrick-lafferty/saturn/blob/master/screenshots/Capcom.PNG) |
 | :-: |
-| *UI Layout test with nested Grid containers and Label elements* |
+| *Capcom application redesigned with the new Apollo UI framework* |
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
 # Saturn
