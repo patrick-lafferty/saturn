@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <saturn/parsing.h>
 #include "elements/grid.h"
 #include "elements/label.h"
+#include "element_layout.h"
 
 namespace Apollo::Elements {
 
@@ -39,59 +40,30 @@ namespace Apollo::Elements {
         Grid
     };
 
-    enum class KnownElements {
-        Label
-    };
 
     bool parseGridMeta(Saturn::Parse::Constructor grid, std::vector<MetaData>& meta);
 	std::optional<std::vector<MetaData>> parseMeta(Saturn::Parse::List* config);
 
-    template<class BindFunc>
-    std::optional<UIElement*> createElement(Container* parent, 
-        KnownElements type, 
-        Saturn::Parse::Constructor constructor, 
-        BindFunc setupBinding) {
-
-        switch (type) {
-            case KnownElements::Label: {
-                if (auto maybeConfig = parseLabel(constructor.values)) {
-                    auto config = maybeConfig.value();
-                    auto label = Label::create(config, setupBinding);
-
-                    if (config.meta != nullptr) {
-                        if (auto meta = parseMeta(config.meta)) {
-                            parent->addChild(label, meta.value());
-                        }
-                        else {
-                            parent->addChild(label);
-                        }
-                    }
-                    else {
-                        parent->addChild(label);
-                    }
-
-                    return label;
-                }
-
-                break;
-            }
-        }
-
-        return {};
-    }
-
     std::optional<std::variant<KnownContainers, KnownElements>>
     getConstructorType(Saturn::Parse::Constructor constructor);
 
-    template<class BindFunc>
+    template<class BindFunc, class CollectionBindFunc>
     std::optional<Container*> createContainer(Container* parent, 
         KnownContainers type, 
         Saturn::Parse::Constructor constructor, 
-        BindFunc setupBinding);
+        BindFunc setupBinding,
+        CollectionBindFunc setupCollectionBinding);
 
-    template<class BindFunc>
-    bool createContainerItems(Container* parent, Saturn::Parse::SExpression* itemList, BindFunc setupBinding) {
+    template<class BindFunc, class CollectionBindFunc>
+    bool createContainerItems(Container* parent, 
+        Saturn::Parse::SExpression* itemList, 
+        BindFunc setupBinding,
+        CollectionBindFunc setupCollectionBinding) {
         using namespace Saturn::Parse;
+
+        if (itemList == nullptr) {
+            return true;
+        }
 
         if (itemList->type != SExpType::List) {
             return false;
@@ -123,14 +95,14 @@ namespace Apollo::Elements {
                         auto childType = maybeChildType.value();
 
                         if (std::holds_alternative<KnownContainers>(childType)) {
-                            auto child = createContainer(parent, std::get<KnownContainers>(childType), childConstructor, setupBinding);
+                            auto child = createContainer(parent, std::get<KnownContainers>(childType), childConstructor, setupBinding, setupCollectionBinding);
 
                             if (!child) {
                                 return false;
                             }
                         }
                         else {
-                            auto child = createElement(parent, std::get<KnownElements>(childType), childConstructor, setupBinding);
+                            auto child = createElement(parent, std::get<KnownElements>(childType), childConstructor, setupBinding, setupCollectionBinding);
 
                             if (!child) {
                                 return false;
@@ -150,18 +122,20 @@ namespace Apollo::Elements {
         return true;
     }
 
-    template<class BindFunc>
+    template<class BindFunc, class CollectionBindFunc>
     std::optional<Container*> createContainer(Container* parent,
         KnownContainers type, 
         Saturn::Parse::Constructor constructor, 
-        BindFunc setupBinding) {
+        BindFunc setupBinding,
+        CollectionBindFunc setupCollectionBinding) {
 
         switch (type) {
             case KnownContainers::Grid: {
                 if (auto maybeConfig = parseGrid(constructor.values)) {
                     auto config = maybeConfig.value();
-                    auto grid = new Grid(config);
-                    auto success = createContainerItems(grid, config.items, setupBinding);                    
+                    //auto grid = new Grid(config);
+                    auto grid = Grid::create(config, setupBinding, setupCollectionBinding);
+                    auto success = createContainerItems(grid, config.items, setupBinding, setupCollectionBinding);                    
 
                     if (success) {
 
@@ -209,10 +183,11 @@ namespace Apollo::Elements {
         }
     }*/
 
-    template<class BindFunc>
+    template<class BindFunc, class CollectionBindFunc>
     std::optional<Container*> loadLayout(Saturn::Parse::SExpression* root, 
         Container* window,
-        BindFunc setupBinding) {
+        BindFunc setupBinding,
+        CollectionBindFunc setupCollectionBinding) {
 
         if (auto c = getConstructor(root)) {
             auto constructor = c.value();
@@ -221,7 +196,11 @@ namespace Apollo::Elements {
                 auto type = maybeType.value();
 
                 if (std::holds_alternative<KnownContainers>(type)) {
-                    return createContainer(window, std::get<KnownContainers>(type), constructor, setupBinding);
+                    return createContainer(window, 
+                        std::get<KnownContainers>(type), 
+                        constructor, 
+                        setupBinding,
+                        setupCollectionBinding);
                 }
                 else {
                     return {};
