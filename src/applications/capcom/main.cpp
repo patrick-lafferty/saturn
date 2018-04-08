@@ -43,8 +43,15 @@ CapCom is the main interface between the window manager and the user
 #include <map>
 #include <variant>
 
+#include <services/apollo/lib/databinding.h>
+#include <services/apollo/lib/layout.h>
+#include <services/apollo/lib/renderer.h>
+#include <services/apollo/lib/elements/grid.h>
+
 using namespace Apollo;
 using namespace Apollo::Debug;
+using namespace Apollo::Elements;
+using namespace Saturn::Parse;
 
 enum class AvailableCommands {
     Split,
@@ -54,14 +61,131 @@ enum class AvailableCommands {
 };
 
 struct Command {
+    Command(AvailableCommands command, const char* keyLiteral, const char* nameLiteral) {
+        this->command = command;
+
+        key = new char[strlen(keyLiteral)];
+        strcpy(key, keyLiteral);
+
+        name = new char[strlen(nameLiteral)];
+        strcpy(name, nameLiteral);
+    }
+
     AvailableCommands command;
-    char name[30];
+    char* key;
+    char* name;
 };
 
 struct Category {
-    char name[30];
+    Category() = default;
+    Category(const char* keyLiteral, const char* nameLiteral) {
+        key = new char[strlen(keyLiteral)];
+        strcpy(key, keyLiteral);
+
+        name = new char[strlen(nameLiteral)];
+        strcpy(name, nameLiteral);
+    }
+
+    char* key;
+    char* name;
     std::map<char, std::variant<Category, Command>> children;
 };
+
+struct DisplayItem {
+
+    DisplayItem(char* content, uint32_t background)
+        : content {content}, background {background} {}
+
+    Observable<char*> content;
+    Observable<uint32_t> background;
+};
+
+const char* layout = R"(
+
+(grid
+    (margins (vertical 100) (horizontal 50))
+
+    (rows
+        (fixed-height 100)
+        (fixed-height 100)
+        (fixed-height 100)
+        (fixed-height 100)
+    )   
+
+    (columns
+        (fixed-width 50)
+        (proportional-width 1)
+        (fixed-width 50)
+        (proportional-width 1)
+    )
+
+    (item-source (bind currentCommands))
+
+    (item-template
+        (label (caption (bind content))
+            (background (bind background)) 
+        )
+    )        
+)
+
+)";
+
+void createCategories(Category& topLevelCommands) {
+    Category splitCat {"c", "change split direction"};
+    splitCat.children['h'] = Command {AvailableCommands::ChangeSplitHorizontal, "h", "horizontal"};
+    splitCat.children['v'] = Command {AvailableCommands::ChangeSplitVertical, "v", "vertical"};
+
+    Category container {"c", "container"};
+    container.children['s'] = Command {AvailableCommands::Split, "s", "split"};
+    container.children['c'] = splitCat;
+
+    Category launch {"l", "launch"};
+    launch.children['d'] = Command {AvailableCommands::Launch, "d", "dsky"};
+
+    topLevelCommands.children['c'] = container;
+    topLevelCommands.children['l'] = launch;
+}
+
+typedef ObservableCollection<DisplayItem*, BindableCollection<Grid, Grid::Bindings>> ObservableDisplays;
+
+void createDisplayItems(ObservableDisplays& items, Category* currentCategory, Window* window) {
+
+    if (currentCategory != nullptr) {
+        items.clear();
+
+        auto itemBinder = [](auto& item) {
+            return [&](auto binding, std::string_view name) {
+                using BindingType = typename std::remove_reference<decltype(*binding)>::type::ValueType;
+
+                if constexpr(std::is_same<char*, BindingType>::value) {
+                    if (name.compare("content") == 0) {
+                        binding->bindTo(item->content);
+                    }
+                }
+                else if constexpr(std::is_same<uint32_t, BindingType>::value) {
+                    if (name.compare("background") == 0) {
+                        binding->bindTo(item->background);
+                    }
+                }
+            };
+        };
+
+        for (const auto& [key, value]  : currentCategory->children) {
+            if (std::holds_alternative<Command>(value)) {
+                auto& command = std::get<Command>(value);
+                items.add(new DisplayItem{command.key, 0x00'FF'00'00u}, itemBinder);
+                items.add(new DisplayItem{command.name, 0x00'00'00'FFu}, itemBinder);
+            }
+            else {
+                auto& category = std::get<Category>(value);
+                items.add(new DisplayItem{category.key, 0x00'FF'00'00u}, itemBinder);
+                items.add(new DisplayItem{category.name, 0x00'00'00'FFu}, itemBinder);
+            }
+        }
+    }
+
+    window->layoutChildren();
+}
 
 class CapCom : public Application<CapCom> {
 public:
@@ -74,12 +198,12 @@ public:
             return;
         }
 
-        promptLayout = textRenderer->layoutText("\e[38;2;255;69;0m> \e[38;2;0;191;255m", screenWidth, 0x00'64'95'EDu);
-        mainBackgroundColour = 0x00'00'00'80; 
+        //promptLayout = textRenderer->layoutText("\e[38;2;255;69;0m> \e[38;2;0;191;255m", screenWidth, 0x00'64'95'EDu);
+        /*mainBackgroundColour = 0x00'00'00'80; 
         window->setBackgroundColour(mainBackgroundColour);
-        clear(0, 0, screenWidth, screenHeight);
+        clear(0, 0, screenWidth, screenHeight);*/
         memset(inputBuffer, '\0', 500);
-        auto currentLayout = textRenderer->layoutText("Menu", screenWidth, 0x00'64'95'EDu);
+        /*auto currentLayout = textRenderer->layoutText("Menu", screenWidth, 0x00'64'95'EDu);
         maxInputWidth = screenWidth - promptLayout.bounds.width;
         textRenderer->drawText(currentLayout, 10, 0);
         promptY = currentLayout.bounds.height;
@@ -88,29 +212,47 @@ public:
         clear(10, promptY, screenWidth - 20, currentLayout.bounds.height);
         drawPrompt();
         commandAreaY = promptY + 100;
-
-        Category splitCat {"c => change split direction"};
-        splitCat.children['h'] = Command {AvailableCommands::ChangeSplitHorizontal, "h => horizontal"};
-        splitCat.children['v'] = Command {AvailableCommands::ChangeSplitVertical, "v => vertical"};
-
-        Category container {"c => container"};
-        container.children['s'] = Command {AvailableCommands::Split, "s => split"};
-        container.children['c'] = splitCat;
-
-        Category launch {"l => launch"};
-        launch.children['d'] = Command {AvailableCommands::Launch, "d => dsky"};
-
-        topLevelCommands.children['c'] = container;
-        topLevelCommands.children['l'] = launch;
+        */
+        createCategories(topLevelCommands);
         currentCategory = &topLevelCommands;
-        drawCategory();
+        //drawCategory();
+
+        auto result = read(layout);
+
+        if (std::holds_alternative<SExpression*>(result)) {
+            auto topLevel = std::get<SExpression*>(result);
+
+            if (topLevel->type == SExpType::List) {
+                auto root = static_cast<List*>(topLevel)->items[0];
+
+                auto binder = [](auto, auto) {};
+                auto collectionBinder = [&](auto binding, std::string_view name) {
+                    if (name.compare("currentCommands") == 0) {
+                        binding->bindTo(currentItems);
+                    }
+                };
+
+                if (auto r = loadLayout(root, window, binder, collectionBinder)) {
+                    window->layoutChildren();
+                    auto elementRenderer = new Renderer(window, textRenderer);
+                    window->layoutText(textRenderer);
+                    window->render(elementRenderer);
+                    window->setRenderer(elementRenderer);
+
+                    createDisplayItems(currentItems, currentCategory, window);
+
+                    window->layoutText(textRenderer);
+                    window->render(elementRenderer);
+                }
+            }
+        }
     }
 
     void doCommand(AvailableCommands command) {
         index = 0;
         memset(inputBuffer, '\0', 500);
 
-        drawCommandLine();
+        //drawCommandLine();
 
         HideOverlay h;
         h.serviceType = Kernel::ServiceType::WindowManager;
@@ -180,10 +322,10 @@ public:
             }
         }
 
-        drawCategory();
+        //drawCategory();
     }
 
-    void drawCommandLine() {
+    /*void drawCommandLine() {
         clear(10 + promptLayout.bounds.width, promptY, screenWidth - 20 - promptLayout.bounds.width, promptLayout.bounds.height);
 
         auto maxWidth = commandLineLayout.bounds.width;
@@ -192,7 +334,7 @@ public:
         maxWidth = std::max(maxWidth, commandLineLayout.bounds.width);
         textRenderer->drawText(commandLineLayout, cursorX, promptY);
         window->markAreaDirty(cursorX, promptY, maxWidth, commandLineLayout.bounds.height);
-    }
+    }*/
 
     void handleMessage(IPC::MaximumMessageBuffer& buffer) {
 
@@ -204,10 +346,6 @@ public:
                         auto input = IPC::extractMessage<Keyboard::CharacterInput>(buffer);
                         inputBuffer[index] = input.character;
 
-                        drawCommandLine();
-                        
-                        index++;
-
                         handleInput();
                         break;
                     }
@@ -217,7 +355,6 @@ public:
                         switch (key.key) {
                             case Keyboard::VirtualKey::Enter: {
 
-                                drawPrompt(); 
                                 index = 0;
                                 memset(inputBuffer, '\0', 500);
 
@@ -228,7 +365,6 @@ public:
                                     index--;
                                     inputBuffer[index] = '\0';
 
-                                    drawCommandLine();
                                     handleInput();
                                 }
                                 break;
@@ -279,12 +415,13 @@ public:
 
 private:
 
-    void drawPrompt() {
+    /*void drawPrompt() {
         textRenderer->drawText(promptLayout, 10, promptY);
         cursorX = promptLayout.bounds.width + 10;
     }
+    */
 
-    void drawCategory() {
+    /*void drawCategory() {
         clear(10, commandAreaY, screenWidth - 20, 300);
         char commandText[1000];
         memset(commandText, 0, sizeof(commandText));
@@ -318,18 +455,19 @@ private:
         else {
             window->markAreaDirty(10, commandAreaY, screenWidth - 20, 300);
         }
-    }
+    }*/
 
-    Text::TextLayout promptLayout;    
+    /*Text::TextLayout promptLayout;    
     Text::TextLayout commandLineLayout;
-    uint32_t cursorX {0}, cursorY {0};
+    uint32_t cursorX {0}, cursorY {0};*/
     char inputBuffer[500];
     int index {0};
-    uint32_t maxInputWidth;
+    /*uint32_t maxInputWidth;
     uint32_t mainBackgroundColour;
     uint32_t textAreaBackgroundColour;
     uint32_t promptY;
-    uint32_t commandAreaY;
+    uint32_t commandAreaY;*/
+    ObservableDisplays currentItems;
 
     Category topLevelCommands;
     Category* currentCategory;
