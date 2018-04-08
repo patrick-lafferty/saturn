@@ -52,12 +52,25 @@ namespace Apollo::Elements {
         int horizontal {0};
     };
 
+    enum class Alignment {
+        Start,
+        Center,
+        End
+    };
+
+    uint32_t adjustForAlignment(uint32_t coordinate, 
+        Alignment alignment, 
+        uint32_t boundedLength,
+        uint32_t contentLength);
+
 	struct Configuration {
 		Saturn::Parse::List* meta {nullptr};
         std::variant<uint32_t, Saturn::Parse::Symbol*> backgroundColour;
         uint32_t fontColour {0x00'64'95'EDu};
         Margins margins;
         Margins padding;
+        Alignment horizontalAlignment {Alignment::Start};
+        Alignment verticalAlignment {Alignment::Start};
 	};
 
 	class Container;
@@ -123,6 +136,8 @@ namespace Apollo::Elements {
         uint32_t fontColour;
         Margins margins;
         Margins padding;
+        Alignment horizontalAlignment;
+        Alignment verticalAlignment;
 
     };
 

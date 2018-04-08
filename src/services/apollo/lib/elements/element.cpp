@@ -33,8 +33,37 @@ using namespace Saturn::Parse;
 
 namespace Apollo::Elements {
 
+    uint32_t adjustForAlignment(uint32_t coordinate, 
+        Alignment alignment, 
+        uint32_t boundedLength,
+        uint32_t contentLength) {
+
+        switch (alignment) {
+            case Alignment::Start: {
+                //nothing needed for start alignment as its the default
+                break;
+            }
+            case Alignment::Center: {
+                coordinate += (boundedLength / 2) - (contentLength / 2);
+                break;
+            }
+            case Alignment::End: {
+                coordinate += boundedLength - contentLength;
+                break;
+            }
+        }
+
+        return coordinate;
+    }
+
     UIElement::UIElement(Configuration& config) {
+        if (std::holds_alternative<uint32_t>(config.backgroundColour)) {
+            backgroundColour = std::get<uint32_t>(config.backgroundColour);
+        }
+
         fontColour = config.fontColour;
+        horizontalAlignment = config.horizontalAlignment;
+        verticalAlignment = config.verticalAlignment;
 
         if (!(config.margins.vertical < 0 || config.margins.horizontal < 0)) {
             margins = config.margins;
@@ -51,7 +80,6 @@ namespace Apollo::Elements {
 
     Bounds UIElement::getBounds() const {
         auto bounds = parent->getChildBounds(this);
-
         auto horizontalMarginSpace = 2 * margins.horizontal;
 
         if (bounds.width > horizontalMarginSpace) {
@@ -131,6 +159,62 @@ namespace Apollo::Elements {
         return true;
     }
 
+    std::optional<Alignment> parseAlignment(std::string_view name) {
+        
+        if (name.compare("start") == 0) {
+            return Alignment::Start;
+        }
+        else if (name.compare("center") == 0) {
+            return Alignment::Center;
+        }
+        else if (name.compare("end") == 0) {
+            return Alignment::End;
+        }
+
+        return {};
+    }
+
+    bool parseAlignment(List* alignment, Configuration& config) {
+        if (alignment->items.size() == 1) {
+            return false;
+        }
+
+        auto count = static_cast<int>(alignment->items.size());
+        for (int i = 1; i < count; i++) {
+            bool failed = true;
+
+            if (auto maybeConstructor = getConstructor(alignment->items[i])) {
+                auto& constructor = maybeConstructor.value();
+
+                if (constructor.length != 2) {
+                    return false;
+                }
+
+                if (auto maybeValue = constructor.get<Symbol*>(1, SExpType::Symbol)) {
+                    if (constructor.startsWith("vertical")) {
+                        if (auto maybeAlignment = parseAlignment(maybeValue.value()->value)) {
+                            config.verticalAlignment = maybeAlignment.value(); 
+                            failed = false;
+                        }
+
+                    }
+                    else if (constructor.startsWith("horizontal")) {
+                        if (auto maybeAlignment = parseAlignment(maybeValue.value()->value)) {
+                            config.horizontalAlignment = maybeAlignment.value(); 
+                            failed = false;
+                        }
+                    }
+                }
+            }
+
+            if (failed) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     std::optional<std::variant<uint32_t, Symbol*>> parseColour(Constructor& constructor) {
         if (auto maybeColour = constructor.get<List*>(1, SExpType::List)) {
             if (auto maybeColourConstructor = getConstructor(maybeColour.value())) {
@@ -198,6 +282,9 @@ namespace Apollo::Elements {
             }
             else if (constructor.startsWith("padding")) {
                 return parseMargins(constructor.values, config.padding);
+            }
+            else if (constructor.startsWith("alignment")) {
+                return parseAlignment(constructor.values, config);
             }
         }
 
