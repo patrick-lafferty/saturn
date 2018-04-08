@@ -61,7 +61,10 @@ namespace Apollo::Elements {
             backgroundColour = std::get<uint32_t>(config.backgroundColour);
         }
 
-        fontColour = config.fontColour;
+        if (std::holds_alternative<uint32_t>(config.fontColour)) {
+            fontColour = std::get<uint32_t>(config.fontColour);
+        }
+
         horizontalAlignment = config.horizontalAlignment;
         verticalAlignment = config.verticalAlignment;
 
@@ -113,14 +116,22 @@ namespace Apollo::Elements {
         }
     }
 
-    uint32_t UIElement::getBackgroundColour() {
-        if (std::holds_alternative<uint32_t>(backgroundColour)) {
-            return std::get<uint32_t>(backgroundColour);
+    uint32_t getUint32_t(std::variant<uint32_t, Bindable<UIElement, UIElement::Bindings, uint32_t>>& value) {
+        if (std::holds_alternative<uint32_t>(value)) {
+            return std::get<uint32_t>(value);
         }
         else {
-            auto& bindable = std::get<Bindable<UIElement, Bindings, uint32_t>>(backgroundColour);
+            auto& bindable = std::get<Bindable<UIElement, UIElement::Bindings, uint32_t>>(value);
             return bindable.getValue();
         }
+    }
+
+    uint32_t UIElement::getBackgroundColour() {
+        return getUint32_t(backgroundColour);
+    }
+
+    uint32_t UIElement::getFontColour() {
+        return getUint32_t(fontColour);
     }
 
     bool parseMargins(List* margins, Margins& config) {
@@ -270,8 +281,7 @@ namespace Apollo::Elements {
                 }
 
                 if (auto colour = parseColour(constructor)) {
-                    //TODO: make fontColour bindable
-                    config.fontColour = std::get<uint32_t>(colour.value());
+                    config.fontColour = colour.value();
                 }
                 else {
                     return false;

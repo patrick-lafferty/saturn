@@ -66,7 +66,7 @@ namespace Apollo::Elements {
 	struct Configuration {
 		Saturn::Parse::List* meta {nullptr};
         std::variant<uint32_t, Saturn::Parse::Symbol*> backgroundColour;
-        uint32_t fontColour {0x00'64'95'EDu};
+        std::variant<uint32_t, Saturn::Parse::Symbol*> fontColour {0x00'64'95'EDu};
         Margins margins;
         Margins padding;
         Alignment horizontalAlignment {Alignment::Start};
@@ -82,7 +82,8 @@ namespace Apollo::Elements {
 	public:
 
         enum class Bindings {
-            BackgroundColour
+            BackgroundColour,
+            FontColour
         };
 
         UIElement() = default;
@@ -100,6 +101,16 @@ namespace Apollo::Elements {
                 backgroundColour = background;
 
                 auto& bindable = std::get<Bindable<UIElement, Bindings, uint32_t>>(backgroundColour);
+                binder(&bindable, binding->value);
+            }
+
+            if (std::holds_alternative<Symbol*>(config.fontColour)) {
+                auto binding = std::get<Symbol*>(config.fontColour);
+
+                Bindable<UIElement, Bindings, uint32_t> colour{this, Bindings::FontColour};
+                fontColour = colour;
+
+                auto& bindable = std::get<Bindable<UIElement, Bindings, uint32_t>>(fontColour);
                 binder(&bindable, binding->value);
             }
         }
@@ -128,12 +139,13 @@ namespace Apollo::Elements {
         Container* parent {nullptr};
 
         std::variant<uint32_t, Bindable<UIElement, Bindings, uint32_t>> backgroundColour;
+        std::variant<uint32_t, Bindable<UIElement, Bindings, uint32_t>> fontColour;
 
     protected:
 
         uint32_t getBackgroundColour();
+        uint32_t getFontColour();
 
-        uint32_t fontColour;
         Margins margins;
         Margins padding;
         Alignment horizontalAlignment;
