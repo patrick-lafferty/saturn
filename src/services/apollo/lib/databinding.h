@@ -82,6 +82,12 @@ namespace Apollo {
             }
         }
 
+        void clear() {
+            if (bindable) {
+                bindable->clearItems();
+            }
+        }
+
         void subscribeItemAdded(Bindable* b) {
             bindable = b;
         }
@@ -191,6 +197,12 @@ namespace Apollo {
         template<class Item, class BindFunc>
         void bindTo(ObservableCollection<Item, BindFunc>& o) {
             o.subscribeItemAdded(this);
+        }
+
+        void clearItems() {
+            if (owner) {
+                owner->clearTemplateItems();
+            }
         }
 
     private:

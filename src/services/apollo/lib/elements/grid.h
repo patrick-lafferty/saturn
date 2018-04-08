@@ -158,6 +158,8 @@ namespace Apollo::Elements {
             }
         }
 
+        void clearTemplateItems();
+
     private:
         
         void calculateGridDimensions();

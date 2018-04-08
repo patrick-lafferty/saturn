@@ -131,7 +131,6 @@ public:
                             if constexpr(std::is_same<char*, BindingType>::value) {
                                 if (name.compare("content") == 0) {
                                     binding->bindTo(item->content);
-                                    int pause = 0;
                                 }
                             }
                         };
@@ -189,7 +188,6 @@ public:
 
                         //drawInput(); 
                         captionTest.setValue(inputBuffer);
-
                         index++;
                         break;
                     }

@@ -398,5 +398,27 @@ namespace Apollo::Elements {
                 child->render(renderer);
             }
         }
+
+        if (children.empty()) {
+            auto bounds = getBounds();
+            renderer->drawRectangle(backgroundColour, bounds.x, bounds.y, bounds.width, bounds.height);
+        }
+    }
+
+    void Grid::clearTemplateItems() {
+        for (auto& child : children) {
+            if (std::holds_alternative<UIElement*>(child.element)) {
+                auto element = std::get<UIElement*>(child.element);
+                delete element;
+            }
+            else {
+                auto container = std::get<Container*>(child.element);
+                delete container;
+            }
+        }
+
+        children.clear();
+
+        requestRender(this);
     }
 }
