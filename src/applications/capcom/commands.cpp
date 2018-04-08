@@ -66,10 +66,14 @@ void createCategories(Category& topLevelCommands) {
     topLevelCommands.children['l'] = launch;
 }
 
-void createDisplayItems(ObservableDisplays& items, Category* currentCategory, Window* window) {
+void createDisplayItems(ObservableDisplays& items, 
+    Category* currentCategory, 
+    Window* window,
+    Observable<char*>& currentCategoryName) {
+
+    items.clear();
 
     if (currentCategory != nullptr) {
-        items.clear();
 
         auto itemBinder = [](auto& item) {
             return [&](auto binding, std::string_view name) {
@@ -91,16 +95,20 @@ void createDisplayItems(ObservableDisplays& items, Category* currentCategory, Wi
         for (const auto& [key, value]  : currentCategory->children) {
             if (std::holds_alternative<Command>(value)) {
                 auto& command = std::get<Command>(value);
-                items.add(new DisplayItem{command.key, 0x00'FF'00'00u}, itemBinder);
-                items.add(new DisplayItem{command.name, 0x00'00'00'FFu}, itemBinder);
+                items.add(new DisplayItem{command.key, 0x00'00'00'20u}, itemBinder);
+                items.add(new DisplayItem{command.name, 0x00'64'95'EDu}, itemBinder);
             }
             else {
                 auto& category = std::get<Category>(value);
-                items.add(new DisplayItem{category.key, 0x00'FF'00'00u}, itemBinder);
-                items.add(new DisplayItem{category.name, 0x00'00'00'FFu}, itemBinder);
+                items.add(new DisplayItem{category.key, 0x00'00'00'20u}, itemBinder);
+                items.add(new DisplayItem{category.name, 0x00'64'95'EDu}, itemBinder);
             }
         }
+
+        currentCategoryName.setValue(currentCategory->name);
     }
 
     window->layoutChildren();
+    window->layoutText();
+    window->render();
 }

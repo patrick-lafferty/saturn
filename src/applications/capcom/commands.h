@@ -70,4 +70,7 @@ void createCategories(Category& topLevelCommands);
 
 typedef Apollo::ObservableCollection<DisplayItem*, Apollo::BindableCollection<Apollo::Elements::Grid, Apollo::Elements::Grid::Bindings>> ObservableDisplays;
 
-void createDisplayItems(ObservableDisplays& items, Category* currentCategory, Apollo::Window* window);
+void createDisplayItems(ObservableDisplays& items, 
+    Category* currentCategory, 
+    Apollo::Window* window,
+    Apollo::Observable<char*>& currentCategoryName);

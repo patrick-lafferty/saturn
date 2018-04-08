@@ -75,7 +75,19 @@ public:
             if (topLevel->type == SExpType::List) {
                 auto root = static_cast<List*>(topLevel)->items[0];
 
-                auto binder = [](auto, auto) {};
+                auto binder = [&](auto binding, std::string_view name) {
+                    using BindingType = typename std::remove_reference<decltype(*binding)>::type::ValueType;
+
+                    if constexpr(std::is_same<char*, BindingType>::value) {
+                        if (name.compare("commandLine") == 0) {
+                            binding->bindTo(commandLine);
+                        }
+                        else if (name.compare("currentCategoryName") == 0) {
+                            binding->bindTo(currentCategoryName);
+                        }
+                    }
+                };
+
                 auto collectionBinder = [&](auto binding, std::string_view name) {
                     if (name.compare("currentCommands") == 0) {
                         binding->bindTo(currentItems);
@@ -89,7 +101,7 @@ public:
                     window->render(elementRenderer);
                     window->setRenderer(elementRenderer);
 
-                    createDisplayItems(currentItems, currentCategory, window);
+                    createDisplayItems(currentItems, currentCategory, window, currentCategoryName);
 
                     window->layoutText(textRenderer);
                     window->render(elementRenderer);
@@ -169,6 +181,8 @@ public:
                 break;
             }
         }
+
+        createDisplayItems(currentItems, currentCategory, window, currentCategoryName);
     }
 
     void handleMessage(IPC::MaximumMessageBuffer& buffer) {
@@ -180,6 +194,9 @@ public:
 
                         auto input = IPC::extractMessage<Keyboard::CharacterInput>(buffer);
                         inputBuffer[index] = input.character;
+                        index++;
+
+                        commandLine.setValue(inputBuffer);
 
                         handleInput();
                         break;
@@ -199,6 +216,8 @@ public:
                                 if (index > 0) {
                                     index--;
                                     inputBuffer[index] = '\0';
+
+                                    commandLine.setValue(inputBuffer);
 
                                     handleInput();
                                 }
@@ -253,6 +272,8 @@ private:
     char inputBuffer[500];
     int index {0};
     ObservableDisplays currentItems;
+    Observable<char*> commandLine;
+    Observable<char*> currentCategoryName;
 
     Category topLevelCommands;
     Category* currentCategory;

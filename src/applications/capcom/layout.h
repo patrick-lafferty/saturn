@@ -32,11 +32,12 @@ const char* layout = R"(
 
 (grid
 
-    (margins (vertical 20) (horizontal 20))
+    (margins (vertical 20) (horizontal 70))
 
     (rows 
         (fixed-height 100)
-        (fixed-height 100)
+        (fixed-height 50)
+        (fixed-height 50)
         (proportional-height 1)
     )
 
@@ -46,22 +47,68 @@ const char* layout = R"(
 
     (items 
         (label (caption "Capcom")
-            (background (rgb 69 69 122)))
+            (alignment (horizontal center) (vertical center))
+            (font-colour (rgb 0 0 20))
+            (background (rgb 100 149 237)))
 
-        (label (caption (bind commandLine))
-            (background (rgb 0 0 20))
+        (grid
+            (rows (proportional-height 1))
             (meta (grid (row 1)))
+
+            (columns
+                (fixed-width 50)
+                (proportional-width 1)
+            )
+
+            (items
+
+                (label (caption ">")
+                    (alignment (horizontal center) (vertical center))
+                    (font-colour (rgb 5 5 5))
+                    (background (rgb 248 121 82)))
+
+                (label (caption (bind commandLine))
+                    (alignment (vertical center))
+                    (padding (horizontal 10))
+                    (background (rgb 0 0 20))
+                    (meta (grid (column 1)))
+                )
+            )
         )
 
         (grid
+            (rows (proportional-height 1))
             (meta (grid (row 2)))
-            (margins (vertical 10) (horizontal 50))
+
+            (columns
+                (fixed-width 250)
+                (proportional-width 1)
+            )
+
+            (items
+                (label (caption "Current category:")
+                    (alignment (vertical center) (horizontal center))
+                    (background (rgb 248 121 82))
+                )
+
+                (label (caption (bind currentCategoryName))
+                    (alignment (vertical center))
+                    (padding (horizontal 10))
+                    (background (rgb 0 0 20))
+                    (meta (grid (column 1)))
+                )
+            )
+        )
+
+        (grid
+            (meta (grid (row 3)))
+            (margins (vertical 10))
 
             (rows
-                (fixed-height 100)
-                (fixed-height 100)
-                (fixed-height 100)
-                (fixed-height 100)
+                (fixed-height 50)
+                (fixed-height 50)
+                (fixed-height 50)
+                (fixed-height 50)
             )   
 
             (columns
@@ -75,6 +122,7 @@ const char* layout = R"(
 
             (item-template
                 (label (caption (bind content))
+                    (alignment (horizontal center) (vertical center))
                     (background (bind background)) 
                 )
             )        
