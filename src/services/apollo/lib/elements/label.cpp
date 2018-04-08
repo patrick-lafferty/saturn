@@ -130,11 +130,21 @@ namespace Apollo::Elements {
 
         renderer->drawRectangle(backgroundColour, bounds.x, bounds.y, bounds.width, bounds.height);
 
-        if ((std::holds_alternative<char*>(caption)
-            && std::get<char*>(caption) != nullptr)
-            || (std::holds_alternative<Bindable<Label, Bindings, char*>>(caption))) {
-            renderer->drawText(captionLayout, bounds.x + padding.horizontal, bounds.y + padding.vertical, backgroundColour);
+        char* captionText {nullptr};
+
+        if (std::holds_alternative<char*>(caption)) {
+            captionText = std::get<char*>(caption);
         }
+        else if (std::holds_alternative<Bindable<Label, Bindings, char*>>(caption)) {
+            auto& binding = std::get<Bindable<Label, Bindings, char*>>(caption);
+            captionText = binding.getValue();
+        }
+
+        if (captionText == nullptr) {
+            return;
+        }
+
+        renderer->drawText(captionLayout, bounds.x + padding.horizontal, bounds.y + padding.vertical, backgroundColour);
     }
 
     void Label::onChange(Bindings binding) {
