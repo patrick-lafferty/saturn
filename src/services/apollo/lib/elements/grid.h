@@ -30,10 +30,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "container.h"
 #include <optional>
-
-namespace Saturn::Parse {
-    struct SExpression;
-}
+#include "../databinding.h"
+#include <saturn/parsing.h>
+#include "../element_layout.h"
 
 namespace Apollo::Elements {
 
@@ -64,9 +63,11 @@ namespace Apollo::Elements {
     struct GridConfiguration : Configuration {
         std::vector<RowColumnDefinition> rows;
         std::vector<RowColumnDefinition> columns;
-        Saturn::Parse::SExpression* items;
+        Saturn::Parse::SExpression* items {nullptr};
         int rowGap {0};
         int columnGap {0};
+        Saturn::Parse::List* itemSource {nullptr};
+        Saturn::Parse::List* itemTemplate {nullptr};
     };
 
     std::optional<GridConfiguration> parseGrid(Saturn::Parse::SExpression* grid);
@@ -78,7 +79,34 @@ namespace Apollo::Elements {
     class Grid : public Container {
     public:
 
+        enum class Bindings {
+            ItemSource
+        };
+
         Grid(GridConfiguration config);
+
+        template<class BindFunc, class CollectionBindFunc>
+        static Grid* create(GridConfiguration config, BindFunc setupBinding, CollectionBindFunc setupCollectionBinding) {
+            using namespace Saturn::Parse;
+
+            auto grid = new Grid(config);
+
+            if (config.itemSource != nullptr) {
+                if (auto maybeConstructor = getConstructor(config.itemSource)) {
+                    auto& constructor = maybeConstructor.value();
+
+                    if (constructor.startsWith("bind")) {
+                        if (constructor.length == 2) {
+                            if (auto maybeTarget = constructor.get<Symbol*>(1, SExpType::Symbol)) {
+                                setupCollectionBinding(&grid->itemSource, maybeTarget.value()->value);
+                            }
+                        }
+                    }
+                }
+            }
+
+            return grid;
+        }
 
 		virtual void addChild(UIElement* element) override;
 		virtual void addChild(UIElement* element, const std::vector<MetaData>& meta) override;
@@ -92,6 +120,37 @@ namespace Apollo::Elements {
         virtual void layoutText(Apollo::Text::Renderer* renderer) override;
         virtual void render(Renderer* renderer) override;
 
+        template<class Item, class BindFunc>
+        void instantiateItemTemplate(Item item, BindFunc binder) {
+            using namespace Saturn::Parse;
+
+            auto maybeLabel = createElement(this, 
+                KnownElements::Label, 
+                getConstructor(itemTemplate).value(),
+                binder,
+                [](auto, auto) {});
+
+            if (maybeLabel) {
+                auto& element = children.back();
+                auto numberOfChildren = children.size() - 1;
+                auto row = numberOfChildren / columns.size();
+                auto column = numberOfChildren % columns.size();
+
+                element.row = row;
+                element.column = column;
+            }
+        }
+
+        template<class Item, class BindFunc>
+        void onItemAdded(Item item, Bindings binding, BindFunc binder) {
+            switch (binding) {
+                case Bindings::ItemSource: {
+                    instantiateItemTemplate(item, binder);
+                    break;
+                }
+            }
+        }
+
     private:
         
         void calculateGridDimensions();
@@ -103,5 +162,8 @@ namespace Apollo::Elements {
         std::vector<RowColumnDefinition> columns;
         int rowGap;
         int columnGap;
+
+        BindableCollection<Grid, Bindings> itemSource;
+        Saturn::Parse::List* itemTemplate;
     };
 }

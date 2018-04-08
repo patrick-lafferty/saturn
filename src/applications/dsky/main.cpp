@@ -49,6 +49,10 @@ using namespace Apollo;
 using namespace Apollo::Debug;
 using namespace Saturn::Parse;
 
+struct DemoItem {
+    Observable<char*> content;
+};
+
 class Dsky : public Application<Dsky> {
 public:
 
@@ -80,63 +84,66 @@ public:
     (row-gap 20)
     (column-gap 10)
 
-    (items 
-        (label (caption "Padded Label")
-            (padding (vertical 50) (horizontal 100))
-            (font-colour (rgb 122 22 23))
-            (background (rgb 38 66 251)))
-        (label (caption "Second")
-            (background (rgb 24 205 4))
+    (item-source (bind things))
+
+    (item-template 
+        (label (caption (bind content))
             (font-colour (rgb 0 0 0))
-            (meta (grid (column 1))))
+            (background (rgb 33 146 195))
+        ))
 
-        (label (caption (bind variableName))
-            (background (rgb 69 69 69))
-            (meta (grid (row 1))))
-        (label (caption "<- that one was typed")
-            (background (rgb 37 13 37))
-            (meta (grid (row 1) (column 1))))
+    )
+    )";
 
-        (label (caption "Margined Label")
-            (background (rgb 248 121 82))
-            (font-colour (rgb 169 5 40))
-            (margins (vertical 50) (horizontal 90))
-            (meta (grid (row 2))))
+/*
+work backwards from the end. 
+we want to create a label with caption bounds to content from something.
+we need an observable<char*> content that label::caption binds to
 
-        (grid
+somewhere in grid:
 
-            (rows 
-                (proportional-height 2)
-                (proportional-height 1))
+template<class Item>
+void instantiateItemTemplate(Item item) {
+    auto binder = [&](auto binding, std::string_view name) {
+        binding->bindTo(item.content);
+    };
 
-            (columns 
-                (proportional-width 1)
-                (proportional-width 1)
-                (proportional-width 1))
+    createElement(this, ?, ?, binder);
+}
 
-            (row-gap 10)
-            (column-gap 10)
 
-            (items 
-                (label (caption "a")
-                    (font-colour (rgb 10 10 10))
-                    (background (rgb 33 146 195)))
-                (label (caption "b")
-                    (background (rgb 62 16 140))
-                    (meta (grid (column 1))))
-                (label (caption "3")
-                    (font-colour (rgb 100 0 0))
-                    (background (rgb 241 220 69))
-                    (meta (grid (column 2))))
 
-                (label (caption "spans 3 columns")
-                    (background (rgb 12 87 117))
-                    (meta (grid (row 1) (column-span 3))))
-            )
+--------------
 
-            (meta (grid (row 2) (column 1)))
-        )))
-        )";
+BindableCollection knows its owner is a Grid specifically
+so it could call instantiateItemTemplate
+
+how does ObservableCollection trigger that?
+
+template<class ItemType, class Owner, class Binding>
+class Connector {
+    void itemAdded(ItemType item) {
+        bindable->notifyItemAdded(item);
+    }
+}
+
+--------------------
+
+BindableCollecton {
+
+    template<class ItemType>
+    void onItemAdded(ItemType item) {
+
+    }
+
+    template<class ItemType>
+    void bindTo(ObservableCollection<ItemType> o) {
+        o.subscribe(std::bind(&BindableCollection::onItemAdded, this, 
+            std::placeholders::_1));
+    }
+}
+
+*/
 
         auto result = read(data);
 
@@ -156,12 +163,49 @@ public:
                     }
                 };
 
-                if (auto r = Apollo::Elements::loadLayout(root, window, binder)) {
+                auto collectionBinder = [&](auto binding, std::string_view name) {
+                    //using BindingType = typename std::remove_reference<decltype(*binding)>::type::ValueType;
+                    binding->bindTo(items);
+                };
+
+                if (auto r = Apollo::Elements::loadLayout(root, window, binder, collectionBinder)) {
                     window->layoutChildren();
                     elementRenderer = new Renderer(window, textRenderer);
                     window->layoutText(textRenderer);
                     window->render(elementRenderer);
                     window->setRenderer(elementRenderer);
+
+                    auto itemBinder = [](auto& item) {
+                        return [&](auto binding, std::string_view name) {
+                            using BindingType = typename std::remove_reference<decltype(*binding)>::type::ValueType;
+
+                            if constexpr(std::is_same<char*, BindingType>::value) {
+                                if (name.compare("content") == 0) {
+                                    binding->bindTo(item->content);
+                                    int pause = 0;
+                                }
+                            }
+                        };
+                    };
+
+                    items.add(new DemoItem(), itemBinder);
+                    items.add(new DemoItem(), itemBinder);
+                    items.add(new DemoItem(), itemBinder);
+
+                    window->layoutChildren();
+
+                    char* x = new char[2];
+                    x[0] = 'a';
+                    items[0]->content.setValue(x);
+
+                    char* xx = new char[2];
+                    xx[0] = 'b';
+                    items[1]->content.setValue(xx);
+
+                    char* xxx = new char[2];
+                    xxx[0] = 'c';
+                    items[2]->content.setValue(xxx);
+
                 }
             }
         }
@@ -196,6 +240,9 @@ public:
 
                         //drawInput(); 
                         captionTest.setValue(inputBuffer);
+                    char* xx = new char[2];
+                    xx[0] = 'P';
+                    items[1]->content.setValue(xx);
 
                         index++;
                         break;
@@ -317,6 +364,7 @@ private:
 
     Observable<char*> captionTest;
     Renderer* elementRenderer;
+    ObservableCollection<DemoItem*, BindableCollection<Apollo::Elements::Grid, Apollo::Elements::Grid::Bindings>> items;
 };
 
 int dsky_main() {

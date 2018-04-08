@@ -28,7 +28,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "grid.h"
 #include <algorithm>
-#include <saturn/parsing.h>
 #include "../renderer.h"
 
 using namespace Saturn::Parse;
@@ -109,6 +108,16 @@ namespace Apollo::Elements {
                 else if (c.startsWith("items")) {
                     config.items = c.values;
                 }
+                else if (c.startsWith("item-source")) {
+                    if (auto value = c.get<List*>(1, SExpType::List)) {
+                        config.itemSource = value.value();
+                    }
+                }
+                else if (c.startsWith("item-template")) {
+                    if (auto value = c.get<List*>(1, SExpType::List)) {
+                        config.itemTemplate = value.value();
+                    }
+                }
                 else if (c.startsWith("meta")) {
                     config.meta = c.values;
                 }
@@ -149,12 +158,13 @@ namespace Apollo::Elements {
     }
 
     Grid::Grid(GridConfiguration config)
-        : Container(config) {
+        : Container(config), itemSource{this, Bindings::ItemSource} {
 
         rows = std::move(config.rows);
         columns = std::move(config.columns);
         rowGap = config.rowGap;
         columnGap = config.columnGap;
+        itemTemplate = config.itemTemplate;
     }
 
     void Grid::addChild(UIElement* child) {
