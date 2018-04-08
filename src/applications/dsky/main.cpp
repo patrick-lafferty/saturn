@@ -95,56 +95,6 @@ public:
     )
     )";
 
-/*
-work backwards from the end. 
-we want to create a label with caption bounds to content from something.
-we need an observable<char*> content that label::caption binds to
-
-somewhere in grid:
-
-template<class Item>
-void instantiateItemTemplate(Item item) {
-    auto binder = [&](auto binding, std::string_view name) {
-        binding->bindTo(item.content);
-    };
-
-    createElement(this, ?, ?, binder);
-}
-
-
-
---------------
-
-BindableCollection knows its owner is a Grid specifically
-so it could call instantiateItemTemplate
-
-how does ObservableCollection trigger that?
-
-template<class ItemType, class Owner, class Binding>
-class Connector {
-    void itemAdded(ItemType item) {
-        bindable->notifyItemAdded(item);
-    }
-}
-
---------------------
-
-BindableCollecton {
-
-    template<class ItemType>
-    void onItemAdded(ItemType item) {
-
-    }
-
-    template<class ItemType>
-    void bindTo(ObservableCollection<ItemType> o) {
-        o.subscribe(std::bind(&BindableCollection::onItemAdded, this, 
-            std::placeholders::_1));
-    }
-}
-
-*/
-
         auto result = read(data);
 
         if (std::holds_alternative<SExpression*>(result)) {
@@ -164,7 +114,6 @@ BindableCollecton {
                 };
 
                 auto collectionBinder = [&](auto binding, std::string_view name) {
-                    //using BindingType = typename std::remove_reference<decltype(*binding)>::type::ValueType;
                     binding->bindTo(items);
                 };
 
@@ -240,9 +189,6 @@ BindableCollecton {
 
                         //drawInput(); 
                         captionTest.setValue(inputBuffer);
-                    char* xx = new char[2];
-                    xx[0] = 'P';
-                    items[1]->content.setValue(xx);
 
                         index++;
                         break;

@@ -71,27 +71,17 @@ namespace Apollo {
     class ObservableCollection {
     public:
 
-        //using ContentType = typename std::remove_reference<decltype(Item::content)>::type;
-
         template<class BindFunc>
         void add(Item value, BindFunc binder) {
             items.push_back(value);
 
             auto& item = items.back();
 
-            /*if (onItemAdded) {
-                onItemAdded(item, binder(item));
-            }*/
             if (bindable) {
                 bindable->onItemAdded(item, binder(item));
             }
-
-            int pause = 0;
         }
 
-        /*void subscribeItemAdded(std::function<void(Item, BindFunc)> s) {
-            onItemAdded = s;
-        }*/
         void subscribeItemAdded(Bindable* b) {
             bindable = b;
         }
@@ -106,12 +96,8 @@ namespace Apollo {
 
     private:
 
-        //std::function<void(Item, BindFunc)> onItemAdded;
         Bindable* bindable {nullptr};
-
-        //std::vector<Observable<ContentType>> items;
         std::vector<Item> items;
-        //BindFunc binder;
     };
 
     /*
@@ -204,12 +190,6 @@ namespace Apollo {
 
         template<class Item, class BindFunc>
         void bindTo(ObservableCollection<Item, BindFunc>& o) {
-            /*o.subscribeItemAdded(std::bind(
-                &BindableCollection<Owner, Binding>::onItemAdded<Item, BindFunc>,
-                this,
-                std::placeholders::_1,
-                std::placeholders::_2
-            ));*/
             o.subscribeItemAdded(this);
         }
 
