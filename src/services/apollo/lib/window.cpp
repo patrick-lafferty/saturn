@@ -187,6 +187,14 @@ namespace Apollo {
         }
     }
 
+    void Window::render() {
+        render(elementRenderer);
+    }
+
+    void Window::layoutText() {
+        layoutText(elementRenderer->getTextRenderer());
+    }
+
     void Window::requestLayoutText(UIElement* element) {
         element->layoutText(elementRenderer->getTextRenderer());
     }
