@@ -58,6 +58,19 @@ namespace Apollo::Elements {
                 if (c.startsWith("items")) {
                     config.items = c.values;
                 }
+                 else if (c.startsWith("item-source")) {
+                    if (auto value = c.get<List*>(1, SExpType::List)) {
+                        config.itemSource = value.value();
+                    }
+                }
+                else if (c.startsWith("item-template")) {
+                    if (auto value = c.get<List*>(1, SExpType::List)) {
+                        config.itemTemplate = value.value();
+                    }
+                }
+                else if (c.startsWith("meta")) {
+                    config.meta = c.values;
+                }
                 else if (!parseElement(s, config)) {
                     return {};
                 }
@@ -71,8 +84,9 @@ namespace Apollo::Elements {
     }
 
     ListView::ListView(ListViewConfiguration config)
-        : Container(config) {
+        : Container(config), itemSource{this, Bindings::ItemSource} {
 
+        itemTemplate = config.itemTemplate;
     }
 
     void ListView::addChild(UIElement* child) {
