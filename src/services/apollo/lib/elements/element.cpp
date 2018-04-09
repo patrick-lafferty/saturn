@@ -77,6 +77,10 @@ namespace Apollo::Elements {
         }
     }
 
+    int UIElement::getDesiredHeight() {
+        return desiredHeight;
+    }
+
     Container* UIElement::getParent() {
         return parent;
     }

@@ -123,6 +123,7 @@ namespace Apollo::Elements {
 
         auto bounds = getBounds();
         captionLayout = renderer->layoutText(captionText, bounds.width, getFontColour());
+        desiredHeight = captionLayout.bounds.height;
     } 
 
     void Label::render(Renderer* renderer) {

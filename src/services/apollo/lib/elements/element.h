@@ -135,7 +135,6 @@ namespace Apollo::Elements {
 
     private:
 
-        int desiredWidth, desiredHeight;
         Container* parent {nullptr};
 
         std::variant<uint32_t, Bindable<UIElement, Bindings, uint32_t>> backgroundColour;
@@ -146,6 +145,8 @@ namespace Apollo::Elements {
         uint32_t getBackgroundColour();
         uint32_t getFontColour();
 
+        int desiredWidth {0};
+        int desiredHeight {0};
         Margins margins;
         Margins padding;
         Alignment horizontalAlignment;
