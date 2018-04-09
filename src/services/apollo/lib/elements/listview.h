@@ -28,58 +28,52 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
+#include "container.h"
 #include <optional>
 #include <saturn/parsing.h>
-#include "elements/label.h"
 
 namespace Apollo::Elements {
 
-    enum class KnownContainers {
-        Grid,
-        ListView
+    struct ListViewConfiguration : Configuration {
+        Saturn::Parse::SExpression* items {nullptr};
     };
 
-    enum class KnownElements {
-        Label
-    };
+    std::optional<ListViewConfiguration> parseListView(Saturn::Parse::SExpression* list);
 
-	std::optional<std::vector<MetaData>> parseMeta(Saturn::Parse::List* config);
+    class ListView : public Container {
+    public:
 
-    std::optional<std::variant<KnownContainers, KnownElements>>
-    getConstructorType(Saturn::Parse::Constructor constructor);
+        enum class Bindings {
 
-    template<class BindFunc, class CollectionBindFunc>
-    std::optional<UIElement*> createElement(Container* parent, 
-        KnownElements type, 
-        Saturn::Parse::Constructor constructor, 
-        BindFunc setupBinding,
-        CollectionBindFunc setupCollectionBinding) {
+        };
 
-        switch (type) {
-            case KnownElements::Label: {
-                if (auto maybeConfig = parseLabel(constructor.values)) {
-                    auto config = maybeConfig.value();
-                    auto label = Label::create(config, setupBinding);
+        ListView(ListViewConfiguration config);
 
-                    if (config.meta != nullptr) {
-                        if (auto meta = parseMeta(config.meta)) {
-                            parent->addChild(label, meta.value());
-                        }
-                        else {
-                            parent->addChild(label);
-                        }
-                    }
-                    else {
-                        parent->addChild(label);
-                    }
+        template<class BindFunc, class CollectionBindFunc>
+        static ListView* create(ListViewConfiguration config, BindFunc setupBinding, CollectionBindFunc setupCollectionBinding) {
+            using namespace Saturn::Parse;
 
-                    return label;
-                }
+            auto list = new ListView(config);
 
-                break;
-            }
+            return list;
         }
 
-        return {};
-    }
+        virtual void addChild(UIElement* element) override;
+		virtual void addChild(UIElement* element, const std::vector<MetaData>& meta) override;
+		virtual void addChild(Container* container) override;
+		virtual void addChild(Container* container, const std::vector<MetaData>&  meta) override;
+
+		virtual void layoutChildren() override;
+
+		virtual Bounds getChildBounds(const UIElement* child) override;
+
+        virtual void layoutText(Apollo::Text::Renderer* renderer) override;
+        virtual void render(Renderer* renderer) override;
+
+    private:
+
+        void addChild(ContainedElement element);
+
+        std::vector<ContainedElement> children;
+    };
 }

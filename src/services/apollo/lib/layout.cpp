@@ -118,11 +118,30 @@ namespace Apollo::Elements {
         if (constructor.startsWith("grid")) {
             return KnownContainers::Grid;
         }
+        else if (constructor.startsWith("list-view")) {
+            return KnownContainers::ListView;
+        }
         else if (constructor.startsWith("label")) {
             return KnownElements::Label;
         }
         else {
             return {};
         }
+    }
+
+    std::optional<Container*> finishContainer(Container* container, Container* parent, Saturn::Parse::List* meta) {
+        if (meta != nullptr) {
+            if (auto metaData = parseMeta(meta)) {
+                parent->addChild(container, metaData.value());
+            }
+            else {
+                parent->addChild(container);
+            }
+        }
+        else {
+            parent->addChild(container);
+        }
+
+        return container;
     }
 }

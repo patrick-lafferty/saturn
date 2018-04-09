@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <optional>
 #include <saturn/parsing.h>
 #include "elements/grid.h"
+#include "elements/listview.h"
 #include "elements/label.h"
 #include "element_layout.h"
 
@@ -114,6 +115,8 @@ namespace Apollo::Elements {
         return true;
     }
 
+    std::optional<Container*> finishContainer(Container* container, Container* parent, Saturn::Parse::List* meta);
+
     template<class BindFunc, class CollectionBindFunc>
     std::optional<Container*> createContainer(Container* parent,
         KnownContainers type, 
@@ -129,23 +132,26 @@ namespace Apollo::Elements {
                     auto success = createContainerItems(grid, config.items, setupBinding, setupCollectionBinding);                    
 
                     if (success) {
-
-                        if (config.meta != nullptr) {
-                            if (auto meta = parseMeta(config.meta)) {
-                                parent->addChild(grid, meta.value());
-                            }
-                            else {
-                                parent->addChild(grid);
-                            }
-                        }
-                        else {
-                            parent->addChild(grid);
-                        }
-
-                        return grid;
+                        return finishContainer(grid, parent, config.meta);
                     }
                     else {
                         delete grid;
+                    }
+                }
+
+                break;
+            }
+             case KnownContainers::ListView: {
+                if (auto maybeConfig = parseListView(constructor.values)) {
+                    auto config = maybeConfig.value();
+                    auto list = ListView::create(config, setupBinding, setupCollectionBinding);
+                    auto success = createContainerItems(list, config.items, setupBinding, setupCollectionBinding);                    
+
+                    if (success) {
+                        return finishContainer(list, parent, config.meta);
+                    }
+                    else {
+                        delete list;
                     }
                 }
 
