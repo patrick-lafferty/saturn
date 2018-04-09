@@ -89,8 +89,12 @@ public:
                 };
 
                 auto collectionBinder = [&](auto binding, std::string_view name) {
-                    if (name.compare("currentCommands") == 0) {
-                        binding->bindTo(currentItems);
+                    using BindingType = typename std::remove_reference<decltype(*binding)>::type::OwnerType;
+
+                    if constexpr(std::is_same<Apollo::Elements::Grid, BindingType>::value) {
+                        if (name.compare("currentCommands") == 0) {
+                            binding->bindTo(currentItems);
+                        }
                     }
                 };
 

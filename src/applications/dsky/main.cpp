@@ -44,14 +44,22 @@ interface for the Apollo Guidance Computer.
 #include <services/apollo/lib/databinding.h>
 #include <services/apollo/lib/layout.h>
 #include <services/apollo/lib/renderer.h>
+#include "layout.h"
 
 using namespace Apollo;
 using namespace Apollo::Debug;
 using namespace Saturn::Parse;
 
-struct DemoItem {
-    Observable<char*> content;
+struct DisplayItem {
+    DisplayItem(char* content/*, uint32_t background, uint32_t fontColour*/)
+        : content {content}/*, background {background}, fontColour {fontColour}*/ {}
+
+    Apollo::Observable<char*> content;
+    //Apollo::Observable<uint32_t> background;
+    //Apollo::Observable<uint32_t> fontColour;
 };
+
+typedef Apollo::ObservableCollection<DisplayItem*, Apollo::BindableCollection<Apollo::Elements::ListView, Apollo::Elements::ListView::Bindings>> ObservableDisplays;
 
 class Dsky : public Application<Dsky> {
 public:
@@ -63,39 +71,9 @@ public:
             return;
         }
 
-        promptLayout = textRenderer->layoutText("\e[38;2;255;69;0m> \e[38;2;0;191;255m", screenWidth, 0x00'64'95'EDu);
         memset(inputBuffer, '\0', 500);
-        //drawPrompt(); 
-        maxInputWidth = screenWidth - promptLayout.bounds.width;
 
-        const char* data = R"(
-(grid
-    (margins (vertical 20) (horizontal 20))
-
-    (rows 
-        (proportional-height 1)
-        (fixed-height 50)
-        (proportional-height 2))
-
-    (columns 
-        (proportional-width 1)
-        (proportional-width 1))
-
-    (row-gap 20)
-    (column-gap 10)
-
-    (item-source (bind things))
-
-    (item-template 
-        (label (caption (bind content))
-            (font-colour (rgb 0 0 0))
-            (background (rgb 33 146 195))
-        ))
-
-    )
-    )";
-
-        auto result = read(data);
+        auto result = read(DskyApp::layout);
 
         if (std::holds_alternative<SExpression*>(result)) {
             auto topLevel = std::get<SExpression*>(result);
@@ -107,14 +85,20 @@ public:
                     using BindingType = typename std::remove_reference<decltype(*binding)>::type::ValueType;
 
                     if constexpr(std::is_same<char*, BindingType>::value) {
-                        if (name.compare("variableName") == 0) {
-                            binding->bindTo(captionTest);
+                        if (name.compare("commandLine") == 0) {
+                            binding->bindTo(commandLine);
                         }
                     }
                 };
 
                 auto collectionBinder = [&](auto binding, std::string_view name) {
-                    binding->bindTo(items);
+                    using BindingType = typename std::remove_reference<decltype(*binding)>::type::OwnerType;
+
+                    if constexpr(std::is_same<Apollo::Elements::ListView, BindingType>::value) {
+                        if (name.compare("entries") == 0) {
+                            binding->bindTo(entries);
+                        }
+                    }
                 };
 
                 if (auto r = Apollo::Elements::loadLayout(root, window, binder, collectionBinder)) {
@@ -129,52 +113,38 @@ public:
                             using BindingType = typename std::remove_reference<decltype(*binding)>::type::ValueType;
 
                             if constexpr(std::is_same<char*, BindingType>::value) {
-                                if (name.compare("content") == 0) {
+                                /*if (name.compare("content") == 0) {
                                     binding->bindTo(item->content);
-                                }
+                                }*/
                             }
                         };
                     };
-
-                    items.add(new DemoItem(), itemBinder);
-                    items.add(new DemoItem(), itemBinder);
-                    items.add(new DemoItem(), itemBinder);
-
-                    window->layoutChildren();
-
-                    char* x = new char[2];
-                    x[0] = 'a';
-                    items[0]->content.setValue(x);
-
-                    char* xx = new char[2];
-                    xx[0] = 'b';
-                    items[1]->content.setValue(xx);
-
-                    char* xxx = new char[2];
-                    xxx[0] = 'c';
-                    items[2]->content.setValue(xxx);
-
                 }
             }
         }
     }
 
-    void drawInput() {
-        clear(cursorX, 
-            cursorY, 
-            currentLayout.bounds.width, 
-            currentLayout.bounds.height);
+    void addEntry() {
+        auto itemBinder = [](auto& item) {
+            return [&](auto binding, std::string_view name) {
+                using BindingType = typename std::remove_reference<decltype(*binding)>::type::ValueType;
 
-        auto maxWidth = currentLayout.bounds.width;
-        currentLayout = textRenderer->layoutText(inputBuffer, maxInputWidth, 0x00'64'95'EDu);
+                if constexpr(std::is_same<char*, BindingType>::value) {
+                    if (name.compare("content") == 0) {
+                        binding->bindTo(item->content);
+                    }
+                }
+            };
+        };
 
-        if (needsToScroll(currentLayout.bounds.height)) {
-            scroll(currentLayout.bounds.height);
-        }
+        auto len = strlen(inputBuffer);
+        char* s = new char[len];
+        strcpy(s, inputBuffer);
+        entries.add(new DisplayItem(s), itemBinder);
 
-        maxWidth = std::max(maxWidth, currentLayout.bounds.width);
-        textRenderer->drawText(currentLayout, cursorX, cursorY);
-        window->markAreaDirty(cursorX, cursorY, maxWidth, currentLayout.bounds.height);
+        window->layoutChildren();
+        window->layoutText();
+        window->render();
     }
 
     void handleMessage(IPC::MaximumMessageBuffer& buffer) {
@@ -186,8 +156,8 @@ public:
                         auto input = IPC::extractMessage<Keyboard::CharacterInput>(buffer);
                         inputBuffer[index] = input.character;
 
-                        //drawInput(); 
-                        captionTest.setValue(inputBuffer);
+                        commandLine.setValue(inputBuffer);
+
                         index++;
                         break;
                     }
@@ -197,21 +167,13 @@ public:
                         switch (key.key) {
                             case Keyboard::VirtualKey::Enter: {
 
-                                auto amountToScroll = (currentLayout.lines + 1) * currentLayout.lineSpace;
+                                addEntry();
 
-                                if (needsToScroll(amountToScroll)) {
-                                    scroll(amountToScroll);
-                                    cursorY = screenHeight - currentLayout.lineSpace;
-                                }
-                                else {
-                                    cursorY += currentLayout.bounds.height;
-                                }
-
-                                currentLayout = textRenderer->layoutText("", maxInputWidth, 0x00'64'95'EDu);
-
-                                drawPrompt(); 
                                 index = 0;
                                 memset(inputBuffer, '\0', 500);
+
+                                commandLine.setValue(inputBuffer);
+
                                 break;
                             }
                             default: {
@@ -241,9 +203,6 @@ public:
                         auto message = IPC::extractMessage<Resize>(buffer);
                         //screenWidth = message.width;
                         //screenHeight = message.height;
-                        maxInputWidth = message.width - promptLayout.bounds.width;
-                        drawInput();
-                        //window->resize(screenWidth, screenHeight);
 
                         break;
                     }
@@ -263,52 +222,14 @@ public:
         }
     }
 
-    int x {50};
-    int y {0};
-
-    /*void update() {
-        clear(x, y, 50, 50);
-        x++;
-
-        drawBox(window->getFramebuffer(), x, y, 50, 50);
-        window->markAreaDirty(x, y, 50, 50);
-    }*/
-
 private:
 
-    void drawPrompt() {
-        textRenderer->drawText(promptLayout, 0, cursorY);
-        window->markAreaDirty(0, cursorY, promptLayout.bounds.width, promptLayout.bounds.height);
-        cursorX = promptLayout.bounds.width;
-    }
-
-    bool needsToScroll(uint32_t spaceRequired) {
-        return (cursorY + spaceRequired) >= screenHeight;
-    }
-
-    void scroll(uint32_t spaceRequired) {
-        auto scroll = spaceRequired - (screenHeight - cursorY);
-        auto byteCount = screenWidth * (screenHeight - scroll) * 4;
-        auto frameBuffer = window->getFramebuffer();
-
-        memcpy(frameBuffer, frameBuffer + screenWidth * (scroll), byteCount);
-        clear(0, screenHeight - scroll - 1, screenWidth, scroll);
-        
-        window->markAreaDirty(0, 0, screenWidth, screenHeight);
-        
-        cursorY = screenHeight - spaceRequired - 1;
-    }
-
-    Text::TextLayout promptLayout;    
-    uint32_t cursorX {0}, cursorY {0};
     char inputBuffer[500];
     int index {0};
-    Text::TextLayout currentLayout;
-    uint32_t maxInputWidth;
 
-    Observable<char*> captionTest;
     Renderer* elementRenderer;
-    ObservableCollection<DemoItem*, BindableCollection<Apollo::Elements::Grid, Apollo::Elements::Grid::Bindings>> items;
+    ObservableDisplays entries;
+    Observable<char*> commandLine;
 };
 
 int dsky_main() {

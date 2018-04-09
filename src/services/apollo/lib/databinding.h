@@ -188,6 +188,8 @@ namespace Apollo {
     class BindableCollection {
     public:
 
+        using OwnerType = Owner;
+
         BindableCollection(Owner* owner, Binding binding)
                 : owner {owner}, binding {binding} {}
 
