@@ -182,11 +182,11 @@ namespace Apollo::Text {
         return result;
     }
 
-    void Renderer::drawText(const TextLayout& layout, uint32_t x, uint32_t y, uint32_t backgroundColour) {
+    void Renderer::drawText(const TextLayout& layout, const Elements::Bounds& bounds, const Elements::Bounds& clip, uint32_t backgroundColour) {
 
         FT_Vector origin;
-        origin.x = x;
-        origin.y = y;
+        origin.x = bounds.x;
+        origin.y = bounds.y;
 
         if (backgroundColour == 0) {
             backgroundColour = window->getBackgroundColour();
@@ -197,19 +197,28 @@ namespace Apollo::Text {
         for (auto& glyph : layout.glyphs) {
 
             auto bitmap = reinterpret_cast<FT_BitmapGlyph>(glyph.image);
-            auto top = origin.y + glyph.position.y;
+            int top = origin.y + glyph.position.y;
             auto ptr = bitmap->bitmap.buffer;
 
             for (unsigned int row = 0; row < bitmap->bitmap.rows; row++) {
-                auto y = row + top;
+                int y = row + top;
 
-                if (y == windowHeight)
+                if ((y >= windowHeight)
+                    || (y < 0))
                 { 
+                    continue;
+                }
+
+                if (y < clip.y) {
                     continue;
                 }
 
                 for (int column = 0; column < bitmap->bitmap.pitch; column++) {
                     auto x = column + origin.x + glyph.position.x;
+
+                    if (x < clip.x) {
+                        continue;
+                    }
 
                     auto index = x + y * windowWidth;
                     auto val = *ptr++;
