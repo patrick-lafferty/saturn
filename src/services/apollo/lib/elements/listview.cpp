@@ -128,6 +128,8 @@ namespace Apollo::Elements {
         }
 
         auto bounds = getBounds();
+        auto totalHeight = 0;
+        auto startY = bounds.y;
 
         for (auto& child : children) {
             child.bounds = bounds;
@@ -137,9 +139,24 @@ namespace Apollo::Elements {
                 auto height = element->getDesiredHeight();
                 bounds.y += height;
                 child.bounds.height = height;
-            }
+                totalHeight += height;
 
+            }
         }
+
+        if (totalHeight > bounds.height) {
+            auto start = startY + bounds.height;
+
+            for (auto it = rbegin(children); it != rend(children); ++it) {
+                auto& child = *it;
+                if (std::holds_alternative<UIElement*>(child.element)) {
+                    auto element = std::get<UIElement*>(child.element);
+                    start -= child.bounds.height;
+                    child.bounds.y = start;
+                }
+            }
+        }
+
     }
 
     Bounds ListView::getChildBounds(const UIElement* child) {
@@ -174,15 +191,15 @@ namespace Apollo::Elements {
         layoutChildren();
     }
 
-    void ListView::render(Renderer* renderer) {
+    void ListView::render(Renderer* renderer, Bounds bounds, Bounds clip) {
         for (auto& element : children) {
             if (std::holds_alternative<UIElement*>(element.element)) {
                 auto child = std::get<UIElement*>(element.element); 
-                child->render(renderer);
+                child->render(renderer, element.bounds, bounds);
             }
             else if (std::holds_alternative<Container*>(element.element)) {
                 auto child = std::get<Container*>(element.element); 
-                child->render(renderer);
+                child->render(renderer, element.bounds, bounds);
             }
         }
     }

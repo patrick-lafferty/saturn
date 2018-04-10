@@ -86,7 +86,7 @@ namespace Apollo::Elements {
 		virtual Bounds getChildBounds(const UIElement* child) override;
 
         virtual void layoutText(Apollo::Text::Renderer* renderer) override;
-        virtual void render(Renderer* renderer) override;
+        virtual void render(Renderer* renderer, Bounds bounds, Bounds clip) override;
 
         template<class Item, class BindFunc>
         void instantiateItemTemplate(Item item, BindFunc binder) {
@@ -128,5 +128,6 @@ namespace Apollo::Elements {
         std::vector<ContainedElement> children;
         BindableCollection<ListView, Bindings> itemSource;
         Saturn::Parse::List* itemTemplate;
+        int currentPosition {0};
     };
 }
