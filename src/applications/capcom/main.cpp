@@ -102,13 +102,13 @@ public:
                     window->layoutChildren();
                     auto elementRenderer = new Renderer(window, textRenderer);
                     window->layoutText(textRenderer);
-                    window->render(elementRenderer);
+                    window->render();
                     window->setRenderer(elementRenderer);
 
                     createDisplayItems(currentItems, currentCategory, window, currentCategoryName);
 
                     window->layoutText(textRenderer);
-                    window->render(elementRenderer);
+                    window->render();
                 }
             }
         }

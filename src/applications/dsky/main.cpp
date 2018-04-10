@@ -51,12 +51,12 @@ using namespace Apollo::Debug;
 using namespace Saturn::Parse;
 
 struct DisplayItem {
-    DisplayItem(char* content/*, uint32_t background, uint32_t fontColour*/)
-        : content {content}/*, background {background}, fontColour {fontColour}*/ {}
+    DisplayItem(char* c)
+        {
+            content = new Apollo::Observable<char*>(c);
+        }
 
-    Apollo::Observable<char*> content;
-    //Apollo::Observable<uint32_t> background;
-    //Apollo::Observable<uint32_t> fontColour;
+    Apollo::Observable<char*>* content;
 };
 
 typedef Apollo::ObservableCollection<DisplayItem*, Apollo::BindableCollection<Apollo::Elements::ListView, Apollo::Elements::ListView::Bindings>> ObservableDisplays;
@@ -102,23 +102,11 @@ public:
                 };
 
                 if (auto r = Apollo::Elements::loadLayout(root, window, binder, collectionBinder)) {
-                    window->layoutChildren();
                     elementRenderer = new Renderer(window, textRenderer);
-                    window->layoutText(textRenderer);
-                    window->render(elementRenderer);
+                    window->layoutChildren();
                     window->setRenderer(elementRenderer);
-
-                    auto itemBinder = [](auto& item) {
-                        return [&](auto binding, std::string_view name) {
-                            using BindingType = typename std::remove_reference<decltype(*binding)>::type::ValueType;
-
-                            if constexpr(std::is_same<char*, BindingType>::value) {
-                                /*if (name.compare("content") == 0) {
-                                    binding->bindTo(item->content);
-                                }*/
-                            }
-                        };
-                    };
+                    window->layoutText(textRenderer);
+                    window->render();
                 }
             }
         }
@@ -131,14 +119,19 @@ public:
 
                 if constexpr(std::is_same<char*, BindingType>::value) {
                     if (name.compare("content") == 0) {
-                        binding->bindTo(item->content);
+                        binding->bindTo(*item->content);
                     }
                 }
             };
         };
 
-        auto len = strlen(inputBuffer);
+        if (index == 0) {
+            return;
+        }
+
+        auto len = strlen(inputBuffer) + 1;
         char* s = new char[len];
+        s[len - 1] = '\0';
         strcpy(s, inputBuffer);
         entries.add(new DisplayItem(s), itemBinder);
 
