@@ -128,7 +128,7 @@ namespace Apollo::Elements {
         Bounds getBounds() const;
 
         virtual void layoutText(Apollo::Text::Renderer* renderer) = 0; 
-        virtual void render(Renderer* renderer) = 0;
+        virtual void render(Renderer* renderer, Bounds bounds, Bounds clip) = 0;
 
         void requestLayoutText();
         void requestRender();

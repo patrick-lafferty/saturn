@@ -387,21 +387,21 @@ namespace Apollo::Elements {
         }
     }
 
-    void Grid::render(Renderer* renderer) {
+    void Grid::render(Renderer* renderer, Bounds bounds, Bounds clip) {
         for (auto& element : children) {
             if (std::holds_alternative<UIElement*>(element.element)) {
                 auto child = std::get<UIElement*>(element.element); 
-                child->render(renderer);
+                child->render(renderer, element.bounds, bounds);
             }
             else if (std::holds_alternative<Container*>(element.element)) {
                 auto child = std::get<Container*>(element.element); 
-                child->render(renderer);
+                child->render(renderer, element.bounds, bounds);
             }
         }
 
         if (children.empty()) {
             auto bounds = getBounds();
-            renderer->drawRectangle(getBackgroundColour(), bounds.x, bounds.y, bounds.width, bounds.height);
+            //renderer->drawRectangle(getBackgroundColour(), bounds.x, bounds.y, bounds.width, bounds.height);
         }
     }
 

@@ -181,14 +181,15 @@ namespace Apollo {
         }
     }
 
-    void Window::render(Renderer* renderer) {
+    void Window::render(Renderer* renderer, Elements::Bounds bounds, Elements::Bounds clip) {
         if (child != nullptr) {
-            child->render(renderer);
+            child->render(renderer, bounds, clip);
         }
     }
 
     void Window::render() {
-        render(elementRenderer);
+        auto bounds = getChildBounds(nullptr);
+        render(elementRenderer, bounds, bounds);
     }
 
     void Window::layoutText() {
@@ -200,6 +201,11 @@ namespace Apollo {
     }
 
     void Window::requestRender(UIElement* element) {
-        element->render(elementRenderer);
+        //auto bounds = getChildBounds(nullptr);
+        auto parent = element->getParent();
+        auto childBounds = parent->getChildBounds(element);
+        auto clip = parent->getBounds();
+
+        element->render(elementRenderer, childBounds, clip);
     }
 }

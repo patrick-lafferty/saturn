@@ -126,12 +126,9 @@ namespace Apollo::Elements {
         desiredHeight = captionLayout.bounds.height;
     } 
 
-    void Label::render(Renderer* renderer) {
-        auto bounds = getBounds();
+    void Label::render(Renderer* renderer, Bounds bounds, Bounds clip) {
 
         auto backgroundColour = getBackgroundColour();
-
-        renderer->drawRectangle(backgroundColour, bounds.x, bounds.y, bounds.width, bounds.height);
 
         char* captionText {nullptr};
 
@@ -143,6 +140,8 @@ namespace Apollo::Elements {
             captionText = binding.getValue();
         }
 
+        renderer->drawRectangle(backgroundColour, bounds, clip); //bounds.x, bounds.y, bounds.width, bounds.height);
+
         if (captionText == nullptr) {
             return;
         }
@@ -150,7 +149,7 @@ namespace Apollo::Elements {
         bounds.x = adjustForAlignment(bounds.x, horizontalAlignment, bounds.width, captionLayout.bounds.width);        
         bounds.y = adjustForAlignment(bounds.y, verticalAlignment, bounds.height, captionLayout.bounds.height);
 
-        renderer->drawText(captionLayout, bounds.x + padding.horizontal, bounds.y + padding.vertical, backgroundColour);
+        renderer->drawText(captionLayout, bounds, clip, backgroundColour);
     }
 
     void Label::onChange(Bindings binding) {

@@ -87,7 +87,7 @@ namespace Apollo::Elements {
         }
 
         virtual void layoutText(Apollo::Text::Renderer* renderer) override;
-        virtual void render(Renderer* renderer) override;
+        virtual void render(Renderer* renderer, Bounds bounds, Bounds clip) override;
 
         void onChange(Bindings binding);
 
