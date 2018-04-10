@@ -39,13 +39,17 @@ namespace Apollo {
         class Renderer;
     }
 
+    namespace Elements {
+        struct Bounds;
+    }
+
     class Renderer {
     public:
 
         Renderer(Window* window, Text::Renderer* renderer);
 
-        void drawRectangle(uint32_t colour, int x, int y, int width, int height);
-        void drawText(const Apollo::Text::TextLayout& layout, uint32_t x, uint32_t y, uint32_t backgroundColour);
+        void drawRectangle(uint32_t colour, const Elements::Bounds& bounds, const Elements::Bounds& clip);
+        void drawText(const Apollo::Text::TextLayout& layout, const Elements::Bounds& bounds, const Elements::Bounds& clip, uint32_t backgroundColour);
 
         Text::Renderer* getTextRenderer();
 

@@ -38,27 +38,51 @@ namespace Apollo {
 
     }
 
-    void Renderer::drawRectangle(uint32_t colour, int x, int y, int width, int height) {
+    void Renderer::drawRectangle(uint32_t colour, const Elements::Bounds& bounds, const Elements::Bounds& clip) {
         auto windowWidth = static_cast<int>(window->getWidth());
         auto windowHeight = 600;
 
-        if (x >= windowWidth || y >= windowHeight) {
+        if (bounds.x >= windowWidth || bounds.y >= windowHeight) {
             return;
         }
 
-        auto clippedWidth = (x + width > windowWidth) ? (windowWidth - x) : width;
-        auto clippedHeight = (y + height > windowHeight) ?  (windowHeight - y) : height;
+        int x {bounds.x}, y {bounds.y}, clippedWidth {bounds.width}, clippedHeight {bounds.height};
+
+        if (bounds.x < clip.x) {
+            x = clip.x;
+            clippedWidth -= (clip.x - bounds.x);
+        }
+
+        if (bounds.y < clip.y) {
+            y = clip.y;
+            clippedHeight -= (clip.y - bounds.y);
+        }
+
+        if ((x + clippedWidth) >= (clip.x + clip.width)) {
+            clippedWidth = clip.x + clip.width - x;
+        }
+
+        if ((y + clippedHeight) >= (clip.y + clip.height)) {
+            clippedHeight = clip.y + clip.height - y;
+        }
+
+        if (clippedWidth < 0 || clippedHeight < 0) {
+            return;
+        }
+
         auto frameBuffer = window->getFramebuffer();
 
         for (auto row = 0; row < clippedHeight; row++) {
+
             std::fill_n(frameBuffer + x + ((y + row) * windowWidth), clippedWidth, colour);
         }
 
         window->markAreaDirty(x, y, clippedWidth, clippedHeight);
     }
 
-    void Renderer::drawText(const Apollo::Text::TextLayout& layout, uint32_t x, uint32_t y, uint32_t backgroundColour) {
-        textRenderer->drawText(layout, x, y, backgroundColour);
+    void Renderer::drawText(const Apollo::Text::TextLayout& layout, 
+        const Elements::Bounds& bounds, const Elements::Bounds& clip, uint32_t backgroundColour) {
+        textRenderer->drawText(layout, bounds, clip, backgroundColour);
     }
 
     Text::Renderer* Renderer::getTextRenderer() {
