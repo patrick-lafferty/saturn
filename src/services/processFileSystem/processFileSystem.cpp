@@ -57,6 +57,7 @@ namespace PFS {
         OpenResult result;
         result.requestId = request.requestId;
         result.serviceType = Kernel::ServiceType::VFS;
+        result.type = FileDescriptorType::Vostok;
 
         auto addDescriptor = [&](auto instance, auto id, auto type) {
             failed = false;
@@ -96,6 +97,10 @@ namespace PFS {
                     //its the process object itself
                     addDescriptor(process, 0, DescriptorType::Object);
                 }
+            }
+            else if (words.size() == 1 && words[0].compare("process") == 0) {
+                //its the process object itself
+                addDescriptor(nullptr, 0, DescriptorType::Object);
             }
         }
         else {
@@ -160,7 +165,8 @@ namespace PFS {
             }
             else {
                 //its a process object, return a summary of it
-
+                descriptor.instance->readSelf(request.senderTaskId, request.requestId);
+                return;
             }
 
             args.writeType(ArgTypes::EndArg);

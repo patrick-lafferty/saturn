@@ -74,6 +74,7 @@ namespace HardwareFileSystem {
         OpenResult result;
         result.requestId = request.requestId;
         result.serviceType = Kernel::ServiceType::VFS;
+        result.type = FileDescriptorType::Vostok;
 
         auto addDescriptor = [&](auto instance, auto id, auto type) {
             failed = false;

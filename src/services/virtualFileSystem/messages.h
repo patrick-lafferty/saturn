@@ -131,6 +131,11 @@ namespace VirtualFileSystem {
 
         //TODO: read/write, permissions
     };
+    
+    enum class FileDescriptorType {
+        File, 
+        Vostok
+    };
 
     struct OpenResult : IPC::Message {
         OpenResult() {
@@ -143,6 +148,7 @@ namespace VirtualFileSystem {
         uint32_t requestId;
         uint32_t fileLength;
         bool success;
+        FileDescriptorType type {FileDescriptorType::File};
     };
 
     struct CreateRequest : IPC::Message {
