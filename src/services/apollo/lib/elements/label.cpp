@@ -147,7 +147,9 @@ namespace Apollo::Elements {
         }
 
         bounds.x = adjustForAlignment(bounds.x, horizontalAlignment, bounds.width, captionLayout.bounds.width);        
+        bounds.x += padding.horizontal;
         bounds.y = adjustForAlignment(bounds.y, verticalAlignment, bounds.height, captionLayout.bounds.height);
+        bounds.y += padding.vertical;
 
         renderer->drawText(captionLayout, bounds, clip, backgroundColour);
     }
