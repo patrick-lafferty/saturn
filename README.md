@@ -1,6 +1,6 @@
-| ![Latest Screenshot](https://github.com/patrick-lafferty/saturn/blob/master/screenshots/Capcom.PNG) |
+| ![Latest Screenshot](https://github.com/patrick-lafferty/saturn/blob/master/screenshots/Dsky.PNG) |
 | :-: |
-| *Capcom application redesigned with the new Apollo UI framework* |
+| *Dsky application demonstrating Gemini interpreter* |
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
 # Saturn
