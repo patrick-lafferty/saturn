@@ -46,17 +46,26 @@ interface for the Apollo Guidance Computer.
 #include <services/apollo/lib/renderer.h>
 #include "layout.h"
 
+#include <saturn/gemini/interpreter.h>
+#include <services/virtualFileSystem/vostok.h>
+
 using namespace Apollo;
 using namespace Apollo::Debug;
 using namespace Saturn::Parse;
 
+using namespace Saturn::Gemini;
+
 struct DisplayItem {
-    DisplayItem(char* c)
-        {
-            content = new Apollo::Observable<char*>(c);
-        }
+
+    DisplayItem(char* content, uint32_t background, uint32_t fontColour) {
+        this->content = new Apollo::Observable<char*>(content);
+        this->background = new Apollo::Observable<uint32_t>(background);
+        this->fontColour = new Apollo::Observable<uint32_t>(fontColour);
+    }
 
     Apollo::Observable<char*>* content;
+    Apollo::Observable<uint32_t>* background;
+    Apollo::Observable<uint32_t>* fontColour;
 };
 
 typedef Apollo::ObservableCollection<DisplayItem*, Apollo::BindableCollection<Apollo::Elements::ListView, Apollo::Elements::ListView::Bindings>> ObservableDisplays;
@@ -107,12 +116,183 @@ public:
                     window->setRenderer(elementRenderer);
                     window->layoutText(textRenderer);
                     window->render();
+
+                    setupEnvironment();
                 }
             }
         }
     }
 
-    void addEntry() {
+    Function getVersionFunc() {
+        FunctionSignature sig {{}, Type::Void};
+        Function f{sig, [&](List* list) {
+            char* copy = new char[13];
+            strcpy(copy, "Saturn 0.2.0");
+            return Result {copy};
+        }};
+
+        return f;
+    }
+
+    char* listDirectory(char* path) {
+        using namespace VirtualFileSystem;
+
+        auto openResult = openSynchronous(path);
+
+        if (!openResult.success) {
+            return nullptr;
+        }
+
+        char* names = new char[256];
+        int offset = 0;
+        memset(names, 0, 256);
+
+        auto readResult = readSynchronous(openResult.fileDescriptor, 0);
+
+        if (!readResult.success) {
+            return nullptr;
+        }
+
+        if (openResult.type == FileDescriptorType::Vostok) {
+            Vostok::ArgBuffer args{readResult.buffer, sizeof(readResult.buffer)};
+
+            auto type = args.readType();
+            if (type == Vostok::ArgTypes::Property) {
+
+                while (type != Vostok::ArgTypes::EndArg) {
+
+                    type = args.peekType();
+
+                    switch(type) {
+                        case Vostok::ArgTypes::Void: {
+                            return names;
+                        }
+                        case Vostok::ArgTypes::Uint32: {
+                            auto value = args.read<uint32_t>(type);
+                            if (!args.hasErrors()) {
+                                auto c = sprintf(names + offset, "%d ", value);
+                                offset += c;
+                            }
+                            break;
+                        }
+                        case Vostok::ArgTypes::Cstring: {
+                            auto value = args.read<char*>(type);
+                            if (!args.hasErrors()) {
+                                strcpy(names + offset, value);
+                                offset += strlen(value);
+                                names[offset] = ' ';
+                                offset++;
+                            }
+                            break;
+                        }
+                        case Vostok::ArgTypes::EndArg: {
+                            return names;
+                        }
+                        default: {
+                        }
+                    }
+                }
+            }
+        }
+
+        ::close(openResult.fileDescriptor);
+
+        return names;
+    }
+
+    Function getListFunc() {
+        FunctionSignature sig {{Type::String}, Type::Void};
+        Function f{sig, [&](List* list) {
+            auto first = list->items[1];
+
+            std::string_view value;
+
+            if (first->type == SExpType::Symbol) {
+                auto s = static_cast<Symbol*>(first);
+                value = s->value;
+            }
+            else if (first->type == SExpType::StringLiteral) {
+                auto s = static_cast<StringLiteral*>(first);
+                value = s->value;
+            }
+            else {
+                return Result {};
+            }
+
+            char path[256];
+            memset(path, 0, 256);
+            value.copy(path, value.length());
+
+            auto result = listDirectory(path);
+            return Result {result};
+        }};
+
+        return f; 
+    }
+
+    void test() {
+        FunctionSignature sig {{Type::String}, Type::Void};
+        Function f{sig, [&](List* list) {
+            auto first = list->items[1];
+
+            std::string_view value;
+
+            if (first->type == SExpType::Symbol) {
+                auto s = static_cast<Symbol*>(first);
+                value = s->value;
+            }
+            else if (first->type == SExpType::StringLiteral) {
+                auto s = static_cast<StringLiteral*>(first);
+                value = s->value;
+            }
+            else {
+                return Result {};
+            }
+
+            char* copy = new char[value.length() + 1];
+            value.copy(copy, value.length());
+            return Result {copy};
+
+        }};
+    }
+
+    void setupEnvironment() {
+        using namespace std::literals;
+
+        environment.addFunction("version"sv, getVersionFunc());
+        environment.addFunction("read"sv, getListFunc());
+    }
+
+    void handleInput() {
+        auto result = read(inputBuffer);
+
+        if (std::holds_alternative<SExpression*>(result)) {
+            auto topLevel = std::get<SExpression*>(result);
+
+            if (topLevel->type == SExpType::List) {
+                auto root = static_cast<List*>(topLevel)->items[0];
+                auto value = interpret(static_cast<List*>(root), environment);
+
+                if (std::holds_alternative<Result>(value)) {
+                    auto& r = std::get<Result>(value);
+
+                    if (std::holds_alternative<char*>(r.value)) {
+                        auto str = std::get<char*>(r.value);
+
+                        if (str == nullptr) {
+                            return;
+                        }
+
+                        addEntry(str, 0xFF'08'08'08, 0x00'64'95'EDu);
+
+                        delete str;
+                    }
+                }
+            }
+        }
+    }
+
+    void addEntry(char* text, uint32_t background, uint32_t fontColour) {
         auto itemBinder = [](auto& item) {
             return [&](auto binding, std::string_view name) {
                 using BindingType = typename std::remove_reference<decltype(*binding)>::type::ValueType;
@@ -122,18 +302,22 @@ public:
                         binding->bindTo(*item->content);
                     }
                 }
+                else if constexpr(std::is_same<uint32_t, BindingType>::value) {
+                    if (name.compare("background") == 0) {
+                        binding->bindTo(*item->background);
+                    }
+                    else if (name.compare("fontColour") == 0) {
+                        binding->bindTo(*item->fontColour);
+                    }
+                }
             };
         };
 
-        if (index == 0) {
-            return;
-        }
-
-        auto len = strlen(inputBuffer) + 1;
+        auto len = strlen(text) + 1;
         char* s = new char[len];
         s[len - 1] = '\0';
-        strcpy(s, inputBuffer);
-        entries.add(new DisplayItem(s), itemBinder);
+        strcpy(s, text);
+        entries.add(new DisplayItem(s, background, fontColour), itemBinder);
 
         window->layoutChildren();
         window->layoutText();
@@ -160,12 +344,26 @@ public:
                         switch (key.key) {
                             case Keyboard::VirtualKey::Enter: {
 
-                                addEntry();
+                                if (index > 0) {
+                                    addEntry(inputBuffer, 20, 0x00'64'95'EDu);
+                                }
+
+                                handleInput();
 
                                 index = 0;
                                 memset(inputBuffer, '\0', 500);
 
                                 commandLine.setValue(inputBuffer);
+
+                                break;
+                            }
+                            case Keyboard::VirtualKey::Backspace: {
+                                if (index > 0) {
+                                    index--;
+                                    inputBuffer[index] = '\0';
+
+                                    commandLine.setValue(inputBuffer);
+                                }
 
                                 break;
                             }
@@ -223,6 +421,7 @@ private:
     Renderer* elementRenderer;
     ObservableDisplays entries;
     Observable<char*> commandLine;
+    Saturn::Gemini::Environment environment;
 };
 
 int dsky_main() {

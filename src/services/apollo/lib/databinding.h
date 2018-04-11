@@ -46,7 +46,7 @@ namespace Apollo {
 
         std::function<T(void)> subscribe(std::function<void()> s) {
             onChange = s;
-            return [&]() {return this->value;};
+            return [this]() {return this->value;};
         }
 
         void setValue(T newValue) {
@@ -178,7 +178,7 @@ namespace Apollo {
         /*
         The parent UI object
         */
-        Owner* owner;
+        Owner* owner {nullptr};
 
         Binding binding;
         std::function<Value(void)> getter;

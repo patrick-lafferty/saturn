@@ -36,7 +36,7 @@ const char* layout = R"(
     (margins (vertical 20) (horizontal 20))
 
     (rows 
-        (fixed-height 100)
+        (fixed-height 50)
         (proportional-height 1)    
     )
 
@@ -44,6 +44,8 @@ const char* layout = R"(
         (fixed-width 50)
         (proportional-width 1) 
     )
+
+    (row-gap 10)
 
     (items
         (label (caption ">")
@@ -64,7 +66,11 @@ const char* layout = R"(
             (item-source (bind entries))
 
             (item-template
-                (label (caption (bind content)))
+                (label (caption (bind content))
+                    (background (bind background))
+                    (padding (horizontal 10))
+                    (font-colour (bind fontColour))
+                )
             )
         )
     )

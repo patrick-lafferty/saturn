@@ -99,7 +99,7 @@ namespace Apollo::Elements {
                     auto childType = maybeChildType.value();
 
                     if (std::holds_alternative<KnownElements>(childType)) {
-                        auto child = createElement(this, 
+                        createElement(this, 
                             std::get<KnownElements>(childType), 
                             constructor,
                             binder,
