@@ -1,6 +1,6 @@
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
-<img src="https://github.com/patrick-lafferty/saturn/blob/master/logo.png)" height="200">
+<img src="https://github.com/patrick-lafferty/saturn/blob/master/logo.png" height="200">
 
 # Saturn
 
