@@ -28,6 +28,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
+namespace CapcomApp {
+
 const char* layout = R"(
 
 (grid
@@ -133,3 +135,5 @@ const char* layout = R"(
 )
 
 )";
+
+}

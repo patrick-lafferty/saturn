@@ -67,50 +67,34 @@ public:
         createCategories(topLevelCommands);
         currentCategory = &topLevelCommands;
 
-        auto result = read(layout);
+        auto binder = [&](auto binding, std::string_view name) {
+            using BindingType = typename std::remove_reference<decltype(*binding)>::type::ValueType;
 
-        if (std::holds_alternative<SExpression*>(result)) {
-            auto topLevel = std::get<SExpression*>(result);
-
-            if (topLevel->type == SExpType::List) {
-                auto root = static_cast<List*>(topLevel)->items[0];
-
-                auto binder = [&](auto binding, std::string_view name) {
-                    using BindingType = typename std::remove_reference<decltype(*binding)>::type::ValueType;
-
-                    if constexpr(std::is_same<char*, BindingType>::value) {
-                        if (name.compare("commandLine") == 0) {
-                            binding->bindTo(commandLine);
-                        }
-                        else if (name.compare("currentCategoryName") == 0) {
-                            binding->bindTo(currentCategoryName);
-                        }
-                    }
-                };
-
-                auto collectionBinder = [&](auto binding, std::string_view name) {
-                    using BindingType = typename std::remove_reference<decltype(*binding)>::type::OwnerType;
-
-                    if constexpr(std::is_same<Apollo::Elements::Grid, BindingType>::value) {
-                        if (name.compare("currentCommands") == 0) {
-                            binding->bindTo(currentItems);
-                        }
-                    }
-                };
-
-                if (auto r = loadLayout(root, window, binder, collectionBinder)) {
-                    window->layoutChildren();
-                    auto elementRenderer = new Renderer(window, textRenderer);
-                    window->layoutText(textRenderer);
-                    window->render();
-                    window->setRenderer(elementRenderer);
-
-                    createDisplayItems(currentItems, currentCategory, window, currentCategoryName);
-
-                    window->layoutText(textRenderer);
-                    window->render();
+            if constexpr(std::is_same<char*, BindingType>::value) {
+                if (name.compare("commandLine") == 0) {
+                    binding->bindTo(commandLine);
+                }
+                else if (name.compare("currentCategoryName") == 0) {
+                    binding->bindTo(currentCategoryName);
                 }
             }
+        };
+
+        auto collectionBinder = [&](auto binding, std::string_view name) {
+            using BindingType = typename std::remove_reference<decltype(*binding)>::type::OwnerType;
+
+            if constexpr(std::is_same<Apollo::Elements::Grid, BindingType>::value) {
+                if (name.compare("currentCommands") == 0) {
+                    binding->bindTo(currentItems);
+                }
+            }
+        };
+       
+        if (loadLayout(CapcomApp::layout, binder, collectionBinder)) {
+            createDisplayItems(currentItems, currentCategory, window, currentCategoryName);
+
+            window->layoutText(textRenderer);
+            window->render();
         }
     }
 

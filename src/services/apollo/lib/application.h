@@ -34,6 +34,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../messages.h"
 #include <algorithm>
 #include <saturn/time.h>
+#include <services/apollo/lib/layout.h>
+#include <services/apollo/lib/renderer.h>
 
 namespace Apollo {
 
@@ -177,8 +179,40 @@ namespace Apollo {
             finished = true;
         }
 
+        /*
+        Creates a tree of UIElements from a Mercury layout file,
+        and sets up all the necessary databinding
+        */
+        template<class BindFunc, class CollectionBindFunc>
+        bool loadLayout(const char* layout, BindFunc binder, CollectionBindFunc collectionBinder) {
+            using namespace Saturn::Parse;
+
+            auto result = read(layout);
+
+            if (std::holds_alternative<SExpression*>(result)) {
+                auto topLevel = std::get<SExpression*>(result);
+
+                if (topLevel->type == SExpType::List) {
+                    auto root = static_cast<List*>(topLevel)->items[0];
+
+                    if (auto r = Apollo::Elements::loadLayout(root, window, binder, collectionBinder)) {
+                        elementRenderer = new Renderer(window, textRenderer);
+                        window->layoutChildren();
+                        window->setRenderer(elementRenderer);
+                        window->layoutText(textRenderer);
+                        window->render();
+
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
         Window* window;
         Text::Renderer* textRenderer;
+        Renderer* elementRenderer;
         uint32_t screenWidth, screenHeight;
 
     private:

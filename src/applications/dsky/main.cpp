@@ -42,8 +42,6 @@ interface for the Apollo Guidance Computer.
 #include <algorithm>
 #include <saturn/parsing.h>
 #include <services/apollo/lib/databinding.h>
-#include <services/apollo/lib/layout.h>
-#include <services/apollo/lib/renderer.h>
 #include "layout.h"
 
 #include <saturn/gemini/interpreter.h>
@@ -82,44 +80,28 @@ public:
 
         memset(inputBuffer, '\0', 500);
 
-        auto result = read(DskyApp::layout);
+        auto binder = [&](auto binding, std::string_view name) {
+            using BindingType = typename std::remove_reference<decltype(*binding)>::type::ValueType;
 
-        if (std::holds_alternative<SExpression*>(result)) {
-            auto topLevel = std::get<SExpression*>(result);
-
-            if (topLevel->type == SExpType::List) {
-                auto root = static_cast<List*>(topLevel)->items[0];
-
-                auto binder = [&](auto binding, std::string_view name) {
-                    using BindingType = typename std::remove_reference<decltype(*binding)>::type::ValueType;
-
-                    if constexpr(std::is_same<char*, BindingType>::value) {
-                        if (name.compare("commandLine") == 0) {
-                            binding->bindTo(commandLine);
-                        }
-                    }
-                };
-
-                auto collectionBinder = [&](auto binding, std::string_view name) {
-                    using BindingType = typename std::remove_reference<decltype(*binding)>::type::OwnerType;
-
-                    if constexpr(std::is_same<Apollo::Elements::ListView, BindingType>::value) {
-                        if (name.compare("entries") == 0) {
-                            binding->bindTo(entries);
-                        }
-                    }
-                };
-
-                if (auto r = Apollo::Elements::loadLayout(root, window, binder, collectionBinder)) {
-                    elementRenderer = new Renderer(window, textRenderer);
-                    window->layoutChildren();
-                    window->setRenderer(elementRenderer);
-                    window->layoutText(textRenderer);
-                    window->render();
-
-                    setupEnvironment();
+            if constexpr(std::is_same<char*, BindingType>::value) {
+                if (name.compare("commandLine") == 0) {
+                    binding->bindTo(commandLine);
                 }
             }
+        };
+
+        auto collectionBinder = [&](auto binding, std::string_view name) {
+            using BindingType = typename std::remove_reference<decltype(*binding)>::type::OwnerType;
+
+            if constexpr(std::is_same<Apollo::Elements::ListView, BindingType>::value) {
+                if (name.compare("entries") == 0) {
+                    binding->bindTo(entries);
+                }
+            }
+        };
+
+        if (loadLayout(DskyApp::layout, binder, collectionBinder)) {
+            setupEnvironment();
         }
     }
 
@@ -418,7 +400,6 @@ private:
     char inputBuffer[500];
     int index {0};
 
-    Renderer* elementRenderer;
     ObservableDisplays entries;
     Observable<char*> commandLine;
     Saturn::Gemini::Environment environment;
