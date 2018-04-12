@@ -1,9 +1,6 @@
-| ![Latest Screenshot](https://github.com/patrick-lafferty/saturn/blob/master/screenshots/Dsky.PNG) |
-| :-: |
-| *Dsky application demonstrating Gemini interpreter* |
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
-<img src="https://github.com/patrick-lafferty/saturn/blob/master/screenshots/Dsky.PNG)" height="100">
+<img src="https://github.com/patrick-lafferty/saturn/blob/master/logo.png)" height="200">
 
 # Saturn
 
@@ -18,6 +15,10 @@ under src/kernel, all services including Apollo are under src/services,
 and applications can be found in src/applications. 
 
 # Features
+
+| ![Latest Screenshot](https://github.com/patrick-lafferty/saturn/blob/master/screenshots/Dsky.PNG) |
+| :-: |
+| *Dsky application demonstrating Gemini interpreter* |
 
 ## Apollo
 
