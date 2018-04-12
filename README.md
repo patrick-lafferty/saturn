@@ -5,51 +5,62 @@
 
 # Saturn
 
-Saturn is a new operating system I started in late 2017. It currently features:
+Saturn is a new operating system I started in late 2017. It is a 32-bit microkernel with multitasking and IPC based around asynchronous message
+passing. With the exception of LLVM's libc++ and FreeType, the entire
+system and services are being written from scratch by me.
 
-* 32-bit Microkernel, with basically only the scheduler, physical/virtual memory managers, interrupt handler and service registry in the kernel itself, and everything else delegated to user services + a few kernel services
-* Paging/Virtual Memory
-* Multitasking with 
-  * kernel and user tasks
-  * separate process memory spaces
-  * rudimentary ELF loading support
-* IPC
-  * asynchronous message passing where messages are identified by two
-  uint32s: a global message namespace id, and a message id unique to that namespace
-  * shared memory
-* a Virtual File System along with 
-  * partial Ext2 support (readonly, file sizes limited to about 67M [only singly and doubly indirect blocks implemented, missing triply indirect]) 
-  * a process filesystem similar to procfs, and 
-  * a hardware filesystem similar to sysfs
-* Basic PCI support: enumerating devices and loading appropriate drivers
-* Drivers:
-  * PS2
-  * Keyboard
-  * ATA PIO (readonly)
-  * Bochs VBE
-* Minimal C Standard Library implementation
-* GUI Framework and Window Manager (Apollo)
+# Features
 
-## What's different about Saturn?
+## Apollo
 
-The Virtual Object System, Vostok. Inspired by Plan9's "everything is a file*system*", I thought it might be interesting to see what "everything is an *object*" would look like. Objects have properties that you can read and write just like files via the virtual file system, but they also have functions you can call. Instead of having a single control file where you write a command to run it, you can expose multiple "files", with reflection. Objects can also be nested inside other objects.
+Apollo is Saturn's UI framework. Apollo has a tiled window manager that divides up the screen into tiles. One of the main goals of Apollo is to support rapid UI prototyping. To 
+accomplish this, Apollo uses a declarative layout language called Mercury.
+By editing Mercury files you can easily create and modify an application's UI.
 
-Reading a function gives you the function's signature (argument types + return type). Writing to a function executes the function. If it has a non-void return type, you will receive a message with the result.
+```lisp
+(grid
 
-Example: 
+    (rows (fixed-height 50) (proportional-height 1))
+    (columns (fixed-width 50) (proportional-width 1))
 
-The Hardware Filesystem exposes a PCI Object at /system/hardware/pci, which contains a Host Object, which contains Devices which contain Functions that the Discovery system enumerated at startup. To find a device with a certain PCI classId and subclass Id, you can call the find function at /system/hardware/pci/find with the two ids to get the first matching device.  That's actually what the mass storage filesystem does (see src/services/massStorageFileSystem/system.cpp, function callFind).
+    (items
+        
+        (label (caption "This is a label")
+            (alignment (vertical center))
+            (padding (horizontal 10))
+            (meta (grid (column 1))))
 
-This is all handled via the virtual file system in a language agnostic way. Essentially all you need is fopen, fread and fwrite and you can call a Vostok function from any language (or read/write properties), and not care what language the object was written in. 
+        (list-view
+            (meta (grid (row 1) (column-span 2)))
+            (item-source (bind entries))
 
-## Userspace
+            (item-template
+                (label (caption (bind content))
+                    (background (bind background))
+                    (font-colour (bind fontColour)))))))
+```
 
-Saturn's userspace will be designed for a graphical environment, using a tiled compositing window manager called Apollo. Apollo currently supports multiple tiles (application windows) in a container that can be split either horizontally or vertically. Containers can be nested inside other containers, allowing you to divide up the screen however you want. You can find Apollo in src/services/apollo.
+Apollo also makes heavy use of databinding. Certain UI elements like Labels
+expose properties that are 'bindable', such as caption and background. You
+can define properties in your application and then 'bind' them to elements,
+and when your values change it automatically updates the appropriate UI element.
 
-## Testing
+Note that the example also shows item templates. You can create a collection
+of some user-defined struct, and by defining an item template you tell
+Apollo how to create UI elements from that struct.
+
+## Vostok
+
+Vostok is Saturn's Virtual Object System. It allows you to access objects
+exposed to the virtual file system just like files. Objects can have properties
+as well as callable functions, providing an RPC mechanism. By opening an object
+and writing arguments to one of its functions, you can invoke a function call
+in a separate process and read the results, just by using the filesystem.
+
+# Testing
 
 As Saturn is still in its very early stages, there are no releases yet.
 
-## License
+# License
 
 Saturn uses the 3-clause BSD license.
