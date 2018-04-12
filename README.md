@@ -3,6 +3,8 @@
 | *Dsky application demonstrating Gemini interpreter* |
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
+<img src="https://github.com/patrick-lafferty/saturn/blob/master/screenshots/Dsky.PNG)" height="100">
+
 # Saturn
 
 Saturn is a new operating system I started in late 2017. It is a 32-bit microkernel with multitasking and IPC based around asynchronous message
