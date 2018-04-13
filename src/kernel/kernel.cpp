@@ -51,6 +51,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <services/processFileSystem/processFileSystem.h>
 #include <services/fakeFileSystem/fakeFileSystem.h>
 #include <services/hardwareFileSystem/system.h>
+#include <services/events/system.h>
 #include <services/startup/startup.h>
 #include <services/discovery/loader.h>
 
@@ -74,7 +75,9 @@ struct MemManagerAddresses {
 };
 
 extern "C" int kernel_main(MemManagerAddresses* addresses) {
+
     initializeLibC();
+
     auto acpiStartAddress = addresses->acpiStartAddress;
     auto acpiPages = addresses->acpiPages;
     /*
@@ -116,7 +119,6 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     asm volatile("sti");
 
     auto pageFlags = static_cast<int>(PageTableFlags::AllowWrite);
-
     auto afterKernel = (kernelEndAddress & ~0xfff) + 0x1000;
 
     virtualMemManager.HACK_setNextAddress(0xCFFF'F000);
@@ -135,7 +137,6 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
 
     //also don't need APIC tables anymore
     //NOTE: if we actually do, copy them before this line to a new address space
-    //virtualMemManager.unmap(0x7fe0000, (0x8fe0000 - 0x7fe0000) / 0x1000);
     virtualMemManager.unmap(acpiStartAddress, acpiPages);
 
     LibC_Implementation::createHeap(PageSize * PageSize * 10, &virtualMemManager);
@@ -147,11 +148,8 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     ServiceRegistry registry;
     ServiceRegistryInstance = &registry;
 
-    /*runNewTests();*/
-    //runAllLibCTests();
-    //runListTests();
-
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(VirtualFileSystem::service)));
+    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(Event::service)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(PFS::service)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(FakeFileSystem::service)));
     scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(HardwareFileSystem::service)));
