@@ -37,6 +37,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <services/apollo/lib/layout.h>
 #include <services/apollo/lib/renderer.h>
 #include <services/virtualFileSystem/messages.h>
+#include <services/virtualFileSystem/vostok.h>
+#include <saturn/parsing.h>
 
 namespace Apollo {
 
@@ -62,7 +64,7 @@ namespace Apollo {
     handling logic to update and render its window
     */
     template<class T>
-    class Application {
+    class Application : public Vostok::Object {
     public:
 
         /*
@@ -136,6 +138,17 @@ namespace Apollo {
                 }
             }
         }
+
+        virtual void readSelf(uint32_t, uint32_t) override {}
+        virtual int getProperty(std::string_view) override { return -1; }
+        virtual void readProperty(uint32_t, uint32_t, uint32_t) override {}
+        virtual void writeProperty(uint32_t, uint32_t, uint32_t, Vostok::ArgBuffer& ) override {}
+        virtual Object* getNestedObject(std::string_view) override { return nullptr; }
+
+        virtual int getFunction(std::string_view) override { return -1;}
+        virtual void readFunction(uint32_t, uint32_t, uint32_t) override {}
+        virtual void writeFunction(uint32_t, uint32_t, uint32_t, Vostok::ArgBuffer&) override {}
+        virtual void describeFunction(uint32_t, uint32_t, uint32_t) override {}
 
     protected:
 
@@ -228,6 +241,62 @@ namespace Apollo {
             return false;
         }
 
+        void handleOpenRequest(VirtualFileSystem::OpenRequest& request) {
+            VirtualFileSystem::OpenResult result;
+            result.requestId = request.requestId;
+            result.serviceType = Kernel::ServiceType::VFS;
+
+            auto words = split({request.path, strlen(request.path)}, '/');
+
+            if (words.size() == 1) {
+                auto functionId = getFunction(words[0]);
+
+                if (functionId >= 0) {
+
+                    auto id = nextDescriptorId++;
+                    openDescriptors.push_back({this, static_cast<uint32_t>(functionId), Vostok::DescriptorType::Function, id});
+                    result.type = VirtualFileSystem::FileDescriptorType::Vostok;
+                    result.fileDescriptor = id;
+                    result.success = true;
+                }
+            }
+
+            send(IPC::RecipientType::ServiceName, &result);
+        }
+
+        void handleReadRequest(VirtualFileSystem::ReadRequest& request) {
+            auto it = std::find_if(begin(openDescriptors), end(openDescriptors), 
+                [&](const auto& desc) {
+                return desc.id == request.fileDescriptor;
+            });
+
+            if (it != end(openDescriptors)) {
+                it->read(request.senderTaskId, request.requestId);
+            }
+            else {
+
+                VirtualFileSystem::ReadResult result {};
+                result.requestId = request.requestId;
+                result.success = false;
+                send(IPC::RecipientType::ServiceName, &result);
+            }
+        }
+
+        void handleWriteRequest(VirtualFileSystem::WriteRequest& request) {
+            auto it = std::find_if(begin(openDescriptors), end(openDescriptors), 
+                [&](const auto& desc) {
+                return desc.id == request.fileDescriptor;
+            });
+
+            if (it != end(openDescriptors)) {
+                Vostok::ArgBuffer args{request.buffer, sizeof(request.buffer)};
+                it->write(request.senderTaskId, request.requestId, args);
+            }
+            else {
+                Vostok::replyWriteSucceeded(request.senderTaskId, request.requestId, false);
+            }
+        }
+
         Window* window;
         Text::Renderer* textRenderer;
         Renderer* elementRenderer;
@@ -236,6 +305,8 @@ namespace Apollo {
     private:
 
         bool finished {false};
+        std::vector<Vostok::FileDescriptor> openDescriptors;
+        uint32_t nextDescriptorId {0};
     };
 
 }
