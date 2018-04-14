@@ -118,7 +118,29 @@ namespace VirtualFileSystem {
         return directory;
     }
 
+    /*
+    Applications can mount themselves to support Vostok IPC/RPC
+    To ensure that the correct PID is used, they just mount to 
+    "/applications", and then the VFS takes the real task ID from
+    the MountRequest to create /applcations/<pid>
+    */
+    void expandMountRequest(MountRequest& request) {
+        std::string_view path {request.path, strlen(request.path)};
+
+        if (path.compare("/applications") == 0) {
+            sprintf(request.path + path.length(), "/%d", request.senderTaskId);
+        }
+        /*
+        TODO: implement in future
+        else if (path.compare("/window") == 0) {
+
+        }
+        */
+    }
+
     void VirtualFileSystem::handleMountRequest(MountRequest& request) {
+        expandMountRequest(request);
+
         std::string_view path {request.path, strlen(request.path)};
         auto subpaths = split(path, '/', true);
         Cache::Entry* currentDirectory = &root;
