@@ -29,21 +29,22 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "transcript.h"
 #include <services/apollo/lib/application.h>
 #include "layout.h"
+#include <saturn/logging.h>
+#include <services/virtualFileSystem/vostok.h>
 
 using namespace Apollo;
 
 struct DisplayItem {
 
-    DisplayItem(char* content, uint32_t background, uint32_t fontColour)
-        : content {content}, background {background}, fontColour {fontColour} {
-        //this->content = new Apollo::Observable<char*>(content);
-        //this->background = new Apollo::Observable<uint32_t>(background);
-        //this->fontColour = new Apollo::Observable<uint32_t>(fontColour);
+    DisplayItem(char* content, uint32_t background, uint32_t fontColour) {
+        this->content = new Apollo::Observable<char*>(content);
+        this->background = new Apollo::Observable<uint32_t>(background);
+        this->fontColour = new Apollo::Observable<uint32_t>(fontColour);
     }
 
-    Apollo::Observable<char*> content;
-    Apollo::Observable<uint32_t> background;
-    Apollo::Observable<uint32_t> fontColour;
+    Apollo::Observable<char*>* content;
+    Apollo::Observable<uint32_t>* background;
+    Apollo::Observable<uint32_t>* fontColour;
 };
 
 class Transcript : public Application<Transcript> {
@@ -71,7 +72,7 @@ public:
         };
         
         if (loadLayout(TranscriptApp::layout, binder, collectionBinder)) {
-
+            Saturn::Log::subscribe();
         }
     }
 
@@ -82,15 +83,15 @@ public:
 
                 if constexpr(std::is_same<char*, BindingType>::value) {
                     if (name.compare("content") == 0) {
-                        binding->bindTo(item->content);
+                        binding->bindTo(*item->content);
                     }
                 }
                 else if constexpr(std::is_same<uint32_t, BindingType>::value) {
                     if (name.compare("background") == 0) {
-                        binding->bindTo(item->background);
+                        binding->bindTo(*item->background);
                     }
                     else if (name.compare("fontColour") == 0) {
-                        binding->bindTo(item->fontColour);
+                        binding->bindTo(*item->fontColour);
                     }
                 }
             };
@@ -134,6 +135,48 @@ public:
                 break;
             }
             case IPC::MessageNamespace::ServiceRegistry: {
+                break;
+            }
+            case IPC::MessageNamespace::VFS: {
+                switch (static_cast<VirtualFileSystem::MessageId>(buffer.messageId)) {
+                    case VirtualFileSystem::MessageId::OpenRequest: {
+                        auto request = IPC::extractMessage<VirtualFileSystem::OpenRequest>(buffer);
+
+                        /*
+                        TODO: make proper
+                        */
+
+                        VirtualFileSystem::OpenResult result;
+                        result.requestId = request.requestId;
+                        result.serviceType = Kernel::ServiceType::VFS;
+                        result.success = true;
+                        result.type = VirtualFileSystem::FileDescriptorType::Vostok;
+
+                        send(IPC::RecipientType::ServiceName, &result);
+
+                        break;
+                    }
+                    case VirtualFileSystem::MessageId::ReadRequest: {
+                        auto request = IPC::extractMessage<VirtualFileSystem::ReadRequest>(buffer);
+
+                        VirtualFileSystem::ReadResult result {};
+                        result.requestId = request.requestId;
+                        result.success = true;
+                        Vostok::ArgBuffer args{result.buffer, sizeof(result.buffer)};
+                        args.writeType(Vostok::ArgTypes::Function);
+                        args.writeType(Vostok::ArgTypes::Cstring);
+                        args.writeType(Vostok::ArgTypes::EndArg);
+
+                        result.recipientId = request.senderTaskId;
+                        send(IPC::RecipientType::TaskId, &result);      
+                        break;
+                    }
+                    case VirtualFileSystem::MessageId::WriteRequest: {
+                        auto request = IPC::extractMessage<VirtualFileSystem::WriteRequest>(buffer);
+                        addLogEntry(reinterpret_cast<char*>(&request.buffer[0]), 0x00FF0000, 0x0000FF00);
+                        break;
+                    }
+                }
                 break;
             }
             default: {

@@ -46,6 +46,7 @@ interface for the Apollo Guidance Computer.
 
 #include <saturn/gemini/interpreter.h>
 #include <services/virtualFileSystem/vostok.h>
+#include <saturn/logging.h>
 
 using namespace Apollo;
 using namespace Apollo::Debug;
@@ -103,6 +104,10 @@ public:
         if (loadLayout(DskyApp::layout, binder, collectionBinder)) {
             setupEnvironment();
         }
+
+        //create("/events/dsky");
+        using namespace std::string_literals;
+        logger = new Saturn::Log::Logger("dsky"s);
     }
 
     Function getVersionFunc() {
@@ -316,6 +321,7 @@ public:
                         inputBuffer[index] = input.character;
 
                         commandLine.setValue(inputBuffer);
+        logger->info("pressed %c", input.character);
 
                         index++;
                         break;
@@ -389,6 +395,9 @@ public:
             case IPC::MessageNamespace::ServiceRegistry: {
                 break;
             }
+            case IPC::MessageNamespace::VFS: {
+                break;
+            }
             default: {
                 printf("[Dsky] Unhandled message namespace\n");
             }
@@ -403,6 +412,7 @@ private:
     ObservableDisplays entries;
     Observable<char*> commandLine;
     Saturn::Gemini::Environment environment;
+    Saturn::Log::Logger* logger;
 };
 
 int dsky_main() {
