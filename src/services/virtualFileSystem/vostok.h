@@ -44,6 +44,8 @@ namespace Vostok {
     class Object {
     public:
 
+        virtual ~Object() {}
+
         /*
         In addition to properties and functions, you can read an Object itself.
         This returns an implementation-defined value, such as a string
@@ -324,4 +326,6 @@ namespace Vostok {
 
     template<>
     const char* ArgBuffer::read(ArgTypes type);
+
+    void replyWriteSucceeded(uint32_t requesterTaskId, uint32_t requestId, bool success, bool expectReadResult = false);
 }

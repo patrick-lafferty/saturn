@@ -27,6 +27,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "vostok.h"
 #include <string.h>
+#include "messages.h"
+#include <system_calls.h>
 
 namespace Vostok {
     template<>
@@ -78,5 +80,14 @@ namespace Vostok {
     template<>
     const char* ArgBuffer::read(ArgTypes type) {
         return const_cast<const char*>(read<char*>(type));
+    }
+
+    void replyWriteSucceeded(uint32_t requesterTaskId, uint32_t requestId, bool success, bool expectReadResult) {
+        VirtualFileSystem::WriteResult result;
+        result.requestId = requestId;
+        result.success = success;
+        result.recipientId = requesterTaskId;
+        result.expectReadResult = expectReadResult;
+        send(IPC::RecipientType::TaskId, &result);
     }
 }
