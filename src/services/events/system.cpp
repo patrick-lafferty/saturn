@@ -41,6 +41,89 @@ namespace Event {
         entries.push_back(std::string{entry});
     }
 
+    int EventSystem::getFunction(std::string_view name) {
+        if (name.compare("subscribe") == 0) {
+            return static_cast<int>(FunctionId::Subscribe);
+        }
+
+        return -1;
+    }
+
+    void EventSystem::readFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId) {
+        describeFunction(requesterTaskId, requestId, functionId);
+    }
+
+    void EventSystem::writeFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId, Vostok::ArgBuffer& args) {
+        auto type = args.readType();
+
+        if (type != Vostok::ArgTypes::Function) {
+            Vostok::replyWriteSucceeded(requesterTaskId, requestId, false);
+            return;
+        }
+
+        switch(functionId) {
+            case static_cast<uint32_t>(FunctionId::Subscribe): {
+                auto subscriberTaskId = args.read<uint32_t>(Vostok::ArgTypes::Uint32);
+
+                if (!args.hasErrors()) {
+                    subscribe(requesterTaskId, requestId, subscriberTaskId);                
+                }
+                else {
+                    Vostok::replyWriteSucceeded(requesterTaskId, requestId, false);
+                }
+
+                break;
+            }
+            default: {
+                Vostok::replyWriteSucceeded(requesterTaskId, requestId, false);
+            }
+        }
+    }
+
+    void EventSystem::describeFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId) {
+        ReadResult result {};
+        result.requestId = requestId;
+        result.success = true;
+        Vostok::ArgBuffer args{result.buffer, sizeof(result.buffer)};
+        args.writeType(Vostok::ArgTypes::Function);
+        
+        switch(functionId) {
+            case static_cast<uint32_t>(FunctionId::Subscribe): {
+                args.writeType(Vostok::ArgTypes::Uint32);
+                args.writeType(Vostok::ArgTypes::EndArg);
+                break;
+            }
+            default: {
+                result.success = false;
+            }
+        }
+
+        result.recipientId = requesterTaskId;
+        send(IPC::RecipientType::TaskId, &result);
+    }
+
+    void EventSystem::subscribe(uint32_t requesterTaskId, uint32_t requestId, uint32_t subscriberTaskId) {
+        char path[256];
+        memset(path, '\0', 256);
+        sprintf(path, "/applications/%d/environment/receive", subscriberTaskId);
+
+        auto result = openSynchronous(path);
+
+        if (result.success) {
+            subscribers.push_back(result.fileDescriptor);
+
+            if (!receiveSignature) {
+                auto readResult = readSynchronous(result.fileDescriptor, 0);
+                receiveSignature = ReceiveSignature {{}, {nullptr, 0}};
+                auto& sig = receiveSignature.value();
+                sig.result = readResult;
+                sig.args = Vostok::ArgBuffer{&sig.result.buffer[0], 256};
+            }
+        }
+
+        Vostok::replyWriteSucceeded(requesterTaskId, requestId, result.success);
+    }
+
     void EventSystem::handleOpenRequest(OpenRequest& request) {
         OpenResult result;
         result.requestId = request.requestId;
@@ -49,15 +132,29 @@ namespace Event {
         auto words = split({request.path, strlen(request.path)}, '/');
 
         if (words.size() == 1) {
-            auto it = std::find_if(begin(logs), end(logs), [&](const auto& log) {
-                return words[0].compare(log->name) == 0;
-            });
+            
+            if (words[0].compare("subscribe") == 0) {
+                Vostok::FileDescriptor descriptor {this};
+                descriptor.functionId = 0;
+                descriptor.type = Vostok::DescriptorType::Function;
 
-            if (it != end(logs)) {
-                FileDescriptor descriptor {nextDescriptorId++, it->get()};
-                openDescriptors.push_back(descriptor);
-                result.fileDescriptor = descriptor.id;
+                auto id = nextDescriptorId++;
+                openDescriptors.push_back(FileDescriptor{id, descriptor});
+                result.fileDescriptor = id;
                 result.success = true;
+            }
+            else {
+
+                auto it = std::find_if(begin(logs), end(logs), [&](const auto& log) {
+                    return words[0].compare(log->name) == 0;
+                });
+
+                if (it != end(logs)) {
+                    FileDescriptor descriptor {nextDescriptorId++, it->get()};
+                    openDescriptors.push_back(descriptor);
+                    result.fileDescriptor = descriptor.id;
+                    result.success = true;
+                }
             }
         }
 
@@ -85,6 +182,21 @@ namespace Event {
         send(IPC::RecipientType::ServiceName, &result);
     }
 
+    void EventSystem::handleReadRequest(ReadRequest& request) {
+
+        auto it = std::find_if(begin(openDescriptors), end(openDescriptors),
+            [&](const auto& descriptor) {
+                return descriptor.id == request.fileDescriptor;
+            });
+
+        if (it != end(openDescriptors)) {
+            if (std::holds_alternative<Vostok::FileDescriptor>(it->object)) {
+                auto& desc = std::get<Vostok::FileDescriptor>(it->object);
+                desc.read(request.senderTaskId, request.requestId);
+            }
+        }
+    }
+
     void EventSystem::handleWriteRequest(WriteRequest& request) {
 
         WriteResult result;
@@ -98,11 +210,37 @@ namespace Event {
 
         if (it != end(openDescriptors)) {
             result.success = true;
-            std::string_view view {reinterpret_cast<char*>(&request.buffer[0], request.writeLength)};
-            it->log->addEntry(view);
+
+            if (std::holds_alternative<Log*>(it->object)) {
+                auto log = std::get<Log*>(it->object);
+                std::string_view view {reinterpret_cast<char*>(&request.buffer[0]), request.writeLength};
+                log->addEntry(view);
+
+                if (!subscribers.empty()) {
+                    broadcastEvent(view);
+                }
+            }
+            else if (std::holds_alternative<Vostok::FileDescriptor>(it->object)) {
+                auto descriptor = std::get<Vostok::FileDescriptor>(it->object);
+                Vostok::ArgBuffer args{request.buffer, sizeof(request.buffer)};
+                descriptor.write(request.senderTaskId, request.requestId, args);
+                return;
+            }
+
         }
 
         send(IPC::RecipientType::TaskId, &result);
+    }
+
+    void EventSystem::broadcastEvent(std::string_view event) {
+        auto signature = receiveSignature.value();
+        signature.args.typedBuffer = signature.result.buffer;
+        signature.args.readType();
+        signature.args.write(event.data(), Vostok::ArgTypes::Cstring);
+
+        for (auto subscriber : subscribers) {
+            write(subscriber, signature.result.buffer, sizeof(signature.result.buffer));
+        }
     }
 
     void EventSystem::messageLoop() {
@@ -124,11 +262,16 @@ namespace Event {
                             break;
                         }
                         case MessageId::ReadRequest: {
+                            auto request = IPC::extractMessage<ReadRequest>(buffer);
+                            handleReadRequest(request);
                             break;
                         }
                         case MessageId::WriteRequest: {
                             auto request = IPC::extractMessage<WriteRequest>(buffer);
                             handleWriteRequest(request);
+                            break;
+                        }
+                        case MessageId::WriteResult: {
                             break;
                         }
                         default: 

@@ -30,7 +30,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vector>
 #include <string>
 #include <memory>
+#include <variant>
+#include <optional>
 #include <services/virtualFileSystem/virtualFileSystem.h>
+#include <services/virtualFileSystem/vostok.h>
 
 namespace Event {
 
@@ -48,23 +51,52 @@ namespace Event {
 
     struct FileDescriptor {
         uint32_t id;
-        Log* log;
+        std::variant<Log*, Vostok::FileDescriptor> object;
     };
 
-    class EventSystem {
+    struct ReceiveSignature {
+        VirtualFileSystem::ReadResult result;
+        Vostok::ArgBuffer args;
+    };
+
+    class EventSystem : public Vostok::Object {
     public:
 
         void messageLoop();
+
+        virtual void readSelf(uint32_t , uint32_t ) override {}
+        virtual int getProperty(std::string_view ) override { return -1; }
+        virtual void readProperty(uint32_t , uint32_t , uint32_t ) override {}
+        virtual void writeProperty(uint32_t , uint32_t , uint32_t , Vostok::ArgBuffer& ) override {}
+        virtual Object* getNestedObject(std::string_view ) override { return nullptr; }
+
+        virtual int getFunction(std::string_view) override;
+        virtual void readFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId) override;
+        virtual void writeFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId, Vostok::ArgBuffer& args) override;
+        virtual void describeFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId) override;
 
     private:
 
         void handleOpenRequest(VirtualFileSystem::OpenRequest& request);
         void handleCreateRequest(VirtualFileSystem::CreateRequest& request);
+        void handleReadRequest(VirtualFileSystem::ReadRequest& request);
         void handleWriteRequest(VirtualFileSystem::WriteRequest& request);
 
         std::vector<std::unique_ptr<Log>> logs;
         std::vector<FileDescriptor> openDescriptors;
         uint32_t nextDescriptorId {0};
+
+        EventObject* mainEvent;
+
+        enum class FunctionId {
+            Subscribe
+        };
+
+        void subscribe(uint32_t requesterTaskId, uint32_t requestId, uint32_t subscriberTaskId);
+        void broadcastEvent(std::string_view event);
+
+        std::vector<uint32_t> subscribers;
+        std::optional<ReceiveSignature> receiveSignature;
     };
 
     void service();
