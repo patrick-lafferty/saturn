@@ -232,6 +232,23 @@ int sprintf(char* buffer, const char* format, ...) {
     return charactersWritten;
 }
 
+int vsprintf(char* restrict buffer, const char* restrict format, va_list args) {
+    if (buffer == nullptr || format == nullptr) {
+        return -1;
+    }
+
+    int charactersWritten = 0;
+
+    auto write = [&](auto c) {
+        buffer[charactersWritten] = c;
+        charactersWritten++;
+    };
+
+    printf_impl(format, args, write, charactersWritten);
+
+    return charactersWritten;
+}
+
 //TODO
 int vfprintf(FILE* restrict /*stream*/, 
     const char* restrict /*format*/, 
