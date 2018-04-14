@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <saturn/time.h>
 #include <services/apollo/lib/layout.h>
 #include <services/apollo/lib/renderer.h>
+#include <services/virtualFileSystem/messages.h>
 
 namespace Apollo {
 
@@ -94,6 +95,8 @@ namespace Apollo {
             if (!startHidden) {
                 window->blitBackBuffer();
             }
+
+            mount();
         }
         /*
         An Application is in a valid state if it successfully
@@ -135,6 +138,21 @@ namespace Apollo {
         }
 
     protected:
+
+        /*
+        Create an entry in the VFS for this application,
+        TODO: make Application a Vostok Object
+        */
+        void mount() {
+            VirtualFileSystem::MountRequest request;
+            const char* path = "/applications";
+            memcpy(request.path, path, strlen(path) + 1);
+            request.serviceType = Kernel::ServiceType::VFS;
+            request.cacheable = false;
+            request.writeable = true;
+
+            send(IPC::RecipientType::ServiceName, &request);
+        }
 
         /*
         Sets every pixel of the window's framebuffer to be
