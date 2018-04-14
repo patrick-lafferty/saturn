@@ -73,7 +73,7 @@ namespace Apollo {
     }
 
     Window::Window(WindowBuffer* buffer, uint32_t width, uint32_t height)
-        : backBuffer {buffer}, width {width}/*, height {height}*/ {
+        : backBuffer {buffer}, width {width}, height {height} {
         this->buffer = new WindowBuffer;
         memset(this->buffer->buffer, backgroundColour, width * height * 4);
         dirty = false;
@@ -91,8 +91,12 @@ namespace Apollo {
         backgroundColour = colour;
     }
 
-    uint32_t Window::getWidth() {
+    uint32_t Window::getWidth() const {
         return width;
+    }
+
+    uint32_t Window::getHeight() const {
+        return height;
     }
 
     void updateWindowBuffer(uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
@@ -140,7 +144,7 @@ namespace Apollo {
 
     void Window::resize(uint32_t width, uint32_t height) {
         this->width = width;
-        //this->height = height;
+        this->height = height;
     }
 
     void Window::setRenderer(Renderer* renderer) {
@@ -172,7 +176,7 @@ namespace Apollo {
     }
 
     Elements::Bounds Window::getChildBounds(const Elements::UIElement* child) {
-        return {0, 0, (int)width, 600};
+        return {0, 0, (int)width, (int)height};
     }
 
     void Window::layoutText(Apollo::Text::Renderer* renderer) {

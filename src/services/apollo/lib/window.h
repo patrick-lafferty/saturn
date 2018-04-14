@@ -59,7 +59,8 @@ namespace Apollo {
         uint32_t* getFramebuffer();
         uint32_t getBackgroundColour();
         void setBackgroundColour(uint32_t colour);
-        uint32_t getWidth();
+        uint32_t getWidth() const;
+        uint32_t getHeight() const;
 
         /*
         Copies the front buffer's contents to the backbuffer,
@@ -101,7 +102,7 @@ namespace Apollo {
         WindowBuffer* buffer;
         WindowBuffer* backBuffer;
         uint32_t backgroundColour;
-        uint32_t width/*, height*/;
+        uint32_t width, height;
         bool dirty;
         DirtyArea dirtyArea;
         Elements::Container* child; 

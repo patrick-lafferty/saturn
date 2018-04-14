@@ -122,8 +122,13 @@ public:
                     }
                     case MessageId::Resize: {
                         auto message = IPC::extractMessage<Resize>(buffer);
-                        //screenWidth = message.width;
-                        //screenHeight = message.height;
+                        screenWidth = message.width;
+                        screenHeight = message.height;
+
+                        window->resize(screenWidth, screenHeight);
+                        window->layoutChildren();
+                        window->layoutText();
+                        window->render();
 
                         break;
                     }

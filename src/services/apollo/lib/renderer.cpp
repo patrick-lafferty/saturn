@@ -40,7 +40,7 @@ namespace Apollo {
 
     void Renderer::drawRectangle(uint32_t colour, const Elements::Bounds& bounds, const Elements::Bounds& clip) {
         auto windowWidth = static_cast<int>(window->getWidth());
-        auto windowHeight = 600;
+        auto windowHeight = static_cast<int>(window->getHeight());
 
         if (bounds.x >= windowWidth || bounds.y >= windowHeight) {
             return;
