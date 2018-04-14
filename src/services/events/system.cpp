@@ -105,7 +105,7 @@ namespace Event {
     void EventSystem::subscribe(uint32_t requesterTaskId, uint32_t requestId, uint32_t subscriberTaskId) {
         char path[256];
         memset(path, '\0', 256);
-        sprintf(path, "/applications/%d/environment/receive", subscriberTaskId);
+        sprintf(path, "/applications/%d/receive", subscriberTaskId);
 
         auto result = openSynchronous(path);
 

@@ -141,39 +141,17 @@ public:
                 switch (static_cast<VirtualFileSystem::MessageId>(buffer.messageId)) {
                     case VirtualFileSystem::MessageId::OpenRequest: {
                         auto request = IPC::extractMessage<VirtualFileSystem::OpenRequest>(buffer);
-
-                        /*
-                        TODO: make proper
-                        */
-
-                        VirtualFileSystem::OpenResult result;
-                        result.requestId = request.requestId;
-                        result.serviceType = Kernel::ServiceType::VFS;
-                        result.success = true;
-                        result.type = VirtualFileSystem::FileDescriptorType::Vostok;
-
-                        send(IPC::RecipientType::ServiceName, &result);
-
+                        handleOpenRequest(request);
                         break;
                     }
                     case VirtualFileSystem::MessageId::ReadRequest: {
                         auto request = IPC::extractMessage<VirtualFileSystem::ReadRequest>(buffer);
-
-                        VirtualFileSystem::ReadResult result {};
-                        result.requestId = request.requestId;
-                        result.success = true;
-                        Vostok::ArgBuffer args{result.buffer, sizeof(result.buffer)};
-                        args.writeType(Vostok::ArgTypes::Function);
-                        args.writeType(Vostok::ArgTypes::Cstring);
-                        args.writeType(Vostok::ArgTypes::EndArg);
-
-                        result.recipientId = request.senderTaskId;
-                        send(IPC::RecipientType::TaskId, &result);      
+                        handleReadRequest(request);                        
                         break;
                     }
                     case VirtualFileSystem::MessageId::WriteRequest: {
                         auto request = IPC::extractMessage<VirtualFileSystem::WriteRequest>(buffer);
-                        addLogEntry(reinterpret_cast<char*>(&request.buffer[0]), 0x00FF0000, 0x0000FF00);
+                        handleWriteRequest(request);
                         break;
                     }
                 }
@@ -185,10 +163,84 @@ public:
         }
     }
 
+
+    int getFunction(std::string_view name) override {
+        if (name.compare("receive") == 0) {
+            return static_cast<int>(FunctionId::Receive);
+        }
+
+        return -1;
+    }
+
+    void readFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId) override {
+        describeFunction(requesterTaskId, requestId, functionId);
+    }
+
+    void describeFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId) override {
+        VirtualFileSystem::ReadResult result {};
+        result.requestId = requestId;
+        result.success = true;
+        Vostok::ArgBuffer args{result.buffer, sizeof(result.buffer)};
+        args.writeType(Vostok::ArgTypes::Function);
+        
+        switch(functionId) {
+            case static_cast<uint32_t>(FunctionId::Receive): {
+                args.writeType(Vostok::ArgTypes::Cstring);
+                args.writeType(Vostok::ArgTypes::EndArg);
+                break;
+            }
+            default: {
+                result.success = false;
+            }
+        }
+
+        result.recipientId = requesterTaskId;
+        send(IPC::RecipientType::TaskId, &result);
+    }
+
+    void writeFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId, Vostok::ArgBuffer& args) override {
+        using namespace Vostok;
+
+        auto type = args.readType();
+
+        if (type != ArgTypes::Function) {
+            replyWriteSucceeded(requesterTaskId, requestId, false);
+            return;
+        }
+
+        switch(functionId) {
+            case static_cast<uint32_t>(FunctionId::Receive): {
+
+                auto data = args.read<char*>(ArgTypes::Cstring);
+
+                if (!args.hasErrors()) {
+                    receive(requesterTaskId, requestId, data);
+                }
+                else {
+                    replyWriteSucceeded(requesterTaskId, requestId, false);
+                }
+
+                break;
+            }
+            default: {
+                replyWriteSucceeded(requesterTaskId, requestId, false);
+            }
+        }
+    }
+
+    void receive(uint32_t requesterTaskId, uint32_t requestId, char* data) {
+        addLogEntry(data, 0x00FF0000, 0x0000FF00);
+        Vostok::replyWriteSucceeded(requesterTaskId, requestId, true);
+    }
+
 private:
 
     typedef Apollo::ObservableCollection<DisplayItem*, Apollo::BindableCollection<Apollo::Elements::ListView, Apollo::Elements::ListView::Bindings>> ObservableDisplays;
     ObservableDisplays events;
+
+    enum class FunctionId {
+        Receive
+    };
 };
 
 int transcript_main() {

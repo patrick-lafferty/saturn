@@ -86,8 +86,6 @@ namespace Event {
         std::vector<FileDescriptor> openDescriptors;
         uint32_t nextDescriptorId {0};
 
-        EventObject* mainEvent;
-
         enum class FunctionId {
             Subscribe
         };

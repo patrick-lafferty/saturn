@@ -185,6 +185,7 @@ namespace Vostok {
         };
 
         DescriptorType type;
+        uint32_t id;
 
         void read(uint32_t requesterTaskId, uint32_t requestId) {
             if (type == DescriptorType::Object) {
