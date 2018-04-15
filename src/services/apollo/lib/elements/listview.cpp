@@ -216,4 +216,21 @@ namespace Apollo::Elements {
             child->setParent(this);
         }
     }
+
+    void ListView::clearTemplateItems() {
+        for (auto& child : children) {
+            if (std::holds_alternative<UIElement*>(child.element)) {
+                auto element = std::get<UIElement*>(child.element);
+                delete element;
+            }
+            else {
+                auto container = std::get<Container*>(child.element);
+                delete container;
+            }
+        }
+
+        children.clear();
+
+        requestRender(this);
+    }
 }
