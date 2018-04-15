@@ -93,7 +93,7 @@ namespace Apollo {
     }
 
     void Container::addChild(Container* container, Size size) {
-        children.push_back({size, container});
+        children.push_back({size, false, container});
         container->parent = this;
         layoutChildren();
     }
@@ -146,9 +146,11 @@ namespace Apollo {
 
         if (split == Split::Vertical) {
             unallocatedSpace = bounds.width;
+            childBounds.height = bounds.height;
         }
         else {
             unallocatedSpace = bounds.height;
+            childBounds.width = bounds.width;
         }
 
         const auto gapSize = 5;
@@ -244,9 +246,10 @@ namespace Apollo {
         } 
     }
 
-    void Container::focusPreviousTile() {
+    bool Container::focusPreviousTile() {
         auto previous {activeTaskId};
 
+        bool isFirst {true};
         for (auto& child : children) {
             if (std::holds_alternative<Tile>(child.child)) {
                 auto& tile = std::get<Tile>(child.child); 
@@ -256,18 +259,28 @@ namespace Apollo {
                 }
 
                 if (tile.handle.taskId == activeTaskId) {
-                    break;
+                    if (isFirst) {
+                        return false;
+                    }
+                    else {
+                        break;
+                    }
                 }
                 else {
                     previous = tile.handle.taskId;
+                }
+
+                if (isFirst) {
+                    isFirst = false;
                 }
             }
         }
 
         activeTaskId = previous;
+        return true;
     }
 
-    void Container::focusNextTile() {
+    bool Container::focusNextTile() {
         auto next {activeTaskId};
 
         for (auto it = rbegin(children); it != rend(children); ++it) {
@@ -349,7 +362,7 @@ namespace Apollo {
     }
 
     void Display::splitContainer(Split split) {
-        auto container = new Container;
+        auto container = new Container();
         container->split = split;
         activeContainer->addChild(container, {});
         activeContainer = container;
@@ -360,11 +373,21 @@ namespace Apollo {
     }
 
     void Display::focusPreviousTile() {
-        root->focusPreviousTile();
+        auto container = activeContainer;
+
+        while (container != nullptr) {
+            if (!activeContainer->focusPreviousTile()) {
+                container = activeContainer->parent;
+
+                if (container != nullptr) {
+                    activeContainer = container;
+                }
+            }
+        }
     }
 
     void Display::focusNextTile() {
-        root->focusNextTile();
+        activeContainer->focusNextTile();
     }
 
     void Display::changeSplitDirection(Split split) {
@@ -508,7 +531,7 @@ namespace Apollo {
             displays[0].addTile({bounds, handle});
         }
         else if (message.senderTaskId == taskbarTaskId) {
-            displays[0].addTile({bounds, handle}, {Unit::Fixed, 50}, false);
+            displays[0].addTile({bounds, handle}, {Unit::Fixed, 30}, false);
         }
         else {
             displays[currentDisplay].addTile({bounds, handle});
@@ -571,7 +594,7 @@ namespace Apollo {
         }
 
         displays[currentDisplay].splitContainer(message.direction);
-        displays[currentDisplay].renderAll(linearFrameBuffer);
+        //displays[currentDisplay].renderAll(linearFrameBuffer);
     }
 
     void Manager::handleLaunchProgram(const LaunchProgram& message) {
@@ -635,7 +658,13 @@ namespace Apollo {
                     break;
                 }
                 case Keyboard::VirtualKey::F2: {
-        launch("/bin/dsky.bin");
+                    launch("/bin/dsky.bin");
+                    break;
+                }
+                case Keyboard::VirtualKey::F3: {
+                    SplitContainer split;
+                    split.direction = Split::Vertical;
+                    handleSplitContainer(split);
                     break;
                 }
                 default: {

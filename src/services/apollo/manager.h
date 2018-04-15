@@ -101,8 +101,8 @@ namespace Apollo {
         std::optional<Tile*> findTile(uint32_t taskId);
         void composite(uint32_t volatile* frameBuffer, uint32_t displayWidth);
         void dispatchRenderMessages();
-        void focusPreviousTile();
-        void focusNextTile();
+        bool focusPreviousTile();
+        bool focusNextTile();
     };
 
     class Display {
