@@ -51,6 +51,7 @@ const char* layout = R"(
         (label (caption (bind content))
             (alignment (horizontal center) (vertical center))
             (font-colour (bind fontColour)) 
+            (font-size 12)
             (background (bind background)) 
         )
     )
