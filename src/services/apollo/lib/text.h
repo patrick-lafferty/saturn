@@ -30,6 +30,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include FT_FREETYPE_H
 #include FT_GLYPH_H
 #include <vector>
+#include <optional>
+#include <array>
 
 namespace Apollo {
     class Window;
@@ -88,6 +90,25 @@ namespace Apollo::Text {
         Italic
     };
 
+    struct Cache {
+        FT_Face face;
+        Style style;
+        uint32_t size;
+        std::array<Glyph, 128> glyphs;
+        std::array<FT_BBox, 128> cachedBoundingBoxes;
+    };
+
+    class FaceCache {
+    public:
+
+        void addCache(FT_Face face, Style style, uint32_t size);
+        std::optional<Cache*> getGlyphCache(Style style, uint32_t size);
+
+    private:
+
+        std::vector<Cache> cachedFaces;
+    };
+
     /*
     Renderer handles the layout, positioning and rendering of text
     into a window's framebuffer
@@ -122,11 +143,10 @@ namespace Apollo::Text {
 
     private:
 
-        BoundingBox calculateBoundingBox(std::vector<Glyph>& glyphs);
-        void loadFont(uint32_t index);
+        BoundingBox calculateBoundingBox(std::vector<Glyph>& glyphs, std::array<FT_BBox, 128>& cachedBoundingBoxes);
+        FT_Face loadFont(uint32_t index, uint32_t size);
 
         FT_Library library;
-        FT_Face faces[3];
         uint32_t* frameBuffer;
         Window* window;
         uint32_t windowWidth;
@@ -134,8 +154,7 @@ namespace Apollo::Text {
 
         const int MaxCachedGlyphIndex {128};
 
-        Glyph cachedGlyphs[128];
-        FT_BBox cachedBoundingBoxes[128];
+        FaceCache faceCache;
     };
 
     Renderer* createRenderer(Window* window);

@@ -32,6 +32,21 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "window.h"
 
 namespace Apollo::Text {
+
+    void FaceCache::addCache(FT_Face face, Style style, uint32_t size) {
+        cachedFaces.push_back({face, style, size, {}});
+    }
+
+    std::optional<Cache*> FaceCache::getGlyphCache(Style style, uint32_t size) {
+        for (auto& cache : cachedFaces) {
+            if (cache.style == style
+                && cache.size == size) {
+                return &cache;
+            }
+        }
+
+        return {};
+    }
     
     Renderer* createRenderer(Window* window) {
         FT_Library library;
@@ -72,13 +87,14 @@ namespace Apollo::Text {
         : library {library}, window {window} {
         windowWidth = 800;
         windowHeight = 600;
-        faces[0] = face;
         frameBuffer = window->getFramebuffer();
+        faceCache.addCache(face, Style::Normal, 18);
     }
 
-    void Renderer::loadFont(uint32_t index) {
+    FT_Face Renderer::loadFont(uint32_t index, uint32_t size) {
 
         const char* fonts[] = {
+            "/system/fonts/dejavu/DejaVuSans.ttf",
             "/system/fonts/dejavu/DejaVuSans-Bold.ttf",
             "/system/fonts/dejavu/DejaVuSans-Oblique.ttf",
         };
@@ -91,22 +107,22 @@ namespace Apollo::Text {
             &face);
 
         if (error != 0) {
-            return;
+            return nullptr;
         }
 
         error = FT_Set_Char_Size(
             face,
             0,
-            18 * 64,
+            size * 64,
             96,
             96
         );
 
         if (error != 0) {
-            return;
+            return nullptr;
         }
 
-        faces[index] = face;
+        return face;
     }
 
     FT_Glyph Glyph::copyImage() {
@@ -121,7 +137,7 @@ namespace Apollo::Text {
         return glyph;
     }
 
-    BoundingBox Renderer::calculateBoundingBox(std::vector<Glyph>& glyphs) {
+    BoundingBox Renderer::calculateBoundingBox(std::vector<Glyph>& glyphs, std::array<FT_BBox, 128>& cachedBoundingBoxes) {
         BoundingBox box {{10000, 10000, -10000, -10000}};
 
         for (auto& glyph : glyphs) {
@@ -397,7 +413,7 @@ namespace Apollo::Text {
         uint32_t colour,
         Style style, 
         bool underline, 
-        uint32_t /*size*/) {
+        uint32_t size) {
 
         TextLayout layout;
         layout.lines = 1;
@@ -405,30 +421,24 @@ namespace Apollo::Text {
         auto x = 0u;
         auto y = 0;
 
-        auto faceIndex = static_cast<int>(style);
+        auto cache = faceCache.getGlyphCache(style, size);
 
-        if (faces[faceIndex] == nullptr) {
-            loadFont(faceIndex);
+        if (!cache.has_value()) {
+            auto faceIndex = static_cast<int>(style);
+            auto face = loadFont(faceIndex, size);
+            faceCache.addCache(face, style, size);
+            cache = faceCache.getGlyphCache(style, size);
         }
 
-        FT_Face face = faces[faceIndex];
-
-        /*
-        TODO: cache needs to account for sizes and keming
-
-        FT_Set_Char_Size(
-            face,
-            0,
-            size * 64,
-            96,
-            96
-        );*/
-
+        FT_Face face = cache.value()->face;
         bool kernTableAvailable = FT_HAS_KERNING(face);
         uint32_t previousIndex = 0;
         bool checkKerning = kernTableAvailable;
 
         EscapableValues values {colour};
+
+        auto& cachedGlyphs = cache.value()->glyphs;
+        auto& cachedBoundingBoxes = cache.value()->cachedBoundingBoxes;
 
         while (*text != '\0') { 
 
@@ -535,7 +545,7 @@ namespace Apollo::Text {
             previousIndex = glyph.glyphIndex;
         }
 
-        layout.bounds = calculateBoundingBox(layout.glyphs);
+        layout.bounds = calculateBoundingBox(layout.glyphs, cachedBoundingBoxes);
         uint32_t height = (face->size->metrics.height >> 6);
         layout.bounds.height += height/ 2;
         
