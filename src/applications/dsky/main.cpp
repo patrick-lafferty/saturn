@@ -105,20 +105,18 @@ public:
             setupEnvironment();
         }
 
-        //create("/events/dsky");
         using namespace std::string_literals;
         logger = new Saturn::Log::Logger("dsky"s);
     }
 
-    Function getVersionFunc() {
+    Function* getVersionFunc() {
         FunctionSignature sig {{}, Type::Void};
-        Function f{sig, [&](List* list) {
+        return new Function {sig, [&](Saturn::Gemini::List* list) {
             char* copy = new char[13];
             strcpy(copy, "Saturn 0.2.0");
-            return Result {copy};
+            //return Result {copy};
+            return nullptr;
         }};
-
-        return f;
     }
 
     char* listDirectory(char* path) {
@@ -187,14 +185,14 @@ public:
         return names;
     }
 
-    Function getListFunc() {
+    Function* getListFunc() {
         FunctionSignature sig {{Type::String}, Type::Void};
-        Function f{sig, [&](List* list) {
+        return new Function{sig, [&](Saturn::Gemini::List* list) {
             auto first = list->items[1];
 
             std::string_view value;
 
-            if (first->type == SExpType::Symbol) {
+            /*if (first->type == SExpType::Symbol) {
                 auto s = static_cast<Symbol*>(first);
                 value = s->value;
             }
@@ -204,50 +202,42 @@ public:
             }
             else {
                 return Result {};
-            }
+            }*/
 
             char path[256];
             memset(path, 0, 256);
             value.copy(path, value.length());
 
             auto result = listDirectory(path);
-            return Result {result};
+            //return Result {result};
+            return nullptr;
         }};
-
-        return f; 
     }
 
-    void test() {
-        FunctionSignature sig {{Type::String}, Type::Void};
-        Function f{sig, [&](List* list) {
-            auto first = list->items[1];
+    Function* getLogFunction() {
+        FunctionSignature sig {{Type::Object}, Type::Bool};
+        return new Function {sig, [&](Saturn::Gemini::List* list) {
+            
+            auto first = list->items[0];
 
-            std::string_view value;
+            if (first->type == GeminiType::Integer) {
 
-            if (first->type == SExpType::Symbol) {
-                auto s = static_cast<Symbol*>(first);
-                value = s->value;
-            }
-            else if (first->type == SExpType::StringLiteral) {
-                auto s = static_cast<StringLiteral*>(first);
-                value = s->value;
-            }
-            else {
-                return Result {};
+                auto x = static_cast<Integer*>(first);
+                logger->info("(dsky (x %d))", x->value);
+
+                return new Boolean (false);
             }
 
-            char* copy = new char[value.length() + 1];
-            value.copy(copy, value.length());
-            return Result {copy};
-
+            return new Boolean(false);
         }};
     }
 
     void setupEnvironment() {
         using namespace std::literals;
 
-        environment.addFunction("version"sv, getVersionFunc());
-        environment.addFunction("read"sv, getListFunc());
+        //environment.addFunction("version"sv, getVersionFunc());
+        //environment.addFunction("read"sv, getListFunc());
+        environment.addFunction("log"sv, getLogFunction());
     }
 
     void handleInput() {
@@ -257,10 +247,10 @@ public:
             auto topLevel = std::get<SExpression*>(result);
 
             if (topLevel->type == SExpType::List) {
-                auto root = static_cast<List*>(topLevel)->items[0];
-                auto value = interpret(static_cast<List*>(root), environment);
+                auto root = static_cast<Saturn::Parse::List*>(topLevel)->items[0];
+                interpret(static_cast<Saturn::Parse::List*>(root), environment);
 
-                if (std::holds_alternative<Result>(value)) {
+                /*if (std::holds_alternative<Result>(value)) {
                     auto& r = std::get<Result>(value);
 
                     if (std::holds_alternative<char*>(r.value)) {
@@ -274,7 +264,7 @@ public:
 
                         delete str;
                     }
-                }
+                }*/
             }
         }
     }
@@ -321,7 +311,6 @@ public:
                         inputBuffer[index] = input.character;
 
                         commandLine.setValue(inputBuffer);
-        logger->info("pressed %c", input.character);
 
                         index++;
                         break;
