@@ -36,7 +36,8 @@ using namespace Apollo;
 
 struct DisplayItem {
 
-    DisplayItem(char* content, uint32_t background, uint32_t fontColour) {
+    DisplayItem(char* content, uint32_t background, uint32_t fontColour, uint32_t taskId) 
+        : taskId {taskId} {
         this->content = new Apollo::Observable<char*>(content);
         this->background = new Apollo::Observable<uint32_t>(background);
         this->fontColour = new Apollo::Observable<uint32_t>(fontColour);
@@ -45,6 +46,7 @@ struct DisplayItem {
     Apollo::Observable<char*>* content;
     Apollo::Observable<uint32_t>* background;
     Apollo::Observable<uint32_t>* fontColour;
+    uint32_t taskId;
 };
 
 class TaskBar : public Application<TaskBar> {
@@ -75,7 +77,7 @@ public:
         }
     }
 
-    void addApplication(char* name, uint32_t background, uint32_t fontColour) {
+    void addApplication(char* name, uint32_t background, uint32_t fontColour, uint32_t taskId) {
         auto itemBinder = [](auto& item) {
             return [&](auto binding, std::string_view name) {
                 using BindingType = typename std::remove_reference<decltype(*binding)>::type::ValueType;
@@ -100,7 +102,7 @@ public:
         char* s = new char[len];
         s[len - 1] = '\0';
         strcpy(s, name);
-        applications.add(new DisplayItem(s, background, fontColour), itemBinder);
+        applications.add(new DisplayItem(s, background, fontColour, taskId), itemBinder);
 
         window->layoutChildren();
         window->layoutText();
@@ -171,6 +173,9 @@ public:
         if (name.compare("addAppName") == 0) {
             return static_cast<int>(FunctionId::AddAppName);
         }
+        else if (name.compare("setActiveApp") == 0) {
+            return static_cast<int>(FunctionId::SetActiveApp);
+        }
 
         return -1;
     }
@@ -185,6 +190,12 @@ public:
         switch(functionId) {
             case static_cast<uint32_t>(FunctionId::AddAppName): {
                 args.writeType(Vostok::ArgTypes::Cstring);
+                args.writeType(Vostok::ArgTypes::Uint32);
+                args.writeType(Vostok::ArgTypes::EndArg);
+                break;
+            }
+            case static_cast<uint32_t>(FunctionId::SetActiveApp): {
+                args.writeType(Vostok::ArgTypes::Uint32);
                 args.writeType(Vostok::ArgTypes::EndArg);
                 break;
             }
@@ -211,9 +222,23 @@ public:
             case static_cast<uint32_t>(FunctionId::AddAppName): {
 
                 auto data = args.read<char*>(ArgTypes::Cstring);
+                auto taskId = args.read<uint32_t>(ArgTypes::Uint32);
 
                 if (!args.hasErrors()) {
-                    addAppName(requesterTaskId, requestId, data);
+                    addAppName(requesterTaskId, requestId, data, taskId);
+                }
+                else {
+                    replyWriteSucceeded(requesterTaskId, requestId, false);
+                }
+
+                break;
+            }
+            case static_cast<uint32_t>(FunctionId::SetActiveApp): {
+
+                auto taskId = args.read<uint32_t>(ArgTypes::Uint32);
+
+                if (!args.hasErrors()) {
+                    setActiveApp(requesterTaskId, requestId, taskId);
                 }
                 else {
                     replyWriteSucceeded(requesterTaskId, requestId, false);
@@ -227,8 +252,30 @@ public:
         }
     }
 
-    void addAppName(uint32_t requesterTaskId, uint32_t requestId, char* data) {
-        addApplication(data, 0x00FF0000, 0x0000FF00);
+    const uint32_t darkBlue {0x00'00'00'20u};
+    const uint32_t lightBlue {0x00'64'95'EDu};
+
+    void addAppName(uint32_t requesterTaskId, uint32_t requestId, char* data, uint32_t taskId) {
+        addApplication(data, lightBlue, darkBlue, taskId);
+        Vostok::replyWriteSucceeded(requesterTaskId, requestId, true);
+    }
+
+    void setActiveApp(uint32_t requesterTaskId, uint32_t requestId, uint32_t taskId) {
+
+        for (auto i = 0u; i < applications.size(); i++) {
+            auto app = applications[i];
+
+            if (app->taskId == currentActiveApp) {
+                app->background->setValue(lightBlue);
+                app->fontColour->setValue(darkBlue);
+            }
+            else if (app->taskId == taskId) {
+                app->background->setValue(darkBlue);
+                app->fontColour->setValue(lightBlue);
+            }
+        }
+
+        currentActiveApp = taskId;
         Vostok::replyWriteSucceeded(requesterTaskId, requestId, true);
     }
 
@@ -236,9 +283,11 @@ private:
 
     typedef Apollo::ObservableCollection<DisplayItem*, Apollo::BindableCollection<Apollo::Elements::Grid, Apollo::Elements::Grid::Bindings>> ObservableDisplays;
     ObservableDisplays applications;
+    int currentActiveApp {-1};
 
     enum class FunctionId {
-        AddAppName
+        AddAppName,
+        SetActiveApp
     };
 };
 

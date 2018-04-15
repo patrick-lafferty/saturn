@@ -104,6 +104,10 @@ namespace Apollo {
             return items[index];
         }
 
+        std::size_t size() const {
+            return items.size();
+        }
+
     private:
 
         Bindable* bindable {nullptr};
