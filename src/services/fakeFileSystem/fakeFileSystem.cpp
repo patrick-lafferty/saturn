@@ -39,6 +39,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <services/massStorageFileSystem/system.h>
 #include <applications/dsky/dsky.h>
 #include <applications/capcom/capcom.h>
+#include <applications/transcript/transcript.h>
+#include <applications/taskbar/taskbar.h>
 #include <services/apollo/manager.h>
 
 using namespace VirtualFileSystem;
@@ -118,6 +120,12 @@ namespace FakeFileSystem {
                             }
                             else if (strcmp(request.path, "/capcom.bin") == 0) {
                                 entryPoint = reinterpret_cast<uintptr_t>(capcom_main);
+                            }
+                            else if (strcmp(request.path, "/transcript.bin") == 0) {
+                                entryPoint = reinterpret_cast<uintptr_t>(transcript_main);
+                            }
+                            else if (strcmp(request.path, "/taskbar.bin") == 0) {
+                                entryPoint = reinterpret_cast<uintptr_t>(taskbar_main);
                             }
                             else {
                                 result.success = false;
