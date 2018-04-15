@@ -85,9 +85,9 @@ namespace Apollo {
         }
     }
 
-    void Container::addChild(Tile tile, Size size) {
+    void Container::addChild(Tile tile, Size size, bool focusable) {
         tile.parent = this;
-        children.push_back({size, tile});
+        children.push_back({size, focusable, tile});
         activeTaskId = tile.handle.taskId;
         layoutChildren();
     }
@@ -251,6 +251,10 @@ namespace Apollo {
             if (std::holds_alternative<Tile>(child.child)) {
                 auto& tile = std::get<Tile>(child.child); 
 
+                if (!child.focusable) {
+                    continue;
+                }
+
                 if (tile.handle.taskId == activeTaskId) {
                     break;
                 }
@@ -269,6 +273,10 @@ namespace Apollo {
         for (auto it = rbegin(children); it != rend(children); ++it) {
             if (std::holds_alternative<Tile>(it->child)) {
                 auto& tile = std::get<Tile>(it->child); 
+
+                if (!it->focusable) {
+                    continue;
+                }
 
                 if (tile.handle.taskId == activeTaskId) {
                     break;
@@ -290,8 +298,8 @@ namespace Apollo {
         root->bounds = screenBounds;
     }
 
-    void Display::addTile(Tile tile, Size size) {
-        activeContainer->addChild(tile, size);
+    void Display::addTile(Tile tile, Size size, bool focusable) {
+        activeContainer->addChild(tile, size, focusable);
     }
 
     bool Display::enableRendering(uint32_t taskId) {
@@ -364,6 +372,10 @@ namespace Apollo {
         activeContainer->layoutChildren();
     }
 
+    uint32_t Display::getActiveTaskId() const {
+        return activeContainer->activeTaskId;
+    }
+
     uint32_t registerService() {
         RegisterService registerRequest;
         registerRequest.type = ServiceType::WindowManager;
@@ -396,12 +408,29 @@ namespace Apollo {
         return 0;
     }
 
-    bool sendAppNameToTaskbar(const char* name, uint32_t taskId) {
+    void sendActiveAppToTaskbar(uint32_t taskId, uint32_t taskbarId) {
+        char path[256];
+        memset(path, '\0', 256);
+        sprintf(path, "/applications/%d/setActiveApp", taskbarId);
+
+        auto result = openSynchronous(path);
+
+        if (result.success) {
+            auto readResult = readSynchronous(result.fileDescriptor, 0);
+            Vostok::ArgBuffer args {readResult.buffer, sizeof(readResult.buffer)};
+            args.readType();
+            args.write(taskId, Vostok::ArgTypes::Uint32);
+
+            writeSynchronous(result.fileDescriptor, readResult.buffer, sizeof(readResult.buffer));
+        }
+    }
+
+    bool sendAppNameToTaskbar(const char* name, uint32_t taskbarId, uint32_t taskId) {
         char path[256];
         memset(path, '\0', 256);
 
         auto words = split({name, strlen(name)}, '/');
-        sprintf(path, "/applications/%d/addAppName", taskId);
+        sprintf(path, "/applications/%d/addAppName", taskbarId);
 
         auto result = openSynchronous(path);
 
@@ -415,8 +444,11 @@ namespace Apollo {
             memset(temp, '\0', 100);
             word.copy(temp, word.length());
             args.write(temp, Vostok::ArgTypes::Cstring);
+            args.write(taskId, Vostok::ArgTypes::Uint32);
 
             writeSynchronous(result.fileDescriptor, readResult.buffer, sizeof(readResult.buffer));
+
+            sendActiveAppToTaskbar(taskId, taskbarId);
 
             return true;
         }
@@ -433,13 +465,13 @@ namespace Apollo {
 
         if (entryPoint > 0) {
 
+            auto pid = run(entryPoint);
+
             if (taskbarTaskId > 0) {
-                if (!sendAppNameToTaskbar(path, taskbarTaskId)) {
-                    pendingTaskbarNames.push_back(std::string{path});
+                if (!sendAppNameToTaskbar(path, taskbarTaskId, pid)) {
+                    pendingTaskbarNames.push_back({std::string{path}, pid});
                 }
             }
-
-            auto pid = run(entryPoint);
 
             return pid;
         }
@@ -476,7 +508,7 @@ namespace Apollo {
             displays[0].addTile({bounds, handle});
         }
         else if (message.senderTaskId == taskbarTaskId) {
-            displays[0].addTile({bounds, handle}, {Unit::Fixed, 50});
+            displays[0].addTile({bounds, handle}, {Unit::Fixed, 50}, false);
         }
         else {
             displays[currentDisplay].addTile({bounds, handle});
@@ -501,14 +533,13 @@ namespace Apollo {
         if (message.senderTaskId == taskbarTaskId
             && !pendingTaskbarNames.empty()) {
             
-            for (auto& name : pendingTaskbarNames) {
-                if (!sendAppNameToTaskbar(name.data(), taskbarTaskId)) {
+            for (auto& app : pendingTaskbarNames) {
+                if (!sendAppNameToTaskbar(app.name.data(), taskbarTaskId, app.taskId)) {
                     return;
                 }
             }
 
             pendingTaskbarNames.clear();
-            
         } 
 
     }
@@ -582,6 +613,9 @@ namespace Apollo {
                     break;
                 }
             }
+
+            auto activeTaskId = displays[currentDisplay].getActiveTaskId();
+            sendActiveAppToTaskbar(activeTaskId, taskbarTaskId);
         }
         else {
             switch (message.key) {

@@ -83,6 +83,7 @@ namespace Apollo {
 
     struct ContainerChild {
         Size size;
+        bool focusable {true};
         std::variant<Tile, Container*> child;
     };
 
@@ -93,7 +94,7 @@ namespace Apollo {
         Container* parent;
         uint32_t activeTaskId {0};
 
-        void addChild(Tile tile, Size size);
+        void addChild(Tile tile, Size size, bool focusable);
         void addChild(Container* container, Size size);
         void layoutChildren();
         uint32_t getChildrenCount();
@@ -109,7 +110,7 @@ namespace Apollo {
 
         Display(Bounds screenBounds);
 
-        void addTile(Tile tile, Size size = {});
+        void addTile(Tile tile, Size size = {}, bool focusable = true);
         bool enableRendering(uint32_t taskId);
         void injectKeypress(Keyboard::KeyPress& message);
         void injectCharacterInput(Keyboard::CharacterInput& message);
@@ -120,6 +121,8 @@ namespace Apollo {
         void focusPreviousTile();
         void focusNextTile();
         void changeSplitDirection(Split split);
+
+        uint32_t getActiveTaskId() const;
 
     private:
 
@@ -179,6 +182,11 @@ namespace Apollo {
         uint32_t previousDisplay {1};
         bool showCapcom {false};
 
-        std::vector<std::string> pendingTaskbarNames;
+        struct PendingTaskbarApp {
+            std::string name;
+            uint32_t taskId;
+        };
+
+        std::vector<PendingTaskbarApp> pendingTaskbarNames;
     };
 }
