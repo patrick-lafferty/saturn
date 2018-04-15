@@ -71,7 +71,7 @@ namespace Apollo::Text {
         error = FT_Set_Char_Size(
             face,
             0,
-            18 * 64,
+            14 * 64,
             96,
             96
         );
@@ -88,7 +88,7 @@ namespace Apollo::Text {
         windowWidth = 800;
         windowHeight = 600;
         frameBuffer = window->getFramebuffer();
-        faceCache.addCache(face, Style::Normal, 18);
+        faceCache.addCache(face, Style::Normal, 14);
     }
 
     FT_Face Renderer::loadFont(uint32_t index, uint32_t size) {
