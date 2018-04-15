@@ -78,6 +78,17 @@ output types.
 As you can see from the screenshot, by reading an object itself, you can find out what an object supports and how
 to interact with it.
 
+# Latest Screenshot
+
+<p align="center">
+<img src="https://github.com/patrick-lafferty/saturn/blob/master/screenshots/Transcript.PNG" height="400">
+</p>
+
+This screenshot shows the new Taskbar app that lists open applications and
+highlights the app with input focus. It also shows the Transcript app which
+creates structured logs events from the EventSystem, and allows you to filter
+the logs using a Gemini expression.
+
 # Testing
 
 As Saturn is still in its very early stages, there are no releases yet.
