@@ -27,33 +27,104 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "environment.h"
+#include "interpreter.h"
 
-using namespace Saturn::Parse;
+//using namespace Saturn::Parse;
 
 namespace Saturn::Gemini {
 
-    CallResult interpret(List* list, Environment& environment) {
+    CallResult interpret(Saturn::Parse::List* list, Environment& environment) {
         if (list->items.empty()) {
             return {};
         }
 
-        if (list->items[0]->type == SExpType::Symbol) {
-            auto name = static_cast<Symbol*>(list->items[0]);
+        if (list->items[0]->type == Saturn::Parse::SExpType::Symbol) {
+            auto name = static_cast<Saturn::Parse::Symbol*>(list->items[0]);
 
-            if (auto maybeFunc = environment.lookupFunction(name)) {
-                auto& func = maybeFunc.value();
-                return func.call(list);
+            if (name->value.compare("lambda") == 0) {
+                if (list->items.size() == 3) {
+                    FunctionSignature signature {{Type::Any}, Type::Any};
+                    return new Function {signature, [list, &environment](auto args) {
+                        CallResult result {};
+
+                        /*bool skip {true};
+                        for (auto child : list->items) {
+                            if (skip) {
+                                skip = false;
+                                continue;
+                            }
+
+                            result = interpret(child, environment);
+                        }*/
+                        auto child = environment.makeChild();
+                        child.mapParameter(static_cast<Saturn::Parse::Symbol*>(list->items[1]),
+                            args->items[0]);
+
+                        result = interpret(list->items[2], child);
+
+                        return result;
+                    }};
+                }
+                else {
+                    return {};
+                }
+            }
+            else {
+
+                if (auto maybeFunc = environment.lookupFunction(name)) {
+                    auto& func = maybeFunc.value();
+                    auto arguments = map(list, [&](auto item) {
+                        auto result = interpret(item, environment);
+
+                        if (std::holds_alternative<Object*>(result)) {
+                            return std::get<Object*>(result);
+                        }
+                        else {
+                            return (Object*)nullptr;
+                        }
+                    }, environment);
+
+                    return func->call(arguments);
+                }
             }
         }
 
         return {};
     }
 
-    CallResult interpret(SExpression* s, Environment& environment) {
+    CallResult interpret(Saturn::Parse::SExpression* s, Environment& environment) {
         switch (s->type) {
-            case SExpType::List: {
-                return interpret(static_cast<List*>(s), environment);
+            case Saturn::Parse::SExpType::List: {
+                return interpret(static_cast<Saturn::Parse::List*>(s), environment);
                 break;
+            }
+            case Saturn::Parse::SExpType::Symbol: {
+                auto symbol = static_cast<Saturn::Parse::Symbol*>(s);
+                if (auto object = environment.lookupObject(symbol)) {
+                    return object.value();
+                }
+                else {
+                    auto dotPosition = symbol->value.find('.');
+                    if (dotPosition != std::string_view::npos) {
+                        auto objectName = symbol->value.substr(0, dotPosition);
+                        auto propertyName = symbol->value.substr(dotPosition + 1);
+
+                        if (auto object = environment.lookupObject(objectName)) {
+                            return object.value()->getChild(propertyName);
+                        }
+                        else {
+                            return {};
+                        }
+                    }
+                    else {
+                        return {};
+                    }
+                }
+            }
+            case Saturn::Parse::SExpType::IntLiteral: {
+                auto value = static_cast<Saturn::Parse::IntLiteral*>(s);
+
+                return new Integer(value->value);
             }
         }
 
