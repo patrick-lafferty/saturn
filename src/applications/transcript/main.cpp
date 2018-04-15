@@ -188,11 +188,6 @@ public:
 
                                 filterObjects(inputBuffer);
 
-                                index = 0;
-                                memset(inputBuffer, '\0', 500);
-
-                                commandLine.setValue(inputBuffer);
-
                                 break;
                             }
                             case Keyboard::VirtualKey::Backspace: {
@@ -352,6 +347,9 @@ public:
                     all->items.push_back(object);
                     mappedItems[object] = createEntry(data, 0x00FF0000, 0x0000FF00);
 
+                    if (index > 0) {
+                        filterObjects(inputBuffer);
+                    }
                 }
             }
         }
