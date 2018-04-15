@@ -70,15 +70,31 @@ namespace Apollo {
 
     enum class Split;
 
+    enum class Unit {
+        Proportional,
+        Fixed
+    };
+
+    struct Size {
+        Unit unit {Unit::Proportional};
+        int desiredSpace {1};
+        int actualSpace {0};
+    };
+
+    struct ContainerChild {
+        Size size;
+        std::variant<Tile, Container*> child;
+    };
+
     struct Container {
         Bounds bounds;
-        std::vector<std::variant<Tile, Container*>> children;
+        std::vector<ContainerChild> children;
         Split split;
         Container* parent;
         uint32_t activeTaskId {0};
 
-        void addChild(Tile tile);
-        void addChild(Container* container);
+        void addChild(Tile tile, Size size);
+        void addChild(Container* container, Size size);
         void layoutChildren();
         uint32_t getChildrenCount();
         std::optional<Tile*> findTile(uint32_t taskId);
@@ -93,7 +109,7 @@ namespace Apollo {
 
         Display(Bounds screenBounds);
 
-        void addTile(Tile tile);
+        void addTile(Tile tile, Size size = {});
         bool enableRendering(uint32_t taskId);
         void injectKeypress(Keyboard::KeyPress& message);
         void injectCharacterInput(Keyboard::CharacterInput& message);
@@ -159,7 +175,7 @@ namespace Apollo {
         bool hasFocus {false};
 
         std::vector<Display> displays;
-        uint32_t currentDisplay {1};
+        uint32_t currentDisplay {0};
         uint32_t previousDisplay {1};
         bool showCapcom {false};
 

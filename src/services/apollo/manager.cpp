@@ -85,17 +85,55 @@ namespace Apollo {
         }
     }
 
-    void Container::addChild(Tile tile) {
+    void Container::addChild(Tile tile, Size size) {
         tile.parent = this;
-        children.push_back(tile);
+        children.push_back({size, tile});
         activeTaskId = tile.handle.taskId;
         layoutChildren();
     }
 
-    void Container::addChild(Container* container) {
-        children.push_back(container);
+    void Container::addChild(Container* container, Size size) {
+        children.push_back({size, container});
         container->parent = this;
         layoutChildren();
+    }
+
+    void placeChild(Split split, ContainerChild& child, Bounds& childBounds, int gapSize) {
+        
+        if (split == Split::Vertical) {
+            childBounds.width = child.size.actualSpace;
+        }
+        else {
+            childBounds.height = child.size.actualSpace;
+        }
+
+        if (std::holds_alternative<Tile>(child.child)) {
+            auto& tile = std::get<Tile>(child.child);
+            tile.bounds = childBounds;
+            Resize resize;
+            resize.width = childBounds.width;
+            resize.height = childBounds.height;
+            resize.recipientId = tile.handle.taskId;
+            send(IPC::RecipientType::TaskId, &resize);
+        }
+        else {
+            auto container = std::get<Container*>(child.child);
+            container->bounds = childBounds;
+            container->layoutChildren();
+        }
+
+        switch (split) {
+            case Split::Horizontal: {
+                childBounds.y += childBounds.height;
+                childBounds.y += gapSize;
+                break;
+            }
+            case Split::Vertical: {
+                childBounds.x += childBounds.width;
+                childBounds.x += gapSize;
+                break;
+            }
+        }
     }
 
     void Container::layoutChildren() {
@@ -103,45 +141,48 @@ namespace Apollo {
             return;
         }
 
-        /*
-        TODO: need to send a resize message to all tiles
-        */
+        int unallocatedSpace {0};
         Bounds childBounds {bounds.x, bounds.y};
-        auto numberOfChildren = children.size();
-        auto numberOfGaps = 0;
-        auto gapPixelWidth = 5;
-
-        if (numberOfChildren > 1) {
-            numberOfGaps = numberOfChildren - 1;
-        }
 
         if (split == Split::Vertical) {
-            auto availableSpace = bounds.width - gapPixelWidth * numberOfGaps;
-            childBounds.width = availableSpace / numberOfChildren;
-            childBounds.height = bounds.height;
+            unallocatedSpace = bounds.width;
         }
         else {
-            auto availableSpace = bounds.height - gapPixelWidth * numberOfGaps;
-            childBounds.width = bounds.width;
-            childBounds.height = availableSpace / numberOfChildren;
+            unallocatedSpace = bounds.height;
         }
 
-        LayoutVisitor visitor{childBounds, split};
+        const auto gapSize = 5;
+        unallocatedSpace -= gapSize * (children.size() - 1);
 
-        Resize resize;
-        resize.width = childBounds.width;
-        resize.height = childBounds.height;
+        int totalProportionalUnits = 0;
 
         for (auto& child : children) {
-            if (std::holds_alternative<Tile>(child)) {
-                auto& tile = std::get<Tile>(child);
-                visitor.visit(tile);
-                resize.recipientId = tile.handle.taskId;
-                send(IPC::RecipientType::TaskId, &resize);
+            if (child.size.unit == Unit::Fixed) {
+                if (unallocatedSpace > 0) {
+                    auto space = std::min(unallocatedSpace, child.size.desiredSpace);
+                    child.size.actualSpace = space;
+                    unallocatedSpace -= space;
+                    placeChild(split, child, childBounds, gapSize);
+                }
+                else {
+                    break;
+                }
             }
             else {
-                auto container = std::get<Container*>(child);
-                visitor.visit(container);
+                totalProportionalUnits += child.size.desiredSpace;
+            }
+        }
+
+        if (totalProportionalUnits > 0 
+            && unallocatedSpace > 0) {
+
+            auto proportionalSpace = unallocatedSpace / totalProportionalUnits;
+            
+            for (auto& child : children) {
+                if (child.size.unit == Unit::Proportional) {
+                    child.size.actualSpace = proportionalSpace * child.size.desiredSpace;
+                    placeChild(split, child, childBounds, gapSize);
+                }
             }
         }
     }
@@ -152,15 +193,15 @@ namespace Apollo {
 
     std::optional<Tile*> Container::findTile(uint32_t taskId) {
         for (auto& child : children) {
-            if (std::holds_alternative<Tile>(child)) {
-                auto& tile = std::get<Tile>(child);
+            if (std::holds_alternative<Tile>(child.child)) {
+                auto& tile = std::get<Tile>(child.child);
 
                 if (tile.handle.taskId == taskId) {
                     return &tile;
                 }
             }
             else {
-                auto container = std::get<Container*>(child);
+                auto container = std::get<Container*>(child.child);
 
                 if (auto tile = container->findTile(taskId)) {
                     return tile;
@@ -173,12 +214,12 @@ namespace Apollo {
 
     void Container::composite(uint32_t volatile* frameBuffer, uint32_t displayWidth) {
         for (auto& child : children) {
-           if (std::holds_alternative<Tile>(child)) {
-                auto& tile = std::get<Tile>(child); 
+           if (std::holds_alternative<Tile>(child.child)) {
+                auto& tile = std::get<Tile>(child.child); 
                 renderTile(frameBuffer, tile, displayWidth, {0, 0, tile.bounds.width, tile.bounds.height});
            }
            else {
-                auto container = std::get<Container*>(child); 
+                auto container = std::get<Container*>(child.child); 
                 container->composite(frameBuffer, displayWidth);
            }
         }
@@ -186,8 +227,8 @@ namespace Apollo {
 
     void Container::dispatchRenderMessages() {
        for (auto& child : children) {
-           if (std::holds_alternative<Tile>(child)) {
-                auto& tile = std::get<Tile>(child); 
+           if (std::holds_alternative<Tile>(child.child)) {
+                auto& tile = std::get<Tile>(child.child); 
 
                 if (tile.canRender) {
                     tile.canRender = false;
@@ -197,7 +238,7 @@ namespace Apollo {
                 }
            }
            else {
-                auto container = std::get<Container*>(child); 
+                auto container = std::get<Container*>(child.child); 
                 container->dispatchRenderMessages();
            }
         } 
@@ -207,8 +248,8 @@ namespace Apollo {
         auto previous {activeTaskId};
 
         for (auto& child : children) {
-            if (std::holds_alternative<Tile>(child)) {
-                auto& tile = std::get<Tile>(child); 
+            if (std::holds_alternative<Tile>(child.child)) {
+                auto& tile = std::get<Tile>(child.child); 
 
                 if (tile.handle.taskId == activeTaskId) {
                     break;
@@ -226,8 +267,8 @@ namespace Apollo {
         auto next {activeTaskId};
 
         for (auto it = rbegin(children); it != rend(children); ++it) {
-            if (std::holds_alternative<Tile>(*it)) {
-                auto& tile = std::get<Tile>(*it); 
+            if (std::holds_alternative<Tile>(it->child)) {
+                auto& tile = std::get<Tile>(it->child); 
 
                 if (tile.handle.taskId == activeTaskId) {
                     break;
@@ -249,8 +290,8 @@ namespace Apollo {
         root->bounds = screenBounds;
     }
 
-    void Display::addTile(Tile tile) {
-        activeContainer->addChild(tile);
+    void Display::addTile(Tile tile, Size size) {
+        activeContainer->addChild(tile, size);
     }
 
     bool Display::enableRendering(uint32_t taskId) {
@@ -302,7 +343,7 @@ namespace Apollo {
     void Display::splitContainer(Split split) {
         auto container = new Container;
         container->split = split;
-        activeContainer->addChild(container);
+        activeContainer->addChild(container, {});
         activeContainer = container;
     }
 
@@ -433,6 +474,9 @@ namespace Apollo {
 
         if (message.senderTaskId == capcomTaskId) {
             displays[0].addTile({bounds, handle});
+        }
+        else if (message.senderTaskId == taskbarTaskId) {
+            displays[0].addTile({bounds, handle}, {Unit::Fixed, 50});
         }
         else {
             displays[currentDisplay].addTile({bounds, handle});
