@@ -115,8 +115,15 @@ namespace Apollo::Elements {
             }
         }
 
-        void onChange(Bindings) {
-
+        void onChange(Bindings binding) {
+            switch (binding) {
+                case Bindings::BackgroundColour:
+                case Bindings::FontColour: {
+                    requestLayoutText();
+                    requestRender();
+                    break;
+                }
+            }
         }
 
         int getDesiredWidth();
