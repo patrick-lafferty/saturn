@@ -28,26 +28,48 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "environment.h"
 
-using namespace Saturn::Parse;
+//using namespace Saturn::Parse;
 
 namespace Saturn::Gemini {
 
-    Function::Function(FunctionSignature signature, std::function<CallResult(List*)> func)
-        : signature{signature}, f {func} {
+    Object::Object(Saturn::Parse::List* list) {
+        type = GeminiType::Object;
 
+        bool skip {true};
+        for (auto item : list->items) {
+            if (skip) {
+                skip = false;
+                continue;
+            }
+
+            if (item->type == Saturn::Parse::SExpType::List) {
+                if (auto maybeConstructor = Saturn::Parse::getConstructor(item)) {
+                    auto& constructor = maybeConstructor.value();
+                    if (auto maybeValue = constructor.get<Saturn::Parse::IntLiteral*>(1, Saturn::Parse::SExpType::IntLiteral)) {
+                        addChild(constructor.name->value, 
+                            new Integer(maybeValue.value()->value));
+                    }       
+                }
+            }
+        }
     }
 
-    bool checkType(Type input, SExpression* arg) {
+    Function::Function(FunctionSignature signature, std::function<CallResult(List*)> func)
+        : signature{signature}, f {func} {
+        type = GeminiType::Function;
+    }
+
+    bool checkType(Type input, Saturn::Parse::SExpression* arg) {
 
         switch (input) {
             case Type::String: {
 
                 switch (arg->type) {
-                    case SExpType::StringLiteral: {
+                    case Saturn::Parse::SExpType::StringLiteral: {
                         return true;
                     }
-                    case SExpType::Symbol: {
-                        auto symbol = static_cast<Symbol*>(arg)->value;
+                    case Saturn::Parse::SExpType::Symbol: {
+                        auto symbol = static_cast<Saturn::Parse::Symbol*>(arg)->value;
 
                         if (symbol.empty()) {
                             return false;
@@ -64,21 +86,44 @@ namespace Saturn::Gemini {
 
                 break;
             }
+            case Type::Bool: {
+                switch (arg->type) {
+                    case Saturn::Parse::SExpType::BoolLiteral: {
+                        return true;
+                    }
+                    default: return false;
+                }
+
+                break;
+            }
+            case Type::Object: {
+                switch (arg->type) {
+                    case Saturn::Parse::SExpType::List: {
+                        return true;
+                    }
+                    default: return false;
+                }
+
+                break;
+            }
+            case Type::Any: {
+                return true;
+            }
         }
 
         return false;
     }
 
-    std::variant<ArgumentMismatch, Result> Function::call(List* arguments) {
+    std::variant<ArgumentMismatch, Object*> Function::call(List* arguments) {
         if (f) {
 
-            int argCount = arguments->items.size() - 1;
+            /*int argCount = arguments->items.size() - 1;
             
             if (argCount != signature.input.size()) {
                 return ArgumentMismatch{};
-            }
+            }*/
 
-            if (argCount > 0) {
+            /*if (argCount > 0) {
                 for (int i = 0; i < argCount; i++) {
                     auto arg = arguments->items[i + 1];
 
@@ -86,7 +131,7 @@ namespace Saturn::Gemini {
                         return ArgumentMismatch{};
                     }
                 }
-            }
+            }*/
 
             return f(arguments);
         }
@@ -94,7 +139,7 @@ namespace Saturn::Gemini {
         return {};
     }
 
-    std::optional<Function> Environment::lookupFunction(Symbol* symbol) {
+    std::optional<Function*> Environment::lookupFunction(Saturn::Parse::Symbol* symbol) {
         auto hash = std::hash<std::string_view>{}(symbol->value);
         auto it = functions.find(hash);
 
@@ -102,12 +147,43 @@ namespace Saturn::Gemini {
             return it->second;
         }
         else {
-            return {};
+            if (parent != nullptr) {
+                return parent->lookupFunction(symbol);
+            }
+            else {
+                return {};
+            }
         }
     }
 
-    void Environment::addFunction(std::string_view name, Function function) {
+    std::optional<Object*> Environment::lookupObject(Saturn::Parse::Symbol* symbol) {
+        return lookupObject(symbol->value);
+    }
+
+    std::optional<Object*> Environment::lookupObject(std::string_view name) {
+        auto hash = std::hash<std::string_view>{}(name);
+        auto it = objects.find(hash);
+
+        if (it != end(objects)) {
+            return it->second;
+        }
+        else {
+            if (parent != nullptr) {
+                return parent->lookupObject(name);
+            }
+            else {
+                return {};
+            }
+        }
+    }
+
+    void Environment::addFunction(std::string_view name, Function* function) {
         auto hash = std::hash<std::string_view>{}(name);
         functions[hash] = function;
+    }
+
+    void Environment::addObject(std::string_view name, Object* object) {
+        auto hash = std::hash<std::string_view>{}(name);
+        objects[hash] = object;
     }
 }

@@ -37,6 +37,9 @@ namespace Saturn::Gemini {
 
     enum class Type {
         String,
+        Bool,
+        Object,
+        Any,
         Void
     };
 
@@ -49,35 +52,143 @@ namespace Saturn::Gemini {
 
     };
 
-    struct Result {
-        std::variant<char*> value;
+    enum class GeminiType {
+        Object,
+        Function,
+        List,
+        Integer,
+        Boolean
     };
 
-    typedef std::variant<ArgumentMismatch, Result> CallResult;
-
-    class Function {
+    class Object {
     public:
 
-        Function() = default;
-        Function(FunctionSignature signature, std::function<CallResult(Saturn::Parse::List*)> func);
-        CallResult call(Saturn::Parse::List* arguments);
+        Object() {
+            type = GeminiType::Object;
+        }
+
+        Object(Saturn::Parse::List* list);
+
+        virtual ~Object() {}
+
+        GeminiType type;
+
+        std::map<std::size_t, class Object*> children;
+        void addChild(std::string_view name, Object* value) {
+            auto hash = std::hash<std::string_view>{}(name);
+            children[hash] = value;
+        }
+
+        Object* getChild(std::string_view name) {
+            auto hash = std::hash<std::string_view>{}(name);
+            auto it = children.find(hash);
+
+            if (it != end(children)) {
+                return it->second;
+            }
+            else {
+                return nullptr;
+            }
+        }
+    };
+
+    class Integer : public Object {
+    public:
+
+        Integer(int value) {
+            type = GeminiType::Integer; 
+            this->value = value;
+        }
+
+        int value {0};
+    };
+
+    class Boolean : public Object {
+    public:
+
+        Boolean(bool value) {
+            type = GeminiType::Boolean;
+            this->value = value;
+        }
+
+        bool value {false};
+    };
+
+    struct Result {
+        std::variant<char*, Object*> value;
+    };
+
+    typedef std::variant<ArgumentMismatch, Object*> CallResult;
+
+    class List : public Object {
+    public:
+
+        List() {
+            type = GeminiType::List;
+        }
+
+        std::vector<Object*> items;
+    };
+
+    class Function : public Object {
+    public:
+
+        Function() {
+            type = GeminiType::Function;
+        }
+
+        Function(FunctionSignature signature, std::function<CallResult(List*)> func);
+        CallResult call(List* arguments);
 
     private:
 
         FunctionSignature signature;
-        std::function<CallResult(Saturn::Parse::List*)> f;
+        std::function<CallResult(List*)> f;
     };
 
     class Environment {
     public:
 
-        std::optional<Function> lookupFunction(Saturn::Parse::Symbol* symbol);
+        std::optional<Function*> lookupFunction(Saturn::Parse::Symbol* symbol);
+        std::optional<Object*> lookupObject(Saturn::Parse::Symbol* symbol);
+        std::optional<Object*> lookupObject(std::string_view name);
 
-        void addFunction(std::string_view name, Function function);
+        void addFunction(std::string_view name, Function* function);
+        void addObject(std::string_view name, Object* object);
+
+        void mapParameter(Saturn::Parse::Symbol* parameter, Object* argument) {
+            addObject(parameter->value, argument);
+        }
+
+        Environment makeChild() {
+            Environment child;
+            child.parent = this;
+
+            return child;
+        }
 
     private:
 
         Environment* parent {nullptr};
-        std::map<std::size_t, Function> functions;
+        std::map<std::size_t, Function*> functions;
+        std::map<std::size_t, Object*> objects;
     };
+
+    template<class Func>
+    List* map(Saturn::Parse::List* list, Func func, Environment& environment, bool skipHead = true) {
+        auto result = new List();
+
+
+        for (auto item : list->items) {
+            if (skipHead) {
+                skipHead = false;
+                continue;
+            }
+
+            result->items.push_back(func(item));
+        }
+
+        return result;
+    }
+
 }
