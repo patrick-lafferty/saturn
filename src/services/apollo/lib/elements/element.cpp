@@ -75,6 +75,8 @@ namespace Apollo::Elements {
         if (!(config.padding.vertical < 0 || config.padding.horizontal < 0)) {
             padding = config.padding;
         }
+
+        fontSize = config.fontSize;
     }
 
     int UIElement::getDesiredHeight() {
@@ -299,6 +301,18 @@ namespace Apollo::Elements {
             }
             else if (constructor.startsWith("alignment")) {
                 return parseAlignment(constructor.values, config);
+            }
+            else if (constructor.startsWith("font-size")) {
+                if (constructor.length != 2) {
+                    return false;
+                }
+
+                if (auto maybeValue = constructor.get<IntLiteral*>(1, SExpType::IntLiteral)) {
+                    config.fontSize = maybeValue.value()->value;
+                }
+                else {
+                    return false;
+                }
             }
         }
 

@@ -71,6 +71,7 @@ namespace Apollo::Elements {
         Margins padding;
         Alignment horizontalAlignment {Alignment::Start};
         Alignment verticalAlignment {Alignment::Start};
+        uint32_t fontSize {18};
 	};
 
 	class Container;
@@ -158,7 +159,7 @@ namespace Apollo::Elements {
         Margins padding;
         Alignment horizontalAlignment;
         Alignment verticalAlignment;
-
+        uint32_t fontSize;
     };
 
     /*

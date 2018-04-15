@@ -122,7 +122,13 @@ namespace Apollo::Elements {
         }
 
         auto bounds = getBounds();
-        captionLayout = renderer->layoutText(captionText, bounds.width, getFontColour());
+        captionLayout = renderer->layoutText(captionText, 
+            bounds.width, 
+            getFontColour(), 
+            Apollo::Text::Style::Normal,
+            false,
+            fontSize);
+
         desiredHeight = captionLayout.bounds.height;
     } 
 
