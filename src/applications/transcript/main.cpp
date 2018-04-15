@@ -28,11 +28,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "transcript.h"
 #include <services/apollo/lib/application.h>
+#include <services/keyboard/messages.h>
 #include "layout.h"
 #include <saturn/logging.h>
 #include <services/virtualFileSystem/vostok.h>
+#include <saturn/parsing.h>
+#include <saturn/gemini/interpreter.h>
 
 using namespace Apollo;
+using namespace Saturn::Gemini;
 
 struct DisplayItem {
 
@@ -59,6 +63,12 @@ public:
 
         auto binder = [&](auto binding, std::string_view name) {
             using BindingType = typename std::remove_reference<decltype(*binding)>::type::ValueType;
+            
+            if constexpr(std::is_same<char*, BindingType>::value) {
+                if (name.compare("commandLine") == 0) {
+                    binding->bindTo(commandLine);
+                }
+            }
         };
 
         auto collectionBinder = [&](auto binding, std::string_view name) {
@@ -73,7 +83,56 @@ public:
         
         if (loadLayout(TranscriptApp::layout, binder, collectionBinder)) {
             Saturn::Log::subscribe();
+
+            setupEnvironment();
         }
+    }
+
+    DisplayItem* createEntry(char* text, uint32_t background, uint32_t fontColour) {
+
+        auto len = strlen(text) + 1;
+        char* s = new char[len];
+        s[len - 1] = '\0';
+        strcpy(s, text);
+        return new DisplayItem(s, background, fontColour);
+    }
+
+    void addFilteredEntries() {
+
+        auto itemBinder = [](auto& item) {
+            return [&](auto binding, std::string_view name) {
+                using BindingType = typename std::remove_reference<decltype(*binding)>::type::ValueType;
+
+                if constexpr(std::is_same<char*, BindingType>::value) {
+                    if (name.compare("content") == 0) {
+                        binding->bindTo(*item->content);
+                    }
+                }
+                else if constexpr(std::is_same<uint32_t, BindingType>::value) {
+                    if (name.compare("background") == 0) {
+                        binding->bindTo(*item->background);
+                    }
+                    else if (name.compare("fontColour") == 0) {
+                        binding->bindTo(*item->fontColour);
+                    }
+                }
+            };
+        };
+
+        events.clear();
+
+        if (filtered == nullptr) {
+            return;
+        }
+
+        for (auto item : filtered->items) {
+            auto obj = mappedItems[item];
+            events.add(obj, itemBinder);
+        }
+
+        window->layoutChildren();
+        window->layoutText();
+        window->render();
     }
 
     void addLogEntry(char* entry, uint32_t background, uint32_t fontColour) {
@@ -110,6 +169,55 @@ public:
 
     void handleMessage(IPC::MaximumMessageBuffer& buffer) {
         switch (buffer.messageNamespace) {
+            case IPC::MessageNamespace::Keyboard: {
+                switch (static_cast<Keyboard::MessageId>(buffer.messageId)) {
+                    case Keyboard::MessageId::CharacterInput: {
+
+                        auto input = IPC::extractMessage<Keyboard::CharacterInput>(buffer);
+                        inputBuffer[index] = input.character;
+                        commandLine.setValue(inputBuffer);
+
+                        index++;
+                        break;
+                    }
+                    case Keyboard::MessageId::KeyPress: {
+                        auto key = IPC::extractMessage<Keyboard::KeyPress>(buffer);
+
+                        switch (key.key) {
+                            case Keyboard::VirtualKey::Enter: {
+
+                                filterObjects(inputBuffer);
+
+                                index = 0;
+                                memset(inputBuffer, '\0', 500);
+
+                                commandLine.setValue(inputBuffer);
+
+                                break;
+                            }
+                            case Keyboard::VirtualKey::Backspace: {
+                                if (index > 0) {
+                                    index--;
+                                    inputBuffer[index] = '\0';
+
+                                    commandLine.setValue(inputBuffer);
+                                }
+
+                                break;
+                            }
+                            default: {
+                                printf("[Transcript] Unhandled key\n");
+                            }
+                        }
+
+                        break;
+                    }
+                    default: {
+                        printf("[Transcript] Unhandled Keyboard event\n");
+                    }
+                }
+                break;
+            }
             case IPC::MessageNamespace::WindowManager: {
                 switch (static_cast<MessageId>(buffer.messageId)) {
                     case MessageId::Render: {
@@ -168,17 +276,12 @@ public:
         }
     }
 
-
     int getFunction(std::string_view name) override {
         if (name.compare("receive") == 0) {
             return static_cast<int>(FunctionId::Receive);
         }
 
         return -1;
-    }
-
-    void readFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId) override {
-        describeFunction(requesterTaskId, requestId, functionId);
     }
 
     void describeFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId) override {
@@ -234,14 +337,170 @@ public:
     }
 
     void receive(uint32_t requesterTaskId, uint32_t requestId, char* data) {
-        addLogEntry(data, 0x00FF0000, 0x0000FF00);
+        //addLogEntry(data, 0x00FF0000, 0x0000FF00);
+
+        auto result = Saturn::Parse::read(data);
+
+        if (std::holds_alternative<Saturn::Parse::SExpression*>(result)) {
+            auto topLevel = std::get<Saturn::Parse::SExpression*>(result);
+
+            if (topLevel->type == Saturn::Parse::SExpType::List) {
+                auto root = static_cast<Saturn::Parse::List*>(topLevel)->items[0];
+
+                if (root->type == Saturn::Parse::SExpType::List) {
+                    auto object = new Saturn::Gemini::Object(static_cast<Saturn::Parse::List*>(root)); 
+                    all->items.push_back(object);
+                    mappedItems[object] = createEntry(data, 0x00FF0000, 0x0000FF00);
+
+                }
+            }
+        }
+
         Vostok::replyWriteSucceeded(requesterTaskId, requestId, true);
+    }
+
+    Function* getEqualFunction() {
+        FunctionSignature sig {{Type::Object}, Type::Bool};
+        return new Function {sig, [&](List* list) {
+            
+            auto first = list->items[0];
+            auto second = list->items[1];
+
+            if (first->type == GeminiType::Integer
+                && second->type == GeminiType::Integer) {
+
+                auto x = static_cast<Integer*>(first);
+                auto y = static_cast<Integer*>(second);
+
+                return new Boolean (x->value == y->value);
+            }
+
+            return new Boolean(false);
+        }};
+    }
+
+    Function* getGreaterThanFunction() {
+        FunctionSignature sig {{Type::Object}, Type::Bool};
+        return new Function {sig, [&](List* list) {
+            
+            auto first = list->items[0];
+            auto second = list->items[1];
+
+            if (first->type == GeminiType::Integer
+                && second->type == GeminiType::Integer) {
+
+                auto x = static_cast<Integer*>(first);
+                auto y = static_cast<Integer*>(second);
+
+                return new Boolean (x->value > y->value);
+            }
+
+            return new Boolean(false);
+        }};
+    }
+
+    Function* getFilterFunction() {
+        FunctionSignature sig {{Type::Object}, Type::Bool};
+        return new Function {sig, [&](List* list) {
+
+            List* result {nullptr};
+
+            if (list->items.size() != 2) {
+                return result;
+            }
+
+            if (list->items[0]->type != GeminiType::List) {
+                return result;
+            }
+
+            if (list->items[1]->type != GeminiType::Function) {
+                return result;
+            }
+
+            auto collection = static_cast<List*>(list->items[0]);
+            auto filter = static_cast<Function*>(list->items[1]);
+
+            result = new List();
+            auto tempList = new List();
+            tempList->items.push_back(nullptr);
+
+            for (auto item : collection->items)  {
+                tempList->items[0] = item;
+                auto filteredItem = filter->call(tempList);
+
+                if (std::holds_alternative<Saturn::Gemini::Object*>(filteredItem)) {
+                    auto object = std::get<Saturn::Gemini::Object*>(filteredItem);
+
+                    if (object->type == GeminiType::Boolean) {
+                        if (static_cast<Boolean*>(object)->value) {
+                            result->items.push_back(item);
+                        }
+                    }
+
+                }
+                else {
+                    return (List*)nullptr;
+                }
+            }
+
+            delete tempList;
+
+            return result;
+            
+        }};
+    }
+
+    void setupEnvironment() {
+        using namespace std::literals;
+
+        all = new Saturn::Gemini::List();
+
+        environment.addFunction("="sv, getEqualFunction());
+        environment.addFunction(">"sv, getGreaterThanFunction());
+        environment.addFunction("filter"sv, getFilterFunction());
+        environment.addObject("events", all);
+    }
+
+    void filterObjects(char* lambda) {
+
+        char code[256];
+        memset(code, '\0', 256);
+        sprintf(code, "(filter events (lambda e (%s)))", lambda);
+
+        auto result = Saturn::Parse::read(code);
+
+        if (std::holds_alternative<Saturn::Parse::SExpression*>(result)) {
+            auto topLevel = std::get<Saturn::Parse::SExpression*>(result);
+
+            if (topLevel->type == Saturn::Parse::SExpType::List) {
+                auto root = static_cast<Saturn::Parse::List*>(topLevel)->items[0];
+                auto value = interpret(static_cast<Saturn::Parse::List*>(root), environment);
+
+                if (std::holds_alternative<Saturn::Gemini::Object*>(value)) {
+                    auto object = std::get<Saturn::Gemini::Object*>(value);
+
+                    if (object->type == GeminiType::List) {
+                        filtered = static_cast<Saturn::Gemini::List*>(object);
+
+                        addFilteredEntries();
+                    }
+                }
+
+            }
+        }
     }
 
 private:
 
     typedef Apollo::ObservableCollection<DisplayItem*, Apollo::BindableCollection<Apollo::Elements::ListView, Apollo::Elements::ListView::Bindings>> ObservableDisplays;
     ObservableDisplays events;
+    Observable<char*> commandLine;
+    Saturn::Gemini::Environment environment;
+    std::map<Saturn::Gemini::Object*, DisplayItem*> mappedItems;
+    char inputBuffer[500];
+    int index {0};
+
+    Saturn::Gemini::List* all, *filtered;
 
     enum class FunctionId {
         Receive

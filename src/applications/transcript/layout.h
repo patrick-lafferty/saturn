@@ -37,25 +37,39 @@ const char* layout = R"(
     (margins (vertical 20) (horizontal 20))
 
     (rows
-        (fixed-height 50)
+        (fixed-height 30)
         (proportional-height 1)
     ) 
 
-    (columns (proportional-width 1))
+    (columns 
+        (fixed-width 150)
+        (proportional-width 1))
 
     (row-gap 10)
 
     (items
-        (label (caption "Logged Events"))
+        (label (caption "Filter events:")
+            (alignment (horizontal center) (vertical center))
+            (font-colour (rgb 0 0 20))
+            (background (rgb 100 149 237))
+        )
+
+        (label (caption (bind commandLine))
+            (alignment (vertical center))
+            (padding (horizontal 10))
+            (background (rgb 0 0 20))
+            (meta (grid (column 1)))
+        )
 
         (list-view
-            (meta (grid (row 1)))
+            (meta (grid (row 1) (column-span 2)))
 
             (item-source (bind events))
 
             (item-template
                 (label (caption (bind content))
-
+                    (font-colour (rgb 100 149 237))
+                    (background (rgb 0 0 20))
                 )
             )
         )
