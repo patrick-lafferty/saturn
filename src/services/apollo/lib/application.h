@@ -94,11 +94,11 @@ namespace Apollo {
             clear(0, 0, width, height);
             window->markAreaDirty(0, 0, width, height);
 
+            mount();
+
             if (!startHidden) {
                 window->blitBackBuffer();
             }
-
-            mount();
         }
         /*
         An Application is in a valid state if it successfully
@@ -146,7 +146,11 @@ namespace Apollo {
         virtual Object* getNestedObject(std::string_view) override { return nullptr; }
 
         virtual int getFunction(std::string_view) override { return -1;}
-        virtual void readFunction(uint32_t, uint32_t, uint32_t) override {}
+
+        virtual void readFunction(uint32_t requesterTaskId, uint32_t requestId, uint32_t functionId) override {
+            describeFunction(requesterTaskId, requestId, functionId);
+        }
+
         virtual void writeFunction(uint32_t, uint32_t, uint32_t, Vostok::ArgBuffer&) override {}
         virtual void describeFunction(uint32_t, uint32_t, uint32_t) override {}
 

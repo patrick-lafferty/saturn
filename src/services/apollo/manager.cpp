@@ -34,6 +34,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <algorithm>
 #include <services/keyboard/messages.h>
 #include <saturn/time.h>
+#include <saturn/parsing.h>
+#include <services/virtualFileSystem/vostok.h>
 
 using namespace Kernel;
 
@@ -298,7 +300,6 @@ namespace Apollo {
     }
 
     void Display::splitContainer(Split split) {
-        //activeContainer->
         auto container = new Container;
         container->split = split;
         activeContainer->addChild(container);
@@ -354,7 +355,35 @@ namespace Apollo {
         return 0;
     }
 
-    uint32_t launch(const char* path) {
+    bool sendAppNameToTaskbar(const char* name, uint32_t taskId) {
+        char path[256];
+        memset(path, '\0', 256);
+
+        auto words = split({name, strlen(name)}, '/');
+        sprintf(path, "/applications/%d/addAppName", taskId);
+
+        auto result = openSynchronous(path);
+
+        if (result.success) {
+            auto readResult = readSynchronous(result.fileDescriptor, 0);
+            Vostok::ArgBuffer args {readResult.buffer, sizeof(readResult.buffer)};
+            args.readType();
+            auto word = words.back();
+            word.remove_suffix(4);
+            char temp[100];
+            memset(temp, '\0', 100);
+            word.copy(temp, word.length());
+            args.write(temp, Vostok::ArgTypes::Cstring);
+
+            writeSynchronous(result.fileDescriptor, readResult.buffer, sizeof(readResult.buffer));
+
+            return true;
+        }
+
+        return false;
+    }
+
+    uint32_t Manager::launch(const char* path) {
         auto result = openSynchronous(path);
 
         auto entryPointResult = readSynchronous(result.fileDescriptor, 4);
@@ -362,7 +391,15 @@ namespace Apollo {
         memcpy(&entryPoint, entryPointResult.buffer, 4);
 
         if (entryPoint > 0) {
+
+            if (taskbarTaskId > 0) {
+                if (!sendAppNameToTaskbar(path, taskbarTaskId)) {
+                    pendingTaskbarNames.push_back(std::string{path});
+                }
+            }
+
             auto pid = run(entryPoint);
+
             return pid;
         }
 
@@ -372,7 +409,8 @@ namespace Apollo {
     Manager::Manager(uint32_t framebufferAddress) {
         linearFrameBuffer = reinterpret_cast<uint32_t volatile*>(framebufferAddress);
 
-        launch("/bin/dsky.bin");
+        taskbarTaskId = launch("/bin/taskbar.bin");
+        launch("/bin/transcript.bin");
         //capcomTaskId = launch("/bin/capcom.bin");
 
         /*
@@ -415,6 +453,20 @@ namespace Apollo {
         
         Bounds dirty {message.x, message.y, message.width, message.height};
         displays[currentDisplay].composite(linearFrameBuffer, message.senderTaskId, dirty);
+
+        if (message.senderTaskId == taskbarTaskId
+            && !pendingTaskbarNames.empty()) {
+            
+            for (auto& name : pendingTaskbarNames) {
+                if (!sendAppNameToTaskbar(name.data(), taskbarTaskId)) {
+                    return;
+                }
+            }
+
+            pendingTaskbarNames.clear();
+            
+        } 
+
     }
 
     void Manager::handleMove(const Move& /*message*/) {
@@ -466,6 +518,7 @@ namespace Apollo {
 
         for(auto& display : displays) {
             if (message.succeeded && display.enableRendering(message.sharedTaskId)) {
+
                 break;
             }
         }
@@ -501,6 +554,10 @@ namespace Apollo {
                         handleHideOverlay();
                     }
 
+                    break;
+                }
+                case Keyboard::VirtualKey::F2: {
+        launch("/bin/dsky.bin");
                     break;
                 }
                 default: {

@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <list>
 #include <variant>
 #include <optional>
+#include <string>
 
 namespace Kernel {
     struct ShareMemoryResult;
@@ -133,6 +134,7 @@ namespace Apollo {
 
     private:
 
+        uint32_t launch(const char* path);
         void handleCreateWindow(const struct CreateWindow& message);
         void handleUpdate(const struct Update& message);
         void handleMove(const struct Move& message);
@@ -152,6 +154,7 @@ namespace Apollo {
         uint32_t screenHeight {600u};
 
         uint32_t capcomTaskId;
+        uint32_t taskbarTaskId {0};
 
         bool hasFocus {false};
 
@@ -159,5 +162,7 @@ namespace Apollo {
         uint32_t currentDisplay {1};
         uint32_t previousDisplay {1};
         bool showCapcom {false};
+
+        std::vector<std::string> pendingTaskbarNames;
     };
 }
