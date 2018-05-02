@@ -149,6 +149,6 @@ namespace Startup {
         runProgram("/bin/terminal.service");
         runProgram("/bin/ps2.service");
         runProgram("/bin/keyboard.service");
-        //runProgram("/bin/shell");
+        runProgram("/bin/mouse.service");
     }
 }

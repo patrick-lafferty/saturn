@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <services/terminal/terminal.h>
 #include <services/ps2/ps2.h>
 #include <services/keyboard/keyboard.h>
+#include <services/mouse/service.h>
 #include <userland/shell/shell.h>
 #include <services/drivers/bochsGraphicsAdaptor/driver.h>
 #include <services/massStorageFileSystem/system.h>
@@ -102,6 +103,9 @@ namespace FakeFileSystem {
                             }
                             else if (strcmp(request.path, "/keyboard.service") == 0) {
                                 entryPoint = reinterpret_cast<uintptr_t>(Keyboard::service);
+                            }
+                            else if (strcmp(request.path, "/mouse.service") == 0) {
+                                entryPoint = reinterpret_cast<uintptr_t>(Mouse::service);
                             }
                             else if (strcmp(request.path, "/shell") == 0) {
                                 entryPoint = reinterpret_cast<uintptr_t>(Shell::main);
