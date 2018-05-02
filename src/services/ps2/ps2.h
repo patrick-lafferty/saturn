@@ -33,6 +33,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace PS2 {
 
     void service();
+
+    enum class Port {
+        First,
+        Second
+    };
+
+    void writeCommand(uint8_t command, Port port);
+    uint8_t readByte();
+    bool waitForAck();
     
     enum class ControllerCommand {
         GetConfiguration = 0x20,
@@ -58,6 +67,8 @@ namespace PS2 {
         DataLineStuckLow = 0x03,
         DataLineStuckHigh = 0x04
     };
+
+    inline const uint8_t ACK {0xFA};
 
     enum class PhysicalKey : uint8_t {
         A = 0x1C,
@@ -160,28 +171,26 @@ namespace PS2 {
     void initializeController();
     void identifyDevices();
 
+    enum class DeviceType {
+        StandardMouse = 0,
+        ScrollMouse = 0x3,
+        FiveButtonMouse = 0x4,
+        KeyboardWithTranslation = 0xAB41,
+        KeyboardWithTranslationAlt = 0xABC1,
+        Keyboard = 0xAB83
+    };
+
     enum class MessageId {
         KeyboardInput,
-        MouseInput
+        MouseInput,
+        ReceiveData
     };
 
-    struct KeyboardInput : IPC::Message {
-        KeyboardInput() {
-            messageId = static_cast<uint32_t>(MessageId::KeyboardInput);
-            length = sizeof(KeyboardInput);
+    struct ReceiveData : IPC::Message {
+        ReceiveData() {
+            messageId = static_cast<uint32_t>(MessageId::ReceiveData);
+            length = sizeof(ReceiveData);
             messageNamespace = IPC::MessageNamespace::PS2;
         }        
-
-        uint8_t data;
-    };
-
-    struct MouseInput : IPC::Message {
-        MouseInput() {
-            messageId = static_cast<uint32_t>(MessageId::MouseInput);
-            length = sizeof(MouseInput);
-            messageNamespace = IPC::MessageNamespace::PS2;
-        }
-
-        uint8_t data;
     };
 }

@@ -32,18 +32,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string.h>
 #include <stdio.h>
 #include <services/keyboard/messages.h>
+#include "mouse.h"
+#include <services/virtualFileSystem/vostok.h>
 
 using namespace Kernel;
 
 namespace PS2 {
-
-    void printDebugString(char* s) {
-        Terminal::PrintMessage message {};
-        message.serviceType = Kernel::ServiceType::Terminal;
-        message.stringLength = strlen(s);
-        memcpy(message.buffer, s, message.stringLength);
-        send(IPC::RecipientType::ServiceName, &message);
-    }
 
     enum class KeyboardStates {
         Start,
@@ -94,8 +88,39 @@ namespace PS2 {
         return initial;
     }
 
+    bool readMouseConfig() {
+        auto openResult = openSynchronous("/system/hardware/mouse/hasScrollWheel");
+
+        while (!openResult.success) {
+            sleep(100);
+            openResult = openSynchronous("/system/hardware/mouse/hasScrollWheel"); 
+        }
+
+        auto readResult = readSynchronous(openResult.fileDescriptor, 0);
+
+        Vostok::ArgBuffer args{readResult.buffer, sizeof(readResult.buffer)};
+
+        auto type = args.readType();
+        bool hasScrollWheel {false};
+
+        if (type == Vostok::ArgTypes::Property) {
+            type = args.peekType();
+
+            if (type == Vostok::ArgTypes::Bool) {
+                hasScrollWheel = args.read<bool>(type);
+            }
+        }
+
+        close(openResult.fileDescriptor);
+        receiveAndIgnore();
+
+        return hasScrollWheel;
+    }
+
     void messageLoop() {
         KeyboardStates keyboardState {KeyboardStates::Start};
+        MouseState mouse {};
+        mouse.expectsOptional = readMouseConfig();
 
         while (true) {
             IPC::MaximumMessageBuffer buffer;
@@ -105,13 +130,34 @@ namespace PS2 {
                 case IPC::MessageNamespace::PS2: {
 
                     switch(static_cast<MessageId>(buffer.messageId)) {
-                        case MessageId::KeyboardInput: {
-                            auto input = IPC::extractMessage<KeyboardInput>(buffer);
-                            keyboardState = transitionKeyboardState(keyboardState, input.data);
+                        
+                        case MessageId::ReceiveData: {
+                            uint8_t full {0};
+                            uint16_t statusRegister {0x64};
+                            uint16_t dataPort {0x60};
 
-                            break;
-                        }
-                        case MessageId::MouseInput: {
+                            do {
+                                asm("inb %1, %0"
+                                    : "=a" (full)
+                                    : "Nd" (statusRegister));
+
+                                if (full & 1) {
+                                    uint8_t data;
+
+                                    asm("inb %1, %0"
+                                        : "=a" (data)
+                                        : "Nd" (dataPort));
+
+                                    if (full & 0x20) {
+                                        transitionMouseState(mouse, data);
+                                    }
+                                    else {
+                                        keyboardState = transitionKeyboardState(keyboardState, data);
+                                    }
+                                }
+
+                            } while (full & 1);
+
                             break;
                         }
                     }
@@ -158,11 +204,6 @@ namespace PS2 {
 
         return timeToWait == 0;
     }
-
-    enum class Port {
-        First,
-        Second
-    };
 
     void writeCommand(uint8_t command, Port port) {
         if (port == Port::First) {
@@ -211,6 +252,10 @@ namespace PS2 {
             : "Nd" (dataPort));
 
         return result;
+    }
+
+    bool waitForAck() {
+        return readByte() != 0;
     }
 
     void flushCommandBuffer() {
@@ -342,7 +387,7 @@ namespace PS2 {
     uint16_t identifyDevice(Port port) {
         writeCommand(0xF2, port);
         auto ack = readByte();
-        if (ack != 0xFA) {
+        if (ack != ACK) {
             return 0;
         }
         auto id = readByte();
@@ -355,9 +400,11 @@ namespace PS2 {
         asm volatile("clt");
 
         //auto firstId = identifyDevice(Port::First);
-        //kprintf("[PS/2] First port identified as %x\n", firstId);
-        //auto secondId = identifyDevice(Port::Second);
-        //kprintf("[PS/2] Second port identified as %x\n", secondId);
+        auto secondId = identifyDevice(Port::Second);
+
+        if (secondId == static_cast<uint16_t>(DeviceType::StandardMouse)) {
+            initializeMouse();
+        }
 
         asm volatile("sti");
     }
