@@ -45,6 +45,7 @@ namespace IPC {
         Terminal,
         PS2,
         Keyboard,
+        Mouse,
         Memory,
         VFS,
         WindowManager

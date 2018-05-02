@@ -45,7 +45,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <initialize_libc.h>
 #include <heap.h>
 #include <services/memory/memory.h>
-#include <services/ps2/ps2.h>
 #include <services/terminal/vga.h>
 #include <services/virtualFileSystem/virtualFileSystem.h>
 #include <services/processFileSystem/processFileSystem.h>
@@ -112,8 +111,6 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     initializeSSE();
     PIC::disable();
 
-    PS2::initializeController();
-    PS2::identifyDevices();
     VGA::disableCursor();
 
     asm volatile("sti");
