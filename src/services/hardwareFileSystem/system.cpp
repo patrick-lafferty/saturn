@@ -34,8 +34,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "cpu/cpu.h"
 #include "pci/pci.h"
 #include "timer/timer.h"
+#include "ps2/mouse.h"
 #include <kernel/arch/i386/cpu/tsc.h>
 #include <saturn/wait.h>
+#include <services/ps2/ps2.h>
 
 using namespace VirtualFileSystem;
 using namespace Vostok;
@@ -148,6 +150,9 @@ namespace HardwareFileSystem {
         }
         else if (name.compare("timer") == 0) {
             return new Timer::TimerObject();
+        }
+        else if (name.compare("mouse") == 0) {
+            return new PS2::MouseObject();
         }
 
         return nullptr;
@@ -305,6 +310,9 @@ namespace HardwareFileSystem {
         Saturn::Event::waitForMount("/system/hardware");
 
         detectCPU();
+
+        ::PS2::initializeController();
+        ::PS2::identifyDevices();
 
         while (!Timer::createTimerObject()) {
             sleep(10);
