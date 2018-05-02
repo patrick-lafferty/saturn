@@ -315,7 +315,7 @@ namespace Apollo {
                     break;
                 }
                 default: {
-                    displays[currentDisplay].injectKeypress(message);
+                    displays[currentDisplay].injectMessage(message);
                     break;
                 }
             }
@@ -332,6 +332,11 @@ namespace Apollo {
         auto width = std::min(20u, screenWidth - mouseX);
         auto height = std::min(20u, screenHeight - mouseY);
 
+        move.absoluteX = mouseX;
+        move.absoluteY = mouseY;
+
+        displays[currentDisplay].injectMessage(move);
+
         for (int y = mouseY; y < mouseY + height; y++) {
             std::fill_n(linearFrameBuffer + mouseX + y * screenWidth, width, 0x0);
         }
@@ -345,12 +350,16 @@ namespace Apollo {
                 
             message.state == Mouse::ButtonState::Pressed ?
                 "down" : "up");
+
+        displays[currentDisplay].injectMessage(message);
     }
 
     void Manager::handleMouseScroll(Mouse::Scroll& message) {
         logger->info("(mouse (scroll %d))",
             message.magnitude == Mouse::ScrollMagnitude::UpBy1 ? 1 : -1
             );
+
+        displays[currentDisplay].injectMessage(message);
     }
 
     void Manager::messageLoop() {
@@ -454,7 +463,7 @@ namespace Apollo {
                             case Keyboard::MessageId::CharacterInput: {
 
                                 auto message = IPC::extractMessage<Keyboard::CharacterInput>(buffer);
-                                displays[currentDisplay].injectCharacterInput(message);
+                                displays[currentDisplay].injectMessage(message);
 
                                 break;
                             }

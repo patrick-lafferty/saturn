@@ -224,6 +224,9 @@ public:
                 }
                 break;
             }
+            case IPC::MessageNamespace::Mouse: {
+                break;
+            }
             case IPC::MessageNamespace::WindowManager: {
                 switch (static_cast<MessageId>(buffer.messageId)) {
                     case MessageId::Render: {

@@ -30,8 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "lib/window.h"
 #include <services.h>
 #include <system_calls.h>
-#include <services/keyboard/messages.h>
-#include <services/mouse/messages.h>
+#include <ipc.h>
 #include <algorithm>
 #include "container.h"
 #include "tile.h"
@@ -67,20 +66,12 @@ namespace Apollo {
         return false;
     }
 
-    void Display::injectKeypress(Keyboard::KeyPress& message) {
+    void Display::injectMessage(IPC::Message& message) {
 
         if (activeContainer->activeTaskId > 0) {
             message.recipientId = activeContainer->activeTaskId;
             send(IPC::RecipientType::TaskId, &message);
         }
-    }
-
-    void Display::injectCharacterInput(Keyboard::CharacterInput& message) {
-
-       if (activeContainer->activeTaskId > 0) {
-            message.recipientId = activeContainer->activeTaskId;
-            send(IPC::RecipientType::TaskId, &message);
-        } 
     }
 
     void Display::composite(uint32_t volatile* frameBuffer, uint32_t taskId, Bounds dirty) {

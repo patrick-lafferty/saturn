@@ -29,9 +29,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdint.h>
 #include "tile.h"
 
-namespace Keyboard {
-    struct KeyPress;
-    struct CharacterInput;
+namespace IPC {
+    struct Message;
 }
 
 namespace Apollo {
@@ -45,8 +44,9 @@ namespace Apollo {
 
         void addTile(Tile tile, Size size = {}, bool focusable = true);
         bool enableRendering(uint32_t taskId);
-        void injectKeypress(Keyboard::KeyPress& message);
-        void injectCharacterInput(Keyboard::CharacterInput& message);
+
+        void injectMessage(IPC::Message& message);
+
         void composite(uint32_t volatile* frameBuffer, uint32_t taskId, Bounds dirty);
         void renderAll(uint32_t volatile* frameBuffer);
         void splitContainer(Split split);
