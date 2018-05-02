@@ -109,5 +109,7 @@ namespace Apollo {
         int mouseX {400}, mouseY {300};
 
         Saturn::Log::Logger* logger;
+
+        uint32_t* cursorCapture;
     };
 }

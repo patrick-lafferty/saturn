@@ -164,6 +164,8 @@ namespace Apollo {
 
         using namespace std::string_literals;
         logger = new Saturn::Log::Logger("apollo"s);
+
+        cursorCapture = new uint32_t[400];
     }
 
     void Manager::handleCreateWindow(const CreateWindow& message) {
@@ -184,6 +186,10 @@ namespace Apollo {
             displays[currentDisplay].addTile({bounds, handle});
             std::fill_n(linearFrameBuffer, screenWidth * screenHeight, 0x00'62'AF'F0);
             displays[currentDisplay].renderAll(linearFrameBuffer);
+        }
+
+        for (int y = 0; y < 20; y++) {
+            std::copy_n(linearFrameBuffer + mouseX + (y + mouseY) * screenWidth, 20, cursorCapture + y * 20);
         }
 
         ShareMemoryRequest share;
@@ -322,7 +328,35 @@ namespace Apollo {
         }
     }
 
+    const uint32_t cursorBitmap[] = {
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    };
+
     void Manager::handleMouseMove(Mouse::MouseMove& move) {
+
+        for (int y = 0; y < 20; y++) {
+            std::copy_n(cursorCapture + y * 20, std::min(20u, screenWidth - mouseX), linearFrameBuffer + mouseX + (y + mouseY) * screenWidth);
+        }
+
         mouseX += move.deltaX;
         mouseY -= move.deltaY;
 
@@ -337,8 +371,9 @@ namespace Apollo {
 
         displays[currentDisplay].injectMessage(move);
 
-        for (int y = mouseY; y < mouseY + height; y++) {
-            std::fill_n(linearFrameBuffer + mouseX + y * screenWidth, width, 0x0);
+        for (int y = 0; y < height; y++) {
+            std::copy_n(linearFrameBuffer + mouseX + (y + mouseY) * screenWidth, width, cursorCapture + y * 20);
+            std::copy_n(cursorBitmap + y * 20, width, linearFrameBuffer + mouseX + (y + mouseY) * screenWidth);
         }
     }
 
