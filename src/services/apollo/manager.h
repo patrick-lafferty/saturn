@@ -32,6 +32,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <variant>
 #include <optional>
 #include <string>
+#include "container.h"
+#include "display.h"
 
 namespace Kernel {
     struct ShareMemoryResult;
@@ -55,105 +57,6 @@ namespace Saturn::Log {
 namespace Apollo {
 
     int main();
-
-    struct WindowHandle {
-        struct WindowBuffer* buffer;
-        uint32_t taskId;
-    };
-
-    /*
-    A Tile is a rectangular area where content is rendered.
-    It can either be a Window, or a Container of Windows.
-    */
-    struct Bounds {
-        uint32_t x {0}, y {0};
-        uint32_t width {800}, height {600};
-    };
-
-    struct Tile {
-        Bounds bounds;
-        WindowHandle handle;
-        struct Container* parent {nullptr};
-        bool canRender {false};
-        uint32_t stride {800};
-    };
-
-    enum class Split;
-
-    enum class Unit {
-        Proportional,
-        Fixed
-    };
-
-    struct Size {
-        Unit unit {Unit::Proportional};
-        int desiredSpace {1};
-        int actualSpace {0};
-    };
-
-    struct ContainerChild {
-        Size size;
-        bool focusable {true};
-        std::variant<Tile, Container*> child;
-    };
-
-    struct Container {
-        Bounds bounds;
-        std::vector<ContainerChild> children;
-        Split split;
-        Container* parent;
-        uint32_t activeTaskId {0};
-
-        void addChild(Tile tile, Size size, bool focusable);
-        void addChild(Container* container, Size size);
-        void layoutChildren();
-        uint32_t getChildrenCount();
-        std::optional<Tile*> findTile(uint32_t taskId);
-        void composite(uint32_t volatile* frameBuffer, uint32_t displayWidth);
-        void dispatchRenderMessages();
-        bool focusPreviousTile();
-        bool focusNextTile();
-    };
-
-    class Display {
-    public:
-
-        Display(Bounds screenBounds);
-
-        void addTile(Tile tile, Size size = {}, bool focusable = true);
-        bool enableRendering(uint32_t taskId);
-        void injectKeypress(Keyboard::KeyPress& message);
-        void injectCharacterInput(Keyboard::CharacterInput& message);
-        void composite(uint32_t volatile* frameBuffer, uint32_t taskId, Bounds dirty);
-        void renderAll(uint32_t volatile* frameBuffer);
-        void splitContainer(Split split);
-        void render();
-        void focusPreviousTile();
-        void focusNextTile();
-        void changeSplitDirection(Split split);
-
-        uint32_t getActiveTaskId() const;
-
-    private:
-
-        Bounds screenBounds;
-        Container* root;
-        Container* activeContainer;
-    };
-
-    struct LayoutVisitor {
-        void visit(Tile&);
-        void visit(Container*);
-
-        LayoutVisitor(Bounds b, Split s) 
-            : bounds {b}, split {s}
-            {}
-
-        void updateBounds();
-
-        Bounds bounds;
-        Split split;
-    };
 
     class Manager {
     public:
