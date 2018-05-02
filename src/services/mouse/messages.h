@@ -59,8 +59,15 @@ namespace Mouse {
             messageNamespace = IPC::MessageNamespace::Mouse;
         }
 
-        int deltaX {0};
-        int deltaY {0}; 
+        union {
+            int deltaX {0};
+            int absoluteX;
+        };
+
+        union {
+            int deltaY {0}; 
+            int absoluteY;
+        };
     };
 
     enum class Button {

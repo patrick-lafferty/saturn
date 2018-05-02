@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <saturn/parsing.h>
 #include <services/virtualFileSystem/vostok.h>
 #include <saturn/logging.h>
+#include "alphablend.h"
 
 using namespace Kernel;
 
@@ -329,26 +330,26 @@ namespace Apollo {
     }
 
     const uint32_t cursorBitmap[] = {
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0xFF'00'00'00, 0xFF'00'00'00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0xFF'00'00'00, 0xFF'00'00'00, 0xFF'00'00'00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0xFF'00'00'00, 0xFF'62'AF'F0, 0xFF'00'00'00, 0xFF'00'00'00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+        0xFF'00'00'00, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'00'00'00, 0xFF'00'00'00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0xFF'00'00'00, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'00'00'00, 0xFF'00'00'00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0xFF'00'00'00, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'00'00'00, 0xFF'00'00'00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+        0xFF'00'00'00, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'00'00'00, 0xFF'00'00'00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0xFF'00'00'00, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'00'00'00, 0xFF'00'00'00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0xFF'00'00'00, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'00'00'00, 0xFF'00'00'00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0xFF'00'00'00, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'00'00'00, 0xFF'00'00'00, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0xFF'00'00'00, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'00'00'00, 0xFF'00'00'00, 0, 0, 0, 0, 0, 0, 0, 0,
+        0xFF'00'00'00, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'00'00'00, 0xFF'00'00'00, 0xFF'00'00'00, 0, 0, 0, 0, 0, 0, 0, 0,
+        0xFF'00'00'00, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'00'00'00, 0xFF'00'00'00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0xFF'00'00'00, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'00'00'00, 0xFF'00'00'00, 0xFF'00'00'00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0xFF'00'00'00, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'00'00'00, 0xFF'00'00'00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0xFF'00'00'00, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0, 0xFF'00'00'00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0xFF'00'00'00, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0xFF'00'00'00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0xFF'00'00'00, 0xFF'62'AF'F0, 0xFF'62'AF'F0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0xFF'00'00'00, 0xFF'00'00'00, 0xFF'00'00'00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0xFF'00'00'00, 0xFF'00'00'00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
     };
 
     void Manager::handleMouseMove(Mouse::MouseMove& move) {
@@ -373,7 +374,13 @@ namespace Apollo {
 
         for (int y = 0; y < height; y++) {
             std::copy_n(linearFrameBuffer + mouseX + (y + mouseY) * screenWidth, width, cursorCapture + y * 20);
-            std::copy_n(cursorBitmap + y * 20, width, linearFrameBuffer + mouseX + (y + mouseY) * screenWidth);
+
+            for (int x = 0; x < width; x++) {
+                auto source = cursorBitmap[x + y * 20];
+                auto destination = linearFrameBuffer[mouseX + x + (y + mouseY) * screenWidth];
+                auto alpha = source >> 24;
+                linearFrameBuffer[mouseX + x + (y + mouseY) * screenWidth] = blend(source, destination, alpha);
+            }
         }
     }
 
