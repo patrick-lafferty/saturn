@@ -42,6 +42,10 @@ namespace Keyboard {
     struct CharacterInput;
 }
 
+namespace Mouse {
+    struct MouseMove;
+}
+
 namespace Apollo {
 
     int main();
@@ -167,6 +171,8 @@ namespace Apollo {
 
         void handleKeyPress(Keyboard::KeyPress& message);
 
+        void handleMouseMove(Mouse::MouseMove& message);
+
         uint32_t volatile* linearFrameBuffer;
 
         uint32_t screenWidth {800u};
@@ -188,5 +194,7 @@ namespace Apollo {
         };
 
         std::vector<PendingTaskbarApp> pendingTaskbarNames;
+
+        int mouseX {400}, mouseY {300};
     };
 }

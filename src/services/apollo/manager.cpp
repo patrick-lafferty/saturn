@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <services/startup/startup.h>
 #include <algorithm>
 #include <services/keyboard/messages.h>
+#include <services/mouse/messages.h>
 #include <saturn/time.h>
 #include <saturn/parsing.h>
 #include <services/virtualFileSystem/vostok.h>
@@ -675,6 +676,21 @@ namespace Apollo {
         }
     }
 
+    void Manager::handleMouseMove(Mouse::MouseMove& move) {
+        mouseX += move.deltaX;
+        mouseY -= move.deltaY;
+
+        mouseX = std::max(0, mouseX);
+        mouseY = std::max(0, mouseY);
+
+        auto width = std::min(20u, screenWidth - mouseX);
+        auto height = std::min(20u, screenHeight - mouseY);
+
+        for (int y = mouseY; y < mouseY + height; y++) {
+            std::fill_n(linearFrameBuffer + mouseX + y * screenWidth, width, 0x0);
+        }
+    }
+
     void Manager::messageLoop() {
 
         double time = Saturn::Time::getHighResolutionTimeSeconds(); 
@@ -782,6 +798,21 @@ namespace Apollo {
                             }
                             default: {
                                 printf("[WindowManager] Unhandled keyboard message id\n");
+                            }
+                        }
+
+                        break;
+                    }
+                    case IPC::MessageNamespace::Mouse: {
+                        switch (static_cast<Mouse::MessageId>(buffer.messageId)) {
+                            case Mouse::MessageId::MouseMove: {
+                                auto event = IPC::extractMessage<Mouse::MouseMove>(buffer);
+                                handleMouseMove(event);                                
+
+                                break;
+                            }
+                            default: {
+                                break;
                             }
                         }
 
