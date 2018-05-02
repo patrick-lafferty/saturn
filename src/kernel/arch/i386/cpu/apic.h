@@ -168,4 +168,12 @@ namespace APIC {
         uint16_t flags;
         uint8_t intiPin;
     } __attribute__((packed));
+
+    enum class KnownInterrupt {
+        Keyboard = 49,
+        Mouse = 50,
+        RTC = 51,
+        LocalAPICTimer = 52,
+        ATA = 53
+    };
 }

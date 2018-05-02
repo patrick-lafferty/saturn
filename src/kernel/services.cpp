@@ -412,8 +412,23 @@ namespace Kernel {
 
                 break;
             }
+            case ServiceType::PS2: {  
+                auto task = currentScheduler->getTask(taskId);
+
+                if (task == nullptr) {
+                    kprintf("[ServiceRegistry] Tried to setupService a null task\n");
+                    return;
+                }
+
+                grantIOPort8(0x60, task->tss->ioPermissionBitmap);
+                grantIOPort8(0x64, task->tss->ioPermissionBitmap);
+
+                GenericServiceMeta genericMeta;
+                task->mailbox->send(&genericMeta);
+                
+                break;
+            }
             case ServiceType::Terminal:
-            case ServiceType::PS2:
             case ServiceType::Keyboard:
             case ServiceType::Mouse: 
             case ServiceType::VFS: {
