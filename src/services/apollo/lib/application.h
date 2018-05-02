@@ -118,23 +118,31 @@ namespace Apollo {
             double accumulator = 0.;
             double desiredFrameTime = 1.f / 30.f;
 
-            while (!finished) {
-                auto currentTime = Saturn::Time::getHighResolutionTimeSeconds();
-                accumulator += (currentTime - time);
-                time = currentTime;
+            if constexpr (hasUpdateFunction<T>(0)) {
+                while (!finished) {
+                    auto currentTime = Saturn::Time::getHighResolutionTimeSeconds();
+                    accumulator += (currentTime - time);
+                    time = currentTime;
 
-                IPC::MaximumMessageBuffer buffer;
+                    IPC::MaximumMessageBuffer buffer;
 
-                while (peekReceive(&buffer)) {
-                    static_cast<T*>(this)->handleMessage(buffer);
-                }
+                    while (peekReceive(&buffer)) {
+                        static_cast<T*>(this)->handleMessage(buffer);
+                    }
 
-                while (accumulator >= desiredFrameTime) {
-                    accumulator -= desiredFrameTime;
-
-                    if constexpr (hasUpdateFunction<T>(0)) {
+                    while (accumulator >= desiredFrameTime) {
+                        accumulator -= desiredFrameTime;
                         static_cast<T*>(this)->update();
                     }
+                }   
+            }
+            else {
+                while (!finished) {
+
+                    IPC::MaximumMessageBuffer buffer;
+                    receive(&buffer);
+
+                    static_cast<T*>(this)->handleMessage(buffer);
                 }
             }
         }
