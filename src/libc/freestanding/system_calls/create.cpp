@@ -39,3 +39,12 @@ void create(const char* path) {
     request.shrink(pathLength);
     send(IPC::RecipientType::ServiceName, &request);
 }  
+
+VirtualFileSystem::CreateResult createSynchronous(const char* path) {
+    create(path);
+
+    IPC::MaximumMessageBuffer buffer;
+    filteredReceive(&buffer, IPC::MessageNamespace::VFS, static_cast<uint32_t>(MessageId::CreateResult));
+
+    return IPC::extractMessage<CreateResult>(buffer);
+}

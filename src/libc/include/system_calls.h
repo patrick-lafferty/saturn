@@ -63,6 +63,7 @@ void receiveAndIgnore();
 void open(const char* path);
 VirtualFileSystem::OpenResult openSynchronous(const char* path);
 void create(const char* path);
+VirtualFileSystem::CreateResult createSynchronous(const char* path);
 void read(uint32_t fileDescriptor, uint32_t length);
 VirtualFileSystem::ReadResult readSynchronous(uint32_t fileDescriptor, uint32_t length);
 VirtualFileSystem::Read512Result read512Synchronous(uint32_t fileDescriptor, uint32_t length);
