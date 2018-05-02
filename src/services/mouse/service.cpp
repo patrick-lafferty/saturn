@@ -39,11 +39,42 @@ namespace Mouse {
         int x {0};
         int y {0};
 
+        bool leftPressed {false};
+        bool middlePressed {false};
+        bool rightPressed {false};
+    };
+
+    void sendButtonEvent(Button button, ButtonState state) {
+        ButtonPress press;
+        press.serviceType = ServiceType::WindowManager;
+        press.button = button;
+        press.state = state;
+
+        send(IPC::RecipientType::ServiceName, &press);
+    }
+
+    void sendScrollEvent(ScrollDirection direction, ScrollMagnitude magnitude) {
+        Scroll scroll;
+        scroll.serviceType = ServiceType::WindowManager;
+        scroll.direction = direction;
+        scroll.magnitude = magnitude;
+
+        send(IPC::RecipientType::ServiceName, &scroll);
+    }
+
+    enum class ScrollValues {
+        VerticalUp = 0x1,
+        VerticalDown = 0xF,
+        HorizontalLeft = 0xE,
+        HorizontalRight = 0x2
     };
     
     void messageLoop() {
 
         MouseState state;
+        const int leftButtonValue = 1;
+        const int middleButtonValue = 4;
+        const int rightButtonValue = 2;
 
         while (true) {
             IPC::MaximumMessageBuffer buffer;
@@ -72,6 +103,58 @@ namespace Mouse {
                                 }
 
                                 send(IPC::RecipientType::ServiceName, &move);
+                            }
+
+                            if (event.header & leftButtonValue) {
+                                if (!state.leftPressed) {
+                                    sendButtonEvent(Button::Left, ButtonState::Pressed);
+                                    state.leftPressed = true;
+                                }
+                            }
+                            else if (state.leftPressed) {
+                                sendButtonEvent(Button::Left, ButtonState::Released);
+                                state.leftPressed = false;
+                            }
+
+                            if (event.header & rightButtonValue) {
+                                if (!state.rightPressed) {
+                                    sendButtonEvent(Button::Right, ButtonState::Pressed);
+                                    state.rightPressed = true;
+                                }
+                            }
+                            else if (state.rightPressed) {
+                                sendButtonEvent(Button::Right, ButtonState::Released);
+                                state.rightPressed = false;
+                            }
+
+                            if (event.header & middleButtonValue) {
+                                if (!state.middlePressed) {
+                                    sendButtonEvent(Button::Middle, ButtonState::Pressed);
+                                    state.middlePressed = true;
+                                }
+                            }
+                            else if (state.middlePressed) {
+                                sendButtonEvent(Button::Middle, ButtonState::Released);
+                                state.middlePressed = false;
+                            }
+
+                            switch (event.optional & 0xF) {
+                                case static_cast<uint8_t>(ScrollValues::VerticalUp): {
+                                    sendScrollEvent(ScrollDirection::Vertical, ScrollMagnitude::UpBy1);
+                                    break;
+                                }
+                                case static_cast<uint8_t>(ScrollValues::VerticalDown): {
+                                    sendScrollEvent(ScrollDirection::Vertical, ScrollMagnitude::DownBy1);
+                                    break;
+                                }
+                                case static_cast<uint8_t>(ScrollValues::HorizontalLeft): {
+                                    sendScrollEvent(ScrollDirection::Horizontal, ScrollMagnitude::UpBy1);
+                                    break;
+                                }
+                                case static_cast<uint8_t>(ScrollValues::HorizontalRight): {
+                                    sendScrollEvent(ScrollDirection::Horizontal, ScrollMagnitude::DownBy1);
+                                    break;
+                                }
                             }
 
                             break;

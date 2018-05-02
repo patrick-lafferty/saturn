@@ -44,6 +44,12 @@ namespace Keyboard {
 
 namespace Mouse {
     struct MouseMove;
+    struct ButtonPress;
+    struct Scroll;
+}
+
+namespace Saturn::Log {
+    class Logger;
 }
 
 namespace Apollo {
@@ -172,6 +178,8 @@ namespace Apollo {
         void handleKeyPress(Keyboard::KeyPress& message);
 
         void handleMouseMove(Mouse::MouseMove& message);
+        void handleMouseButton(Mouse::ButtonPress& message);
+        void handleMouseScroll(Mouse::Scroll& message);
 
         uint32_t volatile* linearFrameBuffer;
 
@@ -196,5 +204,7 @@ namespace Apollo {
         std::vector<PendingTaskbarApp> pendingTaskbarNames;
 
         int mouseX {400}, mouseY {300};
+
+        Saturn::Log::Logger* logger;
     };
 }

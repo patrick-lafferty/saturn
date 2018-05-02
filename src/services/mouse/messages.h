@@ -34,7 +34,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace Mouse {
     enum class MessageId {
         MouseEvent,
-        MouseMove
+        MouseMove,
+        ButtonPress,
+        Scroll
     };
 
     struct MouseEvent : IPC::Message {
@@ -59,5 +61,48 @@ namespace Mouse {
 
         int deltaX {0};
         int deltaY {0}; 
+    };
+
+    enum class Button {
+        Left,
+        Middle,
+        Right
+    };
+
+    enum class ButtonState {
+        Pressed,
+        Released
+    };
+
+    struct ButtonPress : IPC::Message {
+        ButtonPress() {
+            messageId = static_cast<uint32_t>(MessageId::ButtonPress);
+            length = sizeof(ButtonPress);
+            messageNamespace = IPC::MessageNamespace::Mouse;
+        }
+
+        Button button;
+        ButtonState state;
+    };
+
+    enum class ScrollDirection {
+        Vertical,
+        Horizontal
+    };
+
+    enum class ScrollMagnitude {
+        UpBy1,
+        DownBy1
+    };
+
+    struct Scroll : IPC::Message {
+        Scroll() {
+            messageId = static_cast<uint32_t>(MessageId::Scroll);
+            length = sizeof(Scroll);
+            messageNamespace = IPC::MessageNamespace::Mouse;
+        }
+
+        ScrollDirection direction;
+        ScrollMagnitude magnitude;
     };
 }

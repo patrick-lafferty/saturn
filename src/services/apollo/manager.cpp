@@ -37,6 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <saturn/time.h>
 #include <saturn/parsing.h>
 #include <services/virtualFileSystem/vostok.h>
+#include <saturn/logging.h>
 
 using namespace Kernel;
 
@@ -518,6 +519,9 @@ namespace Apollo {
         Display 1 is the main display
         */
         displays.push_back({{0, 0, 800, 600}});
+
+        using namespace std::string_literals;
+        logger = new Saturn::Log::Logger("apollo"s);
     }
 
     void Manager::handleCreateWindow(const CreateWindow& message) {
@@ -691,6 +695,22 @@ namespace Apollo {
         }
     }
 
+    void Manager::handleMouseButton(Mouse::ButtonPress& message) {
+        logger->info("(mouse (%s %s))", 
+            message.button == Mouse::Button::Left ? "left"
+                : message.button == Mouse::Button::Middle ? "middle"
+                : "right",
+                
+            message.state == Mouse::ButtonState::Pressed ?
+                "down" : "up");
+    }
+
+    void Manager::handleMouseScroll(Mouse::Scroll& message) {
+        logger->info("(mouse (scroll %d))",
+            message.magnitude == Mouse::ScrollMagnitude::UpBy1 ? 1 : -1
+            );
+    }
+
     void Manager::messageLoop() {
 
         double time = Saturn::Time::getHighResolutionTimeSeconds(); 
@@ -808,6 +828,18 @@ namespace Apollo {
                             case Mouse::MessageId::MouseMove: {
                                 auto event = IPC::extractMessage<Mouse::MouseMove>(buffer);
                                 handleMouseMove(event);                                
+
+                                break;
+                            }
+                            case Mouse::MessageId::ButtonPress: {
+                                auto event = IPC::extractMessage<Mouse::ButtonPress>(buffer);
+                                handleMouseButton(event);
+
+                                break;
+                            }
+                            case Mouse::MessageId::Scroll: {
+                                auto event = IPC::extractMessage<Mouse::Scroll>(buffer);
+                                handleMouseScroll(event);
 
                                 break;
                             }

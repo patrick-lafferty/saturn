@@ -350,6 +350,10 @@ public:
                     if (index > 0) {
                         filterObjects(inputBuffer);
                     }
+                    else {
+                        filtered = all;
+                        addFilteredEntries();
+                    }
                 }
             }
         }
