@@ -187,6 +187,8 @@ namespace MassStorageFileSystem::Ext2 {
         NotCaching,
         ReadSinglyIndirectLower,
         ReadSinglyIndirectHigher,
+        ReadDoublyIndirectLower,
+        ReadDoublyIndirectHigher,
     };
 
     struct ReadRequest {

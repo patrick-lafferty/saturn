@@ -435,9 +435,12 @@ namespace MassStorageFileSystem::Ext2 {
                         indirectSectors = 1;
                     }
 
-                    blockDevice->queueReadSector(lba, indirectSectors);//sectorsPerBlock);
-                    request.read.indirectSectorsRemaining = indirectSectors;//sectorsPerBlock;
-                    request.read.totalRemainingSectors += indirectSectors; //sectorsPerBlock;
+                    static int potentialHits = 0;
+                    potentialHits++;
+
+                    blockDevice->queueReadSector(lba, indirectSectors);
+                    request.read.indirectSectorsRemaining = indirectSectors;
+                    request.read.totalRemainingSectors += indirectSectors; 
                     request.read.remainingSectorsInBlock = indirectSectors;
                     break;
                 }
