@@ -42,8 +42,16 @@ namespace Apollo::Elements {
         Saturn::Parse::List* itemTemplate {nullptr};
     };
 
+    /*
+    Tries to create a ListViewConfiguration from the given s-expression,
+    and then a ListView can be created using that config
+    */
     std::optional<ListViewConfiguration> parseListView(Saturn::Parse::SExpression* list);
 
+    /*
+    A ListView is a container that arranges its children linearly
+    in either a row or a column. 
+    */
     class ListView : public Container {
     public:
 
@@ -53,6 +61,11 @@ namespace Apollo::Elements {
 
         ListView(ListViewConfiguration config);
 
+        /*
+        A helper function to create ListViews that use databinding.
+        The *BindFuncs use templates, constructors for non-template classes
+        can't be templated, hence the need for a static function
+        */
         template<class BindFunc, class CollectionBindFunc>
         static ListView* create(ListViewConfiguration config, BindFunc setupBinding, CollectionBindFunc setupCollectionBinding) {
             using namespace Saturn::Parse;
@@ -88,6 +101,10 @@ namespace Apollo::Elements {
         virtual void layoutText(Apollo::Text::Renderer* renderer) override;
         virtual void render(Renderer* renderer, Bounds bounds, Bounds clip) override;
 
+        /*
+        Creates a child element for some user-defined object by using the
+        item-template supplied in the layout file
+        */
         template<class Item, class BindFunc>
         void instantiateItemTemplate(Item item, BindFunc binder) {
             using namespace Saturn::Parse;
@@ -109,6 +126,10 @@ namespace Apollo::Elements {
             }
         }
 
+        /*
+        Handles items being added to the ListView from an ObservableCollection.
+        See ObservableCollection::add, apollo\lib\databinding.h
+        */
         template<class Item, class BindFunc>
         void onItemAdded(Item item, Bindings binding, BindFunc binder) {
             switch (binding) {
@@ -119,6 +140,11 @@ namespace Apollo::Elements {
             }
         }
 
+        /*
+        Deletes all of this container's children.
+
+        TODO: this should probably just be clear(), and be in Container
+        */
         void clearTemplateItems();
 
     private:
