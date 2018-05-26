@@ -39,7 +39,11 @@ namespace Apollo {
     void Container::addChild(Tile tile, Size size, bool focusable) {
         tile.parent = this;
         children.push_back({size, focusable, tile});
-        activeTaskId = tile.handle.taskId;
+
+        if (focusable) {
+            activeTaskId = tile.handle.taskId;
+        }
+
         layoutChildren();
     }
 
