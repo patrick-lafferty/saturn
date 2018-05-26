@@ -184,8 +184,14 @@ namespace Apollo {
 
                             break;
                         }
+                        default: {
+                            break;
+                        }
                     }
 
+                    break;
+                }
+                default: {
                     break;
                 }
             }
@@ -301,7 +307,7 @@ namespace Apollo {
                 if (functionId >= 0) {
 
                     auto id = nextDescriptorId++;
-                    openDescriptors.push_back({this, static_cast<uint32_t>(functionId), Vostok::DescriptorType::Function, id});
+                    openDescriptors.push_back({this, {static_cast<uint32_t>(functionId)}, Vostok::DescriptorType::Function, id});
                     result.type = VirtualFileSystem::FileDescriptorType::Vostok;
                     result.fileDescriptor = id;
                     result.success = true;

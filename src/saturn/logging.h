@@ -30,6 +30,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace Saturn::Log {
 
+    /*
+    Formats individual log events and sends them to the
+    Event system
+    */
     class Logger {
     public:
 
@@ -38,7 +42,12 @@ namespace Saturn::Log {
         */
         Logger(std::string name);
 
-        void info(char* format, ...);
+        /*
+        Sends the given entry to the Event system.
+        Info is used for non-error, non-warning events,
+        ie just verbose debug information
+        */
+        void info(const char* format, ...);
 
     private:
 

@@ -53,7 +53,7 @@ namespace Apollo::Elements {
         KnownElements type, 
         Saturn::Parse::Constructor constructor, 
         BindFunc setupBinding,
-        CollectionBindFunc setupCollectionBinding) {
+        CollectionBindFunc /*setupCollectionBinding*/) {
 
         switch (type) {
             case KnownElements::Label: {
@@ -95,7 +95,9 @@ namespace Apollo::Elements {
 
         if (element && !initialFocus) {
             switch (type) {
-                
+                case KnownElements::Label: {
+                    break;
+                }
             }
         }
 

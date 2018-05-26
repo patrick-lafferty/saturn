@@ -86,7 +86,7 @@ namespace Apollo::Elements {
         Grid(GridConfiguration config);
 
         template<class BindFunc, class CollectionBindFunc>
-        static Grid* create(GridConfiguration config, BindFunc setupBinding, CollectionBindFunc setupCollectionBinding) {
+        static Grid* create(GridConfiguration config, BindFunc /*setupBinding*/, CollectionBindFunc setupCollectionBinding) {
             using namespace Saturn::Parse;
 
             auto grid = new Grid(config);
@@ -121,7 +121,7 @@ namespace Apollo::Elements {
         virtual void render(Renderer* renderer, Bounds bounds, Bounds clip) override;
 
         template<class Item, class BindFunc>
-        void instantiateItemTemplate(Item item, BindFunc binder) {
+        void instantiateItemTemplate(Item /*item*/, BindFunc binder) {
             using namespace Saturn::Parse;
 
             if (auto maybeConstructor = getConstructor(itemTemplate)) {

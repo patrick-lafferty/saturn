@@ -49,7 +49,7 @@ namespace Saturn::Log {
         }
     }
 
-    void Logger::info(char* format, ...) {
+    void Logger::info(const char* format, ...) {
         if (format == nullptr
             || !fileDescriptor) {
             return;

@@ -134,7 +134,8 @@ namespace Event {
         if (words.size() == 1) {
             
             if (words[0].compare("subscribe") == 0) {
-                Vostok::FileDescriptor descriptor {this};
+                Vostok::FileDescriptor descriptor;
+                descriptor.instance = this;
                 descriptor.functionId = 0;
                 descriptor.type = Vostok::DescriptorType::Function;
 

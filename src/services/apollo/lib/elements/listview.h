@@ -67,7 +67,7 @@ namespace Apollo::Elements {
         can't be templated, hence the need for a static function
         */
         template<class BindFunc, class CollectionBindFunc>
-        static ListView* create(ListViewConfiguration config, BindFunc setupBinding, CollectionBindFunc setupCollectionBinding) {
+        static ListView* create(ListViewConfiguration config, BindFunc /*setupBinding*/, CollectionBindFunc setupCollectionBinding) {
             using namespace Saturn::Parse;
 
             auto list = new ListView(config);
@@ -106,7 +106,7 @@ namespace Apollo::Elements {
         item-template supplied in the layout file
         */
         template<class Item, class BindFunc>
-        void instantiateItemTemplate(Item item, BindFunc binder) {
+        void instantiateItemTemplate(Item /*item*/, BindFunc binder) {
             using namespace Saturn::Parse;
 
             if (auto maybeConstructor = getConstructor(itemTemplate)) {

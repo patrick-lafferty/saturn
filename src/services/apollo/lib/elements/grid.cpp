@@ -253,10 +253,7 @@ namespace Apollo::Elements {
                 child.bounds = getCellBounds(rows[child.row], columns[child.column]);
             }
 
-            if (std::holds_alternative<UIElement*>(child.element)) {
-                auto control = std::get<UIElement*>(child.element);
-            }
-            else {
+            if (std::holds_alternative<Container*>(child.element)) {
                 auto container = std::get<Container*>(child.element);
                 container->layoutChildren();
             }
@@ -341,7 +338,7 @@ namespace Apollo::Elements {
         }
 
         if (element.rowSpan > 0) {
-            auto maxRow = element.row + element.rowSpan;
+            uint32_t maxRow = element.row + element.rowSpan;
 
             if (maxRow > rows.size()) {
                 element.rowSpan = rows.size() - element.row;
@@ -349,7 +346,7 @@ namespace Apollo::Elements {
         }
 
         if (element.columnSpan > 0) {
-            auto maxColumn = element.column + element.columnSpan;
+            uint32_t maxColumn = element.column + element.columnSpan;
 
             if (maxColumn > columns.size()) {
                 element.columnSpan = columns.size() - element.column;
@@ -387,7 +384,7 @@ namespace Apollo::Elements {
         }
     }
 
-    void Grid::render(Renderer* renderer, Bounds bounds, Bounds clip) {
+    void Grid::render(Renderer* renderer, Bounds bounds, Bounds /*clip*/) {
         for (auto& element : children) {
             if (std::holds_alternative<UIElement*>(element.element)) {
                 auto child = std::get<UIElement*>(element.element); 
@@ -400,7 +397,7 @@ namespace Apollo::Elements {
         }
 
         if (children.empty()) {
-            auto bounds = getBounds();
+            //auto bounds = getBounds();
             //renderer->drawRectangle(getBackgroundColour(), bounds.x, bounds.y, bounds.width, bounds.height);
         }
     }

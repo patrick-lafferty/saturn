@@ -264,6 +264,9 @@ public:
                         handleWriteRequest(request);
                         break;
                     }
+                    default: {
+                        break;
+                    }
                 }
                 break;
             }

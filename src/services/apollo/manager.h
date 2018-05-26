@@ -92,8 +92,6 @@ namespace Apollo {
         uint32_t capcomTaskId;
         uint32_t taskbarTaskId {0};
 
-        bool hasFocus {false};
-
         std::vector<Display> displays;
         uint32_t currentDisplay {0};
         uint32_t previousDisplay {1};

@@ -98,7 +98,7 @@ namespace Apollo::Elements {
         addChild(element);
     }
 
-    void ListView::addChild(UIElement* child, const std::vector<MetaData>& meta) {
+    void ListView::addChild(UIElement* child, const std::vector<MetaData>& /*meta*/) {
         ContainedElement element;
         element.element = child;
 
@@ -114,7 +114,7 @@ namespace Apollo::Elements {
         addChild(element);
     }
 
-    void ListView::addChild(Container* container, const std::vector<MetaData>&  meta) {
+    void ListView::addChild(Container* container, const std::vector<MetaData>&  /*meta*/) {
 
         ContainedElement element;
         element.element = container;
@@ -131,7 +131,6 @@ namespace Apollo::Elements {
 
         auto bounds = getBounds();
         totalHeight = 0;
-        auto startY = bounds.y;
 
         for (auto& child : children) {
             child.bounds = bounds;
@@ -142,7 +141,6 @@ namespace Apollo::Elements {
                 bounds.y += height;
                 child.bounds.height = height;
                 totalHeight += height;
-
             }
         }
 

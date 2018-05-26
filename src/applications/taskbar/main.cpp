@@ -59,8 +59,7 @@ public:
             return;
         }
 
-        auto binder = [&](auto binding, std::string_view name) {
-            using BindingType = typename std::remove_reference<decltype(*binding)>::type::ValueType;
+        auto binder = [&](auto /*binding*/, std::string_view /*name*/) {
         };
 
         auto collectionBinder = [&](auto binding, std::string_view name) {
@@ -161,6 +160,9 @@ public:
                     case VirtualFileSystem::MessageId::WriteRequest: {
                         auto request = IPC::extractMessage<VirtualFileSystem::WriteRequest>(buffer);
                         handleWriteRequest(request);
+                        break;
+                    }
+                    default: {
                         break;
                     }
                 }
@@ -286,7 +288,7 @@ private:
 
     typedef Apollo::ObservableCollection<DisplayItem*, Apollo::BindableCollection<Apollo::Elements::Grid, Apollo::Elements::Grid::Bindings>> ObservableDisplays;
     ObservableDisplays applications;
-    int currentActiveApp {-1};
+    uint32_t currentActiveApp {0};
 
     enum class FunctionId {
         AddAppName,

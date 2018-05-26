@@ -111,7 +111,7 @@ public:
 
     Function* getVersionFunc() {
         FunctionSignature sig {{}, Type::Void};
-        return new Function {sig, [&](Saturn::Gemini::List* list) {
+        return new Function {sig, [&](Saturn::Gemini::List* /*list*/) {
             char* copy = new char[13];
             strcpy(copy, "Saturn 0.3.0");
             //return Result {copy};
@@ -187,8 +187,8 @@ public:
 
     Function* getListFunc() {
         FunctionSignature sig {{Type::String}, Type::Void};
-        return new Function{sig, [&](Saturn::Gemini::List* list) {
-            auto first = list->items[1];
+        return new Function{sig, [&](Saturn::Gemini::List* /*list*/) {
+            //auto first = list->items[1];
 
             std::string_view value;
 
@@ -208,7 +208,7 @@ public:
             memset(path, 0, 256);
             value.copy(path, value.length());
 
-            auto result = listDirectory(path);
+            //auto result = listDirectory(path);
             //return Result {result};
             return nullptr;
         }};
@@ -371,7 +371,7 @@ public:
                         break;
                     }
                     case MessageId::Resize: {
-                        auto message = IPC::extractMessage<Resize>(buffer);
+                        //auto message = IPC::extractMessage<Resize>(buffer);
                         //screenWidth = message.width;
                         //screenHeight = message.height;
 

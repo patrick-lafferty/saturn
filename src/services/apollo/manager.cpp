@@ -251,7 +251,7 @@ namespace Apollo {
         //displays[currentDisplay].renderAll(linearFrameBuffer);
     }
 
-    void Manager::handleLaunchProgram(const LaunchProgram& message) {
+    void Manager::handleLaunchProgram(const LaunchProgram& /*message*/) {
         launch("/bin/dsky.bin");
     }
 
@@ -287,6 +287,9 @@ namespace Apollo {
                 case Keyboard::VirtualKey::Down: {
 
                     displays[currentDisplay].focusNextTile();
+                    break;
+                }
+                default: {
                     break;
                 }
             }
@@ -372,10 +375,10 @@ namespace Apollo {
 
         displays[currentDisplay].injectMessage(move);
 
-        for (int y = 0; y < height; y++) {
+        for (auto y = 0u; y < height; y++) {
             std::copy_n(linearFrameBuffer + mouseX + (y + mouseY) * screenWidth, width, cursorCapture + y * 20);
 
-            for (int x = 0; x < width; x++) {
+            for (auto x = 0u; x < width; x++) {
                 auto source = cursorBitmap[x + y * 20];
                 auto destination = linearFrameBuffer[mouseX + x + (y + mouseY) * screenWidth];
                 auto alpha = source >> 24;
