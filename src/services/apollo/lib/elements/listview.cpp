@@ -147,19 +147,11 @@ namespace Apollo::Elements {
         }
 
         if (totalHeight > bounds.height) {
-            /*auto start = startY + bounds.height;
-
-            for (auto it = rbegin(children); it != rend(children); ++it) {
-                auto& child = *it;
-                if (std::holds_alternative<UIElement*>(child.element)) {
-                    auto element = std::get<UIElement*>(child.element);
-                    start -= child.bounds.height;
-                    child.bounds.y = start;
-                }
-            }*/
+           
             for (auto& child : children) {
                 if (std::holds_alternative<UIElement*>(child.element)) {
-                    auto delta = 0.1f * ((float)bounds.height / totalHeight) * bounds.height;
+                    auto scrollbarHeight = getScrollbarSize(bounds.height);
+                    auto delta = 0.1f * scrollbarHeight;
                     child.bounds.y -= currentPosition * delta;
                 }
             }
@@ -219,9 +211,9 @@ namespace Apollo::Elements {
 
             renderer->drawRectangle(0xFF'FF'00'00, scrollbarBounds, clip);
 
-            int barSize = ((float)bounds.height / totalHeight) * bounds.height;
+            auto barSize = getScrollbarSize(bounds.height);
             scrollbarBounds.height = barSize;
-            auto delta = 0.1f * ((float)bounds.height / totalHeight) * bounds.height;
+            auto delta = 0.1f * barSize;
             scrollbarBounds.y += currentPosition * delta;
 
             renderer->drawRectangle(0xFF'00'FF'00, scrollbarBounds, clip);
@@ -239,6 +231,12 @@ namespace Apollo::Elements {
             auto child = std::get<Container*>(element.element);
             child->setParent(this);
         }
+    }
+
+    int ListView::getScrollbarSize(int height) {
+
+        int barSize = ((float)height / totalHeight) * height;
+        return barSize;
     }
 
     void ListView::clearTemplateItems() {
@@ -280,7 +278,7 @@ namespace Apollo::Elements {
         
         if (message.direction == Mouse::ScrollDirection::Vertical) {
             auto bounds = getBounds();
-            auto scrollbarHeight = ((float)bounds.height / totalHeight) * bounds.height;
+            auto scrollbarHeight = getScrollbarSize(bounds.height);
             auto delta = scrollbarHeight * 0.1f;
             auto maxTicks = ((float)bounds.height - scrollbarHeight) / delta;
 

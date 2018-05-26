@@ -161,6 +161,7 @@ namespace Apollo::Elements {
     private:
 
         void addChild(ContainedElement element);
+        int getScrollbarSize(int height);
 
         std::vector<ContainedElement> children;
         BindableCollection<ListView, Bindings> itemSource;
