@@ -153,6 +153,10 @@ namespace Kernel {
         uint8_t data[512];
     };
 
+    /*
+    A Task is a running application or service, which may be
+    user-mode or kernel-mode
+    */
     struct Task {
         TaskContext context;
         SSEContext* sseContext;

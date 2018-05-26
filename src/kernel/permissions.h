@@ -31,9 +31,24 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace Kernel {
 
+    /*
+    Grants a single 8-bit IO port. Permissions are stored in an
+    IO port permission bitmap which is allocated per TSS
+    */
     void grantIOPort8(uint16_t port, uint8_t volatile* iopb);
+
+    /*
+    Grants a single 16-bot IO port, or two consecutive 8-bit ports
+    */
     void grantIOPort16(uint16_t port, uint8_t volatile* iopb);
+
+    /*
+    Blocks access to a single 16-bit IO port
+    */
     void blockIOPort16(uint16_t port, uint8_t volatile* iopb); 
 
+    /*
+    Grants every port from portStart to portEnd
+    */
     void grantIOPortRange(uint16_t portStart, uint16_t portEnd, uint8_t volatile* iopb);
 }
