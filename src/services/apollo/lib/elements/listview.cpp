@@ -27,6 +27,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "listview.h"
+#include "../renderer.h"
+#include <services/mouse/messages.h>
 
 using namespace Saturn::Parse;
 
@@ -128,7 +130,7 @@ namespace Apollo::Elements {
         }
 
         auto bounds = getBounds();
-        auto totalHeight = 0;
+        totalHeight = 0;
         auto startY = bounds.y;
 
         for (auto& child : children) {
@@ -145,7 +147,7 @@ namespace Apollo::Elements {
         }
 
         if (totalHeight > bounds.height) {
-            auto start = startY + bounds.height;
+            /*auto start = startY + bounds.height;
 
             for (auto it = rbegin(children); it != rend(children); ++it) {
                 auto& child = *it;
@@ -153,6 +155,12 @@ namespace Apollo::Elements {
                     auto element = std::get<UIElement*>(child.element);
                     start -= child.bounds.height;
                     child.bounds.y = start;
+                }
+            }*/
+            for (auto& child : children) {
+                if (std::holds_alternative<UIElement*>(child.element)) {
+                    auto delta = 0.1f * ((float)bounds.height / totalHeight) * bounds.height;
+                    child.bounds.y -= currentPosition * delta;
                 }
             }
         }
@@ -202,6 +210,22 @@ namespace Apollo::Elements {
                 child->render(renderer, element.bounds, bounds);
             }
         }
+
+        if (totalHeight > bounds.height) {
+
+            auto scrollbarBounds = bounds;
+            scrollbarBounds.x = scrollbarBounds.x + scrollbarBounds.width - 10;
+            scrollbarBounds.width = 10;
+
+            renderer->drawRectangle(0xFF'FF'00'00, scrollbarBounds, clip);
+
+            int barSize = ((float)bounds.height / totalHeight) * bounds.height;
+            scrollbarBounds.height = barSize;
+            auto delta = 0.1f * ((float)bounds.height / totalHeight) * bounds.height;
+            scrollbarBounds.y += currentPosition * delta;
+
+            renderer->drawRectangle(0xFF'00'FF'00, scrollbarBounds, clip);
+        }
     }
 
     void ListView::addChild(ContainedElement element) {
@@ -231,6 +255,44 @@ namespace Apollo::Elements {
 
         children.clear();
 
+        requestRender(this);
+    }
+
+    void ListView::onWindowReady() {
+
+        receivedWindowReady = true;
+
+        for (auto& child : children) {
+            UIElement* element {nullptr};
+
+            if (std::holds_alternative<UIElement*>(child.element)) {
+                element = std::get<UIElement*>(child.element);
+            }
+            else {
+                element = std::get<Container*>(child.element);
+            }
+
+            element->onWindowReady();
+        }
+    }
+
+    void ListView::handleMouseScroll(const Mouse::Scroll& message) {
+        
+        if (message.direction == Mouse::ScrollDirection::Vertical) {
+            auto bounds = getBounds();
+            auto scrollbarHeight = ((float)bounds.height / totalHeight) * bounds.height;
+            auto delta = scrollbarHeight * 0.1f;
+            auto maxTicks = ((float)bounds.height - scrollbarHeight) / delta;
+
+            if (message.magnitude == Mouse::ScrollMagnitude::UpBy1) {
+                currentPosition = std::min((int)maxTicks, currentPosition + 1);
+            }
+            else {
+                currentPosition = std::max(0, currentPosition - 1);
+            }
+        }
+
+        layoutChildren();
         requestRender(this);
     }
 }

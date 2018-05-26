@@ -52,7 +52,7 @@ namespace Apollo::Elements {
     A ListView is a container that arranges its children linearly
     in either a row or a column. 
     */
-    class ListView : public Container {
+    class ListView : public Container, public Control {
     public:
 
         enum class Bindings {
@@ -147,6 +147,17 @@ namespace Apollo::Elements {
         */
         void clearTemplateItems();
 
+
+        virtual void onWindowReady() override;
+
+        /*
+        ////////////////////////////
+        Control interface
+        ////////////////////////////
+        */
+
+       virtual void handleMouseScroll(const Mouse::Scroll& message) override;
+
     private:
 
         void addChild(ContainedElement element);
@@ -155,5 +166,6 @@ namespace Apollo::Elements {
         BindableCollection<ListView, Bindings> itemSource;
         Saturn::Parse::List* itemTemplate;
         int currentPosition {0};
+        int totalHeight {0};
     };
 }
