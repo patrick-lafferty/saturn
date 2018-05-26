@@ -30,15 +30,21 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "element.h"
 
+namespace Mouse {
+    struct MouseMove;
+    struct ButtonPress;
+    struct Scroll;
+}
+
 namespace Apollo::Elements {
 
     /*
     A Control is a user interactive UI Element. It
     can receive mouse and keyboard events.
     */
-    class Control : public UIElement {
+    class Control {
     public:
 
-    private:
+        virtual void handleMouseScroll(const Mouse::Scroll& message) = 0;
     };
 }
