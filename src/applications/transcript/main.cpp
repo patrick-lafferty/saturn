@@ -131,7 +131,6 @@ public:
         }
 
         window->layoutChildren();
-        window->layoutText();
         window->render();
     }
 
@@ -163,7 +162,6 @@ public:
         events.add(new DisplayItem(s, background, fontColour), itemBinder);
 
         window->layoutChildren();
-        window->layoutText();
         window->render();
     }
 
@@ -214,6 +212,7 @@ public:
                 break;
             }
             case IPC::MessageNamespace::Mouse: {
+                Application::handleMessage(buffer);
                 break;
             }
             case IPC::MessageNamespace::WindowManager: {
@@ -336,7 +335,6 @@ public:
 
     void receive(uint32_t requesterTaskId, uint32_t requestId, char* data) {
         //addLogEntry(data, 0x00FF0000, 0x0000FF00);
-
         auto result = Saturn::Parse::read(data);
 
         if (std::holds_alternative<Saturn::Parse::SExpression*>(result)) {

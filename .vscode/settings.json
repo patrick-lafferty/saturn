@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "**/libc++/**/*": "cpp",
+        "*.tst": "clojure",
         "**/libc++/include/*": "cpp",
         "string": "cpp",
         "string_view": "cpp",
@@ -29,6 +30,16 @@
         "optional": "cpp",
         "stdexcept": "cpp",
         "typeinfo": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "__bit_reference": "cpp",
+        "__functional_base": "cpp",
+        "functional": "cpp",
+        "limits": "cpp",
+        "tuple": "cpp",
+        "__hash_table": "cpp",
+        "__tree": "cpp",
+        "map": "cpp",
+        "unordered_map": "cpp",
+        "__string": "cpp"
     }
 }
