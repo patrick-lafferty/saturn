@@ -51,6 +51,11 @@ namespace IPC {
         WindowManager
     };
 
+    /*
+    Base class for all messages. Stores the message's header
+    that indicates the size of the message, who sent it and
+    who will receive it, as well as how to identify the message
+    */
     struct Message {
         uint32_t length;
         uint32_t senderTaskId;
@@ -76,6 +81,10 @@ namespace IPC {
         TaskId
     };
 
+    /*
+    Helper func that copies the first n bytes from the buffer
+    to create a T message
+    */
     template<typename T>
     T extractMessage(const MaximumMessageBuffer& buffer) {
         T result;
@@ -85,6 +94,10 @@ namespace IPC {
         return result;
     }
 
+    /*
+    A Mailbox stores and provides access to messages. Each task
+    has one mailbox. Messages are stored in a circular byte buffer.
+    */
     class Mailbox {
     public:
 
@@ -93,10 +106,16 @@ namespace IPC {
             bufferSize = size;
         }
 
+        /*
+        Copies the message into the buffer if there is space available,
+        overwriting any messages that were previously read
+        */
         void send(Message* message);     
 
+        /*
+        Extracts a message from the buffer and copies it to the supplied message
+        */
         bool receive(Message* message);
-        //bool receive(Message* message, MessageNamespace filter, uint32_t messageId);
 
         bool hasUnreadMessages() {
             return unreadMessages > 0;

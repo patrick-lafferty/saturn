@@ -141,12 +141,4 @@ namespace IPC {
         }
     }
 
-    /*bool Mailbox::receive(Message* message, MessageNamespace filter, uint32_t messageId) {
-        if (unreadMessages == 0) {
-            return false;
-        }
-
-
-
-    }*/
 }
