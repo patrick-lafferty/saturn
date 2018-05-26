@@ -123,8 +123,19 @@ namespace Saturn::Gemini {
             }
             case Saturn::Parse::SExpType::IntLiteral: {
                 auto value = static_cast<Saturn::Parse::IntLiteral*>(s);
-
                 return new Integer(value->value);
+            }
+            case Saturn::Parse::SExpType::FloatLiteral: {
+                auto value = static_cast<Saturn::Parse::FloatLiteral*>(s);
+                return new Float(value->value);
+            }
+            case Saturn::Parse::SExpType::BoolLiteral: {
+                auto value = static_cast<Saturn::Parse::BoolLiteral*>(s);
+                return new Boolean(value->value);
+            }
+            case Saturn::Parse::SExpType::StringLiteral: {
+                auto value = static_cast<Saturn::Parse::StringLiteral*>(s);
+                return new String(value->value);
             }
         }
 

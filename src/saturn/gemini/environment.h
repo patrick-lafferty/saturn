@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <map>
 #include <functional>
 #include <string_view>
+#include <string>
 #include <variant>
 
 namespace Saturn::Gemini {
@@ -57,7 +58,9 @@ namespace Saturn::Gemini {
         Function,
         List,
         Integer,
-        Boolean
+        Float,
+        Boolean,
+        String
     };
 
     class Object {
@@ -103,6 +106,17 @@ namespace Saturn::Gemini {
         int value {0};
     };
 
+    class Float : public Object {
+    public:
+        
+        Float(float value) {
+            type = GeminiType::Float;
+            this->value = value;
+        }
+
+        float value {0.f};
+    };
+
     class Boolean : public Object {
     public:
 
@@ -112,6 +126,17 @@ namespace Saturn::Gemini {
         }
 
         bool value {false};
+    };
+
+    class String : public Object {
+    public:
+
+        String(std::string_view value) {
+            type = GeminiType::String;
+            this->value = value;
+        }
+
+        std::string value;
     };
 
     struct Result {
@@ -175,7 +200,7 @@ namespace Saturn::Gemini {
     };
 
     template<class Func>
-    List* map(Saturn::Parse::List* list, Func func, Environment& environment, bool skipHead = true) {
+    List* map(Saturn::Parse::List* list, Func func, Environment& /*environment*/, bool skipHead = true) {
         auto result = new List();
 
 

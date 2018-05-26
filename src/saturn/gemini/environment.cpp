@@ -109,6 +109,9 @@ namespace Saturn::Gemini {
             case Type::Any: {
                 return true;
             }
+            case Type::Void: {
+                return false;
+            }
         }
 
         return false;
