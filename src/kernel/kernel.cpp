@@ -140,7 +140,7 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
 
     Kernel::Scheduler scheduler{tss};
 
-    kprintf("Saturn OS v 0.2.0\n------------------\n\nCalibrating clock, please wait...\n");
+    kprintf("Saturn OS v 0.3.0\n------------------\n\nCalibrating clock, please wait...\n");
 
     ServiceRegistry registry;
     ServiceRegistryInstance = &registry;

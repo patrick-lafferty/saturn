@@ -113,7 +113,7 @@ public:
         FunctionSignature sig {{}, Type::Void};
         return new Function {sig, [&](Saturn::Gemini::List* list) {
             char* copy = new char[13];
-            strcpy(copy, "Saturn 0.2.0");
+            strcpy(copy, "Saturn 0.3.0");
             //return Result {copy};
             return nullptr;
         }};
