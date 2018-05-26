@@ -27,12 +27,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include <stdlib.h>
 
-unsigned long int strtoul(const char* restrict nptr, char** restrict endptr, int base) {
+unsigned long int strtoul(const char* restrict /*nptr*/, char** restrict /*endptr*/, int /*base*/) {
     //TODO: implement stub
     return 0;
 }
 
-unsigned long long int strtoull(const char* restrict nptr, char** restrict endptr, int base) {
+unsigned long long int strtoull(const char* restrict /*nptr*/, char** restrict /*endptr*/, int /*base*/) {
     //TODO: implement stub
     return 0;
 }

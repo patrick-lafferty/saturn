@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include <wchar.h>
 
-wchar_t* wmemmove(wchar_t* s1, const wchar_t* s2, size_t n) {
+wchar_t* wmemmove(wchar_t* /*s1*/, const wchar_t* /*s2*/, size_t /*n*/) {
     //TODO: implement stub
     return nullptr;
 }

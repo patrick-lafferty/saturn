@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include <wchar.h>
 
-int wmemcmp(const wchar_t* s1, const wchar_t* s2, size_t n) {
+int wmemcmp(const wchar_t* /*s1*/, const wchar_t* /*s2*/, size_t /*n*/) {
     //TODO: implement stub
     return 0;
 }

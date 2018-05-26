@@ -27,17 +27,17 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include <wchar.h>
 
-float wcstof(const wchar_t* restrict nptr, wchar_t** restrict endptr) {
+float wcstof(const wchar_t* restrict /*nptr*/, wchar_t** restrict /*endptr*/) {
     //TODO: implement stub
     return 0;
 }
 
-double wcstod(const wchar_t* restrict nptr, wchar_t** restrict endptr) {
+double wcstod(const wchar_t* restrict /*nptr*/, wchar_t** restrict /*endptr*/) {
     //TODO: implement stub
     return 0;
 }
 
-long double wcstold(const wchar_t* restrict nptr, wchar_t** restrict endptr) {
+long double wcstold(const wchar_t* restrict /*nptr*/, wchar_t** restrict /*endptr*/) {
     //TODO: implement stub
     return 0;
 }

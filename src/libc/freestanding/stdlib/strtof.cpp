@@ -27,17 +27,17 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include <stdlib.h>
 
-float strtof(const char* restrict nptr, char** restrict endptr) {
+float strtof(const char* restrict /*nptr*/, char** restrict /*endptr*/) {
     //TODO: implement stub
     return 0;
 }
 
-long double strtold(const char* restrict nptr, char** restrict endptr) {
+long double strtold(const char* restrict /*nptr*/, char** restrict /*endptr*/) {
     //TODO: implement stub
     return 0;
 }
 
-double strtod(const char* restrict nptr, char** restrict endptr) {
+double strtod(const char* restrict /*nptr*/, char** restrict /*endptr*/) {
     //TODO: implement stub
     return 0;
 }

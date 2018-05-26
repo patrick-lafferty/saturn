@@ -27,14 +27,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include <wchar.h>
 
-unsigned long int wcstoul(const wchar_t* restrict nptr, wchar_t** restrict endptr, int base) {
+unsigned long int wcstoul(const wchar_t* restrict /*nptr*/, wchar_t** restrict /*endptr*/, int /*base*/) {
     //TODO: implement stub
     return 0;
 }
 
-unsigned long long int wcstoull(const wchar_t* restrict nptr,
-	wchar_t** restrict endptr,
-	int base) {
+unsigned long long int wcstoull(const wchar_t* restrict /*nptr*/,
+	wchar_t** restrict /*endptr*/,
+	int /*base*/) {
     
     //TODO: implement stub
     return 0;

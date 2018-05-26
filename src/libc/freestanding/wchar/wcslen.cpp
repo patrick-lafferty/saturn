@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include <wchar.h>
 
-size_t wcslen(const wchar_t* s) {
+size_t wcslen(const wchar_t* /*s*/) {
     //TODO: implement stub
     return 0;
 }

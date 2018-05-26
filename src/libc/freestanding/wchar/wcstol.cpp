@@ -27,12 +27,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include <wchar.h>
 
-long int wcstol(const wchar_t* restrict nptr, wchar_t** restrict endptr, int base) {
+long int wcstol(const wchar_t* restrict /*nptr*/, wchar_t** restrict /*endptr*/, int /*base*/) {
     //TODO: implement stub
     return 0;
 }
 
-long long int wcstoll(const wchar_t* restrict nptr, wchar_t** restrict endptr, int base) {
+long long int wcstoll(const wchar_t* restrict /*nptr*/, wchar_t** restrict /*endptr*/, int /*base*/) {
     //TODO: implement stub
     return 0;
 }

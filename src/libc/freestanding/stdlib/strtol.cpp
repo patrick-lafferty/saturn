@@ -121,7 +121,7 @@ long strtol(const char* str, char** str_end, int base) {
     return result;
 }
 
-long long int strtoll(const char* restrict nptr, char** restrict endptr, int base) {
+long long int strtoll(const char* restrict /*nptr*/, char** restrict /*endptr*/, int /*base*/) {
     //TODO: implement stub
     return 0;
 }
