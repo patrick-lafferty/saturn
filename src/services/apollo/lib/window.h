@@ -32,6 +32,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "elements/container.h"
 
 namespace Apollo {
+    
+    namespace Elements {
+        class Control;
+    }
 
     struct alignas(0x1000) WindowBuffer {
         uint32_t buffer[800 * 600];
@@ -97,6 +101,11 @@ namespace Apollo {
         virtual void requestLayoutText(UIElement* element) override;
         virtual void requestRender(UIElement* element) override;
 
+        void setInitialFocus(std::optional<Elements::Control*> focus);
+        void signalWindowReady();
+
+        void handleMouseScroll(const Mouse::Scroll& message);
+
     private:
 
         WindowBuffer* buffer;
@@ -107,6 +116,8 @@ namespace Apollo {
         DirtyArea dirtyArea;
         Elements::Container* child; 
         Renderer* elementRenderer;
+
+        std::optional<Elements::Control*> inputFocus;
     };
 
     Window* createWindow(uint32_t width, uint32_t height);

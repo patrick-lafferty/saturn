@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <services.h>
 #include <algorithm>
 #include "renderer.h"
+#include "elements/control.h"
 
 namespace Apollo {
 
@@ -211,5 +212,19 @@ namespace Apollo {
         auto clip = parent->getBounds();
 
         element->render(elementRenderer, childBounds, clip);
+    }
+
+    void Window::setInitialFocus(std::optional<Elements::Control*> focus) {
+        inputFocus = focus;
+    }
+
+    void Window::signalWindowReady() {
+        child->onWindowReady();
+    }
+
+    void Window::handleMouseScroll(const Mouse::Scroll& message) {
+        if (inputFocus) {
+            (*inputFocus)->handleMouseScroll(message);
+        }
     }
 }

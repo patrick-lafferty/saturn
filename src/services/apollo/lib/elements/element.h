@@ -141,6 +141,9 @@ namespace Apollo::Elements {
         void requestLayoutText();
         void requestRender();
 
+        virtual void onWindowReady();
+        bool hasReceivedWindowReady() const;
+
     private:
 
         Container* parent {nullptr};
@@ -160,6 +163,8 @@ namespace Apollo::Elements {
         Alignment horizontalAlignment;
         Alignment verticalAlignment;
         uint32_t fontSize;
+        bool receivedWindowReady {false};
+
     };
 
     /*

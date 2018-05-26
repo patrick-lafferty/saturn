@@ -108,18 +108,30 @@ namespace Apollo::Elements {
 
     void UIElement::setParent(Container* parent) {
         this->parent = parent;
+        receivedWindowReady = parent->hasReceivedWindowReady();
+
+        requestLayoutText();
     }
 
     void UIElement::requestLayoutText() {
-        if (parent != nullptr) {
+        if (parent != nullptr && receivedWindowReady) {
             parent->requestLayoutText(this);
         }
     }
 
     void UIElement::requestRender() {
-        if (parent != nullptr) {
+        if (parent != nullptr && receivedWindowReady) {
             parent->requestRender(this);
         }
+    }
+
+    void UIElement::onWindowReady() {
+        receivedWindowReady = true;
+        requestLayoutText();
+    }
+
+    bool UIElement::hasReceivedWindowReady() const {
+        return receivedWindowReady;
     }
 
     uint32_t getUint32_t(std::variant<uint32_t, Bindable<UIElement, UIElement::Bindings, uint32_t>>& value) {
