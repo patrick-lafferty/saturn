@@ -82,4 +82,23 @@ namespace Apollo::Elements {
 
         return {};
     }
+
+    template<class BindFunc, class CollectionBindFunc>
+    std::optional<UIElement*> createElement(Container* parent, 
+        KnownElements type, 
+        Saturn::Parse::Constructor constructor, 
+        BindFunc setupBinding,
+        CollectionBindFunc setupCollectionBinding,
+        std::optional<Control*>& initialFocus) {
+
+        auto element = createElement(parent, type, constructor, setupBinding, setupCollectionBinding);
+
+        if (element && !initialFocus) {
+            switch (type) {
+                
+            }
+        }
+
+        return element;
+    }
 }

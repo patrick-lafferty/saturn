@@ -37,6 +37,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace Apollo::Elements {
 
+    class Control;
+
     bool parseGridMeta(Saturn::Parse::Constructor grid, std::vector<MetaData>& meta);
 	std::optional<std::vector<MetaData>> parseMeta(Saturn::Parse::List* config);
 
@@ -45,13 +47,15 @@ namespace Apollo::Elements {
         KnownContainers type, 
         Saturn::Parse::Constructor constructor, 
         BindFunc setupBinding,
-        CollectionBindFunc setupCollectionBinding);
+        CollectionBindFunc setupCollectionBinding,
+        std::optional<Control*>& initialFocus);
 
     template<class BindFunc, class CollectionBindFunc>
     bool createContainerItems(Container* parent, 
         Saturn::Parse::SExpression* itemList, 
         BindFunc setupBinding,
-        CollectionBindFunc setupCollectionBinding) {
+        CollectionBindFunc setupCollectionBinding,
+        std::optional<Control*>& initialFocus) {
         using namespace Saturn::Parse;
 
         if (itemList == nullptr) {
@@ -88,14 +92,14 @@ namespace Apollo::Elements {
                         auto childType = maybeChildType.value();
 
                         if (std::holds_alternative<KnownContainers>(childType)) {
-                            auto child = createContainer(parent, std::get<KnownContainers>(childType), childConstructor, setupBinding, setupCollectionBinding);
+                            auto child = createContainer(parent, std::get<KnownContainers>(childType), childConstructor, setupBinding, setupCollectionBinding, initialFocus);
 
                             if (!child) {
                                 return false;
                             }
                         }
                         else {
-                            auto child = createElement(parent, std::get<KnownElements>(childType), childConstructor, setupBinding, setupCollectionBinding);
+                            auto child = createElement(parent, std::get<KnownElements>(childType), childConstructor, setupBinding, setupCollectionBinding, initialFocus);
 
                             if (!child) {
                                 return false;
@@ -122,14 +126,15 @@ namespace Apollo::Elements {
         KnownContainers type, 
         Saturn::Parse::Constructor constructor, 
         BindFunc setupBinding,
-        CollectionBindFunc setupCollectionBinding) {
+        CollectionBindFunc setupCollectionBinding,
+        std::optional<Control*>& initialFocus) {
 
         switch (type) {
             case KnownContainers::Grid: {
                 if (auto maybeConfig = parseGrid(constructor.values)) {
                     auto config = maybeConfig.value();
                     auto grid = Grid::create(config, setupBinding, setupCollectionBinding);
-                    auto success = createContainerItems(grid, config.items, setupBinding, setupCollectionBinding);                    
+                    auto success = createContainerItems(grid, config.items, setupBinding, setupCollectionBinding, initialFocus);                    
 
                     if (success) {
                         return finishContainer(grid, parent, config.meta);
@@ -145,9 +150,14 @@ namespace Apollo::Elements {
                 if (auto maybeConfig = parseListView(constructor.values)) {
                     auto config = maybeConfig.value();
                     auto list = ListView::create(config, setupBinding, setupCollectionBinding);
-                    auto success = createContainerItems(list, config.items, setupBinding, setupCollectionBinding);                    
+                    auto success = createContainerItems(list, config.items, setupBinding, setupCollectionBinding, initialFocus);                    
 
                     if (success) {
+                        
+                        if (!initialFocus) {
+                            initialFocus = list;
+                        }
+
                         return finishContainer(list, parent, config.meta);
                     }
                     else {
@@ -164,9 +174,10 @@ namespace Apollo::Elements {
 
     template<class BindFunc, class CollectionBindFunc>
     std::optional<Container*> loadLayout(Saturn::Parse::SExpression* root, 
-        Container* window,
+        Window* window,
         BindFunc setupBinding,
-        CollectionBindFunc setupCollectionBinding) {
+        CollectionBindFunc setupCollectionBinding,
+        std::optional<Control*>& initialFocus) {
 
         if (auto c = getConstructor(root)) {
             auto constructor = c.value();
@@ -175,11 +186,13 @@ namespace Apollo::Elements {
                 auto type = maybeType.value();
 
                 if (std::holds_alternative<KnownContainers>(type)) {
+
                     return createContainer(window, 
                         std::get<KnownContainers>(type), 
                         constructor, 
                         setupBinding,
-                        setupCollectionBinding);
+                        setupCollectionBinding,
+                        initialFocus);
                 }
                 else {
                     return {};
