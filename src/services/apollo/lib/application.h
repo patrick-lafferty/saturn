@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <services/apollo/lib/renderer.h>
 #include <services/virtualFileSystem/messages.h>
 #include <services/virtualFileSystem/vostok.h>
+#include <services/mouse/messages.h>
 #include <saturn/parsing.h>
 
 namespace Apollo {
@@ -162,6 +163,34 @@ namespace Apollo {
         virtual void writeFunction(uint32_t, uint32_t, uint32_t, Vostok::ArgBuffer&) override {}
         virtual void describeFunction(uint32_t, uint32_t, uint32_t) override {}
 
+        /*
+        Default handler for when derived applications just want default
+        behaviour for some message
+        */
+        void handleMessage(IPC::MaximumMessageBuffer& buffer) {
+
+            switch (buffer.messageNamespace) {
+                case IPC::MessageNamespace::Mouse: {
+                    switch (static_cast<Mouse::MessageId>(buffer.messageId)) {
+                        case Mouse::MessageId::MouseMove: {
+                            break;
+                        }
+                        case Mouse::MessageId::ButtonPress: {
+                            break;
+                        }
+                        case Mouse::MessageId::Scroll: {
+                            auto event = IPC::extractMessage<Mouse::Scroll>(buffer);
+                            window->handleMouseScroll(event);
+
+                            break;
+                        }
+                    }
+
+                    break;
+                }
+            }
+        }
+
     protected:
 
         /*
@@ -237,13 +266,19 @@ namespace Apollo {
 
                 if (topLevel->type == SExpType::List) {
                     auto root = static_cast<List*>(topLevel)->items[0];
+                    std::optional<Apollo::Elements::Control*> initialFocus;
+                    elementRenderer = new Renderer(window, textRenderer);
+                    window->setRenderer(elementRenderer);
 
-                    if (auto r = Apollo::Elements::loadLayout(root, window, binder, collectionBinder)) {
-                        elementRenderer = new Renderer(window, textRenderer);
+                    if (auto r = Apollo::Elements::loadLayout(root, window, binder, collectionBinder, initialFocus)) {
                         window->layoutChildren();
-                        window->setRenderer(elementRenderer);
+                        window->signalWindowReady();
                         window->layoutText(textRenderer);
                         window->render();
+
+                        if (initialFocus) {
+                            window->setInitialFocus(initialFocus);
+                        }
 
                         return true;
                     }
