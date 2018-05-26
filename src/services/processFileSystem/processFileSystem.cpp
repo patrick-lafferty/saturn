@@ -62,7 +62,7 @@ namespace PFS {
         auto addDescriptor = [&](auto instance, auto id, auto type) {
             failed = false;
             result.success = true;
-            openDescriptors.push_back({instance, {static_cast<uint32_t>(id)}, type});
+            openDescriptors.push_back({instance, {static_cast<uint32_t>(id)}, type, 0});
             result.fileDescriptor = openDescriptors.size() - 1;
         };
 

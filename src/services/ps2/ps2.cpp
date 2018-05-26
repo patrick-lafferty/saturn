@@ -160,6 +160,9 @@ namespace PS2 {
 
                             break;
                         }
+                        default: {
+                            break;
+                        }
                     }
                     break;
                 }

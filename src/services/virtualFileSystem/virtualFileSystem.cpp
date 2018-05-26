@@ -1121,8 +1121,6 @@ namespace VirtualFileSystem {
                         auto file = static_cast<Cache::File*>(descriptor.entry);
                         auto currentBlock = descriptor.filePosition / 512;
                         auto endBlock = (descriptor.filePosition + request.readLength) / 512;
-                        auto currentByte = descriptor.filePosition % 512;
-                        auto remainingBytesInBlock = std::min(512 - currentByte, request.readLength);
                         auto blocksToRead = 0;
 
                         PendingRequest pending;
@@ -1130,8 +1128,6 @@ namespace VirtualFileSystem {
                         pending.requesterTaskId = request.senderTaskId;
                         pending.type = RequestType::Stream;
                         pending.virtualFileDescriptor = request.fileDescriptor;
-
-                        auto currentFilePosition = currentBlock * 512;
 
                         /*
                         Check if the file's cache has all of the required blocks,
