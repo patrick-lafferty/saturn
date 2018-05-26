@@ -421,4 +421,22 @@ namespace Apollo::Elements {
 
         requestRender(this);
     }
+
+    void Grid::onWindowReady() {
+
+        receivedWindowReady = true;
+
+        for (auto& child : children) {
+            UIElement* element {nullptr};
+
+            if (std::holds_alternative<UIElement*>(child.element)) {
+                element = std::get<UIElement*>(child.element);
+            }
+            else {
+                element = std::get<Container*>(child.element);
+            }
+
+            element->onWindowReady();
+        }
+    }
 }

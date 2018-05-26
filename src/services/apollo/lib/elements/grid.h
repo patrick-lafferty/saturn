@@ -160,6 +160,8 @@ namespace Apollo::Elements {
 
         void clearTemplateItems();
 
+        virtual void onWindowReady() override;
+
     private:
         
         void calculateGridDimensions();
