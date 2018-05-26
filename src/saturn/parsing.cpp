@@ -64,47 +64,6 @@ vector<string_view> split(string_view s, char separator, bool includeSeparator) 
 
 namespace Saturn::Parse {
 
-    void visit(Symbol& s) {
-        int pause = 0;
-    }
-
-    void visit(IntLiteral& s) {
-        int pause = 0;
-    }
-
-    void visit(StringLiteral& s) {
-        int pause = 0;
-    }
-
-    void visit(SExpression* s);
-
-    void visit(List& list) {
-        for(auto child : list.items) {
-            visit(child);
-        }
-    }
-
-    void visit(SExpression* s) {
-        switch (s->type) {
-            case SExpType::Symbol: {
-                visit(*static_cast<Symbol*>(s));
-                break;
-            }
-            case SExpType::IntLiteral: {
-                visit(*static_cast<IntLiteral*>(s));
-                break;
-            }
-            case SExpType::StringLiteral: {
-                visit(*static_cast<StringLiteral*>(s));
-                break;
-            }
-            case SExpType::List: {
-                visit(*static_cast<List*>(s));
-                break;
-            }
-        }
-    }
-
     bool bracketMatches(char opener, char closer) {
         if (opener == '(') {
             return closer == ')';

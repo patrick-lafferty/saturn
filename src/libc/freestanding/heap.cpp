@@ -55,6 +55,7 @@ namespace LibC_Implementation {
         remainingPageSpace = PageSize - sizeof(ChunkHeader);
     }
 
+    [[noreturn]]
     void uhoh() {
         while (true) {}
     }

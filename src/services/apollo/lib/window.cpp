@@ -176,7 +176,7 @@ namespace Apollo {
         }
     }
 
-    Elements::Bounds Window::getChildBounds(const Elements::UIElement* child) {
+    Elements::Bounds Window::getChildBounds(const Elements::UIElement* /*child*/) {
         return {0, 0, (int)width, (int)height};
     }
 

@@ -34,7 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace Apollo::Text {
 
     void FaceCache::addCache(FT_Face face, Style style, uint32_t size) {
-        cachedFaces.push_back({face, style, size, {}});
+        cachedFaces.push_back({face, style, size, {}, {}});
     }
 
     std::optional<Cache*> FaceCache::getGlyphCache(Style style, uint32_t size) {
@@ -219,7 +219,7 @@ namespace Apollo::Text {
             for (unsigned int row = 0; row < bitmap->bitmap.rows; row++) {
                 int y = row + top;
 
-                if ((y >= windowHeight)
+                if (((uint32_t)y >= windowHeight)
                     || (y < 0))
                 { 
                     continue;
