@@ -39,10 +39,25 @@ namespace LibC_Implementation {
     struct ChunkHeader {
         uint32_t magic {0xabababab};
         uint32_t magic2 {0xcdcdcdcd};
-        uint32_t size : 31;
-        bool free : 1;
         ChunkHeader* next;
         ChunkHeader* previous; 
+        uint32_t size : 31;
+        bool free : 1;
+    };
+
+    struct FixedSizeHeader {
+        FixedSizeHeader* next;
+        uint32_t size: 29;
+        bool free : 1;
+        int unused : 2;
+    };
+
+    struct RegularHeader {
+        uint32_t size: 29;
+        bool free : 1;
+        int unused : 2;
+        RegularHeader* next;
+        RegularHeader* prev;
     };
 
     class Heap {
@@ -65,6 +80,26 @@ namespace LibC_Implementation {
         uint32_t remainingPageSpace {0};
         ChunkHeader* heapStart;
         ChunkHeader* nextFreeChunk;
+
+        void* allocateFromFixed(size_t size);
+        FixedSizeHeader* preallocateFixedChunks(int size, int count);
+
+        static const int MaxNumberOfBins {32};
+        static const int MaxFixedBinSize {256};
+
+        FixedSizeHeader* fixedBins[MaxNumberOfBins];
+
+        int filledFromFixed {0};
+        int filledFromOld {0};
+
+        int alignedFilledFromFixed {0};
+        int possibleFixedAligned {0};
+        int alignedFilledFromOld {0};
+
+        int freeFromFixed {0};
+        int freeFromOld {0};
+
+        int preallocatedTimesCalled {0};
     };
 
     void createHeap(uint32_t heapSize, Memory::VirtualMemoryManager* vmm);

@@ -40,8 +40,38 @@ namespace LibC_Implementation {
     const uint32_t kernelPageFlags = 
         static_cast<uint32_t>(PageTableFlags::AllowWrite);
 
+    int getPreallocationCount(int size) {
+
+        if (size <= 64) {
+            return 200;
+        }
+        else if (size <= 128) {
+            return 100;
+        }
+        else if (size <= 168) {
+            return 50;
+        }
+        else {
+            return 10;
+        }
+    }
+
     void Heap::initialize(uint32_t heapSize, Memory::VirtualMemoryManager* vmm) {
         currentPage = vmm->allocatePages(heapSize / PageSize, kernelPageFlags);
+
+/*
+TODO:
+preallocate some number of pages to reduce page faults
+*/
+if (false && currentPage <= 0xD000'0000) {
+        auto pages = heapSize / PageSize;
+        for (int i = 0; i < pages; i++) {
+            auto physicalPage = Memory::currentPMM->allocatePage(1);
+            auto page = currentPage + (i * PageSize);
+            vmm->map(page, physicalPage);
+            Memory::currentPMM->finishAllocation(page, 1);
+        }
+}
 
         nextFreeChunk = reinterpret_cast<ChunkHeader*>(currentPage);
         nextFreeChunk->magic = 0xabababab;
@@ -53,6 +83,41 @@ namespace LibC_Implementation {
         heapStart = nextFreeChunk;
 
         remainingPageSpace = PageSize - sizeof(ChunkHeader);
+
+        for (int i = 0; i < MaxNumberOfBins; i++) {
+            int thisSize = (i + 1) * 8;
+            int chunksToPrellocate = getPreallocationCount(thisSize);
+
+            auto chunk = preallocateFixedChunks(thisSize, chunksToPrellocate);        
+            fixedBins[i] = chunk;
+        }
+    }
+
+    FixedSizeHeader* Heap::preallocateFixedChunks(int size, int count) {
+        int spaceRequired = 8 + size;
+        int preallocatedSpace = count * spaceRequired;
+
+        auto chunk = findFreeChunk(preallocatedSpace);
+        auto buffer = reinterpret_cast<uint8_t*>(allocate(chunk, preallocatedSpace));
+        auto header = reinterpret_cast<FixedSizeHeader*>(buffer);
+        auto first = header;
+
+        for (int j = 0; j < count; j++) {
+            header->size = size;
+            buffer += spaceRequired;
+
+            if (j < (count - 1)) {
+                header->next = reinterpret_cast<FixedSizeHeader*>(buffer);
+                header = header->next;
+            }
+            else {
+                header->next = nullptr;
+            }
+        }
+
+        preallocatedTimesCalled++;
+
+        return first;
     }
 
     [[noreturn]]
@@ -61,6 +126,15 @@ namespace LibC_Implementation {
     }
 
     void* Heap::aligned_allocate(size_t alignment, size_t size) {
+        if (size <= MaxFixedBinSize && alignment == 8) {
+            alignedFilledFromFixed++;
+            return allocate(size);
+        }
+        else if (size <= MaxFixedBinSize) {
+            possibleFixedAligned++;
+        }
+
+        alignedFilledFromOld++;
 
         auto chunk = findFreeAlignedChunk(size, alignment);
         if (chunk == nullptr) {
@@ -214,6 +288,24 @@ namespace LibC_Implementation {
 
     void* Heap::allocate(size_t size) {
        
+        if (size <= MaxFixedBinSize) {
+            auto bin = (size >> 3) + ((size & 7) > 0);
+            bin = bin > 0 ? bin - 1 : 0;
+
+            if (fixedBins[bin] == nullptr) {
+                auto fixedSize = (bin + 1) << 3;
+                fixedBins[bin] = preallocateFixedChunks(fixedSize, getPreallocationCount(fixedSize));
+            }   
+
+            auto chunk = fixedBins[bin];
+            fixedBins[bin] = chunk->next;
+
+            filledFromFixed++;
+
+            return reinterpret_cast<uint8_t*>(chunk) + sizeof(FixedSizeHeader);
+        }
+
+        filledFromOld++;
 
         auto chunk = findFreeChunk(size);
 
@@ -223,62 +315,24 @@ namespace LibC_Implementation {
         }
 
         return allocate(chunk, size); 
-        /*auto startingAddress = currentPage + (PageSize - remainingPageSpace);
-
-        if (size >= remainingPageSpace) {
-            auto numberOfPages = size / PageSize + 1;
-            
-            while(size > PageSize) {
-                size -= PageSize;
-            }
-            
-            auto nextAddress = currentVMM->allocatePages(numberOfPages, kernelPageFlags);
-            if (nextAddress - startingAddress > PageSize) {
-                //printf("[Heap] Skipped address from %x to %x\n", startingAddress, nextAddress);
-            }
-            else {
-                size -= remainingPageSpace;
-            }
-
-            remainingPageSpace = PageSize - size;
-
-            currentPage = nextAddress + (numberOfPages - 1) * PageSize;
-        }
-        else {
-            remainingPageSpace -= size;
-        }
-
-        return reinterpret_cast<void*>(startingAddress);*/
     }
 
     void Heap::free(void* ptr) {
-        auto chunk = reinterpret_cast<ChunkHeader*>(reinterpret_cast<uint32_t>(ptr) - sizeof(ChunkHeader));
-        chunk->free = true;
+
+        auto size = *(reinterpret_cast<uint32_t*>(ptr) - 1);
+
+        if (size > MaxFixedBinSize) {
+            freeFromOld++;
+        }
+        else {
+            freeFromFixed++;
+            auto bin = (size >> 3) - 1;
+            auto header = reinterpret_cast<FixedSizeHeader*>(ptr) - 1;
+            header->next = fixedBins[bin];
+            fixedBins[bin] = header;
+        }
 
         return;
-
-        /*
-        TODO: rethink this
-        if (chunk->previous != nullptr && chunk->previous->free) {
-            chunk = combineChunkWithNext(chunk->previous);
-        }
-
-        if (chunk->next != nullptr && chunk->next->free) {
-            chunk = combineChunkWithNext(chunk);
-        }*/
-
-        //check if there are any allocated physical pages we can free
-        auto startingAddress = reinterpret_cast<uint32_t>(chunk) + sizeof(ChunkHeader);
-        auto alignedAddress = (startingAddress + PageSize - 1) & -PageSize;
-        auto chunkEndAddress = startingAddress + chunk->size;
-
-        if (alignedAddress < chunkEndAddress) {
-            auto pagesToFree = (chunkEndAddress - alignedAddress) / PageSize;
-
-            if (pagesToFree > 0) {
-                Memory::currentVMM->freePages(alignedAddress, pagesToFree);
-            }
-        }
     }
 
     ChunkHeader* Heap::combineChunkWithNext(ChunkHeader* chunk) {
