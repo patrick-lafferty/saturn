@@ -33,15 +33,19 @@ void* realloc(void* ptr, size_t size) {
     /*
     TODO: see if we can expand/contract the area, see cppreference:realloc a)
     */
-    auto address = reinterpret_cast<uintptr_t>(ptr) - sizeof(LibC_Implementation::ChunkHeader);
-    auto chunk = reinterpret_cast<LibC_Implementation::ChunkHeader*>(address);
+
+   	/*
+	All allocations have some fixed size header right before the user data,
+	the last 4 bytes are always the size of the allocation
+	*/
+	auto oldSize = *(reinterpret_cast<uint32_t*>(ptr) - 1);
     
-    if (chunk->size >= size) {
+	if (oldSize >= size) {
 		return ptr;
-    }
+	}
     
     auto replacement = malloc(size);
-    memcpy(replacement, ptr, size);
+    memcpy(replacement, ptr, oldSize);
     free(ptr);
 
     return replacement;
