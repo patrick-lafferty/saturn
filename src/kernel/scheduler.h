@@ -48,10 +48,6 @@ namespace IPC {
     enum class MessageNamespace : uint32_t;
 }
 
-namespace CPU {
-    struct TSS;
-}
-
 namespace Kernel {
 
     template<typename T> class LinkedList {
@@ -133,43 +129,10 @@ namespace Kernel {
         T* head {nullptr};
     };
 
-    enum class TaskState {
-        Running,
-        Sleeping,
-        Blocked
-    };
-
     enum class BlockReason {
         Sleep,
         WaitingOnResource,
         WaitingForMessage
-    };
-
-    struct alignas(0x1000) Stack {
-        char data[0x100000];
-    };
-
-    struct alignas(16) SSEContext {
-        uint8_t data[512];
-    };
-
-    /*
-    A Task is a running application or service, which may be
-    user-mode or kernel-mode
-    */
-    struct Task {
-        TaskContext context;
-        SSEContext* sseContext;
-        Task* nextTask {nullptr};
-        Task* previousTask {nullptr};
-        uint32_t id {0};
-        TaskState state;
-        uint64_t wakeTime {0};
-        Memory::VirtualMemoryManager* virtualMemoryManager;
-        LibC_Implementation::Heap* heap;
-        IPC::Mailbox* mailbox;
-        CPU::TSS* tss;
-        Stack* kernelStack;
     };
 
     enum class EFlags {
@@ -177,52 +140,19 @@ namespace Kernel {
         InterruptEnable = 1 << 9
     };
 
-    struct InitialKernelStack {
-        uint32_t eip {0};
-    };
-
-    struct TaskStack {
-        uint32_t eflags;
-        uint32_t edi {0};
-        uint32_t esi {0};
-        uint32_t ebp {0};
-        uint32_t ebx {0};
-        uint32_t eip {0};
-    };
-
-    //TODO: HACK: really have to find a way to store the schedulers
-    extern class Scheduler* currentScheduler;
-
     enum class State {
         StartCurrent,
         ChangeToStart,
         ChangeToNext
     };
 
-    /*
-    Tracks available task ids and allows them to be recycled
-    when a task exits
-    */
-    class IdGenerator {
-    public:
-
-        uint32_t generateId();
-        void freeId(uint32_t id);
-
-    private:
-
-        std::vector<uint32_t> idBitmap;
-        const uint32_t idsPerBlock {32};
-    };
+    struct Task;
 
     class Scheduler {
     public:
 
-        Scheduler(CPU::TSS* kernelTSS);
+        Scheduler();
 
-        Task* createKernelTask(uintptr_t functionAddress);
-        Task* createUserTask(uintptr_t functionAddress, char* path = nullptr);
-        
         void notifyTimesliceExpired();
         void scheduleTask(Task* task);
 
@@ -256,7 +186,6 @@ namespace Kernel {
         void unblockTask(Task* task);
         void unblockWakeableTasks();
 
-        Task* taskBuffer;
         Task* currentTask {nullptr};
         Task* nextTask {nullptr};
         Task* startTask {nullptr};
@@ -271,11 +200,7 @@ namespace Kernel {
 
         State state {State::StartCurrent};
 
-        LibC_Implementation::Heap* kernelHeap;
-        Memory::VirtualMemoryManager* kernelVMM;
-        CPU::TSS* kernelTSS;
         bool startedTasks {false};
-        IdGenerator idGenerator;
     };
 }
 

@@ -128,7 +128,7 @@ usermodeStub:
     ret
 
 global elfUsermodeStub
-extern loadElf
+;extern loadElf
 ;loads a compiled program from an elf file
 elfUsermodeStub:
 
@@ -138,7 +138,7 @@ elfUsermodeStub:
     add esp, 20
     pop ebx
 
-    call loadElf
+;    call loadElf
 
     call eax
 

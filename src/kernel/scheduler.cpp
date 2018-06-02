@@ -30,19 +30,17 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <memory/physical_memory_manager.h>
 #include <memory/virtual_memory_manager.h>
 #include <cpu/apic.h>
+#include <cpu/cpu.h>
 #include <heap.h>
 #include "ipc.h"
 #include <new>
 #include <services.h>
 #include <stdlib.h>
-#include <cpu/tss.h>
 #include <system_calls.h>
+#include "task.h"
 
 extern "C" void startProcess(Kernel::Task* task);
 extern "C" void changeProcess(Kernel::Task* current, Kernel::Task* next);
-extern "C" void launchProcess();
-extern "C" void usermodeStub();
-extern "C" void elfUsermodeStub();
 
 uint32_t HACK_TSS_ADDRESS;
 
@@ -50,50 +48,8 @@ extern "C" void idleLoop();
 
 namespace Kernel {
 
-    Scheduler* currentScheduler;
-
     void cleanupTasksService() {
-        currentScheduler->cleanupTasks();
-    }
-
-    void callExitKernelTask() {
-        currentScheduler->exitKernelTask();
-    }
-
-    uint32_t IdGenerator::generateId() {
-        int blockId = 0;
-
-        for (auto& block : idBitmap) {
-            if (block != 0) {
-                uint32_t bit {0};
-
-                asm ("tzcnt %0, %1"
-                    : "=r" (bit)
-                    : "r" (block));
-
-                auto id = blockId * idsPerBlock + bit;
-                block &= ~(1 << bit);
-
-                return id;
-            }
-
-            blockId++;
-        }
-
-        //if we got here it means we haven't found a free id,
-        //so we need to add a new block
-        idBitmap.push_back(0xFFFFFFFF - 1);
-
-        return blockId * idsPerBlock;
-    }
-
-    void IdGenerator::freeId(uint32_t id) {
-        auto blockId = id / idsPerBlock;
-        auto bit = id % idsPerBlock;
-
-        if (idBitmap.size() > blockId) {
-            idBitmap[blockId] |= 1 << bit;
-        }
+        //currentScheduler->cleanupTasks();
     }
 
     void schedulerService() {
@@ -113,8 +69,8 @@ namespace Kernel {
                                 path = run.path;
                             }
 
-                            auto task = currentScheduler->createUserTask(run.entryPoint, path);
-                            currentScheduler->scheduleTask(task);
+                            auto task = CurrentTaskLauncher->createUserTask(run.entryPoint);//, path);
+                            CPU::scheduleTask(task);
 
                             RunResult result;
                             result.recipientId = run.senderTaskId;
@@ -140,26 +96,20 @@ namespace Kernel {
         }
     }
 
-    Scheduler::Scheduler(CPU::TSS* kernelTSS) {
-        currentScheduler = this;
-
-        taskBuffer = new Task[30];
-        kernelHeap = LibC_Implementation::KernelHeap;
-        kernelVMM = Memory::currentVMM;
-        this->kernelTSS = kernelTSS;
-
-        startTask = createKernelTask(reinterpret_cast<uint32_t>(idleLoop));
-        cleanupTask = createKernelTask(reinterpret_cast<uint32_t>(cleanupTasksService));
-        cleanupTask->state = TaskState::Blocked;
-        schedulerTask = createKernelTask(reinterpret_cast<uint32_t>(schedulerService));
+    Scheduler::Scheduler() {
+        startTask = CurrentTaskLauncher->createKernelTask(reinterpret_cast<uintptr_t>(idleLoop));
+        /*cleanupTask = createKernelTask(reinterpret_cast<uint32_t>(cleanupTasksService));
+        cleanupTask->state = TaskState::Blocked;*/
+        schedulerTask = CurrentTaskLauncher->createKernelTask(reinterpret_cast<uintptr_t>(schedulerService));
         schedulerTask->state = TaskState::Blocked;
-        blockedQueue.append(cleanupTask);
+        //blockedQueue.append(cleanupTask);
         blockedQueue.append(schedulerTask);
 
         elapsedTime_milliseconds = 0;
         timeslice_milliseconds = 10;
     }
 
+    /*
     void Scheduler::cleanupTasks() {
         while (true) {
             asm volatile("cli");
@@ -182,7 +132,7 @@ namespace Kernel {
             asm volatile("sti");
             blockTask(BlockReason::WaitingForMessage, 0);
         }
-    }
+    }*/
 
     void Scheduler::scheduleNextTask() {
         if (currentTask == nullptr && !readyQueue.isEmpty()) {
@@ -264,174 +214,6 @@ namespace Kernel {
         unblockWakeableTasks();
         scheduleNextTask(); 
         runNextTask();
-    }
-
-    /*
-    When creating a user task, we need to push additional arguments to the stack
-    that launchProcess uses to run the actual user code. So we need to move
-    the kernel stack up a bit to fit those arguments at the bottom of the stack.
-    */
-    uint8_t volatile* adjustStack(Task* task, uint32_t offset) {
-        auto address = task->context.esp;
-        uint8_t volatile* stackPointer = static_cast<uint8_t volatile*>
-            (reinterpret_cast<void volatile*>(address));
-
-        InitialKernelStack volatile* stack = reinterpret_cast<InitialKernelStack volatile*>(stackPointer);
-
-        auto eip = stack->eip;
-        
-        for(auto i = 0u; i < sizeof(InitialKernelStack); i++) {
-            *stackPointer = 0;
-            stackPointer++;
-        }
-
-        stackPointer -= sizeof(InitialKernelStack);
-        stackPointer -= offset;
-        stack = reinterpret_cast<InitialKernelStack volatile*>(stackPointer);
-
-        stack->eip = eip;
-
-        task->context.esp = reinterpret_cast<uint32_t>(stackPointer);
-
-        return stackPointer + sizeof(InitialKernelStack);
-    }
-    
-    Task* Scheduler::createKernelTask(uintptr_t functionAddress) {
-        auto oldHeap = LibC_Implementation::KernelHeap;
-        LibC_Implementation::KernelHeap = kernelHeap;
-        auto oldVMM = Memory::currentVMM;
-        kernelVMM->activate();
-
-        auto kernelStack = new Stack;
-        memset(kernelStack->data, 0, sizeof(Stack));
-        auto stackAddress = reinterpret_cast<uint32_t>(kernelStack);
-
-        uint8_t volatile* stackPointer = static_cast<uint8_t volatile*>
-            (reinterpret_cast<void volatile*>(stackAddress + sizeof(Stack)));
-        stackPointer -= sizeof(InitialKernelStack);
-
-        InitialKernelStack volatile* stack = reinterpret_cast<InitialKernelStack volatile*>(stackPointer);
-        
-        stack->eip = functionAddress;
-
-        Task* task = taskBuffer;
-        task->id = idGenerator.generateId();
-        task->context.esp = reinterpret_cast<uint32_t>(stackPointer);
-        task->context.kernelESP = task->context.esp;
-        task->virtualMemoryManager = kernelVMM;
-        task->heap = kernelHeap;
-        task->tss = kernelTSS;
-        task->kernelStack = kernelStack;
-
-        const uint32_t mailboxSize = 2 * Memory::PageSize;
-        auto mailboxMemory = task->heap->aligned_allocate(Memory::PageSize, mailboxSize);
-
-        task->mailbox = new (mailboxMemory) 
-            IPC::Mailbox(reinterpret_cast<uint32_t>(mailboxMemory) + sizeof(IPC::Mailbox), 
-            mailboxSize - sizeof(IPC::Mailbox));
-
-        auto kernelStackPointer = adjustStack(task, 4);
-        task->context.kernelESP = task->context.esp;
-        auto stackExtras = reinterpret_cast<uint32_t volatile*>(kernelStackPointer);
-        *stackExtras = reinterpret_cast<uint32_t>(callExitKernelTask);
-
-        //auto sseMemory = task->heap->aligned_allocate(16, sizeof(SSEContext));
-        //task->sseContext = new (sseMemory) SSEContext;
-
-        taskBuffer++;
-        oldVMM->activate();
-        LibC_Implementation::KernelHeap = oldHeap;
-
-        return task;
-    }
-
-    Task* Scheduler::createUserTask(uintptr_t functionAddress, char* path) {
-        auto oldHeap = LibC_Implementation::KernelHeap;
-        LibC_Implementation::KernelHeap = kernelHeap;
-        auto oldVMM = Memory::currentVMM;
-        kernelVMM->activate();
-
-        auto task = createKernelTask(reinterpret_cast<uintptr_t>(launchProcess));
-        auto vmm = kernelVMM->cloneForUsermode();
-        task->virtualMemoryManager = vmm;
-        auto backupTSS = *kernelTSS;
-        vmm->activate();
-        vmm->HACK_setNextAddress(0xcfff'f000);
-        auto tssAddress = vmm->allocatePages(1, static_cast<int>(Memory::PageTableFlags::AllowWrite));
-        task->tss = reinterpret_cast<CPU::TSS*>(tssAddress);
-        *task->tss = backupTSS;
-
-        for (auto i = 0u; i < sizeof(CPU::TSS::ioPermissionBitmap); i++) {
-            task->tss->ioPermissionBitmap[i] = 0xFF;
-        }
-
-        if (vmm != Memory::currentVMM) {
-            kprintf("[Scheduler] Error: vmm->activate failed\n");
-            asm volatile("hlt");
-        }
-
-        vmm->HACK_setNextAddress(0xa000'0000);
-        auto userStackAddress = vmm->allocatePages(sizeof(Stack) / Memory::PageSize, static_cast<int>(Memory::PageTableFlags::AllowWrite));
-        auto stack = reinterpret_cast<volatile Stack*>(userStackAddress);
-        memset(const_cast<Stack*>(stack)->data, 0, sizeof(Stack));
-
-        LibC_Implementation::createHeap(Memory::PageSize * Memory::PageSize, vmm);
-        task->heap = LibC_Implementation::KernelHeap;
-
-        //auto sseMemory = task->heap->aligned_allocate(16, sizeof(SSEContext));
-        //task->sseContext = new (sseMemory) SSEContext;
-
-        /*
-        Need to adjust the kernel stack because we want to add
-        userESP and userEIP to the top
-        */
-        auto spaceToAdjust = 8;
-
-        if (path != nullptr) {
-            spaceToAdjust += 4;
-        }
-
-        auto kernelStackPointer = adjustStack(task, spaceToAdjust);
-        task->context.kernelESP = task->context.esp;
-
-        uint8_t volatile* userStackPointer = static_cast<uint8_t volatile*>
-            (reinterpret_cast<void volatile*>(userStackAddress + sizeof(Stack)));//4096));
-        userStackPointer -= sizeof(TaskStack);
-        TaskStack volatile* userStack = reinterpret_cast<TaskStack volatile*>
-            (userStackPointer);
-
-        userStack->eflags = reinterpret_cast<TaskStack volatile*>
-            (kernelStackPointer - sizeof(TaskStack))->eflags;
-        userStack->eip = functionAddress;
-
-        if (path != nullptr) {
-            char* pathCopy = new char[strlen(path) + 1];
-            memset(pathCopy, '\0', strlen(path) + 1);
-            memcpy(pathCopy, path, strlen(path));
-            userStack->edi = reinterpret_cast<uintptr_t>(pathCopy);
-        }
-        
-        /*
-        createUserTask creates a task that starts inside launchProcess,
-        which pops off two values off the stack (user ESP and user EIP)
-        and then enters the user task. So we need to write those two values
-        here
-        */
-        auto stackExtras = reinterpret_cast<uint32_t volatile*>(kernelStackPointer);
-        *stackExtras++ = reinterpret_cast<uint32_t>(vmm);
-        *stackExtras++ = reinterpret_cast<uint32_t>(userStackPointer);
-
-        if (path == nullptr) {
-            *stackExtras++ = reinterpret_cast<uint32_t>(usermodeStub);
-        }
-        else {
-            *stackExtras++ = reinterpret_cast<uint32_t>(elfUsermodeStub);
-        }
-
-        oldVMM->activate();
-        LibC_Implementation::KernelHeap = oldHeap;
-
-        return task;
     }
 
     void Scheduler::blockTask(BlockReason reason, uint32_t arg) {
@@ -701,7 +483,7 @@ namespace Kernel {
 
         user stack is at kernelStack - 8
         */
-        if (false) {
+        /*if (false) {
         auto kernelStackAddress = reinterpret_cast<uint32_t>(currentTask->kernelStack);//(currentTask->context.esp & ~0xFFF) + Memory::PageSize;
         auto pageDirectory = currentTask->virtualMemoryManager->getPageDirectory();
         currentTask->virtualMemoryManager->cleanup();
@@ -710,9 +492,10 @@ namespace Kernel {
         kernelVMM->cleanupClonePageTables(pageDirectory, kernelStackAddress - Memory::PageSize);
         delete currentTask->virtualMemoryManager;
         kernelHeap->free(currentTask->mailbox);
-        }
+        }*/
 
-        idGenerator.freeId(currentTask->id);
+        //idGenerator.freeId(currentTask->id);
+        CurrentTaskLauncher->freeUserTask(currentTask);
 
         currentTask->state = TaskState::Blocked;
         scheduleNextTask();
@@ -733,11 +516,11 @@ namespace Kernel {
         -mailbox
         -free the space in the taskBuffer
         */
-        kernelVMM->activate();
-        LibC_Implementation::KernelHeap = kernelHeap;
-        //kernelHeap->free(currentTask->mailbox);
+        /*kernelVMM->activate();
+        LibC_Implementation::KernelHeap = kernelHeap;*/
 
-        idGenerator.freeId(currentTask->id);
+        //idGenerator.freeId(currentTask->id);
+        CurrentTaskLauncher->freeKernelTask(currentTask);
 
         currentTask->state = TaskState::Blocked;
         scheduleNextTask();
