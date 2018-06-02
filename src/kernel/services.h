@@ -408,16 +408,4 @@ namespace Kernel {
 
     void handleMapMemory(MapMemory request);
     void handleShareMemoryRequest(ShareMemoryRequest request);
-
-    class MemoryGuard {
-    public:
-
-        MemoryGuard(Memory::VirtualMemoryManager* kernelVMM, LibC_Implementation::Heap* kernelHeap);
-        ~MemoryGuard();
-
-    private:
-        
-        Memory::VirtualMemoryManager* oldVMM;
-        LibC_Implementation::Heap* oldHeap;
-    };
 }
