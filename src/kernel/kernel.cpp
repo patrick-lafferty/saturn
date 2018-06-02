@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <cpu/acpi.h>
 #include <cpu/sse.h>
 #include <cpu/tss.h>
+#include <cpu/cpu.h>
 #include <string.h>
 #include <memory/physical_memory_manager.h>
 #include <memory/virtual_memory_manager.h>
@@ -44,6 +45,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <services.h>
 #include <initialize_libc.h>
 #include <heap.h>
+#include <task.h>
 #include <services/memory/memory.h>
 #include <services/terminal/vga.h>
 #include <services/virtualFileSystem/virtualFileSystem.h>
@@ -138,21 +140,23 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
 
     LibC_Implementation::createHeap(PageSize * PageSize * 10, &virtualMemManager);
 
-    Kernel::Scheduler scheduler{tss};
+    Kernel::TaskLauncher launcher {tss};
+    Kernel::Scheduler scheduler;
+    CPU::setupCPUBlocks(1, {&scheduler});
 
     kprintf("Saturn OS v 0.3.0\n------------------\n\nCalibrating clock, please wait...\n");
 
     ServiceRegistry registry;
     ServiceRegistryInstance = &registry;
 
-    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(VirtualFileSystem::service)));
-    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(Event::service)));
-    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(PFS::service)));
-    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(FakeFileSystem::service)));
-    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(HardwareFileSystem::service)));
-    scheduler.scheduleTask(scheduler.createKernelTask(reinterpret_cast<uint32_t>(HardwareFileSystem::detectHardware)));
-    scheduler.scheduleTask(scheduler.createKernelTask(reinterpret_cast<uint32_t>(Discovery::discoverDevices)));
-    scheduler.scheduleTask(scheduler.createUserTask(reinterpret_cast<uint32_t>(Startup::service)));
+    scheduler.scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(VirtualFileSystem::service)));
+    scheduler.scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(Event::service)));
+    scheduler.scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(PFS::service)));
+    scheduler.scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(FakeFileSystem::service)));
+    scheduler.scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(HardwareFileSystem::service)));
+    scheduler.scheduleTask(launcher.createKernelTask(reinterpret_cast<uint32_t>(HardwareFileSystem::detectHardware)));
+    scheduler.scheduleTask(launcher.createKernelTask(reinterpret_cast<uint32_t>(Discovery::discoverDevices)));
+    scheduler.scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(Startup::service)));
     
     scheduler.enterIdle();
 

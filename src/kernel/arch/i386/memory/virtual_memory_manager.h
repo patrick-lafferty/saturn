@@ -36,10 +36,6 @@ and one to be used by the real kernel after paging is setup. So there isn't
 any duplicate symbols, have different namespaces for each obj.
 */
 
-namespace Memory {
-    class VirtualMemoryManager;
-}
-
 namespace LibC_Implementation {
     class Heap;
 }
@@ -78,9 +74,6 @@ namespace Memory {
         Accessed = 1 << 5,
         Dirty = 1 << 6
     };
-
-    //TODO: HACK: decide on how ISR can get access to current VMM
-    extern class VirtualMemoryManager* currentVMM;
 
     enum class PageStatus {
         Allocated,
@@ -177,4 +170,7 @@ namespace Memory {
         uintptr_t nextAddress {0};
         bool pagingActive {false};
     };
+
+    //TODO: HACK: decide on how ISR can get access to current VMM
+    extern VirtualMemoryManager* currentVMM;
 }

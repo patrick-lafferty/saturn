@@ -57,8 +57,6 @@ namespace Memory {
 
     const int PageSize {0x1000};
 
-    //TODO: HACK: decide how ISR can get access to current PMM
-    extern class PhysicalMemoryManager* currentPMM;
     class PhysicalMemoryManager {
     public:
 
@@ -106,4 +104,6 @@ namespace Memory {
         uint32_t freePages {0};
     };
 
+    //TODO: HACK: decide how ISR can get access to current PMM
+    extern PhysicalMemoryManager* currentPMM;
 }

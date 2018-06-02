@@ -29,15 +29,18 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "physical_memory_manager.h"
 #include <string.h>
 #include <stdio.h>
-#include <heap.h>
-#include <scheduler.h>
 #include <algorithm>
 
 #ifndef TARGET_PREKERNEL
+
+#include <task.h>
+#include <heap.h>
+
 void activateVMM(Kernel::Task* task) {
     task->virtualMemoryManager->activate();
     LibC_Implementation::KernelHeap = task->heap;
 }
+
 #endif
 
 extern "C" void setCR3(uint32_t);
