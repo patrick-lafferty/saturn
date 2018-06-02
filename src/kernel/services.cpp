@@ -27,14 +27,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "services.h"
 #include <string.h>
-#include <scheduler.h>
 #include <memory/virtual_memory_manager.h>
 #include <memory/physical_memory_manager.h>
 #include <stdio.h>
 #include "permissions.h"
 #include <cpu/tss.h>
+#include <cpu/cpu.h>
+#include <task.h>
 #include <heap.h>
 #include <system_calls.h>
+#include <memory/guard.h>
 
 namespace Kernel {
 
@@ -42,7 +44,6 @@ namespace Kernel {
 
         kernelHeap = LibC_Implementation::KernelHeap;
         kernelVMM = Memory::currentVMM;
-
 
         auto count = static_cast<uint32_t>(ServiceType::ServiceTypeEnd) + 1;
         taskIds = new uint32_t[count];
@@ -253,7 +254,7 @@ namespace Kernel {
         currentTask's VMM to be activated, not the kernelVMM
         */
 
-        auto currentTask = currentScheduler->getTask(request.senderTaskId);
+        auto currentTask = CPU::getTask(request.senderTaskId);
         auto vmm = currentTask->virtualMemoryManager;
         auto cachedNextAddress = vmm->HACK_getNextAddress();
 
@@ -279,7 +280,7 @@ namespace Kernel {
         currentTask's VMM to be activated, not the kernelVMM
         */
 
-        auto currentTask = currentScheduler->getTask(request.senderTaskId);
+        auto currentTask = CPU::getTask(request.senderTaskId);
 
         ShareMemoryInvitation invitation;
         auto startTableIndex = request.ownerAddress / Memory::PageSize;
@@ -316,11 +317,11 @@ namespace Kernel {
             Task* recipientTask;
 
             if (request.recipientIsTaskId) {
-                recipientTask = currentScheduler->getTask(request.sharedTaskId);
+                recipientTask = CPU::getTask(request.sharedTaskId);
             }
             else {
                 auto serviceId = ServiceRegistryInstance->getServiceTaskId(request.sharedServiceType);
-                recipientTask = currentScheduler->getTask(serviceId);
+                recipientTask = CPU::getTask(serviceId);
             }
 
             currentTask->virtualMemoryManager->sharePages(
@@ -366,7 +367,7 @@ namespace Kernel {
                 if (taskId != 0) {
                     DriverIrqReceived msg;
                     msg.recipientId = taskId;
-                    currentScheduler->sendMessage(IPC::RecipientType::TaskId, &msg);
+                    CPU::sendMessage(IPC::RecipientType::TaskId, &msg);
 
                     return true;
                 }
@@ -382,7 +383,7 @@ namespace Kernel {
             notify.type = static_cast<ServiceType>(index);
             notify.recipientId = taskId;
 
-            currentScheduler->sendMessage(IPC::RecipientType::TaskId, &notify);
+            CPU::sendMessage(IPC::RecipientType::TaskId, &notify);
         }
 
         subscribers[index].clear();
@@ -392,7 +393,7 @@ namespace Kernel {
 
         switch (type) {
             case ServiceType::VGA: {
-                auto task = currentScheduler->getTask(taskId);
+                auto task = CPU::getTask(taskId);
 
                 if (task == nullptr) {
                     kprintf("[ServiceRegistry] Tried to setupService a null task\n");
@@ -413,7 +414,7 @@ namespace Kernel {
                 break;
             }
             case ServiceType::PS2: {  
-                auto task = currentScheduler->getTask(taskId);
+                auto task = CPU::getTask(taskId);
 
                 if (task == nullptr) {
                     kprintf("[ServiceRegistry] Tried to setupService a null task\n");
@@ -433,7 +434,7 @@ namespace Kernel {
             case ServiceType::Mouse: 
             case ServiceType::VFS: {
 
-                auto task = currentScheduler->getTask(taskId);
+                auto task = CPU::getTask(taskId);
 
                 if (task == nullptr) {
                     kprintf("[ServiceRegistry] Tried to setupService a null task\n");
@@ -447,7 +448,7 @@ namespace Kernel {
             }
             case ServiceType::BGA: {
                 
-                auto task = currentScheduler->getTask(taskId);
+                auto task = CPU::getTask(taskId);
 
                 if (task == nullptr) {
                     kprintf("[ServiceRegistry] Tried to setupService a null task\n");
@@ -474,7 +475,7 @@ namespace Kernel {
                 break;
             }
             case ServiceType::WindowManager: {
-                auto task = currentScheduler->getTask(taskId);
+                auto task = CPU::getTask(taskId);
 
                 if (task == nullptr) {
                     kprintf("[ServiceRegistry] Tried to setupService a null task\n");
@@ -514,7 +515,7 @@ asm("cli");
             
             case DriverType::ATA: {
                 
-                auto task = currentScheduler->getTask(taskId);
+                auto task = CPU::getTask(taskId);
 
                 if (task == nullptr) {
                     kprintf("[ServiceRegistry] Tried to setupDriver a null task\n");
@@ -543,19 +544,5 @@ asm("cli");
             }
         }
 asm("sti");
-    }
-    
-    MemoryGuard::MemoryGuard(Memory::VirtualMemoryManager* kernelVMM, LibC_Implementation::Heap* kernelHeap) {
-        
-        oldHeap = LibC_Implementation::KernelHeap;
-        oldVMM = Memory::currentVMM;
-
-        LibC_Implementation::KernelHeap = kernelHeap;
-        kernelVMM->activate();
-    }
-
-    MemoryGuard::~MemoryGuard() {
-        oldVMM->activate();
-        LibC_Implementation::KernelHeap = oldHeap;
     }
 }

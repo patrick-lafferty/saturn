@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <memory/physical_memory_manager.h>
 #include <memory/virtual_memory_manager.h>
 #include <cpu/apic.h>
+#include <cpu/cpu.h>
 #include <scheduler.h>
 #include <system_calls.h>
 #include <services/ps2/ps2.h>
@@ -163,12 +164,14 @@ void panic(CPU::InterruptStackFrame* frame) {
             kprintf("RESP: %x, SS: %x\n", 
                 frame->resp, frame->ss);
 
-    Kernel::currentScheduler->getCurrentTask()->virtualMemoryManager->activate();
+    //Kernel::CurrentScheduler->getCurrentTask()->virtualMemoryManager->activate();
 
     asm volatile("hlt");
 }
 
 bool handlePageFault(uintptr_t virtualAddress, uint32_t errorCode) {
+
+    static int faults = 0;
 
     if (errorCode & static_cast<uint32_t>(PageFaultError::ProtectionViolation)) {
         kprintf("[IDT] Page fault: protection violation [%x]\n", virtualAddress);
@@ -190,6 +193,8 @@ bool handlePageFault(uintptr_t virtualAddress, uint32_t errorCode) {
             auto physicalPage = Memory::currentPMM->allocatePage(1);
             Memory::currentVMM->map(virtualAddress, physicalPage);
             Memory::currentPMM->finishAllocation(virtualAddress, 1);
+
+            faults++;
 
             return true;
         }
@@ -220,23 +225,28 @@ extern "C" void handleSystemCall(SystemCallFrame* frame) {
 
     switch(frame->eax) {
         case static_cast<uint32_t>(SystemCall::Exit): {
-            Kernel::currentScheduler->exitTask();
+            //Kernel::currentScheduler->exitTask();
+            CPU::exitCurrentTask();
             break;
         }
         case static_cast<uint32_t>(SystemCall::Sleep): {
-            Kernel::currentScheduler->blockTask(Kernel::BlockReason::Sleep, frame->ebx);
+            //Kernel::currentScheduler->blockTask(Kernel::BlockReason::Sleep, frame->ebx);
+            CPU::sleepCurrentTask(frame->ebx);
             break;
         }
         case static_cast<uint32_t>(SystemCall::Send): {
-            Kernel::currentScheduler->sendMessage(static_cast<IPC::RecipientType>(frame->ebx), reinterpret_cast<IPC::Message*>(frame->ecx));
+            //Kernel::currentScheduler->sendMessage(static_cast<IPC::RecipientType>(frame->ebx), reinterpret_cast<IPC::Message*>(frame->ecx));
+            CPU::sendMessage(static_cast<IPC::RecipientType>(frame->ebx), reinterpret_cast<IPC::Message*>(frame->ecx));
             break;
         }
         case static_cast<uint32_t>(SystemCall::Receive): {
-            Kernel::currentScheduler->receiveMessage(reinterpret_cast<IPC::Message*>(frame->ebx));
+            //Kernel::currentScheduler->receiveMessage(reinterpret_cast<IPC::Message*>(frame->ebx));
+            CPU::receiveMessage(reinterpret_cast<IPC::Message*>(frame->ebx));
             break;
         }
         case static_cast<uint32_t>(SystemCall::FilteredReceive): {
-            Kernel::currentScheduler->receiveMessage(
+            //Kernel::currentScheduler->receiveMessage(
+            CPU::receiveMessage(
                 reinterpret_cast<IPC::Message*>(frame->ebx),
                 static_cast<IPC::MessageNamespace>(frame->ecx),
                 frame->edx);
@@ -244,7 +254,8 @@ extern "C" void handleSystemCall(SystemCallFrame* frame) {
             break;
         }
         case static_cast<uint32_t>(SystemCall::PeekReceive): {
-            frame->eax = Kernel::currentScheduler->peekReceiveMessage(reinterpret_cast<IPC::Message*>(frame->ebx));
+            //frame->eax = Kernel::currentScheduler->peekReceiveMessage(reinterpret_cast<IPC::Message*>(frame->ebx));
+            frame->eax = CPU::peekReceiveMessage(reinterpret_cast<IPC::Message*>(frame->ebx));
             break;
         }
         default: {
@@ -280,7 +291,8 @@ const char* exceptions[] = {
 
 extern "C" void taskSwitch() {
     APIC::signalEndOfInterrupt();
-    Kernel::currentScheduler->notifyTimesliceExpired(); 
+    //Kernel::currentScheduler->notifyTimesliceExpired(); 
+    CPU::notifyTimesliceExpired();
 }
 
 void interruptHandler(CPU::InterruptStackFrame* frame) {
@@ -318,6 +330,7 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
             if (!handlePageFault(virtualAddress, frame->errorCode)) {
                 panic(frame);
             } 
+
             break;
         }
         case 48:
@@ -340,20 +353,23 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
                     
                     PS2::ReceiveData message {};
                     message.serviceType = Kernel::ServiceType::PS2;
-                    Kernel::currentScheduler->sendMessage(IPC::RecipientType::ServiceName, &message);
+                    //Kernel::currentScheduler->sendMessage(IPC::RecipientType::ServiceName, &message);
+                    CPU::sendMessage(IPC::RecipientType::ServiceName, &message);
 
                     break;
                 }
                 case static_cast<uint32_t>(APIC::KnownInterrupt::RTC): {
                     if (APIC::calibrateAPICTimer()) {
-                        Kernel::currentScheduler->setupTimeslice();
+                        //Kernel::currentScheduler->setupTimeslice();
+                        CPU::setupTimeslice();
                     }
 
                     break;
                 } 
                 case static_cast<uint32_t>(APIC::KnownInterrupt::LocalAPICTimer): {
                     APIC::signalEndOfInterrupt();
-                    Kernel::currentScheduler->notifyTimesliceExpired();
+                    //Kernel::currentScheduler->notifyTimesliceExpired();
+                    CPU::notifyTimesliceExpired();
                     return;
                 }
                 default: {
