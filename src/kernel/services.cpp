@@ -535,6 +535,25 @@ asm("cli");
 
                 break;
             }
+            case DriverType::Serial: {
+                
+                auto task = CPU::getTask(taskId);
+
+                if (task == nullptr) {
+                    kprintf("[ServiceRegistry] Tried to setupDriver a null task\n");
+                    return;
+                }
+
+                auto oldVMM = Memory::currentVMM;
+                task->virtualMemoryManager->activate();
+                grantIOPortRange(0x3f8, 0x400, task->tss->ioPermissionBitmap);
+                oldVMM->activate();
+
+                RegisterDriverResult result;
+                task->mailbox->send(&result);
+
+                break;   
+            }
             case DriverType::DriverTypeEnd: {
                 kprintf("[ServiceRegistry] Tried to setupDriver a DriverTypeEnd\n");
                 break;

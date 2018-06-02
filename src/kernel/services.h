@@ -89,6 +89,7 @@ namespace Kernel {
 
     enum class DriverType {
         ATA,
+        Serial,
         DriverTypeEnd
     };
 

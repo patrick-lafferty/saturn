@@ -3,4 +3,5 @@
     -kernel sysroot/system/boot/saturn.bin^
     -s -no-reboot -no-shutdown^
     -m 512M^
-    -hda "C:\Users\pat\VirtualBox VMs\saturn\saturn_test.vdi"
+    -hda "C:\Users\pat\VirtualBox VMs\saturn\saturn_test.vdi"^
+    -serial file:saturn.log

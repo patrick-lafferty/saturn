@@ -81,6 +81,7 @@ namespace Event {
         void handleCreateRequest(VirtualFileSystem::CreateRequest& request);
         void handleReadRequest(VirtualFileSystem::ReadRequest& request);
         void handleWriteRequest(VirtualFileSystem::WriteRequest& request);
+        void forwardToSerialPort(VirtualFileSystem::WriteRequest& request);
 
         std::vector<std::unique_ptr<Log>> logs;
         std::vector<FileDescriptor> openDescriptors;
@@ -95,6 +96,7 @@ namespace Event {
 
         std::vector<uint32_t> subscribers;
         std::optional<ReceiveSignature> receiveSignature;
+        uint32_t serialFileDescriptor;
     };
 
     void service();

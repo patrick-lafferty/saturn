@@ -262,5 +262,7 @@ namespace Discovery::PCI {
                 loadDriver(device, type);
             }
         }
+
+        Startup::runProgram("/bin/serial.service");
     }
 }

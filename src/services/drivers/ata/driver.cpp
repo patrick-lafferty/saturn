@@ -125,13 +125,11 @@ namespace ATA {
         send(IPC::RecipientType::ServiceRegistryMailbox, &registerRequest);
 
         IPC::MaximumMessageBuffer buffer;
-        receive(&buffer);
+        filteredReceive(&buffer, IPC::MessageNamespace::ServiceRegistry, 
+            static_cast<uint32_t>(Kernel::MessageId::RegisterDriverResult));
 
-        if (buffer.messageNamespace == IPC::MessageNamespace::ServiceRegistry
-            && buffer.messageId == static_cast<uint32_t>(Kernel::MessageId::RegisterDriverResult)) {
-            readRegister8(Register::Command);
-            resetDevice(Device::Master);
-        }
+        readRegister8(Register::Command);
+        resetDevice(Device::Master);
     }
 
     void Driver::queueReadSector(uint32_t lba, uint32_t sectorCount) {

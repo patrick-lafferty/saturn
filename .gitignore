@@ -6,3 +6,4 @@ bin/
 sysroot/
 .d/
 warnings.log
+saturn.log

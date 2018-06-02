@@ -150,12 +150,12 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     ServiceRegistryInstance = &registry;
 
     scheduler.scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(VirtualFileSystem::service)));
-    scheduler.scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(Event::service)));
     scheduler.scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(PFS::service)));
     scheduler.scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(FakeFileSystem::service)));
     scheduler.scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(HardwareFileSystem::service)));
     scheduler.scheduleTask(launcher.createKernelTask(reinterpret_cast<uint32_t>(HardwareFileSystem::detectHardware)));
     scheduler.scheduleTask(launcher.createKernelTask(reinterpret_cast<uint32_t>(Discovery::discoverDevices)));
+    scheduler.scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(Event::service)));
     scheduler.scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(Startup::service)));
     
     scheduler.enterIdle();

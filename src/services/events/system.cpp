@@ -220,6 +220,8 @@ namespace Event {
                 if (!subscribers.empty()) {
                     broadcastEvent(view);
                 }
+
+                forwardToSerialPort(request);
             }
             else if (std::holds_alternative<Vostok::FileDescriptor>(it->object)) {
                 auto descriptor = std::get<Vostok::FileDescriptor>(it->object);
@@ -244,7 +246,17 @@ namespace Event {
         }
     }
 
+    void EventSystem::forwardToSerialPort(WriteRequest& request) {
+        request.fileDescriptor = serialFileDescriptor;
+        request.serviceType = Kernel::ServiceType::VFS;
+        send(IPC::RecipientType::ServiceName, &request);
+    }
+
     void EventSystem::messageLoop() {
+
+        auto openResult = openSynchronous("/serial/output");
+        serialFileDescriptor = openResult.fileDescriptor;
+
         while (true) {
             IPC::MaximumMessageBuffer buffer;
             receive(&buffer);
@@ -289,6 +301,7 @@ namespace Event {
 
     void service() {
         waitForServiceRegistered(Kernel::ServiceType::VFS);
+        Saturn::Event::waitForMount("/serial");
 
         MountRequest request;
         const char* path = "/events";
