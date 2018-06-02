@@ -357,8 +357,11 @@ namespace Apollo {
 
     void Manager::handleMouseMove(Mouse::MouseMove& move) {
 
-        for (int y = 0; y < 20; y++) {
-            std::copy_n(cursorCapture + y * 20, std::min(20u, screenWidth - mouseX), linearFrameBuffer + mouseX + (y + mouseY) * screenWidth);
+        auto width = std::min(20u, screenWidth - mouseX);
+        auto height = std::min(20u, screenHeight - mouseY);
+
+        for (auto y = 0u; y < height; y++) {
+            std::copy_n(cursorCapture + y * 20, width, linearFrameBuffer + mouseX + (y + mouseY) * screenWidth);
         }
 
         mouseX += move.deltaX;
@@ -367,8 +370,8 @@ namespace Apollo {
         mouseX = std::max(0, mouseX);
         mouseY = std::max(0, mouseY);
 
-        auto width = std::min(20u, screenWidth - mouseX);
-        auto height = std::min(20u, screenHeight - mouseY);
+        width = std::min(20u, screenWidth - mouseX);
+        height = std::min(20u, screenHeight - mouseY);
 
         move.absoluteX = mouseX;
         move.absoluteY = mouseY;
