@@ -38,6 +38,7 @@ namespace PS2 {
         SetResolution = 0xE8,
         StatusRequest = 0xE9,
         RequestSinglePacket = 0xEB,
+        SetLinearScaling = 0xE6,
         GetMouseId = 0xF2,
         SetSampleRate = 0xF3,
         EnablePacketStreaming = 0xF4,

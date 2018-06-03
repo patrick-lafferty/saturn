@@ -52,6 +52,12 @@ namespace PS2 {
             && writeMouseData(rate);
     }
 
+    bool setResolution(int resolution) {
+
+        return writeMouseCommand(MouseCommand::SetResolution)
+            && writeMouseData(resolution);
+    }
+
     bool enableIntellimouse() {
         if (!setSampleRate(200)
             || !setSampleRate(100)
@@ -96,8 +102,17 @@ namespace PS2 {
             receiveAndIgnore();
         }
 
-        setSampleRate(30);
-        writeMouseCommand(MouseCommand::EnablePacketStreaming);
+        if (!setResolution(0)) {
+            asm("hlt");
+        }
+
+        if (!setSampleRate(40)) {
+            asm("hlt");
+        }
+
+        if (!writeMouseCommand(MouseCommand::EnablePacketStreaming)) {
+            asm("hlt");
+        }
     }
 
     void transitionMouseState(MouseState& state, uint8_t data) {
@@ -105,6 +120,11 @@ namespace PS2 {
 
         switch (state.next) {
             case NextByte::Header: {
+                
+                if (data & 0x80 || data & 0x40) {
+                    return;
+                }
+
                 state.header = data;
                 state.next = NextByte::XMovement;
                 break;
