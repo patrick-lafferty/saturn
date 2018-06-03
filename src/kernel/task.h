@@ -81,6 +81,16 @@ namespace Kernel {
         uintptr_t vmmAddress;
     };
 
+    enum class Priority {
+        IRQ,
+        Input,
+        UI,
+        IO,
+        Other,
+        Idle,
+        Last
+    };
+
     /*
     A Task is a running application or service, which may be
     user-mode or kernel-mode
@@ -98,6 +108,7 @@ namespace Kernel {
         IPC::Mailbox* mailbox;
         CPU::TSS* tss;
         Stack* kernelStack;
+        Priority priority {Priority::Other};
     };
 
     /*

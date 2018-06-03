@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <services/virtualFileSystem/virtualFileSystem.h>
 #include <services/virtualFileSystem/vostok.h>
 #include <saturn/wait.h>
+#include <task.h>
 
 using namespace VirtualFileSystem;
 
@@ -124,7 +125,7 @@ namespace Startup {
         auto entryPoint = getEntryPoint(descriptor);
 
         if (entryPoint > 0) {
-            auto pid = run(entryPoint);
+            auto pid = run(entryPoint, Kernel::Priority::Other);
 
             while (!createProcessObject(pid)) {
                 sleep(10);

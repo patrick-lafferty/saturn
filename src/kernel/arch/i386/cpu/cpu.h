@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace Kernel {
     class Scheduler;
     struct Task;
+    enum class Priority;
 }
 
 namespace IPC {
@@ -66,5 +67,7 @@ namespace CPU {
     void scheduleTask(Kernel::Task* task);
 
     Kernel::Task* getTask(uint32_t id);
+
+    void changePriority(Kernel::Task* task, Kernel::Priority priority);
 
 }

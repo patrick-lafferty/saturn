@@ -39,6 +39,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <services/virtualFileSystem/vostok.h>
 #include <saturn/logging.h>
 #include "alphablend.h"
+#include <task.h>
+#include <cpu/cpu.h>
 
 using namespace Kernel;
 
@@ -133,7 +135,7 @@ namespace Apollo {
 
         if (entryPoint > 0) {
 
-            auto pid = run(entryPoint);
+            auto pid = run(entryPoint, Kernel::Priority::UI);
 
             if (taskbarTaskId > 0) {
                 if (!sendAppNameToTaskbar(path, taskbarTaskId, pid)) {
@@ -150,10 +152,6 @@ namespace Apollo {
     Manager::Manager(uint32_t framebufferAddress) {
         linearFrameBuffer = reinterpret_cast<uint32_t volatile*>(framebufferAddress);
 
-        taskbarTaskId = launch("/bin/taskbar.bin");
-        launch("/bin/transcript.bin");
-        //capcomTaskId = launch("/bin/capcom.bin");
-
         /*
         Display 0 is capcom
         */
@@ -167,6 +165,11 @@ namespace Apollo {
         logger = new Saturn::Log::Logger("apollo"s);
 
         cursorCapture = new uint32_t[400];
+
+        taskbarTaskId = launch("/bin/taskbar.bin");
+        launch("/bin/transcript.bin");
+        //capcomTaskId = launch("/bin/capcom.bin");
+
     }
 
     void Manager::handleCreateWindow(const CreateWindow& message) {

@@ -147,6 +147,7 @@ namespace Kernel {
     };
 
     struct Task;
+    enum class Priority;
 
     class Scheduler {
     public:
@@ -177,6 +178,8 @@ namespace Kernel {
             return currentTask;
         }
 
+        void changePriority(Task* task, Priority priority);
+
     private:
 
         void scheduleNextTask();
@@ -194,6 +197,8 @@ namespace Kernel {
         LinkedList<Task> readyQueue;
         LinkedList<Task> blockedQueue;
         LinkedList<Task> deleteQueue;
+
+        LinkedList<Task> priorityGroups[6];
 
         uint64_t elapsedTime_milliseconds;
         uint32_t timeslice_milliseconds;

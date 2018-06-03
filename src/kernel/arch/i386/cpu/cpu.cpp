@@ -94,4 +94,9 @@ namespace CPU {
         //TODO: find task from any core
         return ActiveCPUs[0].scheduler->getTask(id);
     }
+
+    void changePriority(Kernel::Task* task, Kernel::Priority priority) {
+        auto cpuId = *reinterpret_cast<uint32_t*>(TSS_ADDRESS);
+        return ActiveCPUs[cpuId].scheduler->changePriority(task, priority);
+    }
 }

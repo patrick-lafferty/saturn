@@ -415,6 +415,7 @@ namespace Kernel {
             }
             case ServiceType::PS2: {  
                 auto task = CPU::getTask(taskId);
+                CPU::changePriority(task, Priority::IRQ);
 
                 if (task == nullptr) {
                     kprintf("[ServiceRegistry] Tried to setupService a null task\n");
@@ -440,6 +441,8 @@ namespace Kernel {
                     kprintf("[ServiceRegistry] Tried to setupService a null task\n");
                     return;
                 }
+
+                CPU::changePriority(task, type == ServiceType::VFS ? Priority::IO : Priority::Input);
 
                 GenericServiceMeta genericMeta;
                 task->mailbox->send(&genericMeta);
@@ -516,6 +519,7 @@ asm("cli");
             case DriverType::ATA: {
                 
                 auto task = CPU::getTask(taskId);
+                CPU::changePriority(task, Priority::IRQ);
 
                 if (task == nullptr) {
                     kprintf("[ServiceRegistry] Tried to setupDriver a null task\n");

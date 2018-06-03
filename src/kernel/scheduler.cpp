@@ -70,6 +70,7 @@ namespace Kernel {
                             }
 
                             auto task = CurrentTaskLauncher->createUserTask(run.entryPoint);//, path);
+                            task->priority = run.priority;
                             CPU::scheduleTask(task);
 
                             RunResult result;
@@ -98,6 +99,8 @@ namespace Kernel {
 
     Scheduler::Scheduler() {
         startTask = CurrentTaskLauncher->createKernelTask(reinterpret_cast<uintptr_t>(idleLoop));
+        startTask->priority = Priority::Idle;
+        currentTask = startTask;
         /*cleanupTask = createKernelTask(reinterpret_cast<uint32_t>(cleanupTasksService));
         cleanupTask->state = TaskState::Blocked;*/
         schedulerTask = CurrentTaskLauncher->createKernelTask(reinterpret_cast<uintptr_t>(schedulerService));
@@ -135,72 +138,47 @@ namespace Kernel {
     }*/
 
     void Scheduler::scheduleNextTask() {
-        if (currentTask == nullptr && !readyQueue.isEmpty()) {
-            currentTask = readyQueue.getHead();
-            state = State::StartCurrent;
+        
+        auto task = findNextTask();
+
+        if (task == nullptr) {
+            unblockWakeableTasks();
+            task = findNextTask();
+        }
+
+        if (task == nullptr) {
+            nextTask = startTask;
         }
         else {
-
-            auto next = findNextTask();
-
-            if (next == nullptr && currentTask == nullptr) {
-                state = State::StartCurrent;
-                currentTask = startTask;
-            }
-            else if (next == nullptr) {
-                state = State::ChangeToStart;
-            }
-            else {
-                nextTask = next;
-                state = State::ChangeToNext;
-            }
+            nextTask = task;
         }
+
+        priorityGroups[static_cast<int>(nextTask->priority)].remove(nextTask);
+        scheduleTask(nextTask);
     }
 
     Task* Scheduler::findNextTask() {
         
-        if (readyQueue.isEmpty()) {
-            //nothings ready, did a blocked task's wake time elapse?
-            unblockWakeableTasks();
+        for (int i = 0; i < static_cast<int>(Priority::Last); i++) {
+            auto& queue = priorityGroups[i];
 
-            return readyQueue.getHead();
-        }
-        else {
-            auto next = currentTask->nextTask;
-
-            if (next == nullptr && readyQueue.getHead()->state == TaskState::Running) {
-                next = readyQueue.getHead(); 
+            if (!queue.isEmpty()) {
+                return queue.getHead();
             }
-
-            return next;
         }
+
+        return nullptr;
     }
 
     void Scheduler::runNextTask() {
-        if (state == State::StartCurrent) {
-            if (startTask == currentTask) {
-                return;
-            }
-
-            changeProcess(startTask, currentTask);
+        if (currentTask == nextTask) {
+            return;
         }
-        else if (state == State::ChangeToStart) {
-            auto current = currentTask;
-            currentTask = nullptr;
-            if (current == startTask) {
-                return;
-            }
 
-            changeProcess(current, startTask);
-        }
-        else {
-            auto current = currentTask;
-            currentTask = nextTask;
+        auto current = currentTask;
+        currentTask = nextTask;
 
-            if (current != nextTask) {
-                changeProcess(current, nextTask);
-            }
-        }
+        changeProcess(current, nextTask);
     }
 
     void Scheduler::notifyTimesliceExpired() {
@@ -223,8 +201,7 @@ namespace Kernel {
             current->state = TaskState::Sleeping;
             currentTask->wakeTime = elapsedTime_milliseconds + arg;
 
-            scheduleNextTask();
-            readyQueue.remove(current);
+            priorityGroups[static_cast<int>(current->priority)].remove(current);
 
             if (blockedQueue.isEmpty()) {
                 blockedQueue.insertBefore(current, nullptr);
@@ -250,13 +227,25 @@ namespace Kernel {
                 
             }
 
+            scheduleNextTask();
+
         }
         else if (reason == BlockReason::WaitingForMessage) {
             auto current = currentTask;
             current->state = TaskState::Blocked;
-            scheduleNextTask();
-            readyQueue.remove(current);
-            blockedQueue.append(currentTask);
+            priorityGroups[static_cast<int>(current->priority)].remove(current);
+            blockedQueue.append(current);
+
+            if (current->priority == Priority::UI 
+                && !priorityGroups[static_cast<int>(Priority::IO)].isEmpty()) {
+                
+                nextTask = priorityGroups[static_cast<int>(Priority::IO)].getHead();
+                priorityGroups[static_cast<int>(nextTask->priority)].remove(nextTask);
+                scheduleTask(nextTask);
+            }
+            else {
+                scheduleNextTask();
+            }
         }
 
         runNextTask();
@@ -300,11 +289,14 @@ namespace Kernel {
     }
 
     void Scheduler::scheduleTask(Task* task) {
-        if (readyQueue.isEmpty()) {
-            readyQueue.insertBefore(task, nullptr);
+
+        auto& queue = priorityGroups[static_cast<int>(task->priority)];
+
+        if (queue.isEmpty()) {
+            queue.insertBefore(task, nullptr);
         }
         else {
-            readyQueue.append(task);
+            queue.append(task);
         }
 
         task->state = TaskState::Running;
@@ -312,6 +304,14 @@ namespace Kernel {
 
     void Scheduler::setupTimeslice() {
         APIC::setAPICTimer(APIC::LVT_TimerMode::Periodic, timeslice_milliseconds);
+    }
+
+    void Scheduler::changePriority(Task* task, Priority priority) {
+
+        auto oldPriority = task->priority;
+        priorityGroups[static_cast<int>(oldPriority)].remove(task);
+        task->priority = priority;
+        scheduleTask(task);
     }
 
     void Scheduler::sendMessage(IPC::RecipientType recipient, IPC::Message* message) {
@@ -348,41 +348,24 @@ namespace Kernel {
             else {
                 taskId = message->recipientId;
             }
-            //check blocked tasks first
 
-            if (!blockedQueue.isEmpty()) {
-                auto task = blockedQueue.getHead();
+            auto task = getTask(taskId);
+            task->mailbox->send(message);
 
-                while (task != nullptr) {
+            if (task->state == TaskState::Blocked) {
+                unblockTask(task);
+            }
 
-                    if (task->id == taskId) {
-                        //TODO: check if mailbox is full, if so block current task
-                        task->mailbox->send(message);
-                        
-                        if (task->state == TaskState::Blocked) {
-                            unblockTask(task);
-                        }
-
-                        return;
-                    }
-
-                    task = task->nextTask;
+            if ((static_cast<int>(task->priority) < static_cast<int>(currentTask->priority))
+                || currentTask->priority == Priority::IRQ) {
+                if (task->state == TaskState::Running) {
+                    nextTask = task;
+                    runNextTask();
                 }
             }
 
-            if (!readyQueue.isEmpty()) {
-                auto task = readyQueue.getHead();
+            return;
 
-                while (task != nullptr) {
-                    if (task->id == taskId) {
-                        //TODO: check if mailbox is full, if so block current task
-                        task->mailbox->send(message);
-                        return;
-                    }
-
-                    task = task->nextTask;
-                }
-            }
         }
 
         kprintf("[Scheduler] Unsent message from: %d to: %d type: %d\n", message->senderTaskId, taskId, recipient);
@@ -411,17 +394,22 @@ namespace Kernel {
                     blockTask(BlockReason::WaitingForMessage, 0);
                 }
 
-                task->mailbox->receive(buffer);
+                auto messages = task->mailbox->getUnreadMessagesCount();
 
-                if (buffer->messageNamespace != filter
-                        || buffer->messageId != messageId) {
+                for (auto i = 0u; i < messages; i++) {
 
-                    task->mailbox->send(buffer);
-                    blockTask(BlockReason::WaitingForMessage, 0);
+                    task->mailbox->receive(buffer);
+
+                    if (buffer->messageNamespace != filter
+                            || buffer->messageId != messageId) {
+                        task->mailbox->send(buffer);
+                    }
+                    else {
+                        return;
+                    }
                 }
-                else {
-                    return;
-                }
+
+                blockTask(BlockReason::WaitingForMessage, 0);
             }
         }
     }
@@ -442,15 +430,21 @@ namespace Kernel {
     }
 
     Task* Scheduler::getTask(uint32_t taskId) {
-        if (!readyQueue.isEmpty()) {
-            auto task = readyQueue.getHead();
+        
+        for (auto i = 0; i < static_cast<int>(Priority::Last); i++) {
+            
+            if (priorityGroups[i].isEmpty()) {
+                continue;
+            }
 
-            while (task != nullptr) {
-                if (task->id == taskId) {
-                    return task;
+            auto head = priorityGroups[i].getHead();
+
+            while (head != nullptr) {
+                if (head->id == taskId) {
+                    return head;
                 }
 
-                task = task->nextTask;
+                head = head->nextTask;
             }
         }
 
@@ -498,8 +492,9 @@ namespace Kernel {
         CurrentTaskLauncher->freeUserTask(currentTask);
 
         currentTask->state = TaskState::Blocked;
+        priorityGroups[static_cast<int>(currentTask->priority)].remove(currentTask);
         scheduleNextTask();
-        readyQueue.remove(currentTask);
+        //readyQueue.remove(currentTask);
         //deleteQueue.append(currentTask);
         //unblockTask(cleanupTask);
         
@@ -523,8 +518,9 @@ namespace Kernel {
         CurrentTaskLauncher->freeKernelTask(currentTask);
 
         currentTask->state = TaskState::Blocked;
+        priorityGroups[static_cast<int>(currentTask->priority)].remove(currentTask);
         scheduleNextTask();
-        readyQueue.remove(currentTask);
+        //readyQueue.remove(currentTask);
         //deleteQueue.append(currentTask);
         //unblockTask(cleanupTask);
         runNextTask();

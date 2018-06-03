@@ -27,12 +27,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include <system_calls.h>
 #include <services.h>
+#include <task.h>
 
 using namespace Kernel;
 
-uint32_t run(uintptr_t entryPoint) {
+uint32_t run(uintptr_t entryPoint, Priority priority) {
     RunProgram run;
     run.entryPoint = entryPoint;
+    run.priority = priority;
     send(IPC::RecipientType::Scheduler, &run);
 
     IPC::MaximumMessageBuffer buffer;

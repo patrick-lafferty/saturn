@@ -225,27 +225,22 @@ extern "C" void handleSystemCall(SystemCallFrame* frame) {
 
     switch(frame->eax) {
         case static_cast<uint32_t>(SystemCall::Exit): {
-            //Kernel::currentScheduler->exitTask();
             CPU::exitCurrentTask();
             break;
         }
         case static_cast<uint32_t>(SystemCall::Sleep): {
-            //Kernel::currentScheduler->blockTask(Kernel::BlockReason::Sleep, frame->ebx);
             CPU::sleepCurrentTask(frame->ebx);
             break;
         }
         case static_cast<uint32_t>(SystemCall::Send): {
-            //Kernel::currentScheduler->sendMessage(static_cast<IPC::RecipientType>(frame->ebx), reinterpret_cast<IPC::Message*>(frame->ecx));
             CPU::sendMessage(static_cast<IPC::RecipientType>(frame->ebx), reinterpret_cast<IPC::Message*>(frame->ecx));
             break;
         }
         case static_cast<uint32_t>(SystemCall::Receive): {
-            //Kernel::currentScheduler->receiveMessage(reinterpret_cast<IPC::Message*>(frame->ebx));
             CPU::receiveMessage(reinterpret_cast<IPC::Message*>(frame->ebx));
             break;
         }
         case static_cast<uint32_t>(SystemCall::FilteredReceive): {
-            //Kernel::currentScheduler->receiveMessage(
             CPU::receiveMessage(
                 reinterpret_cast<IPC::Message*>(frame->ebx),
                 static_cast<IPC::MessageNamespace>(frame->ecx),
@@ -254,7 +249,6 @@ extern "C" void handleSystemCall(SystemCallFrame* frame) {
             break;
         }
         case static_cast<uint32_t>(SystemCall::PeekReceive): {
-            //frame->eax = Kernel::currentScheduler->peekReceiveMessage(reinterpret_cast<IPC::Message*>(frame->ebx));
             frame->eax = CPU::peekReceiveMessage(reinterpret_cast<IPC::Message*>(frame->ebx));
             break;
         }
@@ -291,7 +285,6 @@ const char* exceptions[] = {
 
 extern "C" void taskSwitch() {
     APIC::signalEndOfInterrupt();
-    //Kernel::currentScheduler->notifyTimesliceExpired(); 
     CPU::notifyTimesliceExpired();
 }
 

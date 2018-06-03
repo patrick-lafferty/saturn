@@ -201,6 +201,8 @@ namespace Kernel {
         ServiceType type;
     };
 
+    enum class Priority;
+
     struct RunProgram : IPC::Message {
         RunProgram() {
             messageId = static_cast<uint32_t>(MessageId::RunProgram);
@@ -211,6 +213,7 @@ namespace Kernel {
 
         uintptr_t entryPoint;
         char path[256];
+        Priority priority;
     };
 
     struct RunResult : IPC::Message {
