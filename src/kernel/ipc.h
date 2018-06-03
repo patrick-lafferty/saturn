@@ -121,6 +121,10 @@ namespace IPC {
             return unreadMessages > 0;
         }
 
+        uint32_t getUnreadMessagesCount() const {
+            return unreadMessages;
+        }
+
     private:
 
         uint32_t unreadMessages {0};

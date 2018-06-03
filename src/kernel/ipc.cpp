@@ -42,6 +42,7 @@ namespace IPC {
         if (message->length > availableSpace) {
             //??
             kprintf("[IPC] Send() ??\n");
+            asm("hlt");
         }
         else {
             auto ptr = buffer + lastWriteOffset;
@@ -66,6 +67,7 @@ namespace IPC {
 
         if (lastWriteOffset > bufferSize) {
             kprintf("[Mailbox] lastWriteOffset is invalid\n");
+            asm("hlt");
         }
     }
 
@@ -73,6 +75,7 @@ namespace IPC {
         if (unreadMessages == 0) {
             //block
             kprintf("[IPC] Read blocked\n");
+            asm("hlt");
             return false;
         }
         else {
@@ -134,6 +137,7 @@ namespace IPC {
 
             if (lastReadOffset > bufferSize) {
                 kprintf("[Mailbox] lastReadOffset is invalid\n");
+                asm("hlt");
             }
 
             unreadMessages--;
