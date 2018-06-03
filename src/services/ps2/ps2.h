@@ -45,11 +45,11 @@ namespace PS2 {
     
     enum class ControllerCommand {
         GetConfiguration = 0x20,
-        SetConfiguration = 0x60,
-        DisableFirstPort = 0xAD,
-        EnableFirstPort = 0xAE,
-        DisableSecondPort = 0xA7,
-        EnableSecondPort = 0xA8,
+        SetConfiguration = 0x60, //no response
+        DisableFirstPort = 0xAD, //no response
+        EnableFirstPort = 0xAE, //no response
+        DisableSecondPort = 0xA7, //no response
+        EnableSecondPort = 0xA8, //no response
         Test = 0xAA,
         TestFirstPort = 0xAB,
         TestSecondPort = 0xA9
@@ -192,5 +192,8 @@ namespace PS2 {
             length = sizeof(ReceiveData);
             messageNamespace = IPC::MessageNamespace::PS2;
         }        
+        
+        uint8_t status;
+        uint8_t data;
     };
 }

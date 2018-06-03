@@ -199,7 +199,8 @@ namespace Terminal {
                             break;
                         }
                         default: {
-                            printf("[Terminal] Unhandled keyboard event\n");
+                            //printf("[Terminal] Unhandled keyboard event\n");
+                            break;
                         }
                     }
 

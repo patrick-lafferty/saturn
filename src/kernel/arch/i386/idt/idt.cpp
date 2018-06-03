@@ -344,16 +344,29 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
                 case static_cast<uint32_t>(APIC::KnownInterrupt::Keyboard):
                 case static_cast<uint32_t>(APIC::KnownInterrupt::Mouse): {
                     
-                    PS2::ReceiveData message {};
+                    uint8_t status;
+                    uint16_t statusRegister {0x64};
+
+                    asm("inb %1, %0"
+                        : "=a" (status)
+                        : "Nd" (statusRegister));
+
+                    uint8_t data;
+                    uint16_t dataPort {0x60};
+                    asm("inb %1, %0"
+                        : "=a" (data)
+                        : "Nd" (dataPort));
+
+                    PS2::ReceiveData message;
+                    message.status = status;
+                    message.data = data;
                     message.serviceType = Kernel::ServiceType::PS2;
-                    //Kernel::currentScheduler->sendMessage(IPC::RecipientType::ServiceName, &message);
                     CPU::sendMessage(IPC::RecipientType::ServiceName, &message);
 
                     break;
                 }
                 case static_cast<uint32_t>(APIC::KnownInterrupt::RTC): {
                     if (APIC::calibrateAPICTimer()) {
-                        //Kernel::currentScheduler->setupTimeslice();
                         CPU::setupTimeslice();
                     }
 
@@ -361,7 +374,6 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
                 } 
                 case static_cast<uint32_t>(APIC::KnownInterrupt::LocalAPICTimer): {
                     APIC::signalEndOfInterrupt();
-                    //Kernel::currentScheduler->notifyTimesliceExpired();
                     CPU::notifyTimesliceExpired();
                     return;
                 }

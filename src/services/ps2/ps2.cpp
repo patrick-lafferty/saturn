@@ -89,6 +89,8 @@ namespace PS2 {
     }
 
     bool readMouseConfig() {
+        sleep(500);
+
         auto openResult = openSynchronous("/system/hardware/mouse/hasScrollWheel");
 
         while (!openResult.success) {
@@ -132,31 +134,15 @@ namespace PS2 {
                     switch(static_cast<MessageId>(buffer.messageId)) {
                         
                         case MessageId::ReceiveData: {
-                            uint8_t full {0};
-                            uint16_t statusRegister {0x64};
-                            uint16_t dataPort {0x60};
 
-                            do {
-                                asm("inb %1, %0"
-                                    : "=a" (full)
-                                    : "Nd" (statusRegister));
+                            auto message = IPC::extractMessage<ReceiveData>(buffer);
 
-                                if (full & 1) {
-                                    uint8_t data;
-
-                                    asm("inb %1, %0"
-                                        : "=a" (data)
-                                        : "Nd" (dataPort));
-
-                                    if (full & 0x20) {
-                                        transitionMouseState(mouse, data);
-                                    }
-                                    else {
-                                        keyboardState = transitionKeyboardState(keyboardState, data);
-                                    }
-                                }
-
-                            } while (full & 1);
+                            if (message.status & 0x20) {
+                                transitionMouseState(mouse, message.data);
+                            }
+                            else {
+                                keyboardState = transitionKeyboardState(keyboardState, message.data);
+                            }
 
                             break;
                         }
@@ -192,26 +178,39 @@ namespace PS2 {
         }
     }
 
-    bool waitForStatus(uint8_t desiredStatus) {
+    bool waitForStatus(uint8_t desiredStatus, bool isSet) {
         uint8_t status {0};
         uint16_t statusRegister {0x64};
-        uint32_t timeToWait {10000};
+        uint32_t timeToWait {1000000};
+
+        bool done = false;
 
         do {
             asm("inb %1, %0"
                 : "=a" (status)
                 : "Nd" (statusRegister));
-            timeToWait--;
-        }
-        while (timeToWait > 0 && (status & 1) != desiredStatus);
 
-        return timeToWait == 0;
+            //timeToWait--;
+
+            if (isSet) {
+                done = (status & desiredStatus) != 0;
+            }
+            else {
+                done = (status & desiredStatus) == 0;
+            }
+        }
+        while (timeToWait > 0 && !done);
+
+        return timeToWait == 0 && !done;
     }
 
     void writeCommand(uint8_t command, Port port) {
         if (port == Port::First) {
 
-            waitForStatus(0);
+            if (waitForStatus(2, false)) {
+                //timeout, error
+                asm("hlt");
+            }
 
             uint16_t dataPort {0x60};
 
@@ -222,6 +221,11 @@ namespace PS2 {
         else {
             uint16_t dataPort {0x64};
             uint8_t selectPortTwo {0xD4};
+
+            if (waitForStatus(2, false)) {
+                //timeout, error
+                asm("hlt");
+            }
 
             asm("outb %0, %1"
                 : //no output
@@ -235,15 +239,19 @@ namespace PS2 {
         uint8_t commandByte {static_cast<uint8_t>(command)};
         uint16_t commandPort {0x64};
 
+        if (waitForStatus(2, false)) {
+            //timeout, error
+            asm("hlt");
+        }
+
         asm("outb %0, %1"
             : //no output
             : "a" (commandByte), "Nd" (commandPort));
     }
     
     uint8_t readByte() {
-        auto timeout = waitForStatus(1);
 
-        if (timeout) {
+        if (waitForStatus(1, true)) {
             return 0;
         }
 
@@ -258,28 +266,17 @@ namespace PS2 {
     }
 
     bool waitForAck() {
-        return readByte() != 0;
+        return readByte() == ACK;
     }
 
     void flushCommandBuffer() {
-        uint8_t status {0};
-        uint16_t statusRegister {0x64};
+      
+        uint16_t dataPort {0x60};
+        uint8_t result {0};
 
-        do {
-            asm("inb %1, %0"
-                : "=a" (status)
-                : "Nd" (statusRegister));
-
-            if (status & 1) {
-                uint16_t dataPort {0x60};
-                uint8_t result {0};
-                asm("inb %1, %0"
-                    : "=a" (result)
-                    : "Nd" (dataPort));
-            }
-        }
-        while ((status & 1)); 
-        
+        asm("inb %1, %0"
+            : "=a" (result)
+            : "Nd" (dataPort)); 
     }
 
     void printPortTestResults(uint8_t testResult) {
@@ -385,6 +382,43 @@ namespace PS2 {
 
         writeControllerCommand(ControllerCommand::SetConfiguration);
         writeCommand(config, Port::First);
+
+        return;
+
+        writeCommand(0xFF, Port::First);
+        auto ack = readByte();
+
+        if (ack != ACK) {
+            asm("hlt");
+        }
+
+        auto resetResult = readByte();
+
+        if (resetResult != 0xAA) {
+            //error
+            asm("hlt");
+        }
+
+        if (isDualChannel) {
+            writeCommand(0xFF, Port::Second);
+            ack = readByte();
+
+            if (ack != ACK) {
+                asm("hlt");
+            }
+
+            resetResult = readByte();
+
+            if (resetResult != 0xAA) {
+                asm("hlt");
+            }
+
+            resetResult = readByte();
+
+            if (resetResult != 0) {
+                asm("hlt");
+            }
+        }
     }
 
     uint16_t identifyDevice(Port port) {
@@ -394,6 +428,11 @@ namespace PS2 {
             return 0;
         }
         auto id = readByte();
+
+        if (id < 5) {
+            return id;
+        }
+
         auto id2 = readByte();
 
         return (id << 8) | id2;
