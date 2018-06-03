@@ -154,7 +154,7 @@ namespace Memory {
             return nextAddress;
         }
 
-        VirtualMemoryManager* cloneForUsermode();
+        VirtualMemoryManager* cloneForUsermode(VirtualMemoryManager* vmm);
 
         void preallocateKernelPageTables();
 

@@ -295,8 +295,7 @@ namespace Memory {
         currentVMM = this;
     }
 
-    VirtualMemoryManager* VirtualMemoryManager::cloneForUsermode() {
-        auto virtualMemoryManager = new VirtualMemoryManager;
+    VirtualMemoryManager* VirtualMemoryManager::cloneForUsermode(VirtualMemoryManager* virtualMemoryManager) {
         auto newDirectoryAddress = physicalManager->allocatePage(1);
         auto virtualAddress = allocatePages(1, 0x2);
         map(virtualAddress, newDirectoryAddress);
