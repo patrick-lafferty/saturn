@@ -27,7 +27,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "task.h"
 #include <memory/guard.h>
-#include <memory/virtual_memory_manager.h>
 #include <memory/physical_memory_manager.h>
 #include <heap.h>
 #include <cpu/cpu.h>
@@ -70,6 +69,12 @@ namespace Kernel {
         *extras = extra;
     }
 
+    IdGenerator::IdGenerator() {
+        for (auto& block : idBitmap) {
+            block = 0xFFFFFFFF - 1;
+        }
+    }
+
     uint32_t IdGenerator::generateId() {
         int blockId = 0;
 
@@ -92,7 +97,8 @@ namespace Kernel {
 
         //if we got here it means we haven't found a free id,
         //so we need to add a new block
-        idBitmap.push_back(0xFFFFFFFF - 1);
+        //idBitmap.push_back(0xFFFFFFFF - 1);
+        //TODO
 
         return blockId * idsPerBlock;
     }
@@ -101,9 +107,7 @@ namespace Kernel {
         auto blockId = id / idsPerBlock;
         auto bit = id % idsPerBlock;
 
-        if (idBitmap.size() > blockId) {
-            idBitmap[blockId] |= 1 << bit;
-        }
+        idBitmap[blockId] |= 1 << bit;
     }
 
     void callExitKernelTask() {
@@ -114,6 +118,7 @@ namespace Kernel {
         : stackAllocator {Memory::currentVMM},
             taskAllocator {Memory::currentVMM},
             mailboxAllocator {Memory::currentVMM},
+            vmmAllocator {Memory::currentVMM},
             kernelTSS {kernelTSS}
         {
         kernelHeap = LibC_Implementation::KernelHeap;
@@ -164,7 +169,8 @@ namespace Kernel {
         MemoryGuard guard {kernelVMM, kernelHeap};
 
         auto task = createKernelTask(reinterpret_cast<uintptr_t>(launchProcess));
-        auto vmm = kernelVMM->cloneForUsermode();
+        auto vmm = vmmAllocator.allocate();
+        kernelVMM->cloneForUsermode(vmm);
         task->virtualMemoryManager = vmm;
         auto backupTSS = *kernelTSS;
         vmm->activate();

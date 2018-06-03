@@ -32,11 +32,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vector>
 #include <cpu/tss.h>
 #include <memory/block_allocator.h>
+#include <memory/virtual_memory_manager.h>
 #include "ipc.h"
-
-namespace Memory {
-    class VirtualMemoryManager;
-}
 
 namespace LibC_Implementation {
     class Heap;
@@ -118,18 +115,20 @@ namespace Kernel {
     class IdGenerator {
     public:
 
+        IdGenerator();
+
         uint32_t generateId();
         void freeId(uint32_t id);
 
     private:
 
-        std::vector<uint32_t> idBitmap;
+        uint32_t idBitmap[64];
         const uint32_t idsPerBlock {32};
     };
 
     struct BufferedMailbox {
         IPC::Mailbox box;
-        static constexpr int bufferSize = 2 * 0x1000;
+        static constexpr int bufferSize = 20 * 0x1000;
         uint8_t buffer[bufferSize];
 
         BufferedMailbox() 
@@ -159,6 +158,7 @@ namespace Kernel {
         BlockAllocator<Stack> stackAllocator;
         BlockAllocator<Task> taskAllocator;
         BlockAllocator<BufferedMailbox> mailboxAllocator;
+        BlockAllocator<Memory::VirtualMemoryManager> vmmAllocator;
     };
 
     inline TaskLauncher* CurrentTaskLauncher;
