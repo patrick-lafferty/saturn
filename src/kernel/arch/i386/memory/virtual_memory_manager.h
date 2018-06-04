@@ -154,11 +154,15 @@ namespace Memory {
             return nextAddress;
         }
 
-        VirtualMemoryManager* cloneForUsermode(VirtualMemoryManager* vmm);
+        VirtualMemoryManager* cloneForUsermode(VirtualMemoryManager* vmm, bool copyAll = false);
 
         void preallocateKernelPageTables();
 
         void sharePages(uint32_t ownerStartAddress, VirtualMemoryManager* recipientVMM, uint32_t recipientStartAddress, uint32_t count);
+
+        uint32_t getDirectoryPhysicalAddress() const {
+            return directoryPhysicalAddress;
+        }
 
     private:
 

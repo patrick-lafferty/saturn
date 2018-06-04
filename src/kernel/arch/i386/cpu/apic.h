@@ -176,4 +176,7 @@ namespace APIC {
         LocalAPICTimer = 52,
         ATA = 53
     };
+
+    void sendInitIPI(int targetAPICId);
+    void sendStartupIPI(int targetAPICId, int vector);
 }

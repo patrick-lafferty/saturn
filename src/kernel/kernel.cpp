@@ -56,6 +56,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <services/startup/startup.h>
 #include <services/discovery/loader.h>
 
+#include <cpu/apic.h>
+
 using namespace Kernel;
 using namespace Memory;
 
@@ -74,6 +76,68 @@ struct MemManagerAddresses {
     uint32_t acpiStartAddress;
     uint32_t acpiPages;
 };
+
+void infiniteLoop() {
+    while (true) {
+        int x = 0;
+        x++;
+    }
+}
+
+extern "C" void trampoline_end();
+extern "C" void trampoline_start();
+extern "C" uint8_t trampoline_size;
+
+void setupCPU() {
+
+    BlockAllocator<Stack> stackAllocator {currentVMM};
+    BlockAllocator<VirtualMemoryManager> vmmAllocator {currentVMM};
+
+    auto stack = stackAllocator.allocate();
+    auto vmm = vmmAllocator.allocate();
+    currentVMM->cloneForUsermode(vmm, true);
+
+    auto configMemoryBlock = reinterpret_cast<void*>(0x3000);
+    auto savedPhysicalNextFreeAddress = *reinterpret_cast<uint32_t*>(configMemoryBlock);
+    auto config = reinterpret_cast<uint8_t*>(configMemoryBlock);
+
+    memcpy(configMemoryBlock, reinterpret_cast<void*>(trampoline_start), 
+        trampoline_size);
+
+    config += trampoline_size;
+    auto startingGDTAddress = reinterpret_cast<uintptr_t>(config);
+    memcpy(config, gdt, sizeof(GDT::Descriptor) * 6);
+    config += sizeof(GDT::Descriptor) * 6;
+
+    auto pt = reinterpret_cast<GDT::DescriptorPointer*>(config);
+    pt->limit = sizeof(GDT::Descriptor) * 6 - 1;
+    pt->base = startingGDTAddress;
+
+    auto cpuData = ((int*)configMemoryBlock) + 0x3Fb;
+    *cpuData = 0;
+    auto cpuReadyFlag = cpuData++;
+
+    *cpuData = reinterpret_cast<uintptr_t>(pt);
+    *++cpuData = vmm->getDirectoryPhysicalAddress();
+    *++cpuData = reinterpret_cast<uintptr_t>(stack) + sizeof(Stack) - 8;
+    auto stackPointer = reinterpret_cast<uint32_t*>(*cpuData);
+    *stackPointer++ = reinterpret_cast<uintptr_t>(cpuReadyFlag);
+    *stackPointer = reinterpret_cast<uintptr_t>(infiniteLoop);
+
+    APIC::sendInitIPI(1);
+    uint32_t x = 10000;
+    while (x > 0) x--;
+    APIC::sendStartupIPI(1, 0x3);
+    x = 10000;
+    while (x > 0) x--;
+
+    while (*cpuReadyFlag != 1) {}
+    *cpuReadyFlag = 1337;
+
+    while (*cpuReadyFlag <= 9000) {}
+    
+    while (true) {}
+}
 
 extern "C" int kernel_main(MemManagerAddresses* addresses) {
 
@@ -133,6 +197,8 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
         kprintf("[Kernel] Parsing ACPI Tables failed, halting\n");
         asm volatile("hlt");
     }
+
+    setupCPU();
 
     //also don't need APIC tables anymore
     //NOTE: if we actually do, copy them before this line to a new address space

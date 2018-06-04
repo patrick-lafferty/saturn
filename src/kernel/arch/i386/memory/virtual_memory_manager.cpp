@@ -295,7 +295,9 @@ namespace Memory {
         currentVMM = this;
     }
 
-    VirtualMemoryManager* VirtualMemoryManager::cloneForUsermode(VirtualMemoryManager* virtualMemoryManager) {
+    VirtualMemoryManager* VirtualMemoryManager::cloneForUsermode(VirtualMemoryManager* virtualMemoryManager,
+        bool copyAll) {
+
         auto newDirectoryAddress = physicalManager->allocatePage(1);
         auto virtualAddress = allocatePages(1, 0x2);
         map(virtualAddress, newDirectoryAddress);
@@ -304,7 +306,7 @@ namespace Memory {
         auto kernelStart = extractDirectoryIndex(0xD000'0000);
 
         for (auto i = 0u; i < 1024u; i++) {
-            if (i >= kernelStart) {
+            if (i >= kernelStart || copyAll) {
                 newDirectory->pageTableAddresses[i] = directory->pageTableAddresses[i];
             }
             else {

@@ -74,6 +74,8 @@ extern "C" void setupKernel(MultibootInformation* info) {
     //the first megabyte of memory, for bios stuff
     _virtualMemManager.map_unpaged(virtualOffset, 0, 0x100000 / 0x1000, pageFlags);
 
+    _virtualMemManager.map_unpaged(0x3000, 0x3000, 2, pageFlags);
+
     auto kernelStartAddress = reinterpret_cast<uint32_t>(&__kernel_memory_start);
     auto kernelEndAddress = reinterpret_cast<uint32_t>(&__kernel_memory_end);
 

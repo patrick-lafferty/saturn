@@ -466,6 +466,16 @@ namespace APIC {
             IO_TriggerMode::Edge
         ), 0);
 
-        setupAPICTimer();
+        //setupAPICTimer();
+    }
+
+    void sendInitIPI(int targetAPICId) {
+        writeLocalAPICRegister(Registers::InterruptCommandHigher, targetAPICId << 24);
+        writeLocalAPICRegister(Registers::InterruptCommandLower, 0x4500);
+    }
+
+    void sendStartupIPI(int targetAPICId, int vector) {
+        writeLocalAPICRegister(Registers::InterruptCommandHigher, targetAPICId << 24);
+        writeLocalAPICRegister(Registers::InterruptCommandLower, 0x4600 | vector);
     }
 }
