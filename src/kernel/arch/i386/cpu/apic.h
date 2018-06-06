@@ -36,6 +36,7 @@ namespace APIC {
     void loadAPICStructures(uintptr_t address, uint32_t byteLength);
     bool calibrateAPICTimer();
 
+    inline bool WaitingForTimerCalibration = false;
 
     enum class Registers {
         TaskPriority = 0x80,

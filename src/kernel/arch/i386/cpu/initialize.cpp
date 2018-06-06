@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <cpu/cpu.h>
 #include <cpu/sse.h>
 #include <cpu/pic.h>
+#include <cpu/rtc.h>
 #include <gdt/gdt.h>
 #include <memory/physical_memory_manager.h>
 #include <memory/virtual_memory_manager.h>
@@ -51,6 +52,17 @@ namespace CPU {
             int x = 0;
             x++;
         }
+    }
+
+    void kernel_sleep(int milliseconds) {
+        RTC::enable(5);
+
+        while (milliseconds > 0) {
+            asm("hlt");
+            milliseconds--;
+        }
+
+        RTC::disable();
     }
 
     Trampoline createTrampoline(BlockAllocator<SmallStack>& stackAllocator,
@@ -120,7 +132,7 @@ namespace CPU {
         trampoline.data->stackAddress = reinterpret_cast<uintptr_t>(stackPointer);        
     }
 
-    void setupCPU() {
+    void initializeApplicationProcessors() {
 
         BlockAllocator<SmallStack> stackAllocator {currentVMM};
         BlockAllocator<VirtualMemoryManager> vmmAllocator {currentVMM};
@@ -128,18 +140,27 @@ namespace CPU {
         auto trampoline = createTrampoline(stackAllocator, vmmAllocator, 1);
 
         APIC::sendInitIPI(1);
-        uint32_t x = 10000;
-        while (x > 0) x--;
+        kernel_sleep(10);
         APIC::sendStartupIPI(1, 0x3);
-        x = 10000;
-        while (x > 0) x--;
+        kernel_sleep(1);
 
-        while (*trampoline.status != 1) {}
+        //wait for up to 500ms
+        int x = 50;
+
+        while (*trampoline.status != 1 && x > 0) {
+            kernel_sleep(10);
+            x -= 1;
+        }
+
+        if (*trampoline.status != 1) {
+            //this cpu failed to start
+        }
+
         *trampoline.status = 1337;
 
-        while (*trampoline.status <= 9000) {}
-        
-        while (true) {}
+        while (*trampoline.status <= 9000) {
+            kernel_sleep(1);
+        }
 
         /*
         TODO:
@@ -178,7 +199,7 @@ namespace CPU {
             asm volatile("hlt");
         }
 
-        setupCPU();
+        initializeApplicationProcessors();
 
         TaskLauncher launcher {tss};
         auto scheduler = BlockAllocator<Scheduler>(Memory::currentVMM).allocate();

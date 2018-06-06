@@ -72,12 +72,18 @@ namespace APIC {
 
         RTC::enable(0xD);
         TSC::startCalibration();
+
+        WaitingForTimerCalibration = true;
     }
 
     uint32_t ticksPerMilliSecond = 0;
     int tries {0};
     const int MaxTries {8};
     bool calibrateAPICTimer() {
+
+        if (!WaitingForTimerCalibration) {
+            return false;
+        }
 
         if (tries == MaxTries) {
             TSC::stopCalibration();
