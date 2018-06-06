@@ -30,14 +30,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 section .text
 
 global startProcess
-extern HACK_TSS_ADDRESS
+extern TSS_ADDRESS
 
 startProcess:
 
     mov ecx, [esp + 4]
     mov esp, [ecx + 4] 
 
-    mov eax, [HACK_TSS_ADDRESS]
+    mov eax, [TSS_ADDRESS]
     mov ecx, [ecx + 4]
     mov [eax + 4], ecx
 
@@ -73,7 +73,7 @@ changeProcess:
     ;mov eax, [eax + 8]
     ;fxrstor [eax]
 
-    mov eax, [HACK_TSS_ADDRESS]
+    mov eax, [TSS_ADDRESS]
     mov ecx, [ebp + 12] ; nextTask->context                
     mov ecx, [ecx + 4] ; nextTask->context.kernelESP
     mov [eax + 4], ecx ; tss->esp0 = nextTask->context.kernelESP

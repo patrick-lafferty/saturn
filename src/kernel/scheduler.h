@@ -31,8 +31,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <task_context.h>
 #include <vector>
 
-extern "C" uint32_t HACK_TSS_ADDRESS;
-
 namespace Memory {
     class VirtualMemoryManager;
 }

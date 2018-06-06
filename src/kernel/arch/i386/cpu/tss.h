@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdint.h>
 
 namespace CPU {
+
     struct TSS {
         uint32_t previousTaskLink;
         uint32_t esp0;
@@ -66,3 +67,4 @@ namespace CPU {
 
 extern "C" void fillTSS(CPU::TSS* tss);
 extern "C" void loadTSS();
+extern "C" uint32_t TSS_ADDRESS;

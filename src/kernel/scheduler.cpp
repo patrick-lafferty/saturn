@@ -41,9 +41,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 extern "C" void startProcess(Kernel::Task* task);
 extern "C" void changeProcess(Kernel::Task* current, Kernel::Task* next);
-
-uint32_t HACK_TSS_ADDRESS;
-
 extern "C" void idleLoop();
 
 namespace Kernel {
