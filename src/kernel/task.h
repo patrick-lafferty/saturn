@@ -55,6 +55,10 @@ namespace Kernel {
         char data[0x100000];
     };
 
+    struct SmallStack {
+        char data[0x1000];
+    };
+
     struct TaskStack {
         uint32_t eflags;
         uint32_t edi {0};

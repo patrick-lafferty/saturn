@@ -29,10 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <gdt/gdt.h>
 #include <idt/idt.h>
 #include <cpu/pic.h>
-#include <cpu/acpi.h>
 #include <cpu/sse.h>
-#include <cpu/tss.h>
-#include <cpu/cpu.h>
 #include <string.h>
 #include <memory/physical_memory_manager.h>
 #include <memory/virtual_memory_manager.h>
@@ -45,7 +42,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <services.h>
 #include <initialize_libc.h>
 #include <heap.h>
-#include <task.h>
 #include <services/memory/memory.h>
 #include <services/terminal/vga.h>
 #include <services/virtualFileSystem/virtualFileSystem.h>
@@ -55,8 +51,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <services/events/system.h>
 #include <services/startup/startup.h>
 #include <services/discovery/loader.h>
-
-#include <cpu/apic.h>
+#include <cpu/initialize.h>
+#include <task.h>
 
 using namespace Kernel;
 using namespace Memory;
@@ -76,68 +72,6 @@ struct MemManagerAddresses {
     uint32_t acpiStartAddress;
     uint32_t acpiPages;
 };
-
-void infiniteLoop() {
-    while (true) {
-        int x = 0;
-        x++;
-    }
-}
-
-extern "C" void trampoline_end();
-extern "C" void trampoline_start();
-extern "C" uint8_t trampoline_size;
-
-void setupCPU() {
-
-    BlockAllocator<Stack> stackAllocator {currentVMM};
-    BlockAllocator<VirtualMemoryManager> vmmAllocator {currentVMM};
-
-    auto stack = stackAllocator.allocate();
-    auto vmm = vmmAllocator.allocate();
-    currentVMM->cloneForUsermode(vmm, true);
-
-    auto configMemoryBlock = reinterpret_cast<void*>(0x3000);
-    auto savedPhysicalNextFreeAddress = *reinterpret_cast<uint32_t*>(configMemoryBlock);
-    auto config = reinterpret_cast<uint8_t*>(configMemoryBlock);
-
-    memcpy(configMemoryBlock, reinterpret_cast<void*>(trampoline_start), 
-        trampoline_size);
-
-    config += trampoline_size;
-    auto startingGDTAddress = reinterpret_cast<uintptr_t>(config);
-    memcpy(config, gdt, sizeof(GDT::Descriptor) * 6);
-    config += sizeof(GDT::Descriptor) * 6;
-
-    auto pt = reinterpret_cast<GDT::DescriptorPointer*>(config);
-    pt->limit = sizeof(GDT::Descriptor) * 6 - 1;
-    pt->base = startingGDTAddress;
-
-    auto cpuData = ((int*)configMemoryBlock) + 0x3Fb;
-    *cpuData = 0;
-    auto cpuReadyFlag = cpuData++;
-
-    *cpuData = reinterpret_cast<uintptr_t>(pt);
-    *++cpuData = vmm->getDirectoryPhysicalAddress();
-    *++cpuData = reinterpret_cast<uintptr_t>(stack) + sizeof(Stack) - 8;
-    auto stackPointer = reinterpret_cast<uint32_t*>(*cpuData);
-    *stackPointer++ = reinterpret_cast<uintptr_t>(cpuReadyFlag);
-    *stackPointer = reinterpret_cast<uintptr_t>(infiniteLoop);
-
-    APIC::sendInitIPI(1);
-    uint32_t x = 10000;
-    while (x > 0) x--;
-    APIC::sendStartupIPI(1, 0x3);
-    x = 10000;
-    while (x > 0) x--;
-
-    while (*cpuReadyFlag != 1) {}
-    *cpuReadyFlag = 1337;
-
-    while (*cpuReadyFlag <= 9000) {}
-    
-    while (true) {}
-}
 
 extern "C" int kernel_main(MemManagerAddresses* addresses) {
 
@@ -176,29 +110,11 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     IDT::setup();
     initializeSSE();
     PIC::disable();
-
     VGA::disableCursor();
 
     asm volatile("sti");
 
-    auto pageFlags = static_cast<int>(PageTableFlags::AllowWrite);
-    auto afterKernel = (kernelEndAddress & ~0xfff) + 0x1000;
-
-    virtualMemManager.HACK_setNextAddress(0xCFFF'F000);
-    auto tssAddress = virtualMemManager.allocatePages(1, pageFlags);
-    virtualMemManager.HACK_setNextAddress(afterKernel);
-
-    HACK_TSS_ADDRESS = tssAddress;
-    GDT::addTSSEntry(tssAddress, 0x1000 * 1);
-    auto tss = CPU::setupTSS(tssAddress);
-
-    if (!CPU::parseACPITables()) {
-
-        kprintf("[Kernel] Parsing ACPI Tables failed, halting\n");
-        asm volatile("hlt");
-    }
-
-    setupCPU();
+    auto scheduler = CPU::initialize(kernelEndAddress);    
 
     //also don't need APIC tables anymore
     //NOTE: if we actually do, copy them before this line to a new address space
@@ -206,25 +122,22 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
 
     LibC_Implementation::createHeap(PageSize * PageSize * 10, &virtualMemManager);
 
-    Kernel::TaskLauncher launcher {tss};
-    Kernel::Scheduler scheduler;
-    CPU::setupCPUBlocks(1, {&scheduler});
-
     kprintf("Saturn OS v 0.3.0\n------------------\n\nCalibrating clock, please wait...\n");
 
     ServiceRegistry registry;
     ServiceRegistryInstance = &registry;
 
-    scheduler.scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(VirtualFileSystem::service)));
-    scheduler.scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(PFS::service)));
-    scheduler.scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(FakeFileSystem::service)));
-    scheduler.scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(HardwareFileSystem::service)));
-    scheduler.scheduleTask(launcher.createKernelTask(reinterpret_cast<uint32_t>(HardwareFileSystem::detectHardware)));
-    scheduler.scheduleTask(launcher.createKernelTask(reinterpret_cast<uint32_t>(Discovery::discoverDevices)));
-    scheduler.scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(Event::service)));
-    scheduler.scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(Startup::service)));
+    auto& launcher = *CurrentTaskLauncher;
+    scheduler->scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(VirtualFileSystem::service)));
+    scheduler->scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(PFS::service)));
+    scheduler->scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(FakeFileSystem::service)));
+    scheduler->scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(HardwareFileSystem::service)));
+    scheduler->scheduleTask(launcher.createKernelTask(reinterpret_cast<uint32_t>(HardwareFileSystem::detectHardware)));
+    scheduler->scheduleTask(launcher.createKernelTask(reinterpret_cast<uint32_t>(Discovery::discoverDevices)));
+    scheduler->scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(Event::service)));
+    scheduler->scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(Startup::service)));
     
-    scheduler.enterIdle();
+    scheduler->enterIdle();
 
     return 0;
 }
