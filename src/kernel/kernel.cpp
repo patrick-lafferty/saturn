@@ -28,8 +28,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdio.h>
 #include <gdt/gdt.h>
 #include <idt/idt.h>
-#include <cpu/pic.h>
-#include <cpu/sse.h>
 #include <string.h>
 #include <memory/physical_memory_manager.h>
 #include <memory/virtual_memory_manager.h>
@@ -108,11 +106,7 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
 
     GDT::setup();
     IDT::setup();
-    initializeSSE();
-    PIC::disable();
     VGA::disableCursor();
-
-    asm volatile("sti");
 
     auto scheduler = CPU::initialize(kernelEndAddress);    
 

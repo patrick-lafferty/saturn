@@ -30,6 +30,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <cpu/acpi.h>
 #include <cpu/apic.h>
 #include <cpu/cpu.h>
+#include <cpu/sse.h>
+#include <cpu/pic.h>
 #include <gdt/gdt.h>
 #include <memory/physical_memory_manager.h>
 #include <memory/virtual_memory_manager.h>
@@ -51,10 +53,9 @@ namespace CPU {
         }
     }
 
-    void setupCPU() {
-
-        BlockAllocator<SmallStack> stackAllocator {currentVMM};
-        BlockAllocator<VirtualMemoryManager> vmmAllocator {currentVMM};
+    Trampoline createTrampoline(BlockAllocator<SmallStack>& stackAllocator,
+            BlockAllocator<VirtualMemoryManager>& vmmAllocator,
+            int cpuId) {
 
         auto stack = stackAllocator.allocate();
         auto vmm = vmmAllocator.allocate();
@@ -77,14 +78,14 @@ namespace CPU {
         gdtPointer->base = startingGDTAddress;
 
         auto cpuData = ((int*)configMemoryBlock) + 0x3Fb;
-        auto cpuReadyFlag = cpuData++;
-        *cpuReadyFlag = 0;
+        auto status = cpuData++;
+        *status = 0;
 
-        auto stackPointer = reinterpret_cast<TramplineStack*>(
+        auto stackPointer = reinterpret_cast<TrampolineStack*>(
             reinterpret_cast<uintptr_t>(stack) + sizeof(SmallStack) - 8
         );
         *stackPointer = {
-            reinterpret_cast<uintptr_t>(cpuReadyFlag),
+            reinterpret_cast<uintptr_t>(status),
             reinterpret_cast<uintptr_t>(infiniteLoop) 
         };
 
@@ -95,6 +96,37 @@ namespace CPU {
             reinterpret_cast<uintptr_t>(stackPointer)
         };
 
+        return {data, stackPointer, status, savedPhysicalNextFreeAddress};
+    }
+    
+    void replaceTrampolineStack(Trampoline& trampoline, BlockAllocator<SmallStack>& stackAllocator,
+            BlockAllocator<VirtualMemoryManager>& vmmAllocator,
+            int cpuId) {
+
+        auto stack = stackAllocator.allocate();
+        auto vmm = vmmAllocator.allocate();
+        currentVMM->cloneForUsermode(vmm, true);
+
+        auto stackPointer = reinterpret_cast<TrampolineStack*>(
+            reinterpret_cast<uintptr_t>(stack) + sizeof(SmallStack) - 8
+        );
+
+        *stackPointer = {
+            reinterpret_cast<uintptr_t>(trampoline.status),
+            reinterpret_cast<uintptr_t>(infiniteLoop) 
+        };
+        
+        trampoline.data->pageDirectoryAddress = vmm->getDirectoryPhysicalAddress();
+        trampoline.data->stackAddress = reinterpret_cast<uintptr_t>(stackPointer);        
+    }
+
+    void setupCPU() {
+
+        BlockAllocator<SmallStack> stackAllocator {currentVMM};
+        BlockAllocator<VirtualMemoryManager> vmmAllocator {currentVMM};
+
+        auto trampoline = createTrampoline(stackAllocator, vmmAllocator, 1);
+
         APIC::sendInitIPI(1);
         uint32_t x = 10000;
         while (x > 0) x--;
@@ -102,12 +134,18 @@ namespace CPU {
         x = 10000;
         while (x > 0) x--;
 
-        while (*cpuReadyFlag != 1) {}
-        *cpuReadyFlag = 1337;
+        while (*trampoline.status != 1) {}
+        *trampoline.status = 1337;
 
-        while (*cpuReadyFlag <= 9000) {}
+        while (*trampoline.status <= 9000) {}
         
         while (true) {}
+
+        /*
+        TODO:
+
+        free the physical page, use trampoline.savedPhysicalNextAddress
+        */
     }
 
     TSS* createTSS(uint32_t kernelEndAddress) {
@@ -127,6 +165,11 @@ namespace CPU {
     }
 
     Kernel::Scheduler* initialize(uint32_t kernelEndAddress) {
+
+        initializeSSE();
+        PIC::disable();
+
+        asm volatile("sti");
         auto tss = createTSS(kernelEndAddress);
 
         if (!CPU::parseACPITables()) {

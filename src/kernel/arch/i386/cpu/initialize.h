@@ -40,9 +40,16 @@ namespace CPU {
 		uintptr_t gdtPointerAddress;
 	};
 
-	struct TramplineStack {
+	struct TrampolineStack {
 		uintptr_t kernelFuncAddress;
 		uintptr_t cpuReadyFlagAddress;
+	};
+
+	struct Trampoline {
+		TrampolineData* data;
+		TrampolineStack* stack;
+		int* status;
+		uint32_t savedPhysicalNextFreeAddress;
 	};
 
     Kernel::Scheduler* initialize(uint32_t kernelEndAddress);
