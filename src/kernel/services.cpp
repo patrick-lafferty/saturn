@@ -37,6 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <heap.h>
 #include <system_calls.h>
 #include <memory/guard.h>
+#include <memory/block_allocator.h>
 
 namespace Kernel {
 
@@ -46,18 +47,19 @@ namespace Kernel {
         kernelVMM = Memory::currentVMM;
 
         auto count = static_cast<uint32_t>(ServiceType::ServiceTypeEnd) + 1;
-        taskIds = new uint32_t[count];
+        //taskIds = new uint32_t[count];
+        BlockAllocator<uint32_t> allocator {kernelVMM};
+        taskIds = allocator.allocateMultiple(count);
         memset(taskIds, 0, count * sizeof(uint32_t));
 
-        driverTaskIds = new uint32_t[count];
+        //driverTaskIds = new uint32_t[count];
+        driverTaskIds = allocator.allocateMultiple(count);
         memset(driverTaskIds, 0, count * sizeof(uint32_t));
 
         for (auto i = 0u; i < count; i++) {
             meta.push_back({});
             subscribers.push_back({});
         }
-
-        pseudoMessageHandlers = new PseudoMessageHandler[count];
     }
 
     void ServiceRegistry::receiveMessage(IPC::Message* message) {
@@ -69,13 +71,6 @@ namespace Kernel {
                         auto request = IPC::extractMessage<RegisterService>(
                             *static_cast<IPC::MaximumMessageBuffer*>(message));
                         registerService(request.senderTaskId, request.type);
-
-                        break;
-                    }
-                    case MessageId::RegisterPseudoService: {
-                        auto request = IPC::extractMessage<RegisterPseudoService>(
-                            *static_cast<IPC::MaximumMessageBuffer*>(message));
-                        registerPseudoService(request.type, request.handler);
 
                         break;
                     }
@@ -141,17 +136,6 @@ namespace Kernel {
         }
     }
 
-    void ServiceRegistry::receivePseudoMessage(ServiceType type, IPC::Message* message) {
-
-        MemoryGuard guard {kernelVMM, kernelHeap};
-
-        auto index = static_cast<uint32_t>(type);
-
-        if (pseudoMessageHandlers[index] != nullptr) {
-            pseudoMessageHandlers[index](message);
-        }
-    }
-
     bool ServiceRegistry::registerService(uint32_t taskId, ServiceType type) {
         if (type == ServiceType::ServiceTypeEnd) {
             kprintf("[ServiceRegistry] Tried to register ServiceTypeEnd\n");
@@ -187,23 +171,6 @@ namespace Kernel {
         setupDriver(taskId, type);
 
         driverTaskIds[index] = taskId;
-        return true;
-    }
-
-    bool ServiceRegistry::registerPseudoService(ServiceType type, PseudoMessageHandler handler) {
-        if (type == ServiceType::ServiceTypeEnd) {
-            kprintf("[ServiceRegistry] Tried to register PseudoServiceTypeEnd\n");
-            return false;
-        }
-
-        auto index = static_cast<uint32_t>(type);
-
-        if (pseudoMessageHandlers[index] != nullptr) {
-            kprintf("[ServiceRegistry] Tried to register a pseudo service that's taken\n");
-            return false;
-        }
-
-        pseudoMessageHandlers[index] = handler;
         return true;
     }
 
@@ -345,15 +312,6 @@ namespace Kernel {
         }
 
         return taskIds[static_cast<uint32_t>(type)];
-    }
-
-    bool ServiceRegistry::isPseudoService(ServiceType type) {
-
-        MemoryGuard guard {kernelVMM, kernelHeap};
-
-        auto index = static_cast<uint32_t>(type);
-
-        return pseudoMessageHandlers[index] != nullptr;
     }
 
     bool ServiceRegistry::handleDriverIrq(uint32_t irq) {
@@ -526,7 +484,6 @@ asm("cli");
                     return;
                 }
 
-                //kprintf("[ServiceRegistry] tss %x grant: %x\n", task, task->tss);
                 auto oldVMM = Memory::currentVMM;
                 task->virtualMemoryManager->activate();
                 grantIOPortRange(0x1f0, 0x1f7, task->tss->ioPermissionBitmap);

@@ -59,7 +59,6 @@ namespace Kernel {
         RegisterDriver,
         RegisterDriverResult,
         DriverIrqReceived,
-        RegisterPseudoService,
         RegisterServiceDenied,
         NotifyServiceReady,
         VGAServiceMeta,
@@ -120,19 +119,6 @@ namespace Kernel {
             messageNamespace = IPC::MessageNamespace::ServiceRegistry;
         }
 
-    };
-
-    typedef void (*PseudoMessageHandler)(IPC::Message*);
-
-    struct RegisterPseudoService : IPC::Message {
-        RegisterPseudoService() {
-            messageId = static_cast<uint32_t>(MessageId::RegisterPseudoService);
-            length = sizeof(RegisterPseudoService);
-            messageNamespace = IPC::MessageNamespace::ServiceRegistry;
-        }
-
-        ServiceType type;
-        PseudoMessageHandler handler;
     };
 
     struct RegisterServiceDenied : IPC::Message {
@@ -380,16 +366,13 @@ namespace Kernel {
         member variables would be garbage.
         */
         void receiveMessage(IPC::Message* message);
-        void receivePseudoMessage(ServiceType type, IPC::Message* message);
         uint32_t getServiceTaskId(ServiceType type);
-        bool isPseudoService(ServiceType type);
         bool handleDriverIrq(uint32_t irq);
 
     private:
         
         bool registerService(uint32_t taskId, ServiceType type);
         bool registerDriver(uint32_t taskId, DriverType type);
-        bool registerPseudoService(ServiceType type, PseudoMessageHandler handler);
         void subscribe(uint32_t index, uint32_t senderTaskId);
         void handleNotifyServiceReady(uint32_t senderTaskId);
         void handleLinearFramebufferFound(uint32_t address);
@@ -399,7 +382,6 @@ namespace Kernel {
 
         uint32_t* taskIds;
         std::vector<ServiceMeta> meta;
-        PseudoMessageHandler* pseudoMessageHandlers;
         std::vector<std::vector<uint32_t>> subscribers;
         uint32_t* driverTaskIds;
 
