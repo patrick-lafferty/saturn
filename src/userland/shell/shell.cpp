@@ -31,7 +31,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <services.h>
 #include <system_calls.h>
 #include <string.h>
-#include <services/memory/memory.h>
 #include <memory/physical_memory_manager.h>
 #include <stdio.h>
 #include <services/virtualFileSystem/virtualFileSystem.h>
