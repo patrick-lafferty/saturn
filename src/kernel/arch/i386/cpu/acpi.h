@@ -28,10 +28,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
 #include <stdint.h>
+#include <optional>
 
 namespace CPU {
-
-    bool parseACPITables();
 
     struct RootSystemDescriptionPointer {
         uint8_t signature[8];
@@ -65,4 +64,12 @@ namespace CPU {
     bool verifySystemHeaderChecksum(SystemDescriptionTableHeader* p);
     
     SystemDescriptionTableHeader* getAPICHeader(RootSystemDescriptorTable* rootSystemHeader, uint32_t entryCount);
+
+    struct ACPITableHeader {
+        uintptr_t apicStartAddress;
+        uint32_t apicTableLength;
+    };
+
+    std::optional<ACPITableHeader> parseACPITables();
+
 }

@@ -61,12 +61,12 @@ namespace CPU {
         kprintf("CreatorRevision: %d\n", header.creatorRevision);
     }
 
-    bool parseACPITables() {
+    std::optional<ACPITableHeader> parseACPITables() {
         auto rsdp = findRSDP();
 
         if (!verifyRSDPChecksum(rsdp)) {
             kprintf("\n[ACPI] RSDP Checksum invalid\n");
-            return false;
+            return {};
         }
 
         auto rootSystemHeader = getRootSystemHeader(rsdp.rsdtAddress);
@@ -77,21 +77,20 @@ namespace CPU {
             if (verifySystemHeaderChecksum(apicHeader)) {
                 auto apicStartingAddress = reinterpret_cast<uintptr_t>(apicHeader);
                 apicStartingAddress += sizeof(SystemDescriptionTableHeader);
-                
-                APIC::initialize();
-                APIC::loadAPICStructures(apicStartingAddress, apicHeader->length - sizeof(SystemDescriptionTableHeader));
+
+                return ACPITableHeader {apicStartingAddress, apicHeader->length - sizeof(SystemDescriptionTableHeader)};                
             }
             else {
                 kprintf("\n[ACPI] APIC Header Checksum invalid\n");
-                return false;
+                return {};
             }
         }
         else {
             kprintf("\n[ACPI] Root Checksum invalid\n");
-            return false;
+            return {};
         }
 
-        return true;
+        return {};
     }
 
     /*
