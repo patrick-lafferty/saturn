@@ -37,7 +37,7 @@ void* prekernel_memset(void* destination, int fillByte, size_t count);
 void* memset(void* destination, int fillByte, size_t count);
 int memcmp(const void* first, const void* second, size_t count);
 void* memmove(void* destination, const void* source, size_t count);
-void* memcpy(void* destination, const void* source, size_t count);
+void* memcpy(void* restrict destination, const void* restrict source, size_t count);
 
 size_t strlen(const char* str);
 size_t strlen_s(const char* str, size_t strsz);
