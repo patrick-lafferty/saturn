@@ -158,7 +158,7 @@ namespace Kernel {
         void blockTask(BlockReason reason, uint32_t arg);
         void unblockTask(uint32_t taskId);
 
-        void enterIdle();
+        void start();
         void setupTimeslice();
 
         void sendMessage(IPC::RecipientType recipient, IPC::Message* message);

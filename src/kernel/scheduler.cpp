@@ -39,8 +39,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <system_calls.h>
 #include "task.h"
 
-extern "C" void startProcess(Kernel::Task* task);
 extern "C" void changeProcess(Kernel::Task* current, Kernel::Task* next);
+extern "C" void changeProcessSingle(Kernel::Task* current, Kernel::Task* next);
 extern "C" void idleLoop();
 
 namespace Kernel {
@@ -97,7 +97,8 @@ namespace Kernel {
     Scheduler::Scheduler() {
         startTask = CurrentTaskLauncher->createKernelTask(reinterpret_cast<uintptr_t>(idleLoop));
         startTask->priority = Priority::Idle;
-        currentTask = startTask;
+        scheduleTask(startTask);
+        currentTask = nullptr;
         /*cleanupTask = createKernelTask(reinterpret_cast<uint32_t>(cleanupTasksService));
         cleanupTask->state = TaskState::Blocked;*/
         schedulerTask = CurrentTaskLauncher->createKernelTask(reinterpret_cast<uintptr_t>(schedulerService));
@@ -172,10 +173,17 @@ namespace Kernel {
             return;
         }
 
-        auto current = currentTask;
-        currentTask = nextTask;
+        if (currentTask == nullptr) {
+            currentTask = nextTask;
+            changeProcessSingle(nullptr, nextTask);
+        }
+        else {
 
-        changeProcess(current, nextTask);
+            auto current = currentTask;
+            currentTask = nextTask;
+
+            changeProcess(current, nextTask);
+        }
     }
 
     void Scheduler::notifyTimesliceExpired() {
@@ -329,14 +337,8 @@ namespace Kernel {
                 taskId = ServiceRegistryInstance->getServiceTaskId(message->serviceType);
 
                 if (taskId == 0) {
-                    if (ServiceRegistryInstance->isPseudoService(message->serviceType)) {
-                        ServiceRegistryInstance->receivePseudoMessage(message->serviceType, message);
-                        return;
-                    }
-                    else {
-                        kprintf("[Scheduler] Unknown Service Name\n");
-                        return;
-                    }
+                    kprintf("[Scheduler] Unknown Service Name\n");
+                    return;
                 }
             }
             else if (recipient == IPC::RecipientType::Scheduler) {
@@ -391,6 +393,7 @@ namespace Kernel {
                     blockTask(BlockReason::WaitingForMessage, 0);
                 }
 
+                //wake me up
                 auto messages = task->mailbox->getUnreadMessagesCount();
 
                 for (auto i = 0u; i < messages; i++) {
@@ -399,6 +402,7 @@ namespace Kernel {
 
                     if (buffer->messageNamespace != filter
                             || buffer->messageId != messageId) {
+                        //wake me up inside
                         task->mailbox->send(buffer);
                     }
                     else {
@@ -406,6 +410,7 @@ namespace Kernel {
                     }
                 }
 
+                //can't wake up
                 blockTask(BlockReason::WaitingForMessage, 0);
             }
         }
@@ -523,8 +528,9 @@ namespace Kernel {
         runNextTask();
     }
 
-    void Scheduler::enterIdle() {
+    void Scheduler::start() {
         startedTasks = true;
-        startProcess(startTask);
+        scheduleNextTask();
+        runNextTask();
     }
 }
