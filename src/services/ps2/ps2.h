@@ -168,6 +168,7 @@ namespace PS2 {
         Released
     };
 
+    void disableController();
     void initializeController();
     void identifyDevices();
 

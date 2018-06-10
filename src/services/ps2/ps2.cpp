@@ -325,12 +325,19 @@ namespace PS2 {
         }
     }
 
+    void disableController() {
+
+        writeControllerCommand(ControllerCommand::DisableFirstPort);
+        writeControllerCommand(ControllerCommand::DisableSecondPort);
+
+        flushCommandBuffer();
+    }
+
     void initializeController() {
         //skipping steps 1 and 2 from http://wiki.osdev.org/%228042%22_PS/2_Controller
 
         //disable the devices
-        writeControllerCommand(ControllerCommand::DisableFirstPort);
-        writeControllerCommand(ControllerCommand::DisableSecondPort);
+        disableController();
 
         //flush the output buffer
         flushCommandBuffer();
