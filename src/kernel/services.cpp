@@ -37,29 +37,21 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <heap.h>
 #include <system_calls.h>
 #include <memory/guard.h>
-#include <memory/block_allocator.h>
 
 namespace Kernel {
 
-    ServiceRegistry::ServiceRegistry() {
+    ServiceRegistry::ServiceRegistry() 
+        : subscriberAllocator {Memory::currentVMM} {
 
         kernelHeap = LibC_Implementation::KernelHeap;
         kernelVMM = Memory::currentVMM;
 
         auto count = static_cast<uint32_t>(ServiceType::ServiceTypeEnd) + 1;
-        //taskIds = new uint32_t[count];
-        BlockAllocator<uint32_t> allocator {kernelVMM};
-        taskIds = allocator.allocateMultiple(count);
-        memset(taskIds, 0, count * sizeof(uint32_t));
+        BlockAllocator<ServiceHandle> allocator {kernelVMM};
+        knownServices = allocator.allocateMultiple(count);
 
-        //driverTaskIds = new uint32_t[count];
-        driverTaskIds = allocator.allocateMultiple(count);
-        memset(driverTaskIds, 0, count * sizeof(uint32_t));
-
-        for (auto i = 0u; i < count; i++) {
-            meta.push_back({});
-            subscribers.push_back({});
-        }
+        BlockAllocator<uint32_t> intAllocator {kernelVMM};
+        driverTaskIds = intAllocator.allocateMultiple(count);
     }
 
     void ServiceRegistry::receiveMessage(IPC::Message* message) {
@@ -144,14 +136,14 @@ namespace Kernel {
 
         auto index = static_cast<uint32_t>(type);
 
-        if (taskIds[index] != 0) {
+        if (knownServices[index].taskId != 0) {
             kprintf("[ServiceRegistry] Tried to register a service[%d] that's taken\n", index);
             return false;
         }
 
         setupService(taskId, type);
 
-        taskIds[index] = taskId;
+        knownServices[index].taskId = taskId;
         return true;
     }
 
@@ -178,10 +170,17 @@ namespace Kernel {
 
         MemoryGuard guard {kernelVMM, kernelHeap};
 
-        auto& subs = subscribers[index];
-        subs.push_back(senderTaskId);
+        auto& service = knownServices[index];
 
-        if (meta[index].ready) {
+        if (service.subscribers == nullptr) {
+            service.subscribers = subscriberAllocator.allocateMultiple(service.MaxSubscribers);
+        }
+
+        //todo: check if exceeded max subscriber count
+        service.subscribers[service.subscriberCount] = senderTaskId;
+        service.subscriberCount++;
+
+        if (service.isReady) {
             notifySubscribers(index);
         }
     }
@@ -191,18 +190,13 @@ namespace Kernel {
         MemoryGuard guard {kernelVMM, kernelHeap};
 
         auto lastService = static_cast<uint32_t>(ServiceType::ServiceTypeEnd);
-        auto index = lastService;
 
         for (auto i = 0u; i < lastService; i++) {
-            if (taskIds[i] == senderTaskId) {
-                index = i;
+            if (knownServices[i].taskId == senderTaskId) {
+                knownServices[i].isReady = true;
+                notifySubscribers(i);
                 break;
             }
-        }
-
-        if (index != lastService) {
-            meta[index].ready = true;
-            notifySubscribers(index);
         }
     }
 
@@ -311,7 +305,7 @@ namespace Kernel {
             return 0;
         }
 
-        return taskIds[static_cast<uint32_t>(type)];
+        return knownServices[static_cast<uint32_t>(type)].taskId;
     }
 
     bool ServiceRegistry::handleDriverIrq(uint32_t irq) {
@@ -336,15 +330,20 @@ namespace Kernel {
     }
 
     void ServiceRegistry::notifySubscribers(uint32_t index) {
-        for (auto taskId : subscribers[index]) {
+
+        auto& service = knownServices[index];
+
+        for (int i = 0; i < service.subscriberCount; i++) {
             NotifyServiceRegistered notify;
             notify.type = static_cast<ServiceType>(index);
-            notify.recipientId = taskId;
+            notify.recipientId = service.subscribers[i];
 
             CPU::sendMessage(IPC::RecipientType::TaskId, &notify);
         }
 
-        subscribers[index].clear();
+        subscriberAllocator.freeMultiple(service.subscribers, service.MaxSubscribers);
+        service.subscribers = nullptr;
+        service.subscriberCount = 0;
     }
 
     void ServiceRegistry::setupService(uint32_t taskId, ServiceType type) {
@@ -355,6 +354,7 @@ namespace Kernel {
 
                 if (task == nullptr) {
                     kprintf("[ServiceRegistry] Tried to setupService a null task\n");
+                    asm("hlt");
                     return;
                 }
 
@@ -377,6 +377,7 @@ namespace Kernel {
 
                 if (task == nullptr) {
                     kprintf("[ServiceRegistry] Tried to setupService a null task\n");
+                    asm("hlt");
                     return;
                 }
 
@@ -397,6 +398,7 @@ namespace Kernel {
 
                 if (task == nullptr) {
                     kprintf("[ServiceRegistry] Tried to setupService a null task\n");
+                    asm("hlt");
                     return;
                 }
 
@@ -413,6 +415,7 @@ namespace Kernel {
 
                 if (task == nullptr) {
                     kprintf("[ServiceRegistry] Tried to setupService a null task\n");
+                    asm("hlt");
                     return;
                 }
 
@@ -440,6 +443,7 @@ namespace Kernel {
 
                 if (task == nullptr) {
                     kprintf("[ServiceRegistry] Tried to setupService a null task\n");
+                    asm("hlt");
                     return;
                 }
 

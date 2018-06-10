@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <stdint.h>
 #include <ipc.h>
-#include <vector>
+#include <memory/block_allocator.h>
 
 namespace Memory {
     class VirtualMemoryManager;
@@ -342,6 +342,14 @@ namespace Kernel {
 
     inline uint32_t ServiceRegistryMailbox {0};
 
+    struct ServiceHandle {
+        uint32_t taskId {0};
+        bool isReady {false};
+        uint32_t* subscribers {nullptr};
+        int subscriberCount {0};
+        static const int MaxSubscribers {20};
+    };
+
     /*
     A service is a usermode task that controls some frequently used
     operation, typically requiring special priviledges. There can
@@ -380,9 +388,7 @@ namespace Kernel {
         void setupService(uint32_t taskId, ServiceType type);
         void setupDriver(uint32_t taskId, DriverType type);
 
-        uint32_t* taskIds;
-        std::vector<ServiceMeta> meta;
-        std::vector<std::vector<uint32_t>> subscribers;
+        ServiceHandle* knownServices; 
         uint32_t* driverTaskIds;
 
         KnownHardwareAddresses addresses;
@@ -390,6 +396,7 @@ namespace Kernel {
         Memory::VirtualMemoryManager* kernelVMM;
         LibC_Implementation::Heap* kernelHeap;
 
+        BlockAllocator<uint32_t> subscriberAllocator;
     };
 
     void handleMapMemory(MapMemory request);
