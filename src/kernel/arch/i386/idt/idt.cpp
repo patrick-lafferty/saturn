@@ -361,6 +361,7 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
                     message.status = status;
                     message.data = data;
                     message.serviceType = Kernel::ServiceType::PS2;
+                    if (frame->interruptNumber == static_cast<uint32_t>(APIC::KnownInterrupt::Keyboard))
                     CPU::sendMessage(IPC::RecipientType::ServiceName, &message);
 
                     break;

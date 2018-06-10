@@ -50,6 +50,7 @@ section .text
 
 extern interruptHandler
 
+global InterruptServiceRoutine_Common
 InterruptServiceRoutine_Common:
 
     pusha

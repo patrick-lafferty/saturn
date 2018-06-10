@@ -39,9 +39,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ipc.h>
 #include <services.h>
 #include <initialize_libc.h>
-#include <heap.h>
-#include <services/memory/memory.h>
 #include <services/terminal/vga.h>
+#include <services/ps2/ps2.h>
 #include <services/virtualFileSystem/virtualFileSystem.h>
 #include <services/processFileSystem/processFileSystem.h>
 #include <services/fakeFileSystem/fakeFileSystem.h>
@@ -107,14 +106,13 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     GDT::setup();
     IDT::setup();
     VGA::disableCursor();
+    PS2::disableController();
 
     auto scheduler = CPU::initialize(kernelEndAddress);    
 
     //also don't need APIC tables anymore
     //NOTE: if we actually do, copy them before this line to a new address space
     virtualMemManager.unmap(acpiStartAddress, acpiPages);
-
-    LibC_Implementation::createHeap(PageSize * PageSize * 10, &virtualMemManager);
 
     kprintf("Saturn OS v 0.3.0\n------------------\n\nCalibrating clock, please wait...\n");
 
@@ -130,8 +128,8 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     scheduler->scheduleTask(launcher.createKernelTask(reinterpret_cast<uint32_t>(Discovery::discoverDevices)));
     scheduler->scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(Event::service)));
     scheduler->scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(Startup::service)));
-    
-    scheduler->enterIdle();
+
+    scheduler->start();
 
     return 0;
 }
