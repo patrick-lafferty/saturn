@@ -46,7 +46,6 @@ namespace Kernel {
     void adjustStack(Task* task, T extra) {
 
         auto offset = sizeof(T);
-        if (offset > 4) offset -= 4;
         auto address = task->context.esp;
         auto stackPointer = static_cast<uint8_t*>(reinterpret_cast<void*>(address));
         auto stack = reinterpret_cast<InitialKernelStack*>(stackPointer);
@@ -116,6 +115,7 @@ namespace Kernel {
 
     TaskLauncher::TaskLauncher(CPU::TSS* kernelTSS)
         : stackAllocator {Memory::currentVMM},
+            smallStackAllocator {Memory::currentVMM},
             taskAllocator {Memory::currentVMM},
             mailboxAllocator {Memory::currentVMM},
             vmmAllocator {Memory::currentVMM},
@@ -126,11 +126,12 @@ namespace Kernel {
         CurrentTaskLauncher = this;
     }
 
-    uint8_t volatile* getStackPointer(Stack* stack) {
+    template<typename StackType>
+    uint8_t volatile* getStackPointer(StackType* stack) {
         auto stackAddress = reinterpret_cast<uintptr_t>(stack);
 
         uint8_t volatile* stackPointer = static_cast<uint8_t volatile*>
-            (reinterpret_cast<void volatile*>(stackAddress + sizeof(Stack)));
+            (reinterpret_cast<void volatile*>(stackAddress + sizeof(StackType)));
         stackPointer -= sizeof(InitialKernelStack);
 
         return stackPointer;
@@ -140,7 +141,8 @@ namespace Kernel {
 
         MemoryGuard guard {kernelVMM, kernelHeap};
 
-        auto kernelStack = stackAllocator.allocate(); 
+        auto kernelStack = smallStackAllocator.allocate();
+        memset(kernelStack, 0, sizeof(SmallStack));
         auto stackPointer = getStackPointer(kernelStack);
 
         InitialKernelStack volatile* stack = reinterpret_cast<InitialKernelStack volatile*>(stackPointer);
@@ -151,7 +153,16 @@ namespace Kernel {
         task->context.esp = reinterpret_cast<uintptr_t>(stackPointer);
         task->context.kernelESP = task->context.esp;
         task->virtualMemoryManager = kernelVMM;
-        task->heap = kernelHeap;
+
+        /*
+        usermode tasks create their own heap, the kernel no longer has a heap, so kernel tasks
+        need to make their own heap if they need one
+        */
+        if (functionAddress != reinterpret_cast<uintptr_t>(launchProcess)) {
+            LibC_Implementation::createHeap(Memory::PageSize * Memory::PageSize, kernelVMM);
+            task->heap = LibC_Implementation::KernelHeap;
+        }
+
         task->tss = kernelTSS;
         task->kernelStack = kernelStack;
         task->mailbox = &mailboxAllocator.allocate()->box;
@@ -190,11 +201,10 @@ namespace Kernel {
 
         //auto sseMemory = task->heap->aligned_allocate(16, sizeof(SSEContext));
         //task->sseContext = new (sseMemory) SSEContext;
-        auto userStackPointer = getStackPointer(stack);
+        auto userStackPointer = getStackPointer(stack) + sizeof(InitialKernelStack);
         userStackPointer -= sizeof(TaskStack);
 
         adjustStack<UserStackExtras>(task, UserStackExtras {
-            reinterpret_cast<uintptr_t>(vmm), 
             reinterpret_cast<uintptr_t>(userStackPointer), 
             reinterpret_cast<uintptr_t>(usermodeStub)});
 
