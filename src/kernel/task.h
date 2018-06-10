@@ -56,7 +56,7 @@ namespace Kernel {
     };
 
     struct SmallStack {
-        char data[0x1000];
+        char data[0x2000];
     };
 
     struct TaskStack {
@@ -79,7 +79,6 @@ namespace Kernel {
     struct UserStackExtras {
         uintptr_t usermodeStubAddress;
         uintptr_t userStackAddress;
-        uintptr_t vmmAddress;
     };
 
     enum class Priority {
@@ -108,7 +107,7 @@ namespace Kernel {
         LibC_Implementation::Heap* heap;
         IPC::Mailbox* mailbox;
         CPU::TSS* tss;
-        Stack* kernelStack;
+        SmallStack* kernelStack;
         Priority priority {Priority::Other};
     };
 
@@ -160,6 +159,7 @@ namespace Kernel {
         IdGenerator idGenerator;
 
         BlockAllocator<Stack> stackAllocator;
+        BlockAllocator<SmallStack> smallStackAllocator;
         BlockAllocator<Task> taskAllocator;
         BlockAllocator<BufferedMailbox> mailboxAllocator;
         BlockAllocator<Memory::VirtualMemoryManager> vmmAllocator;
