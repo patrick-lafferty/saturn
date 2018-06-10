@@ -324,7 +324,16 @@ namespace HardwareFileSystem {
         Vostok::ArgBuffer args{readResult.buffer, sizeof(readResult.buffer)};
         args.readType();
 
-        auto ticksPerSecond = TSC::getTicksPerSecond();
+        uint32_t ticksPerSecond {0};
+
+        while (ticksPerSecond == 0) {
+            ticksPerSecond = TSC::getTicksPerSecond();
+
+            if (ticksPerSecond == 0) {
+                sleep(10);
+            }
+        }
+
         args.writeValueWithType(ticksPerSecond, Vostok::ArgTypes::Uint64);
         writeSynchronous(openResult.fileDescriptor, readResult.buffer, sizeof(readResult.buffer));
 
