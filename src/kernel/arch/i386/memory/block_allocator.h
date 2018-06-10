@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "virtual_memory_manager.h"
 #include "physical_memory_manager.h"
+#include <utility>
 
 namespace Kernel {
 
@@ -47,7 +48,8 @@ namespace Kernel {
             }
         }
 
-        T* allocate() {
+        template<typename... Args>
+        T* allocate(Args&&... args) {
             if (blocksRemaining == 0) {
                 getBlocks(maxSize > 0 ? maxSize : 10);
             }
@@ -56,7 +58,7 @@ namespace Kernel {
 
             auto ptr = buffer;
             buffer++;
-            return new (ptr) T;
+            return new (ptr) T(std::forward<Args>(args)...);
         }
 
         T* allocateFrom(uint32_t address) {
@@ -77,6 +79,10 @@ namespace Kernel {
         }
 
         void free(T* ptr) {
+
+        }
+
+        void freeMultiple(T* ptr, int count) {
 
         }
 
@@ -101,6 +107,6 @@ namespace Kernel {
         Memory::VirtualMemoryManager* vmm;
         int blocksRemaining {0};
         int maxSize {0};
-        T* buffer;
+        T* buffer {nullptr};
     };
 }
