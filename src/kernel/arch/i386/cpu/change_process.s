@@ -27,69 +27,77 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 %endif
+
 section .text
 
-global startProcess
 extern TSS_ADDRESS
-
-startProcess:
-
-    mov ecx, [esp + 4]
-    mov esp, [ecx + 4] 
-
-    mov eax, [TSS_ADDRESS]
-    mov ecx, [ecx + 4]
-    mov [eax + 4], ecx
-
-    ret    
-
+extern activateVMM
 
 ;changes from one ring0 process to another
 global changeProcess
-extern activateVMM
 
 changeProcess:
 
-    push ebp
-    mov ebp, esp
-    add esp, 4
-
-    mov eax, [ebp + 8]
+    mov eax, [esp + 4] 
     mov [eax + 4], esp ; currentTask->context.kernelESP = esp
 
     ;saving fpu/sse registers
     ;mov eax, [eax + 8]
     ;fxsave [eax]
 
-    mov eax, [ebp + 12]
+    mov eax, [esp + 8] 
     push eax
     call activateVMM
     pop eax
 
-    mov eax, [ebp + 12]
+    mov eax, [esp + 8]           
     mov esp, [eax + 4] ; esp = nextTask->context.kernelESP
 
     ;restoring fpu/sse registers
     ;mov eax, [eax + 8]
     ;fxrstor [eax]
 
+    mov ecx, eax
     mov eax, [TSS_ADDRESS]
-    mov ecx, [ebp + 12] ; nextTask->context                
-    mov ecx, [ecx + 4] ; nextTask->context.kernelESP
+    mov ecx, [ecx] ; nextTask->context.kernelESP
     mov [eax + 4], ecx ; tss->esp0 = nextTask->context.kernelESP
 
     ret
+
+global changeProcessSingle
+changeProcessSingle:
+
+    ;saving fpu/sse registers
+    ;mov eax, [eax + 8]
+    ;fxsave [eax]
+
+    mov eax, [esp + 8] 
+    push eax
+    call activateVMM
+    pop eax
+
+    mov eax, [esp + 8]           
+    mov esp, [eax + 4] ; esp = nextTask->context.kernelESP
+
+    ;restoring fpu/sse registers
+    ;mov eax, [eax + 8]
+    ;fxrstor [eax]
+
+    mov ecx, eax
+    mov eax, [TSS_ADDRESS]
+    mov ecx, [ecx] ; nextTask->context.kernelESP
+    mov [eax + 4], ecx ; tss->esp0 = nextTask->context.kernelESP
+
+    ret
+
 
 ;launches a usermode process
 global launchProcess
 launchProcess:
 
     ;when launchProcess is called, the stack contains
-    ; user vmm
     ; user esp
     ; user eip
-    pop eax
-
     pop ecx
     pop ebx
 
@@ -123,8 +131,8 @@ usermodeStub:
     pop ebx
 
     call ebx
-
     call endTask
+
     ret
 
 global elfUsermodeStub
@@ -138,7 +146,7 @@ elfUsermodeStub:
     add esp, 20
     pop ebx
 
-;    call loadElf
+;   call loadElf
 
     call eax
 
@@ -167,5 +175,6 @@ setCR3:
 
 global idleLoop
 idleLoop:
+    sti
     hlt
     jmp idleLoop
