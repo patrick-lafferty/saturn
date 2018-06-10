@@ -31,8 +31,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtc.h"
 #include "tsc.h"
 
-//TODO: this will all have to be overhauled to handle multiple apics (per cpu)
 namespace APIC {
+
+    uint32_t LocalAPICAddress;
 
     void writeIOAPICRegister(uintptr_t address, uint8_t select, uint32_t value) {
         uint32_t volatile* selector = reinterpret_cast<uint32_t volatile*>(address);
@@ -47,12 +48,12 @@ namespace APIC {
     }
 
     void writeLocalAPICRegister(Registers apicRegister, uint32_t value) {
-        uint32_t volatile* ptr = reinterpret_cast<uint32_t volatile*>(0xFEE00000 + static_cast<uint32_t>(apicRegister));
+        uint32_t volatile* ptr = reinterpret_cast<uint32_t volatile*>(LocalAPICAddress + static_cast<uint32_t>(apicRegister));
         *ptr = value;
     }
 
     uint32_t readLocalAPICRegister(Registers apicRegister) {
-        uint32_t volatile* ptr = reinterpret_cast<uint32_t volatile*>(0xFEE00000 + static_cast<uint32_t>(apicRegister));
+        uint32_t volatile* ptr = reinterpret_cast<uint32_t volatile*>(LocalAPICAddress + static_cast<uint32_t>(apicRegister));
         return *ptr;
     }
 
@@ -329,36 +330,96 @@ namespace APIC {
 
     bool VerboseAPIC {false};
 
-    void loadAPICStructures(uintptr_t address, uint32_t byteLength) {
+    APICStats countAPICStructures(uintptr_t address, uint32_t byteLength) {
 
         uint8_t* ptr = static_cast<uint8_t*>(reinterpret_cast<void*>(address));
-        uint32_t localAPICAddress;
-        memcpy(&localAPICAddress, ptr, 4);
+        ptr += 8; //skip localAPICAddress and apicFlags
+        byteLength -= 8;
+
+        APICStats stats {};
+        
+        while(byteLength > 0) {
+            uint8_t type = *ptr;
+
+            switch(static_cast<APICType>(type)) {
+                case APICType::Local: {
+                    stats.localAPICCount++;
+
+                    byteLength -= sizeof(LocalAPICHeader);
+                    ptr += sizeof(LocalAPICHeader);
+                    break;
+                }
+
+                case APICType::IO: {
+                    stats.ioAPICCount++;
+
+                    byteLength -= sizeof(IOAPICHeader);
+                    ptr += sizeof(IOAPICHeader);
+
+                    break;
+                }
+
+                case APICType::InterruptSourceOverride: {
+                    stats.interruptOverrideCount++;
+
+                    byteLength -= sizeof(InterruptSourceOverride);
+                    ptr += sizeof(InterruptSourceOverride);
+
+                    break;
+                }
+
+                case APICType::NMI: {
+                    stats.nonMaskableInterruptCount++;
+
+                    byteLength -= sizeof(LocalAPICNMI);
+                    ptr += sizeof(LocalAPICNMI);
+                    break;
+                }
+
+                default: {
+                    uint8_t length = *(ptr + 1);
+                    byteLength -= length;
+                    ptr += length;
+                }
+            }
+        }
+
+        return stats;
+    }
+
+    APICStructures loadAPICStructures(CPU::ACPITableHeader table, Allocators& allocators) {
+
+        uint8_t* ptr = reinterpret_cast<uint8_t*>(table.apicStartAddress);
+        APICStructures apic;
+        memcpy(&apic.localAPICAddress, ptr, 4);
         ptr += 4;
 
         if (VerboseAPIC) {
-            kprintf("[APIC] Local APIC Address: %x\n", localAPICAddress);
+            kprintf("[APIC] Local APIC Address: %x\n", apic.localAPICAddress);
         }
 
-        uint32_t apicFlags;
-        memcpy(&apicFlags, ptr, 4);
+        memcpy(&apic.apicFlags, ptr, 4);
         ptr += 4;
 
-        byteLength -= 8;
+        auto byteLength = table.apicTableLength - 8;
 
-        if (apicFlags & static_cast<uint32_t>(DescriptionFlags::PCAT_COMPAT)
+        if (apic.apicFlags & static_cast<uint32_t>(DescriptionFlags::PCAT_COMPAT)
             && VerboseAPIC) {
             kprintf("[APIC] Dual 8259 detected, will be disabled\n");
         }
-
-        uintptr_t ioAPICAddress {0};
 
         while(byteLength > 0) {
             uint8_t type = *ptr;
 
             switch(static_cast<APICType>(type)) {
                 case APICType::Local: {
-                    auto localAPIC = reinterpret_cast<LocalAPICHeader*>(ptr);
+                    auto localAPIC = allocators.localAPICAllocator.allocate();
+
+                    if (apic.localHeaders == nullptr) {
+                        apic.localHeaders = localAPIC;
+                    }
+
+                    *localAPIC = *reinterpret_cast<LocalAPICHeader*>(ptr);
                     
                     if (VerboseAPIC) {
                         kprintf("[APIC] Loading Local APIC structure\n");
@@ -369,9 +430,14 @@ namespace APIC {
                     ptr += sizeof(LocalAPICHeader);
                     break;
                 }
-
                 case APICType::IO: {
-                    auto ioAPIC = reinterpret_cast<IOAPICHeader*>(ptr);
+                    auto ioAPIC = allocators.ioAPICAllocator.allocate();
+
+                    if (apic.ioHeaders == nullptr) {
+                        apic.ioHeaders = ioAPIC;
+                    }
+
+                    *ioAPIC = *reinterpret_cast<IOAPICHeader*>(ptr);
 
                     if (VerboseAPIC) {
                         kprintf("[APIC] Loading IO APIC structure\n");
@@ -381,14 +447,17 @@ namespace APIC {
 
                     byteLength -= sizeof(IOAPICHeader);
                     ptr += sizeof(IOAPICHeader);
-                   
-                    ioAPICAddress = ioAPIC->address;
 
                     break;
                 }
-
                 case APICType::InterruptSourceOverride: {
-                    auto interruptOverride = reinterpret_cast<InterruptSourceOverride*>(ptr);
+                    auto interruptOverride = allocators.interruptAllocator.allocate();
+                    
+                    if (apic.interruptOverrides == nullptr) {
+                        apic.interruptOverrides = interruptOverride;
+                    }
+                    
+                    *interruptOverride = *reinterpret_cast<InterruptSourceOverride*>(ptr);
 
                     if (VerboseAPIC) {
                         kprintf("[APIC] Loading InterruptSourceOverride structure\n");
@@ -400,20 +469,18 @@ namespace APIC {
 
                     byteLength -= sizeof(InterruptSourceOverride);
                     ptr += sizeof(InterruptSourceOverride);
-                    
-                    /*writeIOAPICRegister(ioAPICAddress, interruptOverride->globalSystemInterruptVector, 
-                        combineFlags(
-                            48 + interruptOverride->globalSystemInterruptVector,
-                            IO_DeliveryMode::Fixed,
-                            IO_DestinationMode::Physical,
-                            interruptOverride->flags & 0b01 ? IO_Polarity::ActiveHigh : IO_Polarity::ActiveLow,
-                            interruptOverride->flags & 0b0100 ? IO_TriggerMode::Edge : IO_TriggerMode::Level
-                    ), 0);*/
 
                     break;
                 }
-
                 case APICType::NMI: {
+                    auto nmi = allocators.nmiAPICAllocator.allocate();
+
+                    if (apic.nmis == nullptr) {
+                        apic.nmis = nmi;
+                    }
+
+                    *nmi = *reinterpret_cast<LocalAPICNMI*>(ptr);
+
                     if (VerboseAPIC) {
                         kprintf("[APIC] Loading NMI structure\n");
                     }
@@ -422,7 +489,6 @@ namespace APIC {
                     ptr += sizeof(LocalAPICNMI);
                     break;
                 }
-
                 default: {
                     uint8_t length = *(ptr + 1);
 
@@ -434,45 +500,11 @@ namespace APIC {
                     ptr += length;
                 }
             }
-
         }
 
-        writeIOAPICRegister(ioAPICAddress, 1, combineFlags(
-                49,
-                IO_DeliveryMode::Fixed,
-                IO_DestinationMode::Physical,
-                IO_Polarity::ActiveHigh,
-                IO_TriggerMode::Edge
-            ), 0);
+        LocalAPICAddress = apic.localAPICAddress;
 
-        writeIOAPICRegister(ioAPICAddress, 12, combineFlags(
-                50,
-                IO_DeliveryMode::Fixed,
-                IO_DestinationMode::Physical,
-                IO_Polarity::ActiveHigh,
-                IO_TriggerMode::Edge
-            ), 0);
-
-        writeIOAPICRegister(ioAPICAddress, 8, combineFlags(
-            51,
-            IO_DeliveryMode::Fixed,
-            IO_DestinationMode::Physical,
-            IO_Polarity::ActiveHigh,
-            IO_TriggerMode::Edge
-        ), 0);
-
-        /*
-        change ATA irq 14 to be 53
-        */
-        writeIOAPICRegister(ioAPICAddress, 14, combineFlags(
-            53,
-            IO_DeliveryMode::Fixed,
-            IO_DestinationMode::Physical,
-            IO_Polarity::ActiveHigh,
-            IO_TriggerMode::Edge
-        ), 0);
-
-        //setupAPICTimer();
+        return apic;
     }
 
     void sendInitIPI(int targetAPICId) {
@@ -483,5 +515,49 @@ namespace APIC {
     void sendStartupIPI(int targetAPICId, int vector) {
         writeLocalAPICRegister(Registers::InterruptCommandHigher, targetAPICId << 24);
         writeLocalAPICRegister(Registers::InterruptCommandLower, 0x4600 | vector);
+    }
+
+    void setupIOAPICs(APICStructures& config, APICStats stats) {
+
+        //TODO: support multiple IO APICs
+
+        for (int i = 0; i < stats.interruptOverrideCount; i++) {
+            writeIOAPICRegister(config.ioHeaders->address, 
+                config.interruptOverrides[i].globalSystemInterruptVector, 
+                combineFlags(
+                    48 + config.interruptOverrides[i].globalSystemInterruptVector,
+                    IO_DeliveryMode::Fixed,
+                    IO_DestinationMode::Physical,
+                    config.interruptOverrides[i].flags & 0b01 ? IO_Polarity::ActiveHigh : IO_Polarity::ActiveLow,
+                    config.interruptOverrides[i].flags & 0b0100 ? IO_TriggerMode::Edge : IO_TriggerMode::Level
+            ), 0);
+        }
+    }
+
+    void setupISAIRQs(IOAPICHeader ioAPIC) {
+
+        struct SaturnIRQ {
+            int oldIRQ;
+            int newIRQ;
+        };
+
+        SaturnIRQ irqs[] = {
+            {1, 49}, //keyboard
+            {12, 50}, //mouse
+            {8, 51}, //rtc
+            {14, 53} //ata
+        };
+
+        for (auto irq : irqs) {
+            writeIOAPICRegister(ioAPIC.address, irq.oldIRQ, combineFlags(
+                irq.newIRQ,
+                IO_DeliveryMode::Fixed,
+                IO_DestinationMode::Physical,
+                IO_Polarity::ActiveHigh,
+                IO_TriggerMode::Edge
+            ), 0);
+        }
+
+       setupAPICTimer();
     }
 }

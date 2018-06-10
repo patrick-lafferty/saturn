@@ -27,13 +27,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #pragma once 
 #include <stdint.h>
+#include "acpi.h"
+#include <memory/block_allocator.h>
 
 namespace APIC {
+
     void writeLocalAPICRegister(uint32_t offset, uint32_t value);
     void signalEndOfInterrupt();
 
     void initialize();
-    void loadAPICStructures(uintptr_t address, uint32_t byteLength);
+
     bool calibrateAPICTimer();
 
     inline bool WaitingForTimerCalibration = false;
@@ -178,6 +181,41 @@ namespace APIC {
         ATA = 53
     };
 
+    struct APICStats {
+        int localAPICCount;
+        int ioAPICCount;
+        int interruptOverrideCount;
+        int nonMaskableInterruptCount;
+    };
+
+    /*
+    Walks through the APIC table to count all of the local APICs
+    and ioAPICs so that we can allocate their corresponding
+    structs in one go
+    */
+    APICStats countAPICStructures(uintptr_t address, uint32_t byteLength);
+
+    struct APICStructures {
+        uint32_t localAPICAddress;
+        uint32_t apicFlags;
+        LocalAPICHeader* localHeaders {nullptr};
+        IOAPICHeader* ioHeaders {nullptr};
+        InterruptSourceOverride* interruptOverrides {nullptr};
+        LocalAPICNMI* nmis {nullptr};
+    };
+
+    struct Allocators {
+        Kernel::BlockAllocator<LocalAPICHeader> localAPICAllocator;
+        Kernel::BlockAllocator<IOAPICHeader> ioAPICAllocator;
+        Kernel::BlockAllocator<InterruptSourceOverride> interruptAllocator;
+        Kernel::BlockAllocator<LocalAPICNMI> nmiAPICAllocator;
+    };
+
+    APICStructures loadAPICStructures(CPU::ACPITableHeader table, Allocators& allocators);
+
     void sendInitIPI(int targetAPICId);
     void sendStartupIPI(int targetAPICId, int vector);
+
+    void setupIOAPICs(APICStructures& structures, APICStats stats);
+    void setupISAIRQs(IOAPICHeader ioAPIC);
 }
