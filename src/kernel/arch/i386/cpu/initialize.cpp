@@ -130,36 +130,44 @@ namespace CPU {
         
         trampoline.data->pageDirectoryAddress = vmm->getDirectoryPhysicalAddress();
         trampoline.data->stackAddress = reinterpret_cast<uintptr_t>(stackPointer);        
+        *trampoline.status = 0;
     }
 
-    void initializeApplicationProcessors() {
+    void initializeApplicationProcessors(APIC::LocalAPICHeader* lapics, int numberOfAPs) {
 
         BlockAllocator<SmallStack> stackAllocator {currentVMM};
         BlockAllocator<VirtualMemoryManager> vmmAllocator {currentVMM};
 
-        auto trampoline = createTrampoline(stackAllocator, vmmAllocator, 1);
+        auto trampoline = createTrampoline(stackAllocator, vmmAllocator, lapics->acpiProcessorId);
 
-        APIC::sendInitIPI(1);
-        kernel_sleep(10);
-        APIC::sendStartupIPI(1, 0x3);
-        kernel_sleep(1);
+        for (int i = 0; i < numberOfAPs; i++) {
 
-        //wait for up to 500ms
-        int x = 50;
+            if (i > 0) {
+                replaceTrampolineStack(trampoline, stackAllocator, vmmAllocator, lapics[i].acpiProcessorId);
+            }
 
-        while (*trampoline.status != 1 && x > 0) {
+            APIC::sendInitIPI(lapics[i].apicId);
             kernel_sleep(10);
-            x -= 1;
-        }
-
-        if (*trampoline.status != 1) {
-            //this cpu failed to start
-        }
-
-        *trampoline.status = 1337;
-
-        while (*trampoline.status <= 9000) {
+            APIC::sendStartupIPI(lapics[i].apicId, 0x3);
             kernel_sleep(1);
+
+            //wait for up to 500ms
+            int x = 50;
+
+            while (*trampoline.status != 1 && x > 0) {
+                kernel_sleep(10);
+                x -= 1;
+            }
+
+            if (*trampoline.status != 1) {
+                //this cpu failed to start
+            }
+
+            *trampoline.status = 1337;
+
+            while (*trampoline.status <= 9000) {
+                kernel_sleep(1);
+            }
         }
 
         /*
@@ -193,19 +201,39 @@ namespace CPU {
         asm volatile("sti");
         auto tss = createTSS(kernelEndAddress);
 
-        if (!CPU::parseACPITables()) {
+        if (auto acpiTable = CPU::parseACPITables()) {
+            auto stats = APIC::countAPICStructures(acpiTable.value().apicStartAddress, acpiTable.value().apicTableLength);
+
+            APIC::Allocators allocators {
+                BlockAllocator<APIC::LocalAPICHeader> {Memory::currentVMM, stats.localAPICCount},
+                BlockAllocator<APIC::IOAPICHeader> {Memory::currentVMM, stats.ioAPICCount},
+                BlockAllocator<APIC::InterruptSourceOverride> {Memory::currentVMM, stats.interruptOverrideCount},
+                BlockAllocator<APIC::LocalAPICNMI> {Memory::currentVMM, stats.nonMaskableInterruptCount}
+            };
+
+            auto structures = APIC::loadAPICStructures(*acpiTable, allocators);
+
+            if (stats.localAPICCount > 1) {
+                //initializeApplicationProcessors(structures.localHeaders + 1, stats.localAPICCount);
+            }
+
+            CurrentTaskLauncher = BlockAllocator<TaskLauncher>(Memory::currentVMM).allocate(tss);
+
+            auto scheduler = BlockAllocator<Scheduler>(Memory::currentVMM).allocate();
+            setupCPUBlocks(1, {scheduler});
+
+            //APIC::setupIOAPICs(structures, stats);
+            APIC::setupISAIRQs(structures.ioHeaders[0]);
+
+            return scheduler;
+
+        }
+        else {
 
             kprintf("[Kernel] Parsing ACPI Tables failed, halting\n");
             asm volatile("hlt");
+            return nullptr;
         }
-
-        initializeApplicationProcessors();
-
-        TaskLauncher launcher {tss};
-        auto scheduler = BlockAllocator<Scheduler>(Memory::currentVMM).allocate();
-        setupCPUBlocks(1, {scheduler});
-
-        return scheduler;
     }
 
 }
