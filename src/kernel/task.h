@@ -165,6 +165,29 @@ namespace Kernel {
         BlockAllocator<Memory::VirtualMemoryManager> vmmAllocator;
     };
 
+    struct TaskBlock {
+        static const int IdsPerBlock {1024};
+        Task* tasks[IdsPerBlock];
+    };
+
+    class TaskStore {
+    public:
+
+        TaskStore();
+
+        static TaskStore& getInstance();
+
+        Task* getTask(uint32_t id);
+        void storeTask(Task* task);
+
+    private:
+
+        static TaskStore* instance;
+        TaskBlock* blocks[1];
+        BlockAllocator<TaskBlock> blockAllocator;
+        int maxIds;
+    };
+
     inline TaskLauncher* CurrentTaskLauncher;
     
 }

@@ -153,6 +153,7 @@ namespace Kernel {
         task->context.esp = reinterpret_cast<uintptr_t>(stackPointer);
         task->context.kernelESP = task->context.esp;
         task->virtualMemoryManager = kernelVMM;
+        TaskStore::getInstance().storeTask(task);
 
         /*
         usermode tasks create their own heap, the kernel no longer has a heap, so kernel tasks
@@ -222,5 +223,45 @@ namespace Kernel {
 
     void TaskLauncher::freeUserTask(Task* task) {
         //TODO
+    }
+
+    TaskStore* TaskStore::instance = nullptr;
+
+    TaskStore::TaskStore() 
+        : blockAllocator {Memory::currentVMM, 1} {
+        blocks[0] = blockAllocator.allocate();
+        maxIds = TaskBlock::IdsPerBlock;
+
+        if (instance == nullptr) {
+            instance = this;
+        }
+    }
+
+    TaskStore& TaskStore::getInstance() {
+        return *instance;
+    }
+
+    Task* TaskStore::getTask(uint32_t id) {
+        if (id >= maxIds) {
+            return nullptr;
+        }
+
+        auto blockId = id / TaskBlock::IdsPerBlock;
+        auto taskId = id % TaskBlock::IdsPerBlock;
+
+        return blocks[blockId]->tasks[taskId];
+    }
+
+    void TaskStore::storeTask(Task* task) {
+        auto id = task->id;
+
+        if (id >= maxIds) {
+            //panic();
+        }
+
+        auto blockId = id / TaskBlock::IdsPerBlock;
+        auto taskId = id % TaskBlock::IdsPerBlock;
+
+        blocks[blockId]->tasks[taskId] = task;
     }
 }
