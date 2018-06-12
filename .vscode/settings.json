@@ -40,6 +40,7 @@
         "__tree": "cpp",
         "map": "cpp",
         "unordered_map": "cpp",
-        "__string": "cpp"
+        "__string": "cpp",
+        "mutex": "cpp"
     }
 }

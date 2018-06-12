@@ -111,7 +111,6 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     auto scheduler = CPU::initialize(kernelEndAddress);    
 
     //also don't need APIC tables anymore
-    //NOTE: if we actually do, copy them before this line to a new address space
     virtualMemManager.unmap(acpiStartAddress, acpiPages);
 
     kprintf("Saturn OS v 0.3.0\n------------------\n\nCalibrating clock, please wait...\n");
