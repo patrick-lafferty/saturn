@@ -161,6 +161,9 @@ int printf_impl(const char* format, va_list args, T write, int& charactersWritte
 }
 
 int kprintf(const char* format, ...) {
+
+    return 0;
+
     if (format == nullptr) {
         return -1;
     }

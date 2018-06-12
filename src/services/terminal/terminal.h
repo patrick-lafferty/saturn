@@ -108,10 +108,11 @@ namespace Terminal {
         SelectGraphicRendition = 'm',
     };
 
+    [[deprecated]]
     class Terminal {
     public:
 
-        Terminal(uint16_t* buffer);
+        explicit Terminal(uint16_t* buffer);
         void writeCharacter(uint8_t character);
         void writeCharacter(uint8_t character, uint8_t colour);
         DirtyRect interpret(char* buffer, uint32_t count);
