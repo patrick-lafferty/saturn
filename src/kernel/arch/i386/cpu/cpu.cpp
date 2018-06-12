@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <memory/block_allocator.h>
 #include <memory/virtual_memory_manager.h>
 #include <scheduler.h>
+#include <task.h>
 
 namespace CPU {
 
@@ -91,8 +92,7 @@ namespace CPU {
     }
 
     Kernel::Task* getTask(uint32_t id) {
-        //TODO: find task from any core
-        return ActiveCPUs[0].scheduler->getTask(id);
+        return Kernel::TaskStore::getInstance().getTask(id);
     }
 
     void changePriority(Kernel::Task* task, Kernel::Priority priority) {

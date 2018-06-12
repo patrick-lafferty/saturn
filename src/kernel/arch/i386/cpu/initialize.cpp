@@ -242,6 +242,9 @@ namespace CPU {
                 numberOfAPs = initializeApplicationProcessors(structures.localHeaders + 1, stats.localAPICCount - 1);
             }
 
+            BlockAllocator<TaskStore> storeAllocator {Memory::currentVMM, 1};
+            storeAllocator.allocate();
+
             CurrentTaskLauncher = BlockAllocator<TaskLauncher>(Memory::currentVMM).allocate(tss);
 
             BlockAllocator<Scheduler> schedulerAllocator {Memory::currentVMM};
