@@ -348,7 +348,7 @@ namespace Kernel {
                 taskId = message->recipientId;
             }
 
-            auto task = getTask(taskId);
+            auto task = TaskStore::getInstance().getTask(taskId);
             task->mailbox->send(message);
 
             if (task->state == TaskState::Blocked) {
@@ -429,40 +429,6 @@ namespace Kernel {
         }
 
         return false;
-    }
-
-    Task* Scheduler::getTask(uint32_t taskId) {
-        
-        for (auto i = 0; i < static_cast<int>(Priority::Last); i++) {
-            
-            if (priorityGroups[i].isEmpty()) {
-                continue;
-            }
-
-            auto head = priorityGroups[i].getHead();
-
-            while (head != nullptr) {
-                if (head->id == taskId) {
-                    return head;
-                }
-
-                head = head->nextTask;
-            }
-        }
-
-        if (!blockedQueue.isEmpty()) {
-            auto task = blockedQueue.getHead();
-
-            while (task != nullptr) {
-                if (task->id == taskId) {
-                    return task;
-                }
-
-                task = task->nextTask;
-            }
-        }
-
-        return nullptr;
     }
 
     void Scheduler::exitTask() {

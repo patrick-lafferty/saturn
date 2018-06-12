@@ -166,7 +166,6 @@ namespace Kernel {
         void receiveMessage(IPC::Message* buffer, IPC::MessageNamespace filter, uint32_t messageId);
         bool peekReceiveMessage(IPC::Message* buffer);
 
-        Task* getTask(uint32_t taskId);
         void exitTask();
         void exitKernelTask();
 
