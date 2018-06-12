@@ -218,4 +218,5 @@ namespace APIC {
 
     void setupIOAPICs(APICStructures& structures, APICStats stats);
     void setupISAIRQs(IOAPICHeader ioAPIC);
+    void setupAPICTimer();
 }

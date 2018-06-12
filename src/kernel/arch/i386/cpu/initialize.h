@@ -41,8 +41,10 @@ namespace CPU {
 	};
 
 	struct TrampolineStack {
-		uintptr_t kernelFuncAddress;
 		uintptr_t cpuReadyFlagAddress;
+		uintptr_t kernelFuncAddress;
+		int cpuId;
+		int apicId;
 	};
 
 	struct Trampoline {

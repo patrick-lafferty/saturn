@@ -48,6 +48,7 @@ namespace CPU {
     };
 
     inline CPUControlBlock* ActiveCPUs;
+    inline int CPUCount = 0;
 
     void setupCPUBlocks(int numberOfCPUs, CPUControlBlock initialCPU);
 

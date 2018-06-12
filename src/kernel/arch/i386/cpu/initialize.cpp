@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <memory/virtual_memory_manager.h>
 #include <task.h>
 #include <scheduler.h>
+#include <locks.h>
 
 using namespace Kernel;
 using namespace Memory;
@@ -46,13 +47,6 @@ extern "C" void trampoline_start();
 extern "C" uint8_t trampoline_size;
 
 namespace CPU {
-
-    void infiniteLoop() {
-        while (true) {
-            int x = 0;
-            x++;
-        }
-    }
 
     void kernel_sleep(int milliseconds) {
         RTC::enable(5);
@@ -65,8 +59,20 @@ namespace CPU {
         RTC::disable();
     }
 
+    void applicationProcessorStartup(int cpuId, int apicId) {
+
+        GDT::setup();
+
+        while (cpuId > CPUCount) {
+            kernel_sleep(1);
+        }
+
+        ActiveCPUs[cpuId].scheduler->start();
+    }
+
     Trampoline createTrampoline(BlockAllocator<SmallStack>& stackAllocator,
             BlockAllocator<VirtualMemoryManager>& vmmAllocator,
+            int apicId,
             int cpuId) {
 
         auto stack = stackAllocator.allocate();
@@ -94,11 +100,13 @@ namespace CPU {
         *status = 0;
 
         auto stackPointer = reinterpret_cast<TrampolineStack*>(
-            reinterpret_cast<uintptr_t>(stack) + sizeof(SmallStack) - 8
+            reinterpret_cast<uintptr_t>(stack) + sizeof(SmallStack) - sizeof(TrampolineStack)
         );
         *stackPointer = {
             reinterpret_cast<uintptr_t>(status),
-            reinterpret_cast<uintptr_t>(infiniteLoop) 
+            reinterpret_cast<uintptr_t>(applicationProcessorStartup),
+            cpuId,
+            apicId
         };
 
         auto data = reinterpret_cast<TrampolineData*>(cpuData);
@@ -113,6 +121,7 @@ namespace CPU {
     
     void replaceTrampolineStack(Trampoline& trampoline, BlockAllocator<SmallStack>& stackAllocator,
             BlockAllocator<VirtualMemoryManager>& vmmAllocator,
+            int apicId,
             int cpuId) {
 
         auto stack = stackAllocator.allocate();
@@ -120,12 +129,14 @@ namespace CPU {
         currentVMM->cloneForUsermode(vmm, true);
 
         auto stackPointer = reinterpret_cast<TrampolineStack*>(
-            reinterpret_cast<uintptr_t>(stack) + sizeof(SmallStack) - 8
+            reinterpret_cast<uintptr_t>(stack) + sizeof(SmallStack) - sizeof(TrampolineStack)
         );
 
         *stackPointer = {
             reinterpret_cast<uintptr_t>(trampoline.status),
-            reinterpret_cast<uintptr_t>(infiniteLoop) 
+            reinterpret_cast<uintptr_t>(applicationProcessorStartup),
+            cpuId,
+            apicId
         };
         
         trampoline.data->pageDirectoryAddress = vmm->getDirectoryPhysicalAddress();
@@ -133,17 +144,25 @@ namespace CPU {
         *trampoline.status = 0;
     }
 
-    void initializeApplicationProcessors(APIC::LocalAPICHeader* lapics, int numberOfAPs) {
+    int initializeApplicationProcessors(APIC::LocalAPICHeader* lapics, int numberOfAPs) {
 
         BlockAllocator<SmallStack> stackAllocator {currentVMM};
         BlockAllocator<VirtualMemoryManager> vmmAllocator {currentVMM};
 
-        auto trampoline = createTrampoline(stackAllocator, vmmAllocator, lapics->acpiProcessorId);
+        int validAPs = 0;
+        auto trampoline = createTrampoline(stackAllocator, 
+            vmmAllocator, 
+            lapics->acpiProcessorId,
+            validAPs + 1);
 
         for (int i = 0; i < numberOfAPs; i++) {
 
             if (i > 0) {
-                replaceTrampolineStack(trampoline, stackAllocator, vmmAllocator, lapics[i].acpiProcessorId);
+                replaceTrampolineStack(trampoline, 
+                    stackAllocator, 
+                    vmmAllocator, 
+                    lapics[i].acpiProcessorId,
+                    validAPs + 1);
             }
 
             APIC::sendInitIPI(lapics[i].apicId);
@@ -161,7 +180,10 @@ namespace CPU {
 
             if (*trampoline.status != 1) {
                 //this cpu failed to start
+                continue;
             }
+
+            validAPs++;
 
             *trampoline.status = 1337;
 
@@ -175,6 +197,7 @@ namespace CPU {
 
         free the physical page, use trampoline.savedPhysicalNextAddress
         */
+       return validAPs;
     }
 
     TSS* createTSS(uint32_t kernelEndAddress) {
@@ -212,18 +235,28 @@ namespace CPU {
             };
 
             auto structures = APIC::loadAPICStructures(*acpiTable, allocators);
+            auto numberOfAPs = 0;
+            APIC::setupISAIRQs(structures.ioHeaders[0]);
 
             if (stats.localAPICCount > 1) {
-                //initializeApplicationProcessors(structures.localHeaders + 1, stats.localAPICCount);
+                numberOfAPs = initializeApplicationProcessors(structures.localHeaders + 1, stats.localAPICCount - 1);
             }
 
             CurrentTaskLauncher = BlockAllocator<TaskLauncher>(Memory::currentVMM).allocate(tss);
 
-            auto scheduler = BlockAllocator<Scheduler>(Memory::currentVMM).allocate();
-            setupCPUBlocks(1, {scheduler});
+            BlockAllocator<Scheduler> schedulerAllocator {Memory::currentVMM};
+
+            auto scheduler = schedulerAllocator.allocate();
+            setupCPUBlocks(1 + numberOfAPs, {scheduler});
+
+            for (auto i = 0; i < numberOfAPs; i++) {
+                ActiveCPUs[i + 1].scheduler = schedulerAllocator.allocate();
+            }
+
+            CPUCount = 1 + numberOfAPs;
 
             //APIC::setupIOAPICs(structures, stats);
-            APIC::setupISAIRQs(structures.ioHeaders[0]);
+            APIC::setupAPICTimer();
 
             return scheduler;
 

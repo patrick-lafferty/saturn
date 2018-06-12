@@ -558,6 +558,6 @@ namespace APIC {
             ), 0);
         }
 
-       setupAPICTimer();
+       //setupAPICTimer();
     }
 }

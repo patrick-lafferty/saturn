@@ -84,8 +84,11 @@ finish:
 
     ;tell the bootstrap processor that we're done with
     ;the trampoline, so it can reuse/free it
-    pop eax
+    pop eax ; the status flag address
     mov dword [eax], 9001
+    pop eax
+    call eax
+    
 
     ret
 
