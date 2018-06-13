@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <cpu/sse.h>
 #include <cpu/pic.h>
 #include <cpu/rtc.h>
+#include <cpu/msr.h>
 #include <gdt/gdt.h>
 #include <memory/physical_memory_manager.h>
 #include <memory/virtual_memory_manager.h>
@@ -66,6 +67,8 @@ namespace CPU {
         while (cpuId > CPUCount) {
             kernel_sleep(1);
         }
+
+        writeModelSpecificRegister(ModelSpecificRegister::IA32_TSC_AUX, cpuId, 0);
 
         ActiveCPUs[cpuId].scheduler->start();
     }
@@ -237,6 +240,7 @@ namespace CPU {
             auto structures = APIC::loadAPICStructures(*acpiTable, allocators);
             auto numberOfAPs = 0;
             APIC::setupISAIRQs(structures.ioHeaders[0]);
+            writeModelSpecificRegister(ModelSpecificRegister::IA32_TSC_AUX, 0, 0);
 
             if (stats.localAPICCount > 1) {
                 numberOfAPs = initializeApplicationProcessors(structures.localHeaders + 1, stats.localAPICCount - 1);

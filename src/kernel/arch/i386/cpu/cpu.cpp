@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <memory/virtual_memory_manager.h>
 #include <scheduler.h>
 #include <task.h>
+#include "msr.h"
 
 namespace CPU {
 
@@ -42,47 +43,47 @@ namespace CPU {
     }
 
     void exitCurrentTask() {
-        auto cpuId = *reinterpret_cast<uint32_t*>(TSS_ADDRESS);
+        auto cpuId = readModelSpecificRegister_Low(ModelSpecificRegister::IA32_TSC_AUX);
         ActiveCPUs[cpuId].scheduler->exitTask();
     }
 
     void exitKernelTask() {
-        auto cpuId = *reinterpret_cast<uint32_t*>(TSS_ADDRESS);
+        auto cpuId = readModelSpecificRegister_Low(ModelSpecificRegister::IA32_TSC_AUX);
         ActiveCPUs[cpuId].scheduler->exitKernelTask();
     }
 
     void sleepCurrentTask(uint32_t time) {
-        auto cpuId = *reinterpret_cast<uint32_t*>(TSS_ADDRESS);
+        auto cpuId = readModelSpecificRegister_Low(ModelSpecificRegister::IA32_TSC_AUX);
         ActiveCPUs[cpuId].scheduler->blockTask(Kernel::BlockReason::Sleep, time);
     }
 
     void notifyTimesliceExpired() {
-        auto cpuId = *reinterpret_cast<uint32_t*>(TSS_ADDRESS);
+        auto cpuId = readModelSpecificRegister_Low(ModelSpecificRegister::IA32_TSC_AUX);
         ActiveCPUs[cpuId].scheduler->notifyTimesliceExpired();
     }
 
     void setupTimeslice() {
-        auto cpuId = *reinterpret_cast<uint32_t*>(TSS_ADDRESS);
+        auto cpuId = readModelSpecificRegister_Low(ModelSpecificRegister::IA32_TSC_AUX);
         ActiveCPUs[cpuId].scheduler->setupTimeslice();
     }
 
     void sendMessage(IPC::RecipientType recipient, IPC::Message* message) {
-        auto cpuId = *reinterpret_cast<uint32_t*>(TSS_ADDRESS);
+        auto cpuId = readModelSpecificRegister_Low(ModelSpecificRegister::IA32_TSC_AUX);
         ActiveCPUs[cpuId].scheduler->sendMessage(recipient, message);
     }
 
     void receiveMessage(IPC::Message* buffer) {
-        auto cpuId = *reinterpret_cast<uint32_t*>(TSS_ADDRESS);
+        auto cpuId = readModelSpecificRegister_Low(ModelSpecificRegister::IA32_TSC_AUX);
         ActiveCPUs[cpuId].scheduler->receiveMessage(buffer);
     }
 
     void receiveMessage(IPC::Message* buffer, IPC::MessageNamespace filter, uint32_t messageId) {
-        auto cpuId = *reinterpret_cast<uint32_t*>(TSS_ADDRESS);
+        auto cpuId = readModelSpecificRegister_Low(ModelSpecificRegister::IA32_TSC_AUX);
         ActiveCPUs[cpuId].scheduler->receiveMessage(buffer, filter, messageId);
     }
 
     bool peekReceiveMessage(IPC::Message* buffer) {
-        auto cpuId = *reinterpret_cast<uint32_t*>(TSS_ADDRESS);
+        auto cpuId = readModelSpecificRegister_Low(ModelSpecificRegister::IA32_TSC_AUX);
         return ActiveCPUs[cpuId].scheduler->peekReceiveMessage(buffer);
     }
 
@@ -96,7 +97,7 @@ namespace CPU {
     }
 
     void changePriority(Kernel::Task* task, Kernel::Priority priority) {
-        auto cpuId = *reinterpret_cast<uint32_t*>(TSS_ADDRESS);
+        auto cpuId = readModelSpecificRegister_Low(ModelSpecificRegister::IA32_TSC_AUX);
         return ActiveCPUs[cpuId].scheduler->changePriority(task, priority);
     }
 }
