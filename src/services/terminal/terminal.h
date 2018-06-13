@@ -108,8 +108,7 @@ namespace Terminal {
         SelectGraphicRendition = 'm',
     };
 
-    [[deprecated]]
-    class Terminal {
+    class [[deprecated]] Terminal {
     public:
 
         explicit Terminal(uint16_t* buffer);
