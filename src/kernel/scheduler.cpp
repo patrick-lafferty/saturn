@@ -31,13 +31,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <memory/virtual_memory_manager.h>
 #include <cpu/apic.h>
 #include <cpu/cpu.h>
-#include <heap.h>
+#include <cpu/msr.h>
+#include <saturn/heap.h>
 #include "ipc.h"
 #include <new>
 #include <services.h>
 #include <stdlib.h>
 #include <system_calls.h>
 #include "task.h"
+#include <locks.h>
 
 extern "C" void changeProcess(Kernel::Task* current, Kernel::Task* next);
 extern "C" void changeProcessSingle(Kernel::Task* current, Kernel::Task* next);
@@ -116,7 +118,7 @@ namespace Kernel {
             asm volatile("cli");
             auto oldHeap = LibC_Implementation::KernelHeap;
             LibC_Implementation::KernelHeap = kernelHeap;
-            auto oldVMM = Memory::currentVMM;
+            auto oldVMM = Memory::getCurrentVMM();
             kernelVMM->activate();
             auto task = deleteQueue.getHead();
 
@@ -157,7 +159,7 @@ namespace Kernel {
 
     Task* Scheduler::findNextTask() {
         
-        for (int i = 0; i < static_cast<int>(Priority::Last); i++) {
+        for (int i = 0; i < static_cast<int>(Priority::Idle); i++) {
             auto& queue = priorityGroups[i];
 
             if (!queue.isEmpty()) {
@@ -172,6 +174,20 @@ namespace Kernel {
         if (currentTask == nextTask) {
             return;
         }
+
+        nextTask->cpuId = CPU::getCurrentCPUId();
+
+        if (CPU::ActiveCPUs != nullptr) {
+            CPU::ActiveCPUs[nextTask->cpuId].heap = nextTask->heap;
+        }
+
+        auto oldTSS = reinterpret_cast<uint32_t>(nextTask->tss);
+        auto newTSS = 0xCFFF'F000 - 0x1000 * nextTask->cpuId;
+        auto oldVMM = Memory::getCurrentVMM();
+        nextTask->virtualMemoryManager->activate();
+        nextTask->virtualMemoryManager->remap(oldTSS, newTSS);
+        nextTask->tss = reinterpret_cast<CPU::TSS*>(newTSS);
+        oldVMM->activate();
 
         if (currentTask == nullptr) {
             currentTask = nextTask;
@@ -270,6 +286,8 @@ namespace Kernel {
     void Scheduler::unblockTask(Task* task) {
         task->state = TaskState::Running;
 
+        SpinLock lock {blockedQueue.getLock()};
+
         blockedQueue.remove(task);
         scheduleTask(task);
     }
@@ -296,6 +314,7 @@ namespace Kernel {
     void Scheduler::scheduleTask(Task* task) {
 
         auto& queue = priorityGroups[static_cast<int>(task->priority)];
+        SpinLock queueLock {queue.getLock()};
 
         if (queue.isEmpty()) {
             queue.insertBefore(task, nullptr);
@@ -308,6 +327,8 @@ namespace Kernel {
     }
 
     void Scheduler::setupTimeslice() {
+        auto id = CPU::getCurrentCPUId();
+
         APIC::setAPICTimer(APIC::LVT_TimerMode::Periodic, timeslice_milliseconds);
     }
 
@@ -317,6 +338,11 @@ namespace Kernel {
         priorityGroups[static_cast<int>(oldPriority)].remove(task);
         task->priority = priority;
         scheduleTask(task);
+    }
+
+    void Scheduler::reschedule() {
+        scheduleNextTask();
+        runNextTask();
     }
 
     void Scheduler::sendMessage(IPC::RecipientType recipient, IPC::Message* message) {
@@ -352,14 +378,29 @@ namespace Kernel {
             task->mailbox->send(message);
 
             if (task->state == TaskState::Blocked) {
-                unblockTask(task);
+                auto cpuId = CPU::getCurrentCPUId();
+
+                if (cpuId != task->cpuId) {
+                    int pause = 0;
+                    auto apicId = CPU::ActiveCPUs[task->cpuId].apicId;
+                    APIC::sendInterprocessorInterrupt(apicId, APIC::InterprocessorInterrupt::Reschedule);
+                }
+                else {
+                    unblockTask(task);
+                }
             }
 
             if ((static_cast<int>(task->priority) < static_cast<int>(currentTask->priority))
                 || currentTask->priority == Priority::IRQ) {
                 if (task->state == TaskState::Running) {
-                    nextTask = task;
-                    runNextTask();
+                    if (task->cpuId != CPU::getCurrentCPUId()) {
+                        auto apicId = CPU::ActiveCPUs[task->cpuId].apicId;
+                        APIC::sendInterprocessorInterrupt(apicId, APIC::InterprocessorInterrupt::Reschedule);
+                    }
+                    else {
+                        nextTask = task;
+                        runNextTask();
+                    }
                 }
             }
 
@@ -375,11 +416,12 @@ namespace Kernel {
         if (currentTask != nullptr) {
             auto task = currentTask;
 
-            if (!currentTask->mailbox->hasUnreadMessages()) {
+            //if (!currentTask->mailbox->hasUnreadMessages()) {
+            while (!task->mailbox->receive(buffer)) {
                 blockTask(BlockReason::WaitingForMessage, 0);
             }
 
-            task->mailbox->receive(buffer);
+            //task->mailbox->receive(buffer);
         }
     }
 
@@ -389,25 +431,36 @@ namespace Kernel {
 
             while (true) {
 
+                /*
+                SpinLock lock {currentTask->mailbox->getLock()};
+
                 if (!currentTask->mailbox->hasUnreadMessages()) {
                     blockTask(BlockReason::WaitingForMessage, 0);
                 }
+                */
 
                 //wake me up
-                auto messages = task->mailbox->getUnreadMessagesCount();
+                {
+                    SpinLock lock {currentTask->mailbox->getLock()};
 
-                for (auto i = 0u; i < messages; i++) {
-
-                    task->mailbox->receive(buffer);
-
-                    if (buffer->messageNamespace != filter
-                            || buffer->messageId != messageId) {
-                        //wake me up inside
-                        task->mailbox->send(buffer);
-                    }
-                    else {
+                    if (task->mailbox->filteredReceiveLockless(buffer, filter, messageId)) {
                         return;
                     }
+                    /*auto messages = task->mailbox->getUnreadMessagesCount();
+
+                    for (auto i = 0u; i < messages; i++) {
+
+                        task->mailbox->receiveLockless(buffer);
+
+                        if (buffer->messageNamespace != filter
+                                || buffer->messageId != messageId) {
+                            //wake me up inside
+                            task->mailbox->sendLockless(buffer);
+                        }
+                        else {
+                            return;
+                        }
+                    }*/
                 }
 
                 //can't wake up
@@ -420,12 +473,13 @@ namespace Kernel {
         if (currentTask != nullptr) {
             auto task = currentTask;
 
-            if (!currentTask->mailbox->hasUnreadMessages()) {
+            /*if (!currentTask->mailbox->hasUnreadMessages()) {
                 return false;
             }
 
             task->mailbox->receive(buffer);
-            return true;
+            return true;*/
+            return task->mailbox->receive(buffer);
         }
 
         return false;
@@ -496,6 +550,10 @@ namespace Kernel {
 
     void Scheduler::start() {
         startedTasks = true;
+
+        startTask->virtualMemoryManager = Memory::getCurrentVMM();
+        schedulerTask->virtualMemoryManager = Memory::getCurrentVMM();
+
         scheduleNextTask();
         runNextTask();
     }

@@ -35,10 +35,6 @@ namespace Memory {
     class VirtualMemoryManager;
 }
 
-namespace LibC_Implementation {
-    class Heap;
-}
-
 namespace IPC {
     class Mailbox;
     struct Message;
@@ -122,9 +118,14 @@ namespace Kernel {
                 return head == nullptr;
             }
 
+            uint32_t* getLock() {
+                return &lock;
+            }
+
         private:
 
         T* head {nullptr};
+        uint32_t lock {0};
     };
 
     enum class BlockReason {
@@ -176,6 +177,7 @@ namespace Kernel {
         }
 
         void changePriority(Task* task, Priority priority);
+        void reschedule();
 
     private:
 
