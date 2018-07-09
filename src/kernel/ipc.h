@@ -102,7 +102,6 @@ namespace IPC {
     public:
 
         Mailbox(uint32_t bufferAddress, uint32_t size) {
-            //buffer = reinterpret_cast<uint8_t*>(bufferAddress);
             buffers = reinterpret_cast<MaximumMessageBuffer*>(bufferAddress);
             bufferSize = size;
         }
@@ -113,16 +112,17 @@ namespace IPC {
         */
         void send(Message* message);     
 
-        void sendLockless(Message* message);
-
         /*
         Extracts a message from the buffer and copies it to the supplied message
         */
         bool receive(Message* message);
 
-        bool receiveLockless(Message* message);
-
-        bool filteredReceiveLockless(Message* message, IPC::MessageNamespace filter, uint32_t messageId);  
+        /*
+        Searches for a message with the given namespace and messageId
+        Copies the message to message buffer and returns true if found,
+        false otherwise
+        */
+        bool filteredReceive(Message* message, IPC::MessageNamespace filter, uint32_t messageId);  
 
         bool hasUnreadMessages() {
             return unreadMessages > 0;
@@ -132,20 +132,10 @@ namespace IPC {
             return unreadMessages;
         }
 
-        uint32_t* getLock() {
-            return &bufferLock;
-        }
-
     private:
-
-        uint32_t findEndReadOffset();
-        void markSkippableRange(uint32_t offset, uint32_t length);
-        bool canSkipRead(uint32_t start, uint32_t length);
-        bool skipRead(Message* message, uint32_t length);
 
         uint32_t unreadMessages {0};
         uint32_t bufferSize {0};
-        //uint8_t* buffer {nullptr};
         uint32_t lastReadOffset {0};
         uint32_t lastWriteOffset {0};
         uint32_t bufferLock {0};

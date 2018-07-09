@@ -416,12 +416,9 @@ namespace Kernel {
         if (currentTask != nullptr) {
             auto task = currentTask;
 
-            //if (!currentTask->mailbox->hasUnreadMessages()) {
             while (!task->mailbox->receive(buffer)) {
                 blockTask(BlockReason::WaitingForMessage, 0);
             }
-
-            //task->mailbox->receive(buffer);
         }
     }
 
@@ -431,36 +428,11 @@ namespace Kernel {
 
             while (true) {
 
-                /*
-                SpinLock lock {currentTask->mailbox->getLock()};
-
-                if (!currentTask->mailbox->hasUnreadMessages()) {
-                    blockTask(BlockReason::WaitingForMessage, 0);
-                }
-                */
-
                 //wake me up
-                {
-                    SpinLock lock {currentTask->mailbox->getLock()};
 
-                    if (task->mailbox->filteredReceiveLockless(buffer, filter, messageId)) {
-                        return;
-                    }
-                    /*auto messages = task->mailbox->getUnreadMessagesCount();
-
-                    for (auto i = 0u; i < messages; i++) {
-
-                        task->mailbox->receiveLockless(buffer);
-
-                        if (buffer->messageNamespace != filter
-                                || buffer->messageId != messageId) {
-                            //wake me up inside
-                            task->mailbox->sendLockless(buffer);
-                        }
-                        else {
-                            return;
-                        }
-                    }*/
+                if (task->mailbox->filteredReceive(buffer, filter, messageId)) {
+                    //wake me up inside
+                    return;
                 }
 
                 //can't wake up
@@ -471,15 +443,8 @@ namespace Kernel {
 
     bool Scheduler::peekReceiveMessage(IPC::Message* buffer) {
         if (currentTask != nullptr) {
-            auto task = currentTask;
 
-            /*if (!currentTask->mailbox->hasUnreadMessages()) {
-                return false;
-            }
-
-            task->mailbox->receive(buffer);
-            return true;*/
-            return task->mailbox->receive(buffer);
+            return currentTask->mailbox->receive(buffer);
         }
 
         return false;
