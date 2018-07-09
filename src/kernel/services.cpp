@@ -34,17 +34,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <cpu/tss.h>
 #include <cpu/cpu.h>
 #include <task.h>
-#include <heap.h>
 #include <system_calls.h>
 #include <memory/guard.h>
 
 namespace Kernel {
 
     ServiceRegistry::ServiceRegistry() 
-        : subscriberAllocator {Memory::currentVMM} {
+        : subscriberAllocator {Memory::getCurrentVMM()} {
 
-        kernelHeap = LibC_Implementation::KernelHeap;
-        kernelVMM = Memory::currentVMM;
+        kernelVMM = Memory::getCurrentVMM();
 
         auto count = static_cast<uint32_t>(ServiceType::ServiceTypeEnd) + 1;
         BlockAllocator<ServiceHandle> allocator {kernelVMM};
@@ -168,7 +166,7 @@ namespace Kernel {
 
     void ServiceRegistry::subscribe(uint32_t index, uint32_t senderTaskId) {
 
-        MemoryGuard guard {kernelVMM, kernelHeap};
+        MemoryGuard guard {kernelVMM};
 
         auto& service = knownServices[index];
 
@@ -187,7 +185,7 @@ namespace Kernel {
 
     void ServiceRegistry::handleNotifyServiceReady(uint32_t senderTaskId) {
 
-        MemoryGuard guard {kernelVMM, kernelHeap};
+        MemoryGuard guard {kernelVMM};
 
         auto lastService = static_cast<uint32_t>(ServiceType::ServiceTypeEnd);
 
@@ -202,7 +200,7 @@ namespace Kernel {
 
     void ServiceRegistry::handleLinearFramebufferFound(uint32_t address) {
 
-        MemoryGuard guard {kernelVMM, kernelHeap};
+        MemoryGuard guard {kernelVMM};
 
         addresses.linearFrameBuffer = address;
     }
@@ -227,6 +225,7 @@ namespace Kernel {
         vmm->HACK_setNextAddress(cachedNextAddress);
 
         MapMemoryResult result;
+        result.senderTaskId = request.senderTaskId;
         result.recipientId = request.senderTaskId;
         result.start = reinterpret_cast<void*>(allocatedAddress);
 
@@ -298,7 +297,7 @@ namespace Kernel {
 
     uint32_t ServiceRegistry::getServiceTaskId(ServiceType type) {
 
-        MemoryGuard guard {kernelVMM, kernelHeap};
+        MemoryGuard guard {kernelVMM};
 
         if (type == ServiceType::ServiceTypeEnd) {
             kprintf("[ServiceRegistry] Tried to get ServiceTypeEnd taskId\n");
@@ -310,7 +309,7 @@ namespace Kernel {
 
     bool ServiceRegistry::handleDriverIrq(uint32_t irq) {
 
-        MemoryGuard guard {kernelVMM, kernelHeap};
+        MemoryGuard guard {kernelVMM};
 
         switch(irq) {
             case 53: {
@@ -367,6 +366,7 @@ namespace Kernel {
 
                 VGAServiceMeta vgaMeta;
                 vgaMeta.vgaAddress = vgaPage;
+                vgaMeta.senderTaskId = taskId;
                 task->mailbox->send(&vgaMeta);
 
                 break;
@@ -385,6 +385,7 @@ namespace Kernel {
                 grantIOPort8(0x64, task->tss->ioPermissionBitmap);
 
                 GenericServiceMeta genericMeta;
+                genericMeta.senderTaskId = taskId;
                 task->mailbox->send(&genericMeta);
                 
                 break;
@@ -405,6 +406,7 @@ namespace Kernel {
                 CPU::changePriority(task, type == ServiceType::VFS ? Priority::IO : Priority::Input);
 
                 GenericServiceMeta genericMeta;
+                genericMeta.senderTaskId = taskId;
                 task->mailbox->send(&genericMeta);
 
                 break;
@@ -434,6 +436,7 @@ namespace Kernel {
 
                 VGAServiceMeta meta;
                 meta.vgaAddress = linearFrameBuffer;
+                meta.senderTaskId = taskId;
                 task->mailbox->send(&meta);
 
                 break;
@@ -459,6 +462,7 @@ namespace Kernel {
 
                 VGAServiceMeta meta;
                 meta.vgaAddress = linearFrameBuffer;
+                meta.senderTaskId = taskId;
                 task->mailbox->send(&meta);
 
                 break;
@@ -488,7 +492,7 @@ asm("cli");
                     return;
                 }
 
-                auto oldVMM = Memory::currentVMM;
+                auto oldVMM = Memory::getCurrentVMM();
                 task->virtualMemoryManager->activate();
                 grantIOPortRange(0x1f0, 0x1f7, task->tss->ioPermissionBitmap);
                 grantIOPort8(0x3f6, task->tss->ioPermissionBitmap);
@@ -496,6 +500,7 @@ asm("cli");
                 oldVMM->activate();
 
                 RegisterDriverResult result;
+                result.senderTaskId = taskId;
                 task->mailbox->send(&result);
 
                 break;
@@ -509,12 +514,13 @@ asm("cli");
                     return;
                 }
 
-                auto oldVMM = Memory::currentVMM;
+                auto oldVMM = Memory::getCurrentVMM();
                 task->virtualMemoryManager->activate();
                 grantIOPortRange(0x3f8, 0x400, task->tss->ioPermissionBitmap);
                 oldVMM->activate();
 
                 RegisterDriverResult result;
+                result.senderTaskId = taskId;
                 task->mailbox->send(&result);
 
                 break;   
