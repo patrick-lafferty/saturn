@@ -36,7 +36,6 @@ namespace CPU {
         tss->ioMapBaseAddress = offset;
         tss->ss0 = 0x10;
 
-        loadTSS();
         return tss;
     }
 }

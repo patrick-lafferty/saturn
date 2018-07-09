@@ -66,5 +66,5 @@ namespace CPU {
 }
 
 extern "C" void fillTSS(CPU::TSS* tss);
-extern "C" void loadTSS();
+extern "C" void loadTSS(uint8_t gdtOffset);
 extern "C" uint32_t TSS_ADDRESS;

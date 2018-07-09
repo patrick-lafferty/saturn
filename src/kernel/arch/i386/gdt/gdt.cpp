@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "gdt.h"
 
-GDT::Descriptor gdt[6];
+GDT::Descriptor gdt[7];
 GDT::DescriptorPointer gp;
 
 namespace GDT {
@@ -39,7 +39,7 @@ namespace GDT {
     int nextGDTIndex = 0;
 
     void setup() {
-        gp.limit = sizeof(Descriptor) * 6 - 1;
+        gp.limit = sizeof(Descriptor) * 7 - 1;
         gp.base = reinterpret_cast<uint32_t>(&gdt);
 
         //null descriptor

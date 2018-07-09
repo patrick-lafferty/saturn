@@ -74,7 +74,7 @@ namespace GDT {
     void addTSSEntry(uint32_t address, uint32_t size);
 }
 
-extern "C" GDT::Descriptor gdt[6];
+extern "C" GDT::Descriptor gdt[7];
 extern "C" GDT::DescriptorPointer gp;
 
 extern "C" void gdt_flush();

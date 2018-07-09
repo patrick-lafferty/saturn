@@ -58,7 +58,7 @@ changeProcess:
     ;fxrstor [eax]
 
     mov ecx, eax
-    mov eax, [TSS_ADDRESS]
+    mov eax, [eax + 48]
     mov ecx, [ecx] ; nextTask->context.kernelESP
     mov [eax + 4], ecx ; tss->esp0 = nextTask->context.kernelESP
 
@@ -84,7 +84,7 @@ changeProcessSingle:
     ;fxrstor [eax]
 
     mov ecx, eax
-    mov eax, [TSS_ADDRESS]
+    mov eax, [eax + 48]
     mov ecx, [ecx] ; nextTask->context.kernelESP
     mov [eax + 4], ecx ; tss->esp0 = nextTask->context.kernelESP
 
@@ -162,7 +162,8 @@ fillTSS:
 
 global loadTSS
 loadTSS:
-    mov ax, 0x28
+    
+    mov ax, [esp + 4]
     ltr ax
     ret
 
