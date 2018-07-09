@@ -41,14 +41,28 @@ namespace IPC {
     enum class MessageNamespace : uint32_t;
 }
 
+namespace Memory {
+    class VirtualMemoryManager;
+}
+
+namespace Saturn::Memory {
+    class Heap;
+}
+
 namespace CPU {
 
     struct CPUControlBlock {
         Kernel::Scheduler* scheduler;
+        int apicId;
+        bool ready {false};
+        Memory::VirtualMemoryManager* vmm;
+        Saturn::Memory::Heap* heap;
     };
 
     inline CPUControlBlock* ActiveCPUs;
     inline int CPUCount = 0;
+
+    int getCurrentCPUId();
 
     void setupCPUBlocks(int numberOfCPUs, CPUControlBlock initialCPU);
 
@@ -56,7 +70,7 @@ namespace CPU {
     void exitKernelTask();
     void sleepCurrentTask(uint32_t time);
     void notifyTimesliceExpired();
-    void setupTimeslice();
+    void setupTimeslice(bool propagate = true);
 
     //TODO: move this later
     void sendMessage(IPC::RecipientType recipient, IPC::Message* message);
@@ -66,6 +80,10 @@ namespace CPU {
     bool peekReceiveMessage(IPC::Message* buffer);
 
     void scheduleTask(Kernel::Task* task);
+
+    void startScheduler();
+    void invalidateTLB();
+    void reschedule();
 
     Kernel::Task* getTask(uint32_t id);
 

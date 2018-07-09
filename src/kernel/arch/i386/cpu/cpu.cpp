@@ -31,65 +31,99 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <scheduler.h>
 #include <task.h>
 #include "msr.h"
+#include "apic.h"
 
 namespace CPU {
 
-    uint32_t TSS_ADDRESS = 0xcfff'f000;
+    int getCurrentCPUId() {
+        //return readModelSpecificRegister_Low(ModelSpecificRegister::IA32_TSC_AUX);
+        int eax, edx, ecx;
+        asm volatile("rdtscp" : "=a" (eax), "=d" (edx), "=c" (ecx));
+        return ecx;
+    }
+
+    void sendIPI(APIC::InterprocessorInterrupt ipi) {
+        for (int i = 1; i < CPUCount; i++) {
+            APIC::sendInterprocessorInterrupt(ActiveCPUs[i].apicId, ipi);
+        }
+    }
 
     void setupCPUBlocks(int numberOfCPUs, CPUControlBlock initialCPU) {
-        Kernel::BlockAllocator<CPUControlBlock> allocator {Memory::currentVMM};
+        Kernel::BlockAllocator<CPUControlBlock> allocator {Memory::getCurrentVMM()};
         ActiveCPUs = allocator.allocateMultiple(numberOfCPUs);
         ActiveCPUs[0] = initialCPU;
     }
 
     void exitCurrentTask() {
-        auto cpuId = readModelSpecificRegister_Low(ModelSpecificRegister::IA32_TSC_AUX);
+        auto cpuId = getCurrentCPUId();
         ActiveCPUs[cpuId].scheduler->exitTask();
     }
 
     void exitKernelTask() {
-        auto cpuId = readModelSpecificRegister_Low(ModelSpecificRegister::IA32_TSC_AUX);
+        auto cpuId = getCurrentCPUId();
         ActiveCPUs[cpuId].scheduler->exitKernelTask();
     }
 
     void sleepCurrentTask(uint32_t time) {
-        auto cpuId = readModelSpecificRegister_Low(ModelSpecificRegister::IA32_TSC_AUX);
+        auto cpuId = getCurrentCPUId();
         ActiveCPUs[cpuId].scheduler->blockTask(Kernel::BlockReason::Sleep, time);
     }
 
     void notifyTimesliceExpired() {
-        auto cpuId = readModelSpecificRegister_Low(ModelSpecificRegister::IA32_TSC_AUX);
+        auto cpuId = getCurrentCPUId();
         ActiveCPUs[cpuId].scheduler->notifyTimesliceExpired();
     }
 
-    void setupTimeslice() {
-        auto cpuId = readModelSpecificRegister_Low(ModelSpecificRegister::IA32_TSC_AUX);
+    void setupTimeslice(bool propagate) {
+        auto cpuId = getCurrentCPUId();
+
+        if (propagate) {
+            sendIPI(APIC::InterprocessorInterrupt::SetupTimeslice);
+        }
+
         ActiveCPUs[cpuId].scheduler->setupTimeslice();
     }
 
     void sendMessage(IPC::RecipientType recipient, IPC::Message* message) {
-        auto cpuId = readModelSpecificRegister_Low(ModelSpecificRegister::IA32_TSC_AUX);
+        auto cpuId = getCurrentCPUId();
         ActiveCPUs[cpuId].scheduler->sendMessage(recipient, message);
     }
 
     void receiveMessage(IPC::Message* buffer) {
-        auto cpuId = readModelSpecificRegister_Low(ModelSpecificRegister::IA32_TSC_AUX);
+        auto cpuId = getCurrentCPUId();
         ActiveCPUs[cpuId].scheduler->receiveMessage(buffer);
     }
 
     void receiveMessage(IPC::Message* buffer, IPC::MessageNamespace filter, uint32_t messageId) {
-        auto cpuId = readModelSpecificRegister_Low(ModelSpecificRegister::IA32_TSC_AUX);
+        auto cpuId = getCurrentCPUId();
         ActiveCPUs[cpuId].scheduler->receiveMessage(buffer, filter, messageId);
     }
 
     bool peekReceiveMessage(IPC::Message* buffer) {
-        auto cpuId = readModelSpecificRegister_Low(ModelSpecificRegister::IA32_TSC_AUX);
+        auto cpuId = getCurrentCPUId();
         return ActiveCPUs[cpuId].scheduler->peekReceiveMessage(buffer);
     }
 
     void scheduleTask(Kernel::Task* task) {
         //TODO: find appropriate core to run task on
-        ActiveCPUs[0].scheduler->scheduleTask(task);
+        static int index = 1;
+        ActiveCPUs[index].scheduler->scheduleTask(task);
+
+        if (index == 0) index = 1;
+        else index = 0;
+    }
+
+    void startScheduler() {
+        sendIPI(APIC::InterprocessorInterrupt::StartScheduler);
+    }
+
+    void invalidateTLB() {
+        sendIPI(APIC::InterprocessorInterrupt::InvalidateTLB);
+    }
+
+    void reschedule() {
+        auto cpuId = getCurrentCPUId();
+        ActiveCPUs[cpuId].scheduler->reschedule();
     }
 
     Kernel::Task* getTask(uint32_t id) {
@@ -97,7 +131,7 @@ namespace CPU {
     }
 
     void changePriority(Kernel::Task* task, Kernel::Priority priority) {
-        auto cpuId = readModelSpecificRegister_Low(ModelSpecificRegister::IA32_TSC_AUX);
+        auto cpuId = getCurrentCPUId();
         return ActiveCPUs[cpuId].scheduler->changePriority(task, priority);
     }
 }
