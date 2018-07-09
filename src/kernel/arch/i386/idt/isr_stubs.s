@@ -145,47 +145,74 @@ InterruptServiceRoutine_Errorless 56; APIC IRQ 8
 InterruptServiceRoutine_Errorless 57; APIC IRQ 9
 InterruptServiceRoutine_Errorless 58; APIC IRQ 10
 InterruptServiceRoutine_Errorless 59; APIC IRQ 11
+InterruptServiceRoutine_Errorless 206; APIC error interrupt
 InterruptServiceRoutine_Errorless 207; APIC spurious interrupt
+
+%macro FastPathInterrupt 2
+    global isr%1
+
+    isr%1:
+
+        push ds
+        push es
+        push fs
+        push gs
+        push eax
+        mov ax, 0x10
+        mov ds, ax
+        mov es, ax
+        mov fs, ax
+        mov gs, ax
+        pop eax
+        push edx
+        push ecx
+        push ebx
+        push eax
+        push esi
+        push edi
+        push esp
+
+        call %2
+        add esp, 4
+
+        pop edi
+        pop esi
+        pop eax
+        pop ebx
+        pop ecx
+        pop edx
+        pop gs
+        pop fs
+        pop es
+        pop ds
+
+        iret
+%endmacro
 
 ;Usermode system calls
 global isr255
 extern handleSystemCall
-isr255:
 
-    push ds
-    push es
-    push fs
-    push gs
-    push eax
-    mov ax, 0x10
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-    pop eax
-    push edx
-    push ecx
-    push ebx
-    push eax
-    push esi
-    push edi
-    push esp
+FastPathInterrupt 255, handleSystemCall
 
-    call handleSystemCall
-    add esp, 4
+;Interprocessor interrupt: setupScheduler
+global isr251
+extern handleSetupScheduler
+FastPathInterrupt 251, handleSetupScheduler
 
-    pop edi
-    pop esi
-    pop eax
-    pop ebx
-    pop ecx
-    pop edx
-    pop gs
-    pop fs
-    pop es
-    pop ds
+;Interprocessor interrupt: setupTimeslice
+global isr252
+extern handleSetupTimeslice
+FastPathInterrupt 252, handleSetupTimeslice
 
-    iret
+;Interprocessor interrupt: invlpg
+global isr253
+extern handleInvlpg
+FastPathInterrupt 253, handleInvlpg
 
+;Interprocessor interrupt: reschedule and run highest task
+global isr254
+extern handleReschedule
 
+FastPathInterrupt 254, handleReschedule
 

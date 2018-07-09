@@ -100,7 +100,14 @@ namespace IDT {
         idt[57] = encodeEntry(reinterpret_cast<uint32_t>(&isr57), 0x08);
         idt[58] = encodeEntry(reinterpret_cast<uint32_t>(&isr58), 0x08);
         idt[59] = encodeEntry(reinterpret_cast<uint32_t>(&isr59), 0x08);
+        idt[206] = encodeEntry(reinterpret_cast<uint32_t>(&isr206), 0x08);
         idt[207] = encodeEntry(reinterpret_cast<uint32_t>(&isr207), 0x08);
+
+        //interprocessor interrupts
+        idt[251] = encodeEntry(reinterpret_cast<uint32_t>(&isr251), 0x08);
+        idt[252] = encodeEntry(reinterpret_cast<uint32_t>(&isr252), 0x08);
+        idt[253] = encodeEntry(reinterpret_cast<uint32_t>(&isr253), 0x08);
+        idt[254] = encodeEntry(reinterpret_cast<uint32_t>(&isr254), 0x08);
 
         //System calls
         idt[255] = encodeEntry(reinterpret_cast<uint32_t>(&isr255), 0x08, true);
@@ -186,12 +193,12 @@ bool handlePageFault(uintptr_t virtualAddress, uint32_t errorCode) {
     }
     else {
 
-        auto pageStatus = Memory::currentVMM->getPageStatus(virtualAddress);
+        auto pageStatus = Memory::getCurrentVMM()->getPageStatus(virtualAddress);
         
         if (pageStatus == Memory::PageStatus::Allocated) {
             //we need to map a physical page
             auto physicalPage = Memory::currentPMM->allocatePage(1);
-            Memory::currentVMM->map(virtualAddress, physicalPage);
+            Memory::getCurrentVMM()->map(virtualAddress, physicalPage);
             Memory::currentPMM->finishAllocation(virtualAddress, 1);
 
             faults++;
@@ -259,6 +266,32 @@ extern "C" void handleSystemCall(SystemCallFrame* frame) {
     }
 }
 
+extern "C" void handleSetupScheduler() {
+    auto cpuId = CPU::getCurrentCPUId();
+    CPU::ActiveCPUs[cpuId].ready = true;
+    APIC::signalEndOfInterrupt();
+}
+
+extern "C" void handleReschedule() {
+    CPU::reschedule();
+    APIC::signalEndOfInterrupt();
+}
+
+extern "C" void handleInvlpg() {
+    auto cpuId = CPU::getCurrentCPUId();
+
+    if (CPU::ActiveCPUs[cpuId].ready && CPU::ActiveCPUs[cpuId].vmm != nullptr) {
+        CPU::ActiveCPUs[cpuId].vmm->activate();
+    }
+
+    APIC::signalEndOfInterrupt();
+}
+
+extern "C" void handleSetupTimeslice() {
+    CPU::setupTimeslice(false);
+    APIC::signalEndOfInterrupt();
+}
+
 const char* exceptions[] = {
     "Divide Error",
     "Debug Exception",
@@ -299,6 +332,9 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
             kprintf("[IDT] %s\n", exceptions[frame->interruptNumber]);
             panic(frame);
         }
+        case 8: {
+            panic(frame);
+        }
         //...TODO...
         case 13: {
             kprintf("[IDT] General Protection Fault\n");
@@ -323,6 +359,7 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
             if (!handlePageFault(virtualAddress, frame->errorCode)) {
                 panic(frame);
             } 
+            //do the invalidate tlb here
 
             break;
         }
@@ -368,6 +405,7 @@ void interruptHandler(CPU::InterruptStackFrame* frame) {
                 }
                 case static_cast<uint32_t>(APIC::KnownInterrupt::RTC): {
                     if (APIC::calibrateAPICTimer()) {
+                        CPU::ActiveCPUs[0].ready = true;
                         CPU::setupTimeslice();
                     }
 

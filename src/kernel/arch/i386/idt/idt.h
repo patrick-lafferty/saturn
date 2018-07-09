@@ -108,7 +108,14 @@ extern "C" void isr56();
 extern "C" void isr57();
 extern "C" void isr58();
 extern "C" void isr59();
+extern "C" void isr206(); //APIC spurious interrupt
 extern "C" void isr207(); //APIC spurious interrupt
+
+//interprocessor interrupts
+extern "C" void isr251();
+extern "C" void isr252();
+extern "C" void isr253();
+extern "C" void isr254();
 
 //System calls
 extern "C" void isr255();

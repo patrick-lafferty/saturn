@@ -94,8 +94,8 @@ namespace APIC {
             auto ticksPerSecond = ticks * 8; //RTC was using 8Hz rate
             ticksPerMilliSecond = ticksPerSecond / (1000 * (tries + 1));
             
-            writeLocalAPICRegister(Registers::InitialCount, 0x0);
-            writeLocalAPICRegister(Registers::DivideConfiguration, combineFlags(DivideConfiguration::By1));
+            /*writeLocalAPICRegister(Registers::InitialCount, 0x0);
+            writeLocalAPICRegister(Registers::DivideConfiguration, combineFlags(DivideConfiguration::By1));*/
 
             return true;
         }
@@ -113,6 +113,7 @@ namespace APIC {
             mode
         )); 
 
+        writeLocalAPICRegister(Registers::DivideConfiguration, combineFlags(DivideConfiguration::By1));
         writeLocalAPICRegister(Registers::InitialCount, timeInMilliseconds * ticksPerMilliSecond);
     }
 
@@ -167,13 +168,18 @@ namespace APIC {
 
         Delivery [ExtInt] forces Trigger [level]
         */
+       static bool once = true;
+       if (true) {
         writeLocalAPICRegister(Registers::LINT0, combineFlags(
             LVT_DeliveryMode::ExtINT,
+            //LVT_DeliveryMode::Fixed,
             LVT_Trigger::Level
         ));
         writeLocalAPICRegister(Registers::LINT1, combineFlags(
             LVT_DeliveryMode::NMI
         ));
+        once = false;
+       }
 
         /*
         LVT Error Register, offset 0x370
@@ -186,7 +192,7 @@ namespace APIC {
 
         Value after reset: 0x10000
         */
-        writeLocalAPICRegister(Registers::LVT_Error, combineFlags(LVT_Mask::DisableInterrupt));
+        writeLocalAPICRegister(Registers::LVT_Error, 206); //combineFlags(LVT_Mask::DisableInterrupt));
 
         /*
         Divide Configuration Register, offset 0x3E0
@@ -517,6 +523,11 @@ namespace APIC {
         writeLocalAPICRegister(Registers::InterruptCommandLower, 0x4600 | vector);
     }
 
+    void sendInterprocessorInterrupt(int targetAPICId, InterprocessorInterrupt ipi) {
+        writeLocalAPICRegister(Registers::InterruptCommandHigher, targetAPICId << 24);
+        writeLocalAPICRegister(Registers::InterruptCommandLower, 0x4000 | static_cast<uint32_t>(ipi));
+    }
+
     void setupIOAPICs(APICStructures& config, APICStats stats) {
 
         //TODO: support multiple IO APICs
@@ -548,15 +559,20 @@ namespace APIC {
             {14, 53} //ata
         };
 
+        static bool first = true;
+        static uint32_t address = ioAPIC.address;
+
         for (auto irq : irqs) {
-            writeIOAPICRegister(ioAPIC.address, irq.oldIRQ, combineFlags(
+            writeIOAPICRegister(address, irq.oldIRQ, combineFlags(
                 irq.newIRQ,
                 IO_DeliveryMode::Fixed,
                 IO_DestinationMode::Physical,
                 IO_Polarity::ActiveHigh,
                 IO_TriggerMode::Edge
-            ), 0);
+            ), first ? 0 : 1);
         }
+
+        first = false;
 
        //setupAPICTimer();
     }

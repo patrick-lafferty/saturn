@@ -58,6 +58,8 @@ namespace APIC {
         DivideConfiguration = 0x3E0,
     };
 
+    uint32_t readLocalAPICRegister(Registers apicRegister);
+
     enum class LVT_DeliveryMode {
         Fixed = 0b0000'0000'0000,
         SMI = 0b0100'0000'0000,
@@ -215,6 +217,15 @@ namespace APIC {
 
     void sendInitIPI(int targetAPICId);
     void sendStartupIPI(int targetAPICId, int vector);
+
+    enum class InterprocessorInterrupt {
+        StartScheduler = 251,
+        SetupTimeslice = 252,
+        InvalidateTLB = 253,
+        Reschedule = 254,
+    };
+
+    void sendInterprocessorInterrupt(int targetAPICId, InterprocessorInterrupt ipi);
 
     void setupIOAPICs(APICStructures& structures, APICStats stats);
     void setupISAIRQs(IOAPICHeader ioAPIC);
