@@ -35,7 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <memory/virtual_memory_manager.h>
 #include "ipc.h"
 
-namespace LibC_Implementation {
+namespace Saturn::Memory {
     class Heap;
 }
 
@@ -104,11 +104,12 @@ namespace Kernel {
         TaskState state;
         uint64_t wakeTime {0};
         Memory::VirtualMemoryManager* virtualMemoryManager;
-        LibC_Implementation::Heap* heap;
+        Saturn::Memory::Heap* heap;
         IPC::Mailbox* mailbox;
         CPU::TSS* tss;
         SmallStack* kernelStack;
         Priority priority {Priority::Other};
+        uint8_t cpuId;
     };
 
     /*
@@ -155,7 +156,6 @@ namespace Kernel {
 
         CPU::TSS* kernelTSS;
         Memory::VirtualMemoryManager* kernelVMM;
-        LibC_Implementation::Heap* kernelHeap;
         IdGenerator idGenerator;
 
         BlockAllocator<Stack> stackAllocator;
@@ -163,6 +163,8 @@ namespace Kernel {
         BlockAllocator<Task> taskAllocator;
         BlockAllocator<BufferedMailbox> mailboxAllocator;
         BlockAllocator<Memory::VirtualMemoryManager> vmmAllocator;
+
+        uint32_t lock {0};
     };
 
     struct TaskBlock {

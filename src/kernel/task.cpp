@@ -28,8 +28,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "task.h"
 #include <memory/guard.h>
 #include <memory/physical_memory_manager.h>
-#include <heap.h>
 #include <cpu/cpu.h>
+#include <locks.h>
+
+#include <saturn/heap.h>
 
 extern "C" void launchProcess();
 extern "C" void usermodeStub();
@@ -114,15 +116,14 @@ namespace Kernel {
     }
 
     TaskLauncher::TaskLauncher(CPU::TSS* kernelTSS)
-        : stackAllocator {Memory::currentVMM},
-            smallStackAllocator {Memory::currentVMM},
-            taskAllocator {Memory::currentVMM},
-            mailboxAllocator {Memory::currentVMM},
-            vmmAllocator {Memory::currentVMM},
+        : stackAllocator {Memory::InitialKernelVMM},
+            smallStackAllocator {Memory::InitialKernelVMM},
+            taskAllocator {Memory::InitialKernelVMM},
+            mailboxAllocator {Memory::InitialKernelVMM},
+            vmmAllocator {Memory::InitialKernelVMM},
             kernelTSS {kernelTSS}
         {
-        kernelHeap = LibC_Implementation::KernelHeap;
-        kernelVMM = Memory::currentVMM;
+        kernelVMM = Memory::InitialKernelVMM;
         CurrentTaskLauncher = this;
     }
 
@@ -138,8 +139,9 @@ namespace Kernel {
     }
 
     Task* TaskLauncher::createKernelTask(uintptr_t functionAddress) {
+        SpinLock spin {&lock};
 
-        MemoryGuard guard {kernelVMM, kernelHeap};
+        MemoryGuard guard {kernelVMM};//, kernelHeap};
 
         auto kernelStack = smallStackAllocator.allocate();
         memset(kernelStack, 0, sizeof(SmallStack));
@@ -160,8 +162,10 @@ namespace Kernel {
         need to make their own heap if they need one
         */
         if (functionAddress != reinterpret_cast<uintptr_t>(launchProcess)) {
-            LibC_Implementation::createHeap(Memory::PageSize * Memory::PageSize, kernelVMM);
-            task->heap = LibC_Implementation::KernelHeap;
+            auto oldAddr = kernelVMM->HACK_getNextAddress();
+            kernelVMM->HACK_setNextAddress(0xa000'0000 + 0x100000);
+            task->heap = Saturn::Memory::createHeap(Memory::PageSize * Memory::PageSize, kernelVMM);
+            kernelVMM->HACK_setNextAddress(oldAddr);
         }
 
         task->tss = kernelTSS;
@@ -178,17 +182,22 @@ namespace Kernel {
 
     Task* TaskLauncher::createUserTask(uintptr_t functionAddress) {
 
-        MemoryGuard guard {kernelVMM, kernelHeap};
+        MemoryGuard guard {kernelVMM};//, kernelHeap};
 
         auto task = createKernelTask(reinterpret_cast<uintptr_t>(launchProcess));
+
+        SpinLock spin {&lock};
+
         auto vmm = vmmAllocator.allocate();
         kernelVMM->cloneForUsermode(vmm);
         task->virtualMemoryManager = vmm;
+        auto kernelTSS = reinterpret_cast<CPU::TSS*>(0xcfff'f000 - 0x1000 * CPU::getCurrentCPUId());
         auto backupTSS = *kernelTSS;
         vmm->activate();
         BlockAllocator<CPU::TSS> tssAllocator {vmm, 1};
-        task->tss = tssAllocator.allocateFrom(0xcfff'f000);
-        *task->tss = backupTSS;
+        task->tss = tssAllocator.allocateFrom(0xcfff'f000 - 0x1000 * CPU::getCurrentCPUId());
+        memset(task->tss, 0, sizeof(CPU::TSS));
+        CPU::setupTSS(reinterpret_cast<uintptr_t>(task->tss));
 
         for (auto i = 0u; i < sizeof(CPU::TSS::ioPermissionBitmap); i++) {
             task->tss->ioPermissionBitmap[i] = 0xFF;
@@ -197,8 +206,7 @@ namespace Kernel {
         BlockAllocator<Stack> userStackAllocator {vmm, 1};
         auto stack = userStackAllocator.allocateFrom(0xa000'0000);
 
-        LibC_Implementation::createHeap(Memory::PageSize * Memory::PageSize, vmm);
-        task->heap = LibC_Implementation::KernelHeap;
+        task->heap = Saturn::Memory::createHeap(Memory::PageSize * Memory::PageSize, vmm);
 
         //auto sseMemory = task->heap->aligned_allocate(16, sizeof(SSEContext));
         //task->sseContext = new (sseMemory) SSEContext;
@@ -228,7 +236,7 @@ namespace Kernel {
     TaskStore* TaskStore::instance = nullptr;
 
     TaskStore::TaskStore() 
-        : blockAllocator {Memory::currentVMM, 1} {
+        : blockAllocator {Memory::InitialKernelVMM, 1} {
         blocks[0] = blockAllocator.allocate();
         maxIds = TaskBlock::IdsPerBlock;
 
