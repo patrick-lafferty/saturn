@@ -30,7 +30,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 section .text
 
-extern TSS_ADDRESS
 extern activateVMM
 
 ;changes from one ring0 process to another

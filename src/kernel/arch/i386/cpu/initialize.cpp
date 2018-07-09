@@ -61,7 +61,7 @@ namespace CPU {
         RTC::disable();
     }
 
-    TSS* createTSS(uint32_t /*kernelEndAddress*/afterAddress, uint32_t tssAddress, int tssIndex) {
+    TSS* createTSS(uint32_t afterAddress, uint32_t tssAddress, int tssIndex) {
 
         auto pageFlags = static_cast<int>(PageTableFlags::AllowWrite);
 
@@ -72,7 +72,6 @@ namespace CPU {
         Memory::currentPMM->finishAllocation(tssAddress, 1);
         Memory::InitialKernelVMM->HACK_setNextAddress(afterAddress);
 
-        TSS_ADDRESS = tssAddress;
         GDT::addTSSEntry(tssAddress, PageSize);
         auto tss = setupTSS(tssAddress);
 

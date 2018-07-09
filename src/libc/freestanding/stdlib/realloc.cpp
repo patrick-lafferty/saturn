@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include <stdlib.h>
 #include <string.h>
-#include <heap.h>
+#include <stdint.h>
 
 void* realloc(void* ptr, size_t size) {
     /*
