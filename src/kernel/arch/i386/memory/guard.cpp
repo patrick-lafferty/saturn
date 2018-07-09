@@ -27,21 +27,24 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "guard.h"
 #include <memory/virtual_memory_manager.h>
-#include <heap.h>
+//#include <saturn/heap.h>
 
 namespace Kernel {
 
-    MemoryGuard::MemoryGuard(Memory::VirtualMemoryManager* kernelVMM, LibC_Implementation::Heap* kernelHeap) {
+    MemoryGuard::MemoryGuard(Memory::VirtualMemoryManager* kernelVMM) {//, LibC_Implementation::Heap* kernelHeap) {
         
-        oldHeap = LibC_Implementation::KernelHeap;
-        oldVMM = Memory::currentVMM;
+        //oldHeap = LibC_Implementation::KernelHeap;
+        oldVMM = Memory::getCurrentVMM();
 
-        LibC_Implementation::KernelHeap = kernelHeap;
+        //LibC_Implementation::KernelHeap = kernelHeap;
         kernelVMM->activate();
     }
 
     MemoryGuard::~MemoryGuard() {
-        oldVMM->activate();
-        LibC_Implementation::KernelHeap = oldHeap;
+        if (oldVMM != nullptr) {
+            oldVMM->activate();
+        }
+
+        //LibC_Implementation::KernelHeap = oldHeap;
     }
 }

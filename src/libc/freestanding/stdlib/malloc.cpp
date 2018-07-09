@@ -26,17 +26,18 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include <stdlib.h>
-#include <memory/physical_memory_manager.h>
-#include <memory/virtual_memory_manager.h>
-#include <heap.h>
+#include <saturn/heap.h>
 
-using namespace Memory;
-using namespace LibC_Implementation;
 /*
 Note: not thread-safe! Just want to get a simple version running
 */
 
 void* malloc(size_t size) {
     
-    return KernelHeap->allocate(size);    
+    /*
+    TODO: this is a temporary hack until elf loading and the 64bit port
+    allows us to have a proper isolated default heap
+    */
+    auto heap = reinterpret_cast<Saturn::Memory::Heap*>(0xa000'0000 + 0x100000);
+    return heap->allocate(size);    
 }

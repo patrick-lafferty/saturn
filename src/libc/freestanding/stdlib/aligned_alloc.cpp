@@ -26,16 +26,14 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include <stdlib.h>
-#include <memory/virtual_memory_manager.h>
-#include <heap.h>
+#include <saturn/heap.h>
 
-using namespace Memory;
-using namespace LibC_Implementation;
 /*
 Note: not thread-safe! Just want to get a simple version running
 */
 
 void* aligned_alloc(size_t alignment, size_t size) {
 
-    return KernelHeap->aligned_allocate(alignment, size);
+    auto heap = reinterpret_cast<Saturn::Memory::Heap*>(0xa000'0000 + 0x100000);
+    return heap->aligned_allocate(alignment, size);
 }
