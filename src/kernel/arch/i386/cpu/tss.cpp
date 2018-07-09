@@ -39,5 +39,3 @@ namespace CPU {
         return tss;
     }
 }
-
-uint32_t TSS_ADDRESS;

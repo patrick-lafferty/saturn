@@ -105,7 +105,7 @@ namespace GDT {
     }
 
     void addTSSEntry(uint32_t address, uint32_t size) {
-        //tss per cpu (hardware thread?)
+
         gdt[nextGDTIndex] = encodeEntry(address, size - 1, combineFlags(
             AccessCodeSegment::Accessed,
             AccessCodeSegment::Executable,

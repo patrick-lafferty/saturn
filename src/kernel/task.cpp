@@ -141,7 +141,7 @@ namespace Kernel {
     Task* TaskLauncher::createKernelTask(uintptr_t functionAddress) {
         SpinLock spin {&lock};
 
-        MemoryGuard guard {kernelVMM};//, kernelHeap};
+        MemoryGuard guard {kernelVMM};
 
         auto kernelStack = smallStackAllocator.allocate();
         memset(kernelStack, 0, sizeof(SmallStack));
@@ -182,7 +182,7 @@ namespace Kernel {
 
     Task* TaskLauncher::createUserTask(uintptr_t functionAddress) {
 
-        MemoryGuard guard {kernelVMM};//, kernelHeap};
+        MemoryGuard guard {kernelVMM};
 
         auto task = createKernelTask(reinterpret_cast<uintptr_t>(launchProcess));
 

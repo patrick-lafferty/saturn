@@ -31,21 +31,16 @@ namespace Memory {
     class VirtualMemoryManager;
 }
 
-/*namespace LibC_Implementation {
-    class Heap;
-}*/
-
 namespace Kernel {
 
     class MemoryGuard {
     public:
 
-        MemoryGuard(Memory::VirtualMemoryManager* kernelVMM);//, LibC_Implementation::Heap* kernelHeap);
+        MemoryGuard(Memory::VirtualMemoryManager* kernelVMM);
         ~MemoryGuard();
 
     private:
         
         Memory::VirtualMemoryManager* oldVMM;
-        //LibC_Implementation::Heap* oldHeap;
     };
 }

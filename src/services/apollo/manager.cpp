@@ -137,11 +137,11 @@ namespace Apollo {
 
             auto pid = run(entryPoint, Kernel::Priority::UI);
 
-            if (taskbarTaskId > 0) {
+            /*if (taskbarTaskId > 0) {
                 if (!sendAppNameToTaskbar(path, taskbarTaskId, pid)) {
                     pendingTaskbarNames.push_back({std::string{path}, pid});
                 }
-            }
+            }*/
 
             return pid;
         }
@@ -166,7 +166,7 @@ namespace Apollo {
 
         cursorCapture = new uint32_t[400];
 
-        taskbarTaskId = launch("/bin/taskbar.bin");
+        //taskbarTaskId = launch("/bin/taskbar.bin");
         launch("/bin/transcript.bin");
         //capcomTaskId = launch("/bin/capcom.bin");
 

@@ -357,7 +357,4 @@ if (false && currentPage <= 0xD000'0000) {
         return heap;
     }
 
-    /*Heap* getCurrentHeap() {
-        return CPU::ActiveCPUs[CPU::getCurrentCPUId()].heap;
-    }*/
 }
