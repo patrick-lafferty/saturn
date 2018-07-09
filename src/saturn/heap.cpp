@@ -25,17 +25,16 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#include <heap.h>
+#include "heap.h"
 #include <memory/physical_memory_manager.h>
 #include <memory/virtual_memory_manager.h>
 #include <stdio.h>
+//#include <cpu/cpu.h>
 #include <new>
 
 using namespace Memory;
 
-namespace LibC_Implementation {
-
-    Heap* KernelHeap {nullptr};
+namespace Saturn::Memory {
 
     const uint32_t kernelPageFlags = 
         static_cast<uint32_t>(PageTableFlags::AllowWrite);
@@ -56,7 +55,7 @@ namespace LibC_Implementation {
         }
     }
 
-    void Heap::initialize(uint32_t heapSize, Memory::VirtualMemoryManager* vmm) {
+    void Heap::initialize(uint32_t heapSize, ::Memory::VirtualMemoryManager* vmm) {
         currentPage = vmm->allocatePages(heapSize / PageSize, kernelPageFlags);
 
 /*
@@ -66,10 +65,10 @@ preallocate some number of pages to reduce page faults
 if (false && currentPage <= 0xD000'0000) {
         auto pages = heapSize / PageSize;
         for (int i = 0; i < pages; i++) {
-            auto physicalPage = Memory::currentPMM->allocatePage(1);
+            auto physicalPage = ::Memory::currentPMM->allocatePage(1);
             auto page = currentPage + (i * PageSize);
             vmm->map(page, physicalPage);
-            Memory::currentPMM->finishAllocation(page, 1);
+            ::Memory::currentPMM->finishAllocation(page, 1);
         }
 }
 
@@ -342,18 +341,23 @@ if (false && currentPage <= 0xD000'0000) {
     }
 
     void Heap::HACK_syncPageWithVMM() {
-        currentPage = Memory::currentVMM->allocatePages(1, kernelPageFlags);
+        currentPage = ::Memory::getCurrentVMM()->allocatePages(1, kernelPageFlags);
         remainingPageSpace = PageSize;
     }
 
-    void createHeap(uint32_t heapSize, Memory::VirtualMemoryManager* vmm) {
+    Heap* createHeap(uint32_t heapSize, ::Memory::VirtualMemoryManager* vmm) {
         auto virtualAddress = vmm->allocatePages(1, kernelPageFlags);
-        auto physicalPage = Memory::currentPMM->allocatePage(1);
+        auto physicalPage = ::Memory::currentPMM->allocatePage(1);
         vmm->map(virtualAddress, physicalPage);
-        Memory::currentPMM->finishAllocation(virtualAddress, 1);
+        ::Memory::currentPMM->finishAllocation(virtualAddress, 1);
         auto ptr = reinterpret_cast<void*>(virtualAddress);
 
-        KernelHeap = new (ptr) Heap;
-        KernelHeap->initialize(heapSize, vmm);
+        auto heap = new (ptr) Heap;
+        heap->initialize(heapSize, vmm);
+        return heap;
     }
+
+    /*Heap* getCurrentHeap() {
+        return CPU::ActiveCPUs[CPU::getCurrentCPUId()].heap;
+    }*/
 }

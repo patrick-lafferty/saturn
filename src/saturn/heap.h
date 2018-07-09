@@ -34,7 +34,7 @@ namespace Memory {
     class VirtualMemoryManager;
 }
 
-namespace LibC_Implementation {
+namespace Saturn::Memory {
 
     struct ChunkHeader {
         uint32_t magic {0xabababab};
@@ -63,7 +63,7 @@ namespace LibC_Implementation {
     class Heap {
     public:
 
-        void initialize(uint32_t heapSize, Memory::VirtualMemoryManager* vmm);
+        void initialize(uint32_t heapSize, ::Memory::VirtualMemoryManager* vmm);
         void* allocate(size_t size);
         void* aligned_allocate(size_t alignment, size_t size);
         void free(void* ptr);
@@ -102,7 +102,5 @@ namespace LibC_Implementation {
         int preallocatedTimesCalled {0};
     };
 
-    void createHeap(uint32_t heapSize, Memory::VirtualMemoryManager* vmm);
-
-    extern Heap* KernelHeap;
+    Heap* createHeap(uint32_t heapSize, ::Memory::VirtualMemoryManager* vmm);
 }
