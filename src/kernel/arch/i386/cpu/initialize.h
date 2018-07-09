@@ -45,6 +45,7 @@ namespace CPU {
 		uintptr_t kernelFuncAddress;
 		int cpuId;
 		int apicId;
+		uintptr_t vmmAddress;
 	};
 
 	struct Trampoline {

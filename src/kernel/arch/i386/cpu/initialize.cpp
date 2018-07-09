@@ -40,6 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <task.h>
 #include <scheduler.h>
 #include <locks.h>
+#include <idt/idt.h>
 
 using namespace Kernel;
 using namespace Memory;
@@ -60,16 +61,48 @@ namespace CPU {
         RTC::disable();
     }
 
-    void applicationProcessorStartup(int cpuId, int apicId) {
+    TSS* createTSS(uint32_t /*kernelEndAddress*/afterAddress, uint32_t tssAddress, int tssIndex) {
 
-        GDT::setup();
+        auto pageFlags = static_cast<int>(PageTableFlags::AllowWrite);
 
-        while (cpuId > CPUCount) {
-            kernel_sleep(1);
-        }
+        Memory::InitialKernelVMM->HACK_setNextAddress(tssAddress);
+        Memory::InitialKernelVMM->allocatePages(1, pageFlags);
+        auto physicalPage = Memory::currentPMM->allocatePage(1);
+        Memory::InitialKernelVMM->map(tssAddress, physicalPage, 0);
+        Memory::currentPMM->finishAllocation(tssAddress, 1);
+        Memory::InitialKernelVMM->HACK_setNextAddress(afterAddress);
+
+        TSS_ADDRESS = tssAddress;
+        GDT::addTSSEntry(tssAddress, PageSize);
+        auto tss = setupTSS(tssAddress);
+
+        return tss;
+    }
+
+    uint32_t KernelEndAddr;
+
+    void applicationProcessorStartup(int cpuId, int apicId, uintptr_t vmmAddress) {
+
+        gdt_flush();
+        loadIDT();
+        asm volatile("sti");
+        initializeSSE();
+
+        APIC::initialize();
 
         writeModelSpecificRegister(ModelSpecificRegister::IA32_TSC_AUX, cpuId, 0);
+    
+        while (ActiveCPUs == nullptr || !ActiveCPUs[cpuId].ready) {
+            asm volatile("hlt");
+        }
 
+        auto vmm = reinterpret_cast<Memory::VirtualMemoryManager*>(vmmAddress);
+        vmm->activate();
+
+        loadTSS(0x28 + cpuId * 8);
+
+        APIC::setAPICTimer(APIC::LVT_TimerMode::Periodic, 10);
+        APIC::setupISAIRQs({});
         ActiveCPUs[cpuId].scheduler->start();
     }
 
@@ -80,7 +113,7 @@ namespace CPU {
 
         auto stack = stackAllocator.allocate();
         auto vmm = vmmAllocator.allocate();
-        currentVMM->cloneForUsermode(vmm, true);
+        InitialKernelVMM->cloneForUsermode(vmm, true);
 
         auto configMemoryBlock = reinterpret_cast<void*>(0x3000);
         auto savedPhysicalNextFreeAddress = *reinterpret_cast<uint32_t*>(configMemoryBlock);
@@ -109,13 +142,15 @@ namespace CPU {
             reinterpret_cast<uintptr_t>(status),
             reinterpret_cast<uintptr_t>(applicationProcessorStartup),
             cpuId,
-            apicId
+            apicId,
+            reinterpret_cast<uintptr_t>(vmm)
         };
 
         auto data = reinterpret_cast<TrampolineData*>(cpuData);
         *data = {
             reinterpret_cast<uintptr_t>(gdtPointer),
-            vmm->getDirectoryPhysicalAddress(),
+            //vmm->getDirectoryPhysicalAddress(),
+            Memory::InitialKernelVMM->getDirectoryPhysicalAddress(),
             reinterpret_cast<uintptr_t>(stackPointer)
         };
 
@@ -129,7 +164,7 @@ namespace CPU {
 
         auto stack = stackAllocator.allocate();
         auto vmm = vmmAllocator.allocate();
-        currentVMM->cloneForUsermode(vmm, true);
+        InitialKernelVMM->cloneForUsermode(vmm, true);
 
         auto stackPointer = reinterpret_cast<TrampolineStack*>(
             reinterpret_cast<uintptr_t>(stack) + sizeof(SmallStack) - sizeof(TrampolineStack)
@@ -149,13 +184,13 @@ namespace CPU {
 
     int initializeApplicationProcessors(APIC::LocalAPICHeader* lapics, int numberOfAPs) {
 
-        BlockAllocator<SmallStack> stackAllocator {currentVMM};
-        BlockAllocator<VirtualMemoryManager> vmmAllocator {currentVMM};
+        BlockAllocator<SmallStack> stackAllocator {InitialKernelVMM};
+        BlockAllocator<VirtualMemoryManager> vmmAllocator {InitialKernelVMM};
 
         int validAPs = 0;
         auto trampoline = createTrampoline(stackAllocator, 
             vmmAllocator, 
-            lapics->acpiProcessorId,
+            lapics[0].apicId,
             validAPs + 1);
 
         for (int i = 0; i < numberOfAPs; i++) {
@@ -164,7 +199,7 @@ namespace CPU {
                 replaceTrampolineStack(trampoline, 
                     stackAllocator, 
                     vmmAllocator, 
-                    lapics[i].acpiProcessorId,
+                    lapics[i].apicId,
                     validAPs + 1);
             }
 
@@ -203,38 +238,24 @@ namespace CPU {
        return validAPs;
     }
 
-    TSS* createTSS(uint32_t kernelEndAddress) {
-
-        auto pageFlags = static_cast<int>(PageTableFlags::AllowWrite);
-        auto afterKernel = (kernelEndAddress & ~0xfff) + 0x1000;
-
-        Memory::currentVMM->HACK_setNextAddress(0xCFFF'F000);
-        auto tssAddress = Memory::currentVMM->allocatePages(1, pageFlags);
-        Memory::currentVMM->HACK_setNextAddress(afterKernel);
-
-        TSS_ADDRESS = tssAddress;
-        GDT::addTSSEntry(tssAddress, PageSize);
-        auto tss = setupTSS(tssAddress);
-
-        return tss;
-    }
-
     Kernel::Scheduler* initialize(uint32_t kernelEndAddress) {
 
         initializeSSE();
         PIC::disable();
 
         asm volatile("sti");
-        auto tss = createTSS(kernelEndAddress);
+        auto tss = createTSS((kernelEndAddress & ~0xfff) + 0x1000, 0xCFFF'F000, 0);
+        loadTSS(0x28);
+        KernelEndAddr = kernelEndAddress;
 
         if (auto acpiTable = CPU::parseACPITables()) {
             auto stats = APIC::countAPICStructures(acpiTable.value().apicStartAddress, acpiTable.value().apicTableLength);
 
             APIC::Allocators allocators {
-                BlockAllocator<APIC::LocalAPICHeader> {Memory::currentVMM, stats.localAPICCount},
-                BlockAllocator<APIC::IOAPICHeader> {Memory::currentVMM, stats.ioAPICCount},
-                BlockAllocator<APIC::InterruptSourceOverride> {Memory::currentVMM, stats.interruptOverrideCount},
-                BlockAllocator<APIC::LocalAPICNMI> {Memory::currentVMM, stats.nonMaskableInterruptCount}
+                BlockAllocator<APIC::LocalAPICHeader> {Memory::InitialKernelVMM, stats.localAPICCount},
+                BlockAllocator<APIC::IOAPICHeader> {Memory::InitialKernelVMM, stats.ioAPICCount},
+                BlockAllocator<APIC::InterruptSourceOverride> {Memory::InitialKernelVMM, stats.interruptOverrideCount},
+                BlockAllocator<APIC::LocalAPICNMI> {Memory::InitialKernelVMM, stats.nonMaskableInterruptCount}
             };
 
             auto structures = APIC::loadAPICStructures(*acpiTable, allocators);
@@ -244,17 +265,26 @@ namespace CPU {
 
             if (stats.localAPICCount > 1) {
                 numberOfAPs = initializeApplicationProcessors(structures.localHeaders + 1, stats.localAPICCount - 1);
+
+                for (int i = 0; i < numberOfAPs; i++) {
+                    auto cpuId = i + 1;
+                    auto addr = Memory::InitialKernelVMM->HACK_getNextAddress();
+                    createTSS(addr, 0xCFFF'F000 - 0x1000 * cpuId, cpuId);
+
+                }
             }
 
-            BlockAllocator<TaskStore> storeAllocator {Memory::currentVMM, 1};
+            BlockAllocator<TaskStore> storeAllocator {Memory::InitialKernelVMM, 1};
             storeAllocator.allocate();
 
-            CurrentTaskLauncher = BlockAllocator<TaskLauncher>(Memory::currentVMM).allocate(tss);
+            CurrentTaskLauncher = BlockAllocator<TaskLauncher>(Memory::InitialKernelVMM).allocate(tss);
 
-            BlockAllocator<Scheduler> schedulerAllocator {Memory::currentVMM};
+            BlockAllocator<Scheduler> schedulerAllocator {Memory::InitialKernelVMM};
 
             auto scheduler = schedulerAllocator.allocate();
             setupCPUBlocks(1 + numberOfAPs, {scheduler});
+                    //TODO: wrong
+                    ActiveCPUs[1].apicId = structures.localHeaders[1].apicId;
 
             for (auto i = 0; i < numberOfAPs; i++) {
                 ActiveCPUs[i + 1].scheduler = schedulerAllocator.allocate();
