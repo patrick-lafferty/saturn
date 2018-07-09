@@ -36,10 +36,6 @@ and one to be used by the real kernel after paging is setup. So there isn't
 any duplicate symbols, have different namespaces for each obj.
 */
 
-namespace LibC_Implementation {
-    class Heap;
-}
-
 namespace Kernel {
     struct Task;
 }
@@ -53,7 +49,7 @@ namespace MemoryPrekernel {
 namespace Memory {
 #endif
 
-    const uint32_t KernelVirtualStartingAddress = 0xCFFF'F000;
+    const uint32_t KernelVirtualStartingAddress = 0xd000'0000;//0xCFFF'e000;
 
     class PhysicalMemoryManager;
 
@@ -130,7 +126,7 @@ namespace Memory {
         note: the page table for the address must already exist, so
         allocatePages should be called before map
         */
-        void map(uintptr_t virtualAddress, uintptr_t physicalAddress, uint32_t flags = 0);
+        void map(uintptr_t virtualAddress, uintptr_t physicalAddress, uint32_t flags = 0, bool updateCR3 = true);
 
         /*
         unmaps the virtual address
@@ -138,6 +134,8 @@ namespace Memory {
         TODO - should this also free the physical address?
         */
         void unmap(uintptr_t virtualAddress, uint32_t count);
+
+        void remap(uintptr_t virtualAddress, uintptr_t newAddress);
 
         void freePages(uintptr_t virtualAddress, uint32_t count);
 
@@ -175,6 +173,8 @@ namespace Memory {
         bool pagingActive {false};
     };
 
-    //TODO: HACK: decide on how ISR can get access to current VMM
-    extern VirtualMemoryManager* currentVMM;
+    extern VirtualMemoryManager* InitialKernelVMM;
+    #if not TARGET_PREKERNEL
+    VirtualMemoryManager* getCurrentVMM();
+    #endif
 }

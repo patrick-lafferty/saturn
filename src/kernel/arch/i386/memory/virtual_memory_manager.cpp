@@ -30,15 +30,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string.h>
 #include <stdio.h>
 #include <algorithm>
+#include <cpu/cpu.h>
 
 #ifndef TARGET_PREKERNEL
 
 #include <task.h>
-#include <heap.h>
 
 void activateVMM(Kernel::Task* task) {
     task->virtualMemoryManager->activate();
-    LibC_Implementation::KernelHeap = task->heap;
 }
 
 #endif
@@ -51,7 +50,7 @@ namespace MemoryPrekernel {
 namespace Memory {
 #endif
 
-    VirtualMemoryManager* currentVMM;
+    VirtualMemoryManager* InitialKernelVMM;
 
     uint32_t extractDirectoryIndex(uintptr_t virtualAddress) {
         return virtualAddress >> 22;
@@ -82,6 +81,7 @@ namespace Memory {
     void updateCR3Address(uint32_t directoryPhysicalAddress) {
         
         setCR3(directoryPhysicalAddress);
+        CPU::invalidateTLB();
     }
 
     uintptr_t VirtualMemoryManager::allocatePageTable(uintptr_t virtualAddress, int index) {
@@ -192,7 +192,7 @@ namespace Memory {
     }
     #endif
 
-    void VirtualMemoryManager::map(uintptr_t virtualAddress, uintptr_t physicalAddress, uint32_t flags) {
+    void VirtualMemoryManager::map(uintptr_t virtualAddress, uintptr_t physicalAddress, uint32_t flags, bool updateCR3) {
 
         auto directoryIndex = extractDirectoryIndex(virtualAddress);
         auto pageTableAddress = calculatePageTableAddress(virtualAddress);
@@ -211,7 +211,10 @@ namespace Memory {
         flags |= static_cast<uint32_t>(PageTableFlags::Present);
 
         pageTable->pageAddresses[tableIndex] = physicalAddress | flags; 
-        updateCR3Address(directoryPhysicalAddress);
+
+        if (updateCR3) {
+            updateCR3Address(directoryPhysicalAddress);
+        }
     }
 
     void VirtualMemoryManager::unmap(uintptr_t virtualAddress, uint32_t count) {
@@ -225,6 +228,18 @@ namespace Memory {
         }
 
         updateCR3Address(directoryPhysicalAddress);
+    }
+
+
+    void VirtualMemoryManager::remap(uintptr_t virtualAddress, uintptr_t newAddress) {
+
+        auto pageTableAddress = calculatePageTableAddress(virtualAddress);
+        auto pageTable = static_cast<PageTable*>(reinterpret_cast<void*>(pageTableAddress));
+        auto tableIndex = extractTableIndex(virtualAddress);
+        auto physicalAddress = pageTable->pageAddresses[tableIndex];
+        pageTable->pageAddresses[tableIndex] = 0;
+
+        map(newAddress, physicalAddress, 0, false);
     }
 
     void VirtualMemoryManager::freePages(uintptr_t virtualAddress, uint32_t count) {
@@ -292,7 +307,13 @@ namespace Memory {
         auto directoryAddress = 0xFFFFF000;
         directory = static_cast<PageDirectory*>(reinterpret_cast<void*>(directoryAddress));
         pagingActive = true;
-        currentVMM = this;
+
+        #if TARGET_PREKERNEL
+        #else
+        if (CPU::ActiveCPUs != nullptr) {
+            CPU::ActiveCPUs[CPU::getCurrentCPUId()].vmm = this;
+        }
+        #endif
     }
 
     VirtualMemoryManager* VirtualMemoryManager::cloneForUsermode(VirtualMemoryManager* virtualMemoryManager,
@@ -420,4 +441,14 @@ namespace Memory {
         }
     
     }
+
+    #if not TARGET_PREKERNEL
+    VirtualMemoryManager* getCurrentVMM() {
+        if (CPU::ActiveCPUs == nullptr) {
+            return InitialKernelVMM;
+        }
+
+        return CPU::ActiveCPUs[CPU::getCurrentCPUId()].vmm;
+    }
+    #endif
 }
