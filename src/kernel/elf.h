@@ -85,10 +85,10 @@ extern "C" uint32_t loadElf(char* /*pah*/) {
 
     program = programs[0]; 
 
-    /*auto savedAddress = Memory::currentVMM->HACK_getNextAddress();
+    /*auto savedAddress = Memory::getCurrentVMM()->HACK_getNextAddress();
 
-    Memory::currentVMM->HACK_setNextAddress(program.virtualAddress);
-    auto addr = Memory::currentVMM->allocatePages(program.imageSize / Memory::PageSize,
+    Memory::getCurrentVMM()->HACK_setNextAddress(program.virtualAddress);
+    auto addr = Memory::getCurrentVMM()->allocatePages(program.imageSize / Memory::PageSize,
         static_cast<uint32_t>(Memory::PageTableFlags::AllowUserModeAccess));
 
     uint8_t* prog = reinterpret_cast<uint8_t*>(addr);*/
@@ -109,7 +109,7 @@ extern "C" uint32_t loadElf(char* /*pah*/) {
     //    SEEK_SET);
     fread(prog + 148, program.imageSize, 1, file);
 
-    //Memory::currentVMM->HACK_setNextAddress(savedAddress);
+    //Memory::getCurrentVMM()->HACK_setNextAddress(savedAddress);
 
     return header.entryPoint;// - (sizeof(header) + sizeof(program) * 3); //0xa0;
     #endif

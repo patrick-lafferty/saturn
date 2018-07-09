@@ -31,11 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string.h>
 #include <memory/physical_memory_manager.h>
 #include <memory/virtual_memory_manager.h>
-#include <scheduler.h>
 #include <system_calls.h>
-#include <test/libc/runner.h>
-#include <test/libc++/new.h>
-#include <test/libc++/list.h>
 #include <ipc.h>
 #include <services.h>
 #include <initialize_libc.h>
@@ -49,6 +45,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <services/startup/startup.h>
 #include <services/discovery/loader.h>
 #include <cpu/initialize.h>
+#include <cpu/cpu.h>
+#include <scheduler.h>
 #include <task.h>
 
 using namespace Kernel;
@@ -99,9 +97,9 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     virtualMemManager.unmap(kernelStartAddress, 1 + (kernelEndAddress - virtualOffset - kernelStartAddress) / 0x1000);
 
     Memory::currentPMM = &physicalMemManager;
-    Memory::currentVMM = &virtualMemManager;
+    Memory::InitialKernelVMM = &virtualMemManager;
 
-    Memory::currentVMM->preallocateKernelPageTables();
+    Memory::InitialKernelVMM->preallocateKernelPageTables();
 
     GDT::setup();
     IDT::setup();
@@ -109,6 +107,7 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     PS2::disableController();
 
     auto scheduler = CPU::initialize(kernelEndAddress);    
+    while (!CPU::ActiveCPUs[0].ready) {}
 
     //also don't need APIC tables anymore
     virtualMemManager.unmap(acpiStartAddress, acpiPages);
@@ -119,15 +118,16 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     ServiceRegistryInstance = &registry;
 
     auto& launcher = *CurrentTaskLauncher;
-    scheduler->scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(VirtualFileSystem::service)));
-    scheduler->scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(PFS::service)));
-    scheduler->scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(FakeFileSystem::service)));
-    scheduler->scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(HardwareFileSystem::service)));
-    scheduler->scheduleTask(launcher.createKernelTask(reinterpret_cast<uint32_t>(HardwareFileSystem::detectHardware)));
-    scheduler->scheduleTask(launcher.createKernelTask(reinterpret_cast<uint32_t>(Discovery::discoverDevices)));
-    scheduler->scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(Event::service)));
-    scheduler->scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(Startup::service)));
+    CPU::scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(VirtualFileSystem::service)));
+    CPU::scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(PFS::service)));
+    CPU::scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(FakeFileSystem::service)));
+    CPU::scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(HardwareFileSystem::service)));
+    CPU::scheduleTask(launcher.createKernelTask(reinterpret_cast<uint32_t>(HardwareFileSystem::detectHardware)));
+    CPU::scheduleTask(launcher.createKernelTask(reinterpret_cast<uint32_t>(Discovery::discoverDevices)));
+    CPU::scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(Event::service)));
+    CPU::scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(Startup::service)));
 
+    CPU::startScheduler();
     scheduler->start();
 
     return 0;
