@@ -77,7 +77,6 @@ namespace IPC {
     enum class RecipientType {
         ServiceRegistryMailbox,
         ServiceName,
-        Scheduler,
         TaskId
     };
 

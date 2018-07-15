@@ -348,6 +348,21 @@ namespace Kernel {
     void ServiceRegistry::setupService(uint32_t taskId, ServiceType type) {
 
         switch (type) {
+            case ServiceType::Scheduler: {
+                auto task = CPU::getTask(taskId);
+
+                if (task == nullptr) {
+                    kprintf("[ServiceRegistry] Tried to setupService a null task\n");
+                    asm("hlt");
+                    return;
+                }
+
+                GenericServiceMeta genericMeta;
+                genericMeta.senderTaskId = taskId;
+                task->mailbox->send(&genericMeta); 
+
+                break;
+            }
             case ServiceType::VGA: {
                 auto task = CPU::getTask(taskId);
 

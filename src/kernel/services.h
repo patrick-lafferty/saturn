@@ -42,6 +42,7 @@ namespace LibC_Implementation {
 namespace Kernel {
 
     enum class ServiceType {
+        Scheduler,
         VGA,
         Terminal,
         PS2,

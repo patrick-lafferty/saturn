@@ -121,6 +121,7 @@ extern "C" int kernel_main(MemManagerAddresses* addresses) {
     CPU::scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(VirtualFileSystem::service)));
     CPU::scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(PFS::service)));
     CPU::scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(FakeFileSystem::service)));
+    CPU::scheduleTask(launcher.createKernelTask(reinterpret_cast<uint32_t>(Kernel::schedulerService)));
     CPU::scheduleTask(launcher.createUserTask(reinterpret_cast<uint32_t>(HardwareFileSystem::service)));
     CPU::scheduleTask(launcher.createKernelTask(reinterpret_cast<uint32_t>(HardwareFileSystem::detectHardware)));
     CPU::scheduleTask(launcher.createKernelTask(reinterpret_cast<uint32_t>(Discovery::discoverDevices)));
