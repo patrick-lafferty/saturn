@@ -37,7 +37,7 @@ namespace IPC {
             
             for (auto i = 0; i < MaxMessages; i++) {
                 if (messages[i].buffer.length == 0) {
-                    memcpy(&messages[i].buffer.buffer, message, message->length);
+                    memcpy(&messages[i].buffer, message, message->length);
 
                     if (firstMessage == nullptr) {
                         firstMessage = &messages[i];
@@ -68,7 +68,7 @@ namespace IPC {
             return false;
         }
 
-        memcpy(message, firstMessage->buffer.buffer, firstMessage->buffer.length);
+        memcpy(message, &firstMessage->buffer, firstMessage->buffer.length);
 
         unreadMessages--;
         freeMessages++;
@@ -114,7 +114,7 @@ namespace IPC {
             if (iterator->buffer.messageNamespace == filter
                 && iterator->buffer.messageId == messageId) {
                 
-                memcpy(message, iterator->buffer.buffer, iterator->buffer.length);
+                memcpy(message, &iterator->buffer, iterator->buffer.length);
 
                 unreadMessages--;
                 freeMessages++;
