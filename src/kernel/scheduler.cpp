@@ -40,6 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <system_calls.h>
 #include "task.h"
 #include <locks.h>
+#include "director.h"
 
 extern "C" void changeProcess(Kernel::Task* current, Kernel::Task* next);
 extern "C" void changeProcessSingle(Kernel::Task* current, Kernel::Task* next);
@@ -52,6 +53,16 @@ namespace Kernel {
     }
 
     void schedulerService() {
+
+        {
+            RegisterService registerRequest;
+            registerRequest.type = ServiceType::Scheduler;
+
+            IPC::MaximumMessageBuffer buffer;
+            send(IPC::RecipientType::ServiceRegistryMailbox, &registerRequest);
+            filteredReceive(&buffer, IPC::MessageNamespace::ServiceRegistry, static_cast<int>(MessageId::GenericServiceMeta));
+        }
+
         while (true) {
             IPC::MaximumMessageBuffer buffer;
             receive(&buffer);
@@ -103,10 +114,7 @@ namespace Kernel {
         currentTask = nullptr;
         /*cleanupTask = createKernelTask(reinterpret_cast<uint32_t>(cleanupTasksService));
         cleanupTask->state = TaskState::Blocked;*/
-        schedulerTask = CurrentTaskLauncher->createKernelTask(reinterpret_cast<uintptr_t>(schedulerService));
-        schedulerTask->state = TaskState::Blocked;
         //blockedQueue.append(cleanupTask);
-        blockedQueue.append(schedulerTask);
 
         elapsedTime_milliseconds = 0;
         timeslice_milliseconds = 10;
@@ -154,7 +162,7 @@ namespace Kernel {
         }
 
         priorityGroups[static_cast<int>(nextTask->priority)].remove(nextTask);
-        scheduleTask(nextTask);
+        //scheduleTask(nextTask);
     }
 
     Task* Scheduler::findNextTask() {
@@ -175,7 +183,27 @@ namespace Kernel {
             return;
         }
 
+        {
+            auto& queue = priorityGroups[static_cast<int>(nextTask->priority)];
+            SpinLock queueLock {queue.getLock()};
+            queue.remove(nextTask);
+        }
+
+        if (currentTask != nullptr && currentTask->state == TaskState::Running) {
+            currentTask->state = TaskState::ReadyToRun;
+            auto& queue = priorityGroups[static_cast<int>(currentTask->priority)];
+            SpinLock queueLock {queue.getLock()};
+            queue.append(currentTask);
+        }
+
+        nextTask->oldCPUId = nextTask->cpuId;
         nextTask->cpuId = CPU::getCurrentCPUId();
+
+        if (nextTask->oldCPUId != nextTask->cpuId) {
+            int pause = 0;
+        }
+
+        nextTask->state = TaskState::Running;
 
         if (CPU::ActiveCPUs != nullptr) {
             CPU::ActiveCPUs[nextTask->cpuId].heap = nextTask->heap;
@@ -185,8 +213,28 @@ namespace Kernel {
         auto newTSS = 0xCFFF'F000 - 0x1000 * nextTask->cpuId;
         auto oldVMM = Memory::getCurrentVMM();
         nextTask->virtualMemoryManager->activate();
-        nextTask->virtualMemoryManager->remap(oldTSS, newTSS);
-        nextTask->tss = reinterpret_cast<CPU::TSS*>(newTSS);
+
+        if (nextTask->cpuId == 0) {
+            if (newTSS != 0xCFFF'F000) {
+                asm("cli");
+                asm("hlt");
+            }
+        }
+        else {
+            if (newTSS != 0xCFFF'E000) {
+                asm("cli");
+                asm("hlt");
+            }
+        }
+
+        if (oldTSS != newTSS) {
+            nextTask->virtualMemoryManager->remap(oldTSS, newTSS);
+            nextTask->virtualMemoryManager->activate();
+            nextTask->tss = reinterpret_cast<CPU::TSS*>(newTSS);
+        }
+
+        nextTask->timesSwitchedTo++;
+
         oldVMM->activate();
 
         if (currentTask == nullptr) {
@@ -212,10 +260,20 @@ namespace Kernel {
 
         unblockWakeableTasks();
         scheduleNextTask(); 
-        runNextTask();
+
+        if (nextTask->priority == Priority::Idle) {
+            Director::GetInstance().unblockWakeableTasks();
+
+            if (nextTask->priority == Priority::Idle) {
+                runNextTask();
+            }
+        }
+        else {
+            runNextTask();
+        }
     }
 
-    void Scheduler::blockTask(BlockReason reason, uint32_t arg) {
+    /*void Scheduler::blockTask(BlockReason reason, uint32_t arg) {
         if (reason == BlockReason::Sleep) {
 
             auto current = currentTask;
@@ -270,9 +328,41 @@ namespace Kernel {
         }
 
         runNextTask();
+    }*/
+
+    void Scheduler::sleepTask(int time) {
+
+        //todo: lower to ~1sec
+        if (time > 100000) {
+            Director::GetInstance().sleepTask(currentTask, time);
+        }
+        else {
+            currentTask->state = TaskState::Sleeping;
+            currentTask->wakeTime = elapsedTime_milliseconds + time;
+
+            auto blocked = sleepingTasks.getHead();
+
+            while (blocked != nullptr) {
+                if (blocked->wakeTime > currentTask->wakeTime) {
+
+                    sleepingTasks.insertBefore(currentTask, blocked);
+                    break;
+                }
+                else if (blocked->nextTask == nullptr) {
+                    
+                    sleepingTasks.insertAfter(currentTask, blocked);
+                    break;
+                }
+
+                blocked = blocked->nextTask;
+            }
+                
+        }
+
+        reschedule();
     }
 
-    void Scheduler::unblockTask(uint32_t taskId) {
+    /*void Scheduler::unblockTask(uint32_t taskId) {
         auto blocked = blockedQueue.getHead();
 
         while(blocked != nullptr) {
@@ -281,49 +371,52 @@ namespace Kernel {
                 break;
             }
         }
-    }
-
-    void Scheduler::unblockTask(Task* task) {
-        task->state = TaskState::Running;
-
-        SpinLock lock {blockedQueue.getLock()};
-
-        blockedQueue.remove(task);
-        scheduleTask(task);
-    }
+    }*/
 
     void Scheduler::unblockWakeableTasks() {
-        auto blocked = blockedQueue.getHead();
+        auto blocked = sleepingTasks.getHead();
 
-        while(blocked != nullptr) {
+        while (blocked != nullptr) {
             auto next = blocked->nextTask;
 
             if (blocked->state == TaskState::Sleeping 
                 && blocked->wakeTime <= elapsedTime_milliseconds) {
-                unblockTask(blocked);
+                blocked->state = TaskState::ReadyToRun;
+                sleepingTasks.remove(blocked);
+                scheduleTask(blocked);
             }
-            else if (blocked->state == TaskState::Blocked
-                && blocked->mailbox->hasUnreadMessages()) {
-                unblockTask(blocked);
-            }
-
+            
             blocked = next;
         }
     }
 
     void Scheduler::scheduleTask(Task* task) {
 
-        auto& queue = priorityGroups[static_cast<int>(task->priority)];
-        SpinLock queueLock {queue.getLock()};
+        {
+            auto& queue = priorityGroups[static_cast<int>(task->priority)];
+            SpinLock queueLock {queue.getLock()};
 
-        if (queue.isEmpty()) {
-            queue.insertBefore(task, nullptr);
-        }
-        else {
             queue.append(task);
         }
 
-        task->state = TaskState::Running;
+        task->state = TaskState::ReadyToRun;
+
+        if (!startedTasks) return;
+
+        task->cpuId = currentTask->cpuId;
+
+        if ((static_cast<int>(task->priority) < static_cast<int>(currentTask->priority))
+            || currentTask->priority == Priority::IRQ) {
+            
+            if (task->cpuId != CPU::getCurrentCPUId()) {
+                auto apicId = CPU::ActiveCPUs[task->cpuId].apicId;
+                APIC::sendInterprocessorInterrupt(apicId, APIC::InterprocessorInterrupt::Reschedule);
+            }
+            else {
+                nextTask = task;
+                runNextTask();
+            }
+        }
     }
 
     void Scheduler::setupTimeslice() {
@@ -334,79 +427,91 @@ namespace Kernel {
 
     void Scheduler::changePriority(Task* task, Priority priority) {
 
-        auto oldPriority = task->priority;
-        priorityGroups[static_cast<int>(oldPriority)].remove(task);
-        task->priority = priority;
-        scheduleTask(task);
+        if (task == currentTask) {
+            task->priority = priority;
+        }
+        else {
+
+            auto oldPriority = task->priority;
+            {
+                auto& queue = priorityGroups[static_cast<int>(task->priority)];
+                SpinLock queueLock {queue.getLock()};
+                queue.remove(task);
+            }
+            task->priority = priority;
+            scheduleTask(task);
+        }
     }
 
     void Scheduler::reschedule() {
+        //unblockWakeableTasks();
         scheduleNextTask();
         runNextTask();
     }
 
     void Scheduler::sendMessage(IPC::RecipientType recipient, IPC::Message* message) {
+
         if (currentTask != nullptr) {
             message->senderTaskId = currentTask->id;
         }
+
         //TODO: implement return value for recipient not found?
         uint32_t taskId {0};
 
         if (recipient == IPC::RecipientType::ServiceRegistryMailbox) {
-            
             ServiceRegistryInstance->receiveMessage(message);
             return;
         }
-        else {
 
-            if (recipient == IPC::RecipientType::ServiceName) {
-                taskId = ServiceRegistryInstance->getServiceTaskId(message->serviceType);
+        if (recipient == IPC::RecipientType::ServiceName) {
+            taskId = ServiceRegistryInstance->getServiceTaskId(message->serviceType);
 
-                if (taskId == 0) {
-                    kprintf("[Scheduler] Unknown Service Name\n");
-                    return;
-                }
+            if (taskId == 0) {
+                kprintf("[Scheduler] Unknown Service Name\n");
+                return;
             }
-            else if (recipient == IPC::RecipientType::Scheduler) {
-                taskId = schedulerTask->id;
+        }
+        else {
+            taskId = message->recipientId;
+        }
+
+        auto task = TaskStore::getInstance().getTask(taskId);
+        task->mailbox->send(message);
+
+        if (task->state == TaskState::Blocked) {
+            Director::GetInstance().unblockTask(task);
+        }
+
+        /*
+            auto cpuId = CPU::getCurrentCPUId();
+
+            if (cpuId != task->cpuId) {
+                auto apicId = CPU::ActiveCPUs[task->cpuId].apicId;
+                APIC::sendInterprocessorInterrupt(apicId, APIC::InterprocessorInterrupt::Reschedule);
             }
             else {
-                taskId = message->recipientId;
+                unblockTask(task);
             }
+        }
 
-            auto task = TaskStore::getInstance().getTask(taskId);
-            task->mailbox->send(message);
-
-            if (task->state == TaskState::Blocked) {
-                auto cpuId = CPU::getCurrentCPUId();
-
-                if (cpuId != task->cpuId) {
-                    int pause = 0;
-                    auto apicId = CPU::ActiveCPUs[task->cpuId].apicId;
-                    APIC::sendInterprocessorInterrupt(apicId, APIC::InterprocessorInterrupt::Reschedule);
-                }
-                else {
-                    unblockTask(task);
-                }
-            }
-
-            if ((static_cast<int>(task->priority) < static_cast<int>(currentTask->priority))
-                || currentTask->priority == Priority::IRQ) {
-                if (task->state == TaskState::Running) {
-                    if (task->cpuId != CPU::getCurrentCPUId()) {
+        if ((static_cast<int>(task->priority) < static_cast<int>(currentTask->priority))
+            || currentTask->priority == Priority::IRQ) {
+            if (task->state == TaskState::Running) {
+                if (task->cpuId != CPU::getCurrentCPUId()) {
+                    if (CPU::ActiveCPUs[task->cpuId].scheduler->currentTask != task) {
                         auto apicId = CPU::ActiveCPUs[task->cpuId].apicId;
                         APIC::sendInterprocessorInterrupt(apicId, APIC::InterprocessorInterrupt::Reschedule);
                     }
-                    else {
-                        nextTask = task;
-                        runNextTask();
-                    }
+                }
+                else {
+                    nextTask = task;
+                    runNextTask();
                 }
             }
-
-            return;
-
         }
+        */
+
+        return;
 
         kprintf("[Scheduler] Unsent message from: %d to: %d type: %d\n", message->senderTaskId, taskId, recipient);
         asm("hlt");
@@ -417,7 +522,13 @@ namespace Kernel {
             auto task = currentTask;
 
             while (!task->mailbox->receive(buffer)) {
-                blockTask(BlockReason::WaitingForMessage, 0);
+                Director::GetInstance().blockTask(task, BlockReason::WaitingForMessage);
+                {
+                    auto& queue = priorityGroups[static_cast<int>(task->priority)];
+                    SpinLock queueLock {queue.getLock()};
+                    queue.remove(task);
+                }
+                reschedule();
             }
         }
     }
@@ -436,7 +547,13 @@ namespace Kernel {
                 }
 
                 //can't wake up
-                blockTask(BlockReason::WaitingForMessage, 0);
+                Director::GetInstance().blockTask(task, BlockReason::WaitingForMessage);
+                {
+                    auto& queue = priorityGroups[static_cast<int>(task->priority)];
+                    SpinLock queueLock {queue.getLock()};
+                    queue.remove(task);
+                }
+                reschedule();
             }
         }
     }
@@ -514,12 +631,15 @@ namespace Kernel {
     }
 
     void Scheduler::start() {
-        startedTasks = true;
 
         startTask->virtualMemoryManager = Memory::getCurrentVMM();
-        schedulerTask->virtualMemoryManager = Memory::getCurrentVMM();
-
         scheduleNextTask();
+        startedTasks = true;
         runNextTask();
+    }
+
+    int Scheduler::getPriorityScore(Task* pending) {
+
+        return static_cast<int>(pending->priority) - static_cast<int>(currentTask->priority);
     }
 }

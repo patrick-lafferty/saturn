@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdint.h>
 #include <task_context.h>
 #include <vector>
+#include "list.h"
 
 namespace Memory {
     class VirtualMemoryManager;
@@ -44,95 +45,7 @@ namespace IPC {
 
 namespace Kernel {
 
-    template<typename T> class LinkedList {
-        public:
-            
-            void insertBefore(T* item, T* before) {
-                if (head == nullptr) {
-                    head = item;
-                }
-                else {
-                    item->nextTask = before;
-
-                    if (before->previousTask != nullptr) {
-                        item->previousTask = before->previousTask;
-                        before->previousTask->nextTask = item;
-                    }
-                    else {
-                        head = item;
-                        item->previousTask = nullptr;
-                    }
-
-                    before->previousTask = item;
-                }
-            }
-
-            void insertAfter(T* item, T* after) {
-                after->nextTask = item;
-                item->previousTask = after;
-            }
-
-            void append(T* item) {
-                if (head == nullptr) {
-                    head = item;
-                    item->previousTask = nullptr;
-                }
-                else {
-                    auto current = head;
-
-                    while (current->nextTask != nullptr) {
-                        current = current->nextTask;
-                    }
-
-                    current->nextTask = item;
-                    item->previousTask = current;
-                }
-
-                item->nextTask = nullptr;
-            }
-
-            void remove(T* item) {
-                auto previous = item->previousTask;
-                auto next = item->nextTask;
-
-                if (previous != nullptr) {
-                    previous->nextTask = next;
-                }
-                else {
-                    head = next;
-                }
-
-                if (next != nullptr) {
-                    next->previousTask = previous;
-                }
-
-                item->previousTask = nullptr;
-                item->nextTask = nullptr;
-            }
-
-            T* getHead() {
-                return head;
-            }
-
-            bool isEmpty() {
-                return head == nullptr;
-            }
-
-            uint32_t* getLock() {
-                return &lock;
-            }
-
-        private:
-
-        T* head {nullptr};
-        uint32_t lock {0};
-    };
-
-    enum class BlockReason {
-        Sleep,
-        WaitingOnResource,
-        WaitingForMessage
-    };
+    void schedulerService();
 
     enum class EFlags {
         Reserved = 1 << 1,
@@ -156,8 +69,9 @@ namespace Kernel {
         void notifyTimesliceExpired();
         void scheduleTask(Task* task);
 
-        void blockTask(BlockReason reason, uint32_t arg);
-        void unblockTask(uint32_t taskId);
+        //void blockTask(BlockReason reason, uint32_t arg);
+        //void unblockTask(uint32_t taskId);
+        void sleepTask(int time);
 
         void start();
         void setupTimeslice();
@@ -179,6 +93,8 @@ namespace Kernel {
         void changePriority(Task* task, Priority priority);
         void reschedule();
 
+        int getPriorityScore(Task* pending);
+
     private:
 
         void scheduleNextTask();
@@ -192,10 +108,10 @@ namespace Kernel {
         Task* nextTask {nullptr};
         Task* startTask {nullptr};
         Task* cleanupTask {nullptr};
-        Task* schedulerTask {nullptr};
+        //Task* schedulerTask {nullptr};
         LinkedList<Task> readyQueue;
-        LinkedList<Task> blockedQueue;
-        LinkedList<Task> deleteQueue;
+        LinkedList<Task> sleepingTasks;
+        //LinkedList<Task> deleteQueue;
 
         LinkedList<Task> priorityGroups[6];
 
