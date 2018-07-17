@@ -35,7 +35,8 @@ uint32_t run(uintptr_t entryPoint, Priority priority) {
     RunProgram run;
     run.entryPoint = entryPoint;
     run.priority = priority;
-    send(IPC::RecipientType::Scheduler, &run);
+    run.serviceType = ServiceType::Scheduler;
+    send(IPC::RecipientType::ServiceName, &run);
 
     IPC::MaximumMessageBuffer buffer;
     filteredReceive(&buffer, IPC::MessageNamespace::ServiceRegistry, static_cast<uint32_t>(MessageId::RunResult));
@@ -45,8 +46,9 @@ uint32_t run(uintptr_t entryPoint, Priority priority) {
 
 uint32_t run(const char* path) {
     RunProgram run;
+    run.serviceType = ServiceType::Scheduler;
     memcpy(run.path, path, strlen(path));
-    send(IPC::RecipientType::Scheduler, &run);
+    send(IPC::RecipientType::ServiceName, &run);
 
     IPC::MaximumMessageBuffer buffer;
     filteredReceive(&buffer, IPC::MessageNamespace::ServiceRegistry, static_cast<uint32_t>(MessageId::RunResult));
