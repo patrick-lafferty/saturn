@@ -38,6 +38,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 void activateVMM(Kernel::Task* task) {
     task->virtualMemoryManager->activate();
+    auto oldTSS = reinterpret_cast<uint32_t>(task->tss);
+    auto newTSS = 0xCFFF'F000 - 0x1000 * task->cpuId;
+
+    if (oldTSS != newTSS) {
+        task->virtualMemoryManager->remap(oldTSS, newTSS);
+        task->virtualMemoryManager->activate();
+        task->tss = reinterpret_cast<CPU::TSS*>(newTSS);
+    }
 }
 
 #endif

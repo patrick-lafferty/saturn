@@ -58,7 +58,7 @@ changeProcess:
 
     mov ecx, eax
     mov eax, [eax + 48]
-    mov ecx, [ecx] ; nextTask->context.kernelESP
+    mov ecx, [ecx + 4] ; nextTask->context.kernelESP
     mov [eax + 4], ecx ; tss->esp0 = nextTask->context.kernelESP
 
     ret
@@ -84,7 +84,7 @@ changeProcessSingle:
 
     mov ecx, eax
     mov eax, [eax + 48]
-    mov ecx, [ecx] ; nextTask->context.kernelESP
+    mov ecx, [ecx + 4] ; nextTask->context.kernelESP
     mov [eax + 4], ecx ; tss->esp0 = nextTask->context.kernelESP
 
     ret

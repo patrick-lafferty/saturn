@@ -227,12 +227,6 @@ namespace Kernel {
             }
         }
 
-        if (oldTSS != newTSS) {
-            nextTask->virtualMemoryManager->remap(oldTSS, newTSS);
-            nextTask->virtualMemoryManager->activate();
-            nextTask->tss = reinterpret_cast<CPU::TSS*>(newTSS);
-        }
-
         nextTask->timesSwitchedTo++;
 
         oldVMM->activate();
