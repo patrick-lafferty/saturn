@@ -50,6 +50,11 @@ namespace Kernel {
 
         BlockAllocator<uint32_t> intAllocator {kernelVMM};
         driverTaskIds = intAllocator.allocateMultiple(count);
+
+        for (int i = 0; i < count; i++) {
+
+            knownServices[i].subscribers = subscriberAllocator.allocateMultiple(knownServices[i].MaxSubscribers);
+        }
     }
 
     void ServiceRegistry::receiveMessage(IPC::Message* message) {
@@ -333,6 +338,10 @@ namespace Kernel {
         auto& service = knownServices[index];
 
         for (int i = 0; i < service.subscriberCount; i++) {
+            if (service.subscribers == nullptr) {
+                asm("cli");
+                asm("hlt");
+            }
             NotifyServiceRegistered notify;
             notify.type = static_cast<ServiceType>(index);
             notify.recipientId = service.subscribers[i];

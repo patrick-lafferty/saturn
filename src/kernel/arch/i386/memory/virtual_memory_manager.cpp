@@ -237,7 +237,7 @@ namespace Memory {
         auto pageTable = static_cast<PageTable*>(reinterpret_cast<void*>(pageTableAddress));
         auto tableIndex = extractTableIndex(virtualAddress);
         auto physicalAddress = pageTable->pageAddresses[tableIndex];
-        pageTable->pageAddresses[tableIndex] = 0;
+        //pageTable->pageAddresses[tableIndex] = 0;
 
         map(newAddress, physicalAddress, 0, false);
     }

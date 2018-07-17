@@ -66,7 +66,7 @@ namespace CPU {
 
     void sleepCurrentTask(uint32_t time) {
         auto cpuId = getCurrentCPUId();
-        ActiveCPUs[cpuId].scheduler->blockTask(Kernel::BlockReason::Sleep, time);
+        ActiveCPUs[cpuId].scheduler->sleepTask(time);
     }
 
     void notifyTimesliceExpired() {
