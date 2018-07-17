@@ -287,6 +287,7 @@ namespace CPU {
 
             for (auto i = 0; i < numberOfAPs; i++) {
                 ActiveCPUs[i + 1].scheduler = schedulerAllocator.allocate();
+                Memory::InitialKernelVMM->activate();
             }
 
             CPUCount = 1 + numberOfAPs;

@@ -182,7 +182,17 @@ namespace Kernel {
             kernelVMM->HACK_setNextAddress(oldAddr);*/
             auto oldAddr = vmm->HACK_getNextAddress();
             vmm->HACK_setNextAddress(0xa000'0000 + 0x100000);
-            task->heap = Saturn::Memory::createHeap(Memory::PageSize * Memory::PageSize, vmm);
+
+            if (CPU::ActiveCPUs == nullptr) {
+                auto oldVMM = Memory::InitialKernelVMM;
+                Memory::InitialKernelVMM = vmm;
+                task->heap = Saturn::Memory::createHeap(Memory::PageSize * Memory::PageSize, vmm);
+                Memory::InitialKernelVMM = oldVMM;
+            }
+            else {
+                task->heap = Saturn::Memory::createHeap(Memory::PageSize * Memory::PageSize, vmm);
+            }
+
             vmm->HACK_setNextAddress(oldAddr);
         }
 
