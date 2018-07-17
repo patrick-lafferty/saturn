@@ -154,7 +154,21 @@ namespace Kernel {
         task->id = idGenerator.generateId();
         task->context.esp = reinterpret_cast<uintptr_t>(stackPointer);
         task->context.kernelESP = task->context.esp;
-        task->virtualMemoryManager = kernelVMM;
+        //task->virtualMemoryManager = kernelVMM;
+
+        //<-----
+        auto vmm = vmmAllocator.allocate();
+        kernelVMM->cloneForUsermode(vmm);
+        task->virtualMemoryManager = vmm;
+        auto kernelTSS = reinterpret_cast<CPU::TSS*>(0xcfff'f000 - 0x1000 * CPU::getCurrentCPUId());
+        auto backupTSS = *kernelTSS;
+        vmm->activate();
+        BlockAllocator<CPU::TSS> tssAllocator {vmm, 1};
+        task->tss = tssAllocator.allocateFrom(0xcfff'f000 - 0x1000 * CPU::getCurrentCPUId());
+        memset(task->tss, 0, sizeof(CPU::TSS));
+        CPU::setupTSS(reinterpret_cast<uintptr_t>(task->tss));
+        //<-----
+
         TaskStore::getInstance().storeTask(task);
 
         /*
@@ -162,13 +176,17 @@ namespace Kernel {
         need to make their own heap if they need one
         */
         if (functionAddress != reinterpret_cast<uintptr_t>(launchProcess)) {
-            auto oldAddr = kernelVMM->HACK_getNextAddress();
+            /*auto oldAddr = kernelVMM->HACK_getNextAddress();
             kernelVMM->HACK_setNextAddress(0xa000'0000 + 0x100000);
             task->heap = Saturn::Memory::createHeap(Memory::PageSize * Memory::PageSize, kernelVMM);
-            kernelVMM->HACK_setNextAddress(oldAddr);
+            kernelVMM->HACK_setNextAddress(oldAddr);*/
+            auto oldAddr = vmm->HACK_getNextAddress();
+            vmm->HACK_setNextAddress(0xa000'0000 + 0x100000);
+            task->heap = Saturn::Memory::createHeap(Memory::PageSize * Memory::PageSize, vmm);
+            vmm->HACK_setNextAddress(oldAddr);
         }
 
-        task->tss = kernelTSS;
+        //task->tss = kernelTSS;
         task->kernelStack = kernelStack;
         task->mailbox = &mailboxAllocator.allocate()->box;
 
@@ -188,6 +206,7 @@ namespace Kernel {
 
         SpinLock spin {&lock};
 
+/*
         auto vmm = vmmAllocator.allocate();
         kernelVMM->cloneForUsermode(vmm);
         task->virtualMemoryManager = vmm;
@@ -198,6 +217,10 @@ namespace Kernel {
         task->tss = tssAllocator.allocateFrom(0xcfff'f000 - 0x1000 * CPU::getCurrentCPUId());
         memset(task->tss, 0, sizeof(CPU::TSS));
         CPU::setupTSS(reinterpret_cast<uintptr_t>(task->tss));
+
+        */
+        task->virtualMemoryManager->activate();
+        auto vmm = task->virtualMemoryManager;
 
         for (auto i = 0u; i < sizeof(CPU::TSS::ioPermissionBitmap); i++) {
             task->tss->ioPermissionBitmap[i] = 0xFF;

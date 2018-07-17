@@ -43,6 +43,7 @@ namespace Kernel {
 
     enum class TaskState {
         Running,
+        ReadyToRun,
         Sleeping,
         Blocked
     };
@@ -109,7 +110,9 @@ namespace Kernel {
         CPU::TSS* tss;
         SmallStack* kernelStack;
         Priority priority {Priority::Other};
-        uint8_t cpuId;
+        uint8_t cpuId {0};
+        uint8_t oldCPUId {0};
+        int timesSwitchedTo {0};
     };
 
     /*
