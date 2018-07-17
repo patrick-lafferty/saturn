@@ -68,6 +68,12 @@ namespace Kernel {
                     auto current = head;
 
                     while (current->nextTask != nullptr) {
+
+                        if (current->id == item->id) {
+                            asm("cli");
+                            asm("hlt");
+                        }
+
                         current = current->nextTask;
                     }
 
@@ -79,7 +85,7 @@ namespace Kernel {
             }
 
             void remove(T* item) {
-                auto previous = item->previousTask;
+                /*auto previous = item->previousTask;
                 auto next = item->nextTask;
 
                 if (previous != nullptr) {
@@ -91,6 +97,18 @@ namespace Kernel {
 
                 if (next != nullptr) {
                     next->previousTask = previous;
+                }*/
+
+                if (head == item) {
+                    head = item->nextTask;
+                }
+
+                if (item->previousTask != nullptr) {
+                    item->previousTask->nextTask = item->nextTask;
+                }
+                    
+                if (item->nextTask != nullptr) {
+                    item->nextTask->previousTask = item->previousTask;
                 }
 
                 item->previousTask = nullptr;
