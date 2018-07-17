@@ -34,9 +34,20 @@ namespace IPC {
         Kernel::SpinLock lock {&bufferLock};
 
         if (freeMessages > 0) {
+            
             for (auto i = 0; i < MaxMessages; i++) {
-                if (buffers[i].length == 0) {
-                    memcpy(&buffers[i], message, message->length);
+                if (messages[i].buffer.length == 0) {
+                    memcpy(&messages[i].buffer.buffer, message, message->length);
+
+                    if (firstMessage == nullptr) {
+                        firstMessage = &messages[i];
+                        lastMessage = firstMessage;
+                    }
+                    else {
+                        lastMessage->next = &messages[i];
+                        lastMessage = &messages[i];
+                    }
+
                     break;
                 }
             }
@@ -57,15 +68,32 @@ namespace IPC {
             return false;
         }
 
+        memcpy(message, firstMessage->buffer.buffer, firstMessage->buffer.length);
+
+        unreadMessages--;
+        freeMessages++;
+        firstMessage->buffer.length = 0;
+
+        auto next = firstMessage->next;
+        firstMessage->next = nullptr;
+        firstMessage = next;
+
+        if (firstMessage == nullptr) {
+            lastMessage = nullptr;
+        }
+
+        return true;
+
+        /*
         for (auto i = 0; i < MaxMessages; i++) {
-            if (buffers[i].length > 0) {
-                memcpy(message, &buffers[i], buffers[i].length);
+            if (messages[i].buffer.length > 0) {
+                memcpy(message, &messages[i].buffer, messages[i].buffer.length);
                 unreadMessages--;
                 freeMessages++;
-                buffers[i].length = 0;
+                messages[i].buffer.length = 0;
                 return true;
             }
-        }
+        }*/
 
         return false;
     }
@@ -77,17 +105,56 @@ namespace IPC {
             return false;
         }
 
-        for (auto i = 0; i < MaxMessages; i++) {
-            if (buffers[i].length > 0
-                && buffers[i].messageNamespace == filter
-                && buffers[i].messageId == messageId) {
-                memcpy(message, &buffers[i], buffers[i].length);
+
+        auto iterator = firstMessage;
+        StoredMessage* previous {nullptr};
+
+        while (iterator != nullptr) {
+
+            if (iterator->buffer.messageNamespace == filter
+                && iterator->buffer.messageId == messageId) {
+                
+                memcpy(message, iterator->buffer.buffer, iterator->buffer.length);
+
                 unreadMessages--;
                 freeMessages++;
-                buffers[i].length = 0;
+                iterator->buffer.length = 0;
+
+                if (previous != nullptr) {
+                    previous->next = iterator->next;
+
+                    if (iterator->next == nullptr) {
+                        lastMessage = previous;
+                    }
+                }
+                else {
+                    firstMessage = iterator->next;
+
+                    if (firstMessage == nullptr) {
+                        lastMessage = nullptr;
+                    }
+                }
+
+                return true;
+            }
+
+            previous = iterator;
+            iterator = iterator->next;
+        }
+
+        /*
+        for (auto i = 0; i < MaxMessages; i++) {
+            if (messages[i].buffer.length > 0
+                && messages[i].buffer.messageNamespace == filter
+                && messages[i].buffer.messageId == messageId) {
+                memcpy(message, &messages[i].buffer, messages[i].buffer.length);
+                unreadMessages--;
+                freeMessages++;
+                messages[i].buffer.length = 0;
                 return true;
             }
         }
+        */
 
         return false;
     }

@@ -93,6 +93,11 @@ namespace IPC {
         return result;
     }
 
+    struct StoredMessage {
+        MaximumMessageBuffer buffer;
+        StoredMessage* next {nullptr};
+    };
+
     /*
     A Mailbox stores and provides access to messages. Each task
     has one mailbox. Messages are stored in a circular byte buffer.
@@ -101,7 +106,8 @@ namespace IPC {
     public:
 
         Mailbox(uint32_t bufferAddress, uint32_t size) {
-            buffers = reinterpret_cast<MaximumMessageBuffer*>(bufferAddress);
+            //buffers = reinterpret_cast<MaximumMessageBuffer*>(bufferAddress);
+            messages = reinterpret_cast<StoredMessage*>(bufferAddress);
             bufferSize = size;
         }
 
@@ -138,7 +144,10 @@ namespace IPC {
         uint32_t lastReadOffset {0};
         uint32_t lastWriteOffset {0};
         uint32_t bufferLock {0};
-        MaximumMessageBuffer* buffers;
+        //MaximumMessageBuffer* buffers;
+        StoredMessage* messages;
+        StoredMessage* firstMessage {nullptr};
+        StoredMessage* lastMessage {nullptr};
         int freeMessages {70};
         int MaxMessages {70};
     };
