@@ -44,17 +44,17 @@ void panic(const char* message) {
 }
 
 struct PhysicalMemStats {
-    uintptr_t nextFreeAddress;
-    uint32_t totalPages;
+    uint64_t nextFreeAddress;
+    uint64_t totalPages;
     uint64_t acpiLocation;
 };
 
 const int PageSize = 0x1000;
 
-void freePhysicalPage(uintptr_t pageAddress, uint32_t count, PhysicalMemStats& stats) {
+void freePhysicalPages(uint64_t pageAddress, uint64_t count, PhysicalMemStats& stats) {
 
-    for (uint32_t i = 0; i < count; i++) {
-        auto page = reinterpret_cast<uint32_t volatile*>(pageAddress & ~0xfff);
+    for (uint64_t i = 0; i < count; i++) {
+        auto page = reinterpret_cast<uint64_t volatile*>(pageAddress & ~0xfff);
         *page = stats.nextFreeAddress;
         stats.nextFreeAddress = pageAddress;
         pageAddress += PageSize;
@@ -87,11 +87,11 @@ void handleBasicMemory(Multiboot::BasicMemoryInfo* tag) {
     currentLine++;
 }
 
-void handleMemoryMap(Multiboot::MemoryMap* tag) {
+void printMemoryMap(Multiboot::MemoryMap* tag) {
     using namespace Multiboot;
     auto count = (tag->size - sizeof(*tag)) / sizeof(MemoryMapEntry);
 
-    for (int i = 0; i < count; i++) {
+    for (decltype(count) i = 0; i < count; i++) {
         auto ptr = reinterpret_cast<MemoryMapEntry*>(&tag->entries) ;
         auto entry = ptr + i;
         printString("Base Address: ", currentLine, 0);
@@ -110,74 +110,207 @@ void handleMemoryMap(Multiboot::MemoryMap* tag) {
     currentLine++;
 }
 
-void walkMultibootTags(Multiboot::BootInfo* info) {
+void createFreePageList(Multiboot::MemoryMap* tag, PhysicalMemStats& stats) {
+
     using namespace Multiboot;
+    auto count = (tag->size - sizeof(*tag)) / sizeof(MemoryMapEntry);
+
+    for (decltype(count) i = 0; i < count; i++) {
+        auto ptr = reinterpret_cast<MemoryMapEntry*>(&tag->entries) ;
+        auto entry = ptr + i;
+
+        switch (static_cast<MemoryType>(entry->type)) {
+            case MemoryType::AvailableRAM: {
+
+                #if VERBOSE
+                    printString("Available: ", currentLine);
+                    printInteger(entry->baseAddress, currentLine, 11);
+                    currentLine++;
+                #endif
+
+                if (entry->baseAddress <= 0x100000) {
+                    #if VERBOSE
+                        printString("First megabyte wrongly marked as available", currentLine++);
+                    #endif
+
+                    continue;
+                }
+
+                freePhysicalPages(entry->baseAddress, entry->length / 0x1000, stats);
+
+                break;
+            }
+            case MemoryType::UsableACPI: {
+
+                #if VERBOSE
+                    printString("Usable: ", currentLine);
+                    printInteger(entry->baseAddress, currentLine, 11);
+                    currentLine++;
+                #endif
+
+                break;
+            }
+            case MemoryType::Reserved: {
+
+                #if VERBOSE
+                    printString("Reserved: ", currentLine);
+                    printInteger(entry->baseAddress, currentLine, 11);
+                    currentLine++;
+                #endif
+
+                break;
+            }
+            case MemoryType::Defective: {
+
+                #if VERBOSE
+                    printString("Defective: ", currentLine);
+                    printInteger(entry->baseAddress, currentLine, 11);
+                    currentLine++;
+                #endif
+
+                break;
+            }
+            default: {
+
+                #if VERBOSE
+                    printString("Unknown!", currentLine);
+                    printInteger(entry->type, currentLine, 11);
+                    currentLine++;
+                #endif
+
+                break;
+            }
+        }
+    }
+}
+
+struct Configuration {
+    PhysicalMemStats physicalMemoryStats;
+};
+
+Configuration walkMultibootTags(Multiboot::BootInfo* info) {
+    using namespace Multiboot;
+    Configuration config;
 
     auto tag = reinterpret_cast<Tag*>(info + 1);
 
     while (static_cast<TagTypes>(tag->type) != TagTypes::End) {
 
         switch (static_cast<TagTypes>(tag->type)) {
-            case TagTypes::BootCommandLine: 
+            case TagTypes::BootCommandLine: {
+                #if VERBOSE
+                    printString("[Tag] Boot Command Line", currentLine++);
+                #endif
+                break;
+            }
             case TagTypes::BootLoaderName: {
+                #if VERBOSE
+                    printString("[Tag] Boot Loader Name", currentLine++);
+                #endif
                 break;
             }
             case TagTypes::Modules: {
-                printString("[Tag] Modules", currentLine++);
+                #if VERBOSE
+                    printString("[Tag] Modules", currentLine++);
+                #endif
+
                 handleModules(static_cast<Modules*>(tag));
                 break;
             }
             case TagTypes::BasicMemory: {
-                printString("[Tag] Basic Memory", currentLine++);
+                #if VERBOSE
+                    printString("[Tag] Basic Memory", currentLine++);
+                #endif
+
                 handleBasicMemory(static_cast<BasicMemoryInfo*>(tag));
                 break;
             }
             case TagTypes::BIOSBootDevice: {
+                #if VERBOSE
+                    printString("[Tag] BIOS Boot Device", currentLine++);
+                #endif
                 break;
             }
             case TagTypes::MemoryMap: {
-                handleMemoryMap(static_cast<MemoryMap*>(tag));
+                #if VERBOSE
+                    printString("[Tag] Memory Map", currentLine++);
+                #endif
+
+                createFreePageList(static_cast<MemoryMap*>(tag), config.physicalMemoryStats);
                 break;
             }
             case TagTypes::VBEInfo: {
-                printString("[Tag] VBE Info", currentLine++);
-                auto& value = *static_cast<VBEInfo*>(tag);
+                #if VERBOSE
+                    printString("[Tag] VBE Info", currentLine++);
+                #endif
+
                 break;
             }
             case TagTypes::FramebufferInfo: {
-                printString("[Tag] Framebuffer Info", currentLine++);
-                auto& value = *static_cast<FramebufferInfo*>(tag);
+                #if VERBOSE
+                    printString("[Tag] Framebuffer Info", currentLine++);
+                #endif
+                
                 break;
             }
             case TagTypes::ELFSymbols: {
-                printString("[Tag] ELF Symbols", currentLine++);
-                auto& value = *static_cast<ElfSymbols*>(tag);
+                #if VERBOSE
+                    printString("[Tag] ELF Symbols", currentLine++);
+                #endif
+
                 break;
             }
             case TagTypes::APMTable: {
+                #if VERBOSE
+                    printString("[Tag] APM Table", currentLine++);
+                #endif
                 break;
             }
             case TagTypes::EFI32Table: {
+                #if VERBOSE
+                    printString("[Tag] EFI32 Table", currentLine++);
+                #endif
                 break;
             }
             case TagTypes::EFI64Table: {
+                #if VERBOSE
+                    printString("[Tag] EFI64 Table", currentLine++);
+                #endif
                 break;
             }
             case TagTypes::SMBIOSTable: {
+                #if VERBOSE
+                    printString("[Tag] SMBIOS Table", currentLine++);
+                #endif
                 break;
             }
             case TagTypes::OldRDSP: {
-                printString("[Tag] Old RDSP", currentLine++);
-                auto& value = *static_cast<OldRDSP*>(tag);
+                #if VERBOSE
+                    printString("[Tag] Old RDSP", currentLine++);
+                #endif
+
                 break;
             }
             case TagTypes::NewRDSP: {
+                #if VERBOSE
+                    printString("[Tag] New RDSP", currentLine++);
+                #endif
+
                 break;
             }
             case TagTypes::NetworkingInfo: {
+                #if VERBOSE
+                    printString("[Tag] Networking Info", currentLine++);
+                #endif
                 break;
             }
             case TagTypes::EFIMemoryMap: {
+                #if VERBOSE
+                    printString("[Tag] EFI Memory Map", currentLine++);
+                #endif
+                break;
+            }
+            case TagTypes::End: {
                 break;
             }
         }        
@@ -185,6 +318,8 @@ void walkMultibootTags(Multiboot::BootInfo* info) {
         auto currentAddress = reinterpret_cast<uintptr_t>(tag);
         tag = alignCast<Tag>(currentAddress + tag->size, 8);
     }
+
+    return config;
 }
 
 void clearScreen() {
@@ -195,10 +330,12 @@ void clearScreen() {
     }
 }
 
+
+
 extern "C"
 void startup(uint32_t address, uint32_t magicNumber) {
    
-    auto EXPECTED_MAGIC_NUMBER = 0x36d76289;
+    auto EXPECTED_MAGIC_NUMBER = 0x36d76289u;
 
     if (magicNumber != EXPECTED_MAGIC_NUMBER) {
         panic("Multiboot magic number invalid");
@@ -206,7 +343,7 @@ void startup(uint32_t address, uint32_t magicNumber) {
 
     clearScreen();
 
-    walkMultibootTags(reinterpret_cast<Multiboot::BootInfo*>(address));
+    const auto& config = walkMultibootTags(reinterpret_cast<Multiboot::BootInfo*>(address));
 
     printString("Startup has finished successfully", currentLine);
 }

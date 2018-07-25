@@ -87,6 +87,13 @@ namespace Multiboot {
         uint32_t subPartition;
     };
 
+    enum class MemoryType {
+        AvailableRAM = 1,
+        UsableACPI = 3,
+        Reserved = 4,
+        Defective = 5
+    };
+
     struct MemoryMapEntry {
         uint64_t baseAddress;
         uint64_t length;
