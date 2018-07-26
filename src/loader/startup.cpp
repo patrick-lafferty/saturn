@@ -71,12 +71,101 @@ T* alignCast(uint32_t address, int alignment) {
 
 int currentLine {0};
 
+/*
+elf64_half = 2
+elf64_word = 4
+xord = 8
+off = 8
+addr = 8
+*/
+
+struct ElfHeader {
+    uint8_t identification[16];
+    uint16_t objectFileType;
+    uint16_t machineType;
+    uint32_t fileVersion;
+    uint64_t entryPoint;
+    uint64_t programHeaderOffset;
+    uint64_t sectionHeaderOffset;
+    uint32_t processorFlags;
+    uint16_t programHeaderEntrySize;
+    uint16_t programHeaderEntryCount;
+    uint16_t sectionHeaderEntrySize;
+    uint16_t sectionHeaderEntryCount;
+    uint16_t sectionNameTableIndex;
+};
+
+struct ProgramHeader {
+    uint32_t type;
+    uint32_t flags;
+    uint64_t offset;
+    uint64_t virtualAddress;
+    uint64_t physicalAddress;
+    uint64_t fileSize;
+    uint64_t memorySize;
+    uint64_t alignment;
+};
+
+bool verify(ElfHeader* header) {
+    return true;
+}
+
+enum class ProgramType {
+    Null = 0,
+    Load = 1,
+    Dynamic = 2,
+    InterpreterPathName = 3,
+    Note = 4,
+    SHLIB = 5,
+    ProgramHeaderTable = 6,
+    LOOS = 0x6000'0000,
+    HIOS = 0x6fff'ffff,
+    LOPROC = 0x7000'0000,
+    HIPROC = 0x7fff'ffff
+};
+
+void loadElf(uintptr_t address) {
+    auto header = reinterpret_cast<ElfHeader*>(address);
+
+    if (!verify(header)) {
+        panic("Kernel module's ELF header is broken");
+    }
+
+    for (auto i = 0u; i < header->programHeaderEntryCount; i++) {
+        auto programHeader = reinterpret_cast<ProgramHeader*>(
+            address + header->programHeaderOffset + header->programHeaderEntrySize * i
+        );
+
+        switch (static_cast<ProgramType>(programHeader->type)) {
+            case ProgramType::Null: {
+                continue;
+                break;
+            }
+            case ProgramType::Load: {
+                printString("[ELF] ProgHeader Load ", currentLine);
+                currentLine++;
+                break;
+            }
+            default: {
+                printString("header ", currentLine);
+                printInteger(programHeader->type, currentLine, 11);
+                currentLine++;
+                break;
+            }
+        }
+    }
+}
+
 void handleModules(Multiboot::Modules* tag) {
-    printInteger(tag->start, currentLine, 0);
-    printInteger(tag->end, currentLine, 11);
-    currentLine++;
-    printString(reinterpret_cast<const char*>(&tag->moduleStringStart), currentLine, 0);
-    currentLine++;
+    #if VERBOSE
+        printInteger(tag->start, currentLine, 0);
+        printInteger(tag->end, currentLine, 11);
+        currentLine++;
+        printString(reinterpret_cast<const char*>(&tag->moduleStringStart), currentLine, 0);
+        currentLine++;
+    #endif
+
+    loadElf(tag->start);
 }
 
 void handleBasicMemory(Multiboot::BasicMemoryInfo* tag) {
@@ -329,8 +418,6 @@ void clearScreen() {
         *buffer++ = 0;
     }
 }
-
-
 
 extern "C"
 void startup(uint32_t address, uint32_t magicNumber) {

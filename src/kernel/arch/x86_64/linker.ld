@@ -1,20 +1,28 @@
-ENTRY(bootstrap32)
+ENTRY(main)
 OUTPUT_FORMAT(elf64-x86-64)
-OUTPUT_ARCH(i386:x86-64)
+
+KERNEL_VMA = 0xFFFFFFFF80000000;
 
 SECTIONS
 {
-    . = 1M;
+    . = KERNEL_VMA;
 
-    .bootstrap : 
+    .text : AT(ADDR(.text) - KERNEL_VMA) 
     {
-        *(.multiboot)
-        src/kernel/arch/x86_64/bootstrap.o (.text)
+        *(.text)
+        *(.rodata)
+        . = ALIGN(4K);
     }
 
-    .bootstrap_stack :  
+    .data ALIGN(4K):
     {
-        src/kernel/arch/x86_64/bootstrap.o (.bootstrap_stack)
+        *(.data)
+    }
+
+    .bss ALIGN(4K) :  
+    {
+        *(COMMON)
+        *(.bss)
     }
 
 }
