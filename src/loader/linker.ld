@@ -6,6 +6,7 @@ SECTIONS
 
     .multiboot ALIGN(4K):
     {
+        __loader_memory_start = .;
         *(.multiboot)
     }
 
@@ -27,6 +28,7 @@ SECTIONS
     .bss ALIGN(4K):  
     {
         *(.bss)
+        __loader_memory_end = .;
     }
 
 }

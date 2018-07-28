@@ -30,8 +30,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "elf.h"
 #include "panic.h"
 #include "idt_32.h"
+#include "gdt.h"
 
 struct PhysicalMemStats {
+    uint64_t firstAddress;
     uint64_t nextFreeAddress;
     uint64_t totalPages;
     uint64_t acpiLocation;
@@ -41,7 +43,17 @@ const int PageSize = 0x1000;
 
 void freePhysicalPages(uint64_t pageAddress, uint64_t count, PhysicalMemStats& stats) {
 
-    for (uint64_t i = 0; i < count; i++) {
+    /*
+    We want to set aside the first two physical pages to be used for the initial
+    page directory and first page table. If we instead used stats.nextFreeAddress,
+    we would need an additional page table to account for where nextFreeAddress
+    might be (ie 512mb ram => nextFreeAddress might be 0x1ffdf000, which would
+    need a page table at entry 127)
+    */
+    stats.firstAddress = pageAddress;
+    pageAddress += 0x2000;
+
+    for (uint64_t i = 2; i < count; i++) {
         auto page = reinterpret_cast<uint64_t volatile*>(pageAddress & ~0xfff);
         *page = stats.nextFreeAddress;
         stats.nextFreeAddress = pageAddress;
@@ -104,10 +116,15 @@ void printMemoryMap(Multiboot::MemoryMap* tag) {
     currentLine++;
 }
 
+extern uint32_t __loader_memory_start;
+extern uint32_t __loader_memory_end;
+
 void createFreePageList(Multiboot::MemoryMap* tag, PhysicalMemStats& stats) {
 
     using namespace Multiboot;
     auto count = (tag->size - sizeof(*tag)) / sizeof(MemoryMapEntry);
+    uint32_t loaderMemoryStart = reinterpret_cast<uintptr_t>(&__loader_memory_start);
+    uint32_t loaderMemoryEnd = reinterpret_cast<uintptr_t>(&__loader_memory_end);
 
     for (decltype(count) i = 0; i < count; i++) {
         auto ptr = reinterpret_cast<MemoryMapEntry*>(&tag->entries) ;
@@ -122,7 +139,7 @@ void createFreePageList(Multiboot::MemoryMap* tag, PhysicalMemStats& stats) {
                     currentLine++;
                 #endif
 
-                if (entry->baseAddress <= 0x100000) {
+                if (entry->baseAddress < 0x100000) {
                     #if VERBOSE
                         printString("First megabyte wrongly marked as available", currentLine++);
                     #endif
@@ -130,7 +147,17 @@ void createFreePageList(Multiboot::MemoryMap* tag, PhysicalMemStats& stats) {
                     continue;
                 }
 
-                freePhysicalPages(entry->baseAddress, entry->length / 0x1000, stats);
+                if (entry->baseAddress <= loaderMemoryStart
+                    || entry->baseAddress <= loaderMemoryEnd) {
+                    auto oldStartAddress = entry->baseAddress;
+                    entry->baseAddress = (loaderMemoryEnd & ~0xFFF) + 0x1000;
+                    auto skippedPages = (entry->baseAddress - oldStartAddress) / 0x1000;
+
+                    freePhysicalPages(entry->baseAddress, (entry->length / 0x1000) - skippedPages, stats);
+                }
+                else {
+                    freePhysicalPages(entry->baseAddress, entry->length / 0x1000, stats);
+                }
 
                 break;
             }
@@ -182,9 +209,8 @@ struct Configuration {
     PhysicalMemStats physicalMemoryStats;
 };
 
-Configuration walkMultibootTags(Multiboot::BootInfo* info) {
+void walkMultibootTags(Multiboot::BootInfo* info, Configuration& config) {
     using namespace Multiboot;
-    Configuration config;
 
     auto tag = reinterpret_cast<Tag*>(info + 1);
 
@@ -214,9 +240,9 @@ Configuration walkMultibootTags(Multiboot::BootInfo* info) {
             case TagTypes::BasicMemory: {
                 #if VERBOSE
                     printString("[Tag] Basic Memory", currentLine++);
+                    handleBasicMemory(static_cast<BasicMemoryInfo*>(tag));
                 #endif
 
-                handleBasicMemory(static_cast<BasicMemoryInfo*>(tag));
                 break;
             }
             case TagTypes::BIOSBootDevice: {
@@ -312,8 +338,6 @@ Configuration walkMultibootTags(Multiboot::BootInfo* info) {
         auto currentAddress = reinterpret_cast<uintptr_t>(tag);
         tag = alignCast<Tag>(currentAddress + tag->size, 8);
     }
-
-    return config;
 }
 
 void clearScreen() {
@@ -322,6 +346,46 @@ void clearScreen() {
     for (int i = 0; i < 80 * 24; i++) {
         *buffer++ = 0;
     }
+}
+
+uintptr_t allocatePage(Configuration& config) {
+    auto address = config.physicalMemoryStats.nextFreeAddress;
+    auto nextPage = *reinterpret_cast<uint64_t*>(address);
+    config.physicalMemoryStats.nextFreeAddress = nextPage;
+    return address;
+}
+
+void setupInitialPaging(Configuration& config) {
+    /*
+    We set aside the first two physical pages to be used for the 
+    page directory and the first page table earlier in freePhysicalPages
+    */
+    uint32_t pageDirectoryAddress = config.physicalMemoryStats.firstAddress;
+    auto pageDirectory = reinterpret_cast<uintptr_t*>(pageDirectoryAddress);
+    auto table = reinterpret_cast<uintptr_t*>(pageDirectoryAddress + 0x1000);
+    auto flags = 1;
+    *pageDirectory++ = reinterpret_cast<uintptr_t>(table) | flags;
+
+    for (int i = 0; i < 1023; i++) {
+        *pageDirectory++ = 0;
+    }
+
+    /*
+    Identity-map the first 4 megabytes
+    */
+    for (int i = 0; i < 1024; i++) {
+        auto page = 0x1000 * i;
+        page |= flags;
+        *table++ = page;
+    }
+
+    asm volatile("movl %0, %%CR3 \n"
+        "movl %%CR0, %%eax \n"
+        "or $0x80000001, %%eax \n"
+        "movl %%eax, %%CR0 \n"
+        : //no output
+        : "a" (pageDirectoryAddress)
+    );
 }
 
 extern "C"
@@ -336,8 +400,11 @@ void startup(uint32_t address, uint32_t magicNumber) {
     clearScreen();
 
     IDT::setup();
+    GDT::setup();
 
-    const auto& config = walkMultibootTags(reinterpret_cast<Multiboot::BootInfo*>(address));
+    Configuration config;
+    walkMultibootTags(reinterpret_cast<Multiboot::BootInfo*>(address), config);
+    setupInitialPaging(config);
 
     printString("Startup has finished successfully", currentLine);
 }
