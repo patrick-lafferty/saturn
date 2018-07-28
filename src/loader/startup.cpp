@@ -28,21 +28,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "multiboot.h"
 #include "print.h"
 #include "elf.h"
-
-/*
-Used when the Saturn loader encounters an unrecoverable error
-Prints a message and then halts
-*/
-[[noreturn]]
-void panic(const char* message) {
-    asm volatile("cli");
-
-    printString(message);
-
-    while (true) {
-        asm volatile("hlt");
-    }
-}
+#include "panic.h"
+#include "idt_32.h"
 
 struct PhysicalMemStats {
     uint64_t nextFreeAddress;
@@ -347,6 +334,8 @@ void startup(uint32_t address, uint32_t magicNumber) {
     }
 
     clearScreen();
+
+    IDT::setup();
 
     const auto& config = walkMultibootTags(reinterpret_cast<Multiboot::BootInfo*>(address));
 
