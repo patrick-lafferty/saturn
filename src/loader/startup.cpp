@@ -388,6 +388,36 @@ void setupInitialPaging(Configuration& config) {
     );
 }
 
+void checkForLongMode() {
+    
+    /*
+    Check if CPU supports extended processor info/feature bits
+    */
+    uint32_t highestExtendedFunction = 0;
+    asm("movl $0x80000000, %%eax \n"
+        "cpuid"
+        : "=a" (highestExtendedFunction));
+
+    if (highestExtendedFunction < 0x8000'0001) {
+        panic("Long mode is not supported");
+    }
+
+    /*
+    Check extended processor info/feature bits
+    */
+    uint32_t edx = 0;
+    asm("movl $0x80000001, %%eax \n"
+        "cpuid"
+        : "=d" (edx));
+
+    /*
+    bit 29 is LM (Long Mode) in register EDX
+    */
+    if (!(edx & (1 << 29))) {
+        panic("Long mode is not supported");
+    }
+}
+
 extern "C"
 void startup(uint32_t address, uint32_t magicNumber) {
    
@@ -405,6 +435,8 @@ void startup(uint32_t address, uint32_t magicNumber) {
     Configuration config;
     walkMultibootTags(reinterpret_cast<Multiboot::BootInfo*>(address), config);
     setupInitialPaging(config);
+    
+    checkForLongMode();
 
     printString("Startup has finished successfully", currentLine);
 }
