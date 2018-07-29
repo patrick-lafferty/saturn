@@ -58,23 +58,26 @@ namespace GDT {
     };
 
     enum class Flags {
+        LongBit = 1 << 5,
         Size = 1 << 6,
         Granularity = 1 << 7
     };
 
+    template<typename AddressSize>
     struct DescriptorPointer {
         uint16_t limit;
-        uint32_t base;
+        AddressSize base;
     } __attribute__((packed));
 
-    void setup();
-
-    Descriptor encodeEntry(uint32_t base, uint32_t limit, uint8_t access, uint8_t flags, bool setBit4 = true);
+    void setup32();
+    void setup64();
 
     void addTSSEntry(uint32_t address, uint32_t size);
 }
 
-extern "C" GDT::Descriptor gdt[4];
-extern "C" GDT::DescriptorPointer gp;
+extern "C" GDT::Descriptor gdt32[3];
+extern "C" GDT::DescriptorPointer<uint32_t> gp32;
+extern "C" uint64_t gdt64[3];
+extern "C" GDT::DescriptorPointer<uint64_t> gp64;
 
-extern "C" void gdt_flush();
+extern "C" void gdt32_flush();

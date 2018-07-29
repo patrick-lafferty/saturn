@@ -27,8 +27,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "gdt.h"
 
-GDT::Descriptor gdt[4];
-GDT::DescriptorPointer gp;
+GDT::Descriptor gdt32[3];
+GDT::DescriptorPointer<uint32_t> gp32;
+uint64_t gdt64[3];
+GDT::DescriptorPointer<uint64_t> gp64;
 
 namespace GDT {
 
@@ -36,41 +38,8 @@ namespace GDT {
         return (static_cast<uint32_t>(args) | ...);
     }
 
-    int nextGDTIndex = 0;
-
-    void setup() {
-        gp.limit = sizeof(Descriptor) * 7 - 1;
-        gp.base = reinterpret_cast<uint32_t>(&gdt);
-
-        //null descriptor
-        gdt[0] = encodeEntry(0, 0, 0, 0);
-
-        /*
-        The upper 4 bits of flags is [Gr, Sz, 0, 0], where:
-        Gr = Granularity (0 = Byte granularity, 1 = 4K Page granularity)
-        Sz = Size (0 = 16 bit protected mode, 1 = 32 bit protected mode)
-
-        Normally we want Gr = 1 and Sz = 1 for regular pages
-        */
-        
-        //kernel code segment 
-        gdt[1] = encodeEntry(0, 0xFFFFF, combineFlags(
-            AccessCodeSegment::Present,
-            AccessCodeSegment::Executable,
-            AccessCodeSegment::Readable
-        ), combineFlags(Flags::Size, Flags::Granularity));
-        //kernel data segment 
-        gdt[2] = encodeEntry(0, 0xFFFFF, combineFlags(
-            AccessDataSegment::Present,
-            AccessDataSegment::Writeable
-        ), combineFlags(Flags::Size, Flags::Granularity));
-
-        nextGDTIndex = 3;
-        
-        gdt_flush();
-    }
-
-    Descriptor encodeEntry(uint32_t base, uint32_t limit, uint8_t access, uint8_t flags, bool setBit4) {
+    Descriptor encodeEntry(uint32_t base, uint32_t limit, uint8_t access, 
+        uint8_t flags, bool setBit4 = true) {
         Descriptor descriptor;
 
         descriptor.baseLow = base & 0xFFFF;
@@ -90,9 +59,52 @@ namespace GDT {
         return descriptor;
     }
 
+    int nextGDTIndex = 0;
+
+    void setup32() {
+        gp32.limit = sizeof(Descriptor) * 3 - 1;
+        gp32.base = reinterpret_cast<uint32_t>(&gdt32);
+
+        //null descriptor
+        gdt32[0] = encodeEntry(0, 0, 0, 0);
+        
+        //kernel code segment 
+        gdt32[1] = encodeEntry(0, 0xFFFFF, combineFlags(
+            AccessCodeSegment::Present,
+            AccessCodeSegment::Executable,
+            AccessCodeSegment::Readable
+        ), combineFlags(Flags::Size, Flags::Granularity));
+        //kernel data segment 
+        gdt32[2] = encodeEntry(0, 0xFFFFF, combineFlags(
+            AccessDataSegment::Present,
+            AccessDataSegment::Writeable
+        ), combineFlags(Flags::Size, Flags::Granularity));
+
+        nextGDTIndex = 3;
+        
+        gdt32_flush();
+    }
+
+    void setup64() {
+
+        gp64.limit = 8 * 3 - 1;
+        gp64.base = reinterpret_cast<uint64_t>(&gdt64[0]);
+
+        /* 
+        These values are based off of the tables in AMD's
+        "AMD64 Architecture Programmer's Manual Volume 2",
+        pages 88-89
+        */
+        gdt64[0] = 0;
+        gdt64[1] = (0b00000000'00100000'10011000'00000000ull) << 32;
+        gdt64[2] = (0b00000000'00000000'10000000'00000000ull) << 32;
+
+        nextGDTIndex = 3;
+    }
+
     void addTSSEntry(uint32_t address, uint32_t size) {
 
-        gdt[nextGDTIndex] = encodeEntry(address, size - 1, combineFlags(
+        gdt32[nextGDTIndex] = encodeEntry(address, size - 1, combineFlags(
             AccessCodeSegment::Accessed,
             AccessCodeSegment::Executable,
             AccessCodeSegment::Present
