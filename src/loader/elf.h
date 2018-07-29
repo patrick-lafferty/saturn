@@ -106,6 +106,13 @@ namespace Elf {
         HIPROC = 0x7fff'ffff
     };
 
+    struct Program {
+        uint64_t sourcePhysicalAddress;
+        uint64_t destinationVirtualAddress;
+        uint64_t length;
+        uint64_t entryPoint;
+    };
+
     bool verifyHeader(Header* header);
-    bool loadElfExecutable(uintptr_t address);
+    bool loadElfExecutable(uintptr_t address, Program& program);
 }

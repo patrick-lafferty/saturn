@@ -147,6 +147,7 @@ loadTopLevelPage:
 
 global finalEnter
 extern gp64
+extern mapKernel
 
 ;finalEnter performs the final steps to setting up long mode
 ;ie modifying EFER, enabling paging and loading the 64-bit GDT
@@ -171,5 +172,8 @@ finalEnter:
 bits 64
 global entryPoint64
 entryPoint64:
+
+    mov rax, 0xffffffff800000a0
+    call rax
 
     hlt

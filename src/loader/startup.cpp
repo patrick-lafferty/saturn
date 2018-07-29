@@ -71,7 +71,7 @@ T* alignCast(uint32_t address, int alignment) {
 
 int currentLine {0};
 
-void handleModules(Multiboot::Modules* tag) {
+void handleModules(Multiboot::Modules* tag, Elf::Program& program) {
     #if VERBOSE
         printInteger(tag->start, currentLine, 0);
         printInteger(tag->end, currentLine, 11);
@@ -80,7 +80,7 @@ void handleModules(Multiboot::Modules* tag) {
         currentLine++;
     #endif
 
-    if (!Elf::loadElfExecutable(tag->start)) {
+    if (!Elf::loadElfExecutable(tag->start, program)) {
         panic("Kernel module's ELF header is broken");
     }
 }
@@ -119,15 +119,21 @@ void printMemoryMap(Multiboot::MemoryMap* tag) {
 extern uint32_t __loader_memory_start;
 extern uint32_t __loader_memory_end;
 
-void createFreePageList(Multiboot::MemoryMap* tag, PhysicalMemStats& stats) {
+struct Configuration {
+    PhysicalMemStats physicalMemoryStats;
+    uint64_t moduleStart;
+    uint64_t moduleEnd;
+    Elf::Program program;
+    Multiboot::MemoryMap* map;
+};
+
+void createFreePageList(Configuration& config) {
 
     using namespace Multiboot;
-    auto count = (tag->size - sizeof(*tag)) / sizeof(MemoryMapEntry);
-    uint32_t loaderMemoryStart = reinterpret_cast<uintptr_t>(&__loader_memory_start);
-    uint32_t loaderMemoryEnd = reinterpret_cast<uintptr_t>(&__loader_memory_end);
+    auto count = (config.map->size - sizeof(*config.map)) / sizeof(MemoryMapEntry);
 
     for (decltype(count) i = 0; i < count; i++) {
-        auto ptr = reinterpret_cast<MemoryMapEntry*>(&tag->entries) ;
+        auto ptr = reinterpret_cast<MemoryMapEntry*>(&config.map->entries) ;
         auto entry = ptr + i;
 
         switch (static_cast<MemoryType>(entry->type)) {
@@ -147,16 +153,17 @@ void createFreePageList(Multiboot::MemoryMap* tag, PhysicalMemStats& stats) {
                     continue;
                 }
 
-                if (entry->baseAddress <= loaderMemoryStart
-                    || entry->baseAddress <= loaderMemoryEnd) {
+                if (entry->baseAddress <= config.moduleStart
+                    || entry->baseAddress <= config.moduleEnd) {  
+                    
                     auto oldStartAddress = entry->baseAddress;
-                    entry->baseAddress = (loaderMemoryEnd & ~0xFFF) + 0x1000;
+                    entry->baseAddress = (config.moduleEnd & ~0xFFF) + 0x1000;
                     auto skippedPages = (entry->baseAddress - oldStartAddress) / 0x1000;
 
-                    freePhysicalPages(entry->baseAddress, (entry->length / 0x1000) - skippedPages, stats);
+                    freePhysicalPages(entry->baseAddress, (entry->length / 0x1000) - skippedPages, config.physicalMemoryStats);
                 }
                 else {
-                    freePhysicalPages(entry->baseAddress, entry->length / 0x1000, stats);
+                    freePhysicalPages(entry->baseAddress, entry->length / 0x1000, config.physicalMemoryStats);
                 }
 
                 break;
@@ -205,9 +212,7 @@ void createFreePageList(Multiboot::MemoryMap* tag, PhysicalMemStats& stats) {
     }
 }
 
-struct Configuration {
-    PhysicalMemStats physicalMemoryStats;
-};
+
 
 void walkMultibootTags(Multiboot::BootInfo* info, Configuration& config) {
     using namespace Multiboot;
@@ -234,7 +239,10 @@ void walkMultibootTags(Multiboot::BootInfo* info, Configuration& config) {
                     printString("[Tag] Modules", currentLine++);
                 #endif
 
-                handleModules(static_cast<Modules*>(tag));
+                auto modules = static_cast<Modules*>(tag);
+                handleModules(modules, config.program);
+                config.moduleStart = modules->start;
+                config.moduleEnd = modules->end;
                 break;
             }
             case TagTypes::BasicMemory: {
@@ -256,7 +264,7 @@ void walkMultibootTags(Multiboot::BootInfo* info, Configuration& config) {
                     printString("[Tag] Memory Map", currentLine++);
                 #endif
 
-                createFreePageList(static_cast<MemoryMap*>(tag), config.physicalMemoryStats);
+                config.map = static_cast<MemoryMap*>(tag);
                 break;
             }
             case TagTypes::VBEInfo: {
@@ -348,7 +356,7 @@ void clearScreen() {
     }
 }
 
-uintptr_t allocatePage(Configuration& config) {
+uint64_t allocatePage(Configuration& config) {
     auto address = config.physicalMemoryStats.nextFreeAddress;
     auto nextPage = *reinterpret_cast<uint64_t*>(address);
     config.physicalMemoryStats.nextFreeAddress = nextPage;
@@ -393,6 +401,33 @@ void setupInitialPaging(Configuration& config) {
         auto page = 0x1000 * i;
         page |= flags;
         *pageTable++ = page;
+    }
+
+    //map the kernel
+
+    pageDirectoryPointer = reinterpret_cast<uint64_t*>(allocatePage(config));
+    pageDirectory = reinterpret_cast<uint64_t*>(allocatePage(config));
+    pageTable = reinterpret_cast<uint64_t*>(allocatePage(config));
+
+    clearPage(pageDirectoryPointer);
+    clearPage(pageDirectory);
+    clearPage(pageTable);
+
+    auto kernelVMA = config.program.destinationVirtualAddress;
+    auto pml4 = (kernelVMA >> 39) & 511;
+    auto pdp = (kernelVMA >> 30) & 511;
+    auto pd = (kernelVMA >> 21) & 511;
+    auto p = (kernelVMA >> 0) & 4095;
+    auto totalPages = (config.program.length / 0x1000) + 1;
+
+    *(pageMapLevel4 + pml4) = reinterpret_cast<uint64_t>(pageDirectoryPointer) | flags;
+    *(pageDirectoryPointer + pdp) = reinterpret_cast<uint64_t>(pageDirectory) | flags;
+    *(pageDirectory + pd) = reinterpret_cast<uint64_t>(pageTable) | flags;
+
+    for (auto i = 0u; i < totalPages; i++) {
+        auto page = config.program.sourcePhysicalAddress + i * 0x1000;
+        page |= flags;
+        *(pageTable + p + i) = page;
     }
 
     loadTopLevelPage(pageMapLevel4Address);
@@ -450,6 +485,7 @@ void startup(uint32_t address, uint32_t magicNumber) {
 
     Configuration config;
     walkMultibootTags(reinterpret_cast<Multiboot::BootInfo*>(address), config);
+    createFreePageList(config);
     setupInitialPaging(config);
     
     checkForLongMode();

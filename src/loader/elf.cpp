@@ -73,7 +73,7 @@ namespace Elf {
         return true;
     }
 
-    bool loadElfExecutable(uintptr_t address) {
+    bool loadElfExecutable(uintptr_t address, Program& program) {
         auto header = reinterpret_cast<Header*>(address);
 
         if (!verifyHeader(header)) {
@@ -94,6 +94,12 @@ namespace Elf {
                     #if VERBOSE
                         printString("[ELF] ProgHeader Load ", 0);
                     #endif
+
+                    program.entryPoint = header->entryPoint;
+                    program.sourcePhysicalAddress = address + programHeader->offset;
+                    program.destinationVirtualAddress = programHeader->virtualAddress;
+                    program.length = programHeader->fileSize;
+
                     break;
                 }
                 default: {
