@@ -91,12 +91,16 @@ namespace Elf {
                     break;
                 }
                 case ProgramType::Load: {
-                    printString("[ELF] ProgHeader Load ", 0);
+                    #if VERBOSE
+                        printString("[ELF] ProgHeader Load ", 0);
+                    #endif
                     break;
                 }
                 default: {
-                    printString("header ", 0);
-                    printInteger(programHeader->type, 0, 11);
+                    #if VERBOSE
+                        printString("header ", 0);
+                        printInteger(programHeader->type, 0, 11);
+                    #endif
                     break;
                 }
             }

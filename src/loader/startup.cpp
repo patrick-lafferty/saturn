@@ -39,21 +39,21 @@ struct PhysicalMemStats {
     uint64_t acpiLocation;
 };
 
-const int PageSize = 0x1000;
-
 void freePhysicalPages(uint64_t pageAddress, uint64_t count, PhysicalMemStats& stats) {
 
     /*
-    We want to set aside the first two physical pages to be used for the initial
-    page directory and first page table. If we instead used stats.nextFreeAddress,
+    We want to set aside the first four physical pages to be used for the initial
+    paging structures. If we instead used stats.nextFreeAddress,
     we would need an additional page table to account for where nextFreeAddress
     might be (ie 512mb ram => nextFreeAddress might be 0x1ffdf000, which would
     need a page table at entry 127)
     */
-    stats.firstAddress = pageAddress;
-    pageAddress += 0x2000;
+    const int PageSize = 0x1000;
 
-    for (uint64_t i = 2; i < count; i++) {
+    stats.firstAddress = pageAddress;
+    pageAddress += PageSize * 4;
+
+    for (uint64_t i = 4; i < count; i++) {
         auto page = reinterpret_cast<uint64_t volatile*>(pageAddress & ~0xfff);
         *page = stats.nextFreeAddress;
         stats.nextFreeAddress = pageAddress;
@@ -355,37 +355,47 @@ uintptr_t allocatePage(Configuration& config) {
     return address;
 }
 
+void clearPage(uint64_t* page) {
+    for (int i = 0; i < 512; i++) {
+        *page++ = 0;
+    }
+}
+
+extern "C" void loadTopLevelPage(uint32_t address);
+
 void setupInitialPaging(Configuration& config) {
     /*
-    We set aside the first two physical pages to be used for the 
+    We set aside the first four physical pages to be used for the 
     page directory and the first page table earlier in freePhysicalPages
     */
-    uint32_t pageDirectoryAddress = config.physicalMemoryStats.firstAddress;
-    auto pageDirectory = reinterpret_cast<uintptr_t*>(pageDirectoryAddress);
-    auto table = reinterpret_cast<uintptr_t*>(pageDirectoryAddress + 0x1000);
-    auto flags = 1;
-    *pageDirectory++ = reinterpret_cast<uintptr_t>(table) | flags;
+    uint32_t pageMapLevel4Address = config.physicalMemoryStats.firstAddress;
+    auto pageMapLevel4 = reinterpret_cast<uint64_t*>(pageMapLevel4Address);
+    auto pageDirectoryPointer = reinterpret_cast<uint64_t*>(pageMapLevel4Address + 0x1000);
+    auto pageDirectory = reinterpret_cast<uint64_t*>(pageMapLevel4Address + 0x2000);
+    auto pageTable = reinterpret_cast<uint64_t*>(pageMapLevel4Address + 0x3000);
 
-    for (int i = 0; i < 1023; i++) {
-        *pageDirectory++ = 0;
-    }
+    clearPage(pageMapLevel4);
+    clearPage(pageDirectoryPointer);
+    clearPage(pageDirectory);
+    clearPage(pageTable);
+
+    auto flags = 3;
+
+    *pageMapLevel4 = reinterpret_cast<uint64_t>(pageDirectoryPointer) | flags;
+    //*(pageMapLevel4 + 510) = reinterpret_cast<uintptr_t>(pageMapLevel4) | flags;
+    *pageDirectoryPointer = reinterpret_cast<uint64_t>(pageDirectory) | flags;
+    *pageDirectory = reinterpret_cast<uint64_t>(pageTable) | flags;
 
     /*
-    Identity-map the first 4 megabytes
+    Identity-map the first 2 megabytes
     */
-    for (int i = 0; i < 1024; i++) {
+    for (int i = 0; i < 512; i++) {
         auto page = 0x1000 * i;
         page |= flags;
-        *table++ = page;
+        *pageTable++ = page;
     }
 
-    asm volatile("movl %0, %%CR3 \n"
-        "movl %%CR0, %%eax \n"
-        "or $0x80000001, %%eax \n"
-        "movl %%eax, %%CR0 \n"
-        : //no output
-        : "a" (pageDirectoryAddress)
-    );
+    loadTopLevelPage(pageMapLevel4Address);
 }
 
 void checkForLongMode() {
@@ -418,6 +428,12 @@ void checkForLongMode() {
     }
 }
 
+extern "C" void finalEnter();
+void enterLongMode() {
+    GDT::setup64();
+    finalEnter();
+}
+
 extern "C"
 void startup(uint32_t address, uint32_t magicNumber) {
    
@@ -430,13 +446,14 @@ void startup(uint32_t address, uint32_t magicNumber) {
     clearScreen();
 
     IDT::setup();
-    GDT::setup();
+    GDT::setup32();
 
     Configuration config;
     walkMultibootTags(reinterpret_cast<Multiboot::BootInfo*>(address), config);
     setupInitialPaging(config);
     
     checkForLongMode();
+    enterLongMode();
 
-    printString("Startup has finished successfully", currentLine);
+    panic("Should never get here");
 }

@@ -106,11 +106,11 @@ loadIDT:
     lidt [idtPointer]
     ret
 
-global gdt_flush
-extern gp
+global gdt32_flush
+extern gp32
 
-gdt_flush:
-    lgdt [gp]
+gdt32_flush:
+    lgdt [gp32]
 
     call reloadSegments
     ret
@@ -126,5 +126,50 @@ flush:
     mov gs, eax
     mov ss, eax
 
+    ret
+
+global loadTopLevelPage
+loadTopLevelPage:
+
+    push ebp
+    mov ebp, esp
+
+    mov eax, [ebp + 8]
+    mov cr3, eax
+    mov eax, cr4
+    bts eax, 5 ; enable PAE 
+    mov cr4, eax
+
+    mov esp, ebp
+    pop ebp
 
     ret
+
+global finalEnter
+extern gp64
+
+;finalEnter performs the final steps to setting up long mode
+;ie modifying EFER, enabling paging and loading the 64-bit GDT
+;this function never returns
+finalEnter:
+
+    ;set the LM bit in EFER MSR
+    mov ecx, 0xC0000080
+    rdmsr
+    bts eax, 8
+    wrmsr
+
+    ;enable paging 
+    mov eax, CR0
+    bts eax, 31
+    mov cr0, eax
+
+    lgdt [gp64]
+
+    jmp 0x08:entryPoint64
+
+bits 64
+global entryPoint64
+entryPoint64:
+
+    hlt
