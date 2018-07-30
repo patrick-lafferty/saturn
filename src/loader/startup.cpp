@@ -71,7 +71,36 @@ T* alignCast(uint32_t address, int alignment) {
 
 int currentLine {0};
 
-void handleModules(Multiboot::Modules* tag, Elf::Program& program) {
+struct Configuration {
+    PhysicalMemStats physicalMemoryStats;
+    uint64_t moduleStart {0};
+    uint64_t moduleEnd {0};
+    int maxPrograms {1};
+    Elf::Program programs[1];
+    Multiboot::MemoryMap* map;
+    bool foundMemoryMap {false};
+    bool foundKernelModule {false};
+    int currentProgram {0};
+    int kernelProgram {-1};
+};
+
+int strcmp(const char* lhs, const char* rhs) {
+    while (*lhs != '\0' && *rhs != '\0') {
+        if (static_cast<unsigned char>(*lhs) < static_cast<unsigned char>(*rhs)) {
+            return -1;
+        }
+        else if (*lhs > *rhs) {
+            return 1;
+        }
+
+        lhs++;
+        rhs++;
+    }
+
+    return 0;
+}
+
+void loadModule(Multiboot::Modules* tag, Configuration& config) {
     #if VERBOSE
         printInteger(tag->start, currentLine, 0);
         printInteger(tag->end, currentLine, 11);
@@ -79,10 +108,32 @@ void handleModules(Multiboot::Modules* tag, Elf::Program& program) {
         printString(reinterpret_cast<const char*>(&tag->moduleStringStart), currentLine, 0);
         currentLine++;
     #endif
+    
+    if (tag->start < config.moduleStart 
+        || config.moduleStart == 0) {
+        config.moduleStart = tag->start;
+    }
 
-    if (!Elf::loadElfExecutable(tag->start, program)) {
+    if (tag->end > config.moduleEnd 
+        || config.moduleEnd == 0) {
+        config.moduleEnd = tag->end;
+    }
+
+    if (config.currentProgram == config.maxPrograms) {
+        panic("Found too many kernel modules");
+    }
+
+    if (!Elf::loadElfExecutable(tag->start, config.programs[config.currentProgram])) {
         panic("Kernel module's ELF header is broken");
     }
+
+    if (strcmp(reinterpret_cast<const char*>(&tag->moduleStringStart)
+        , "SATURN_KERNEL") == 0) {
+        config.kernelProgram = config.currentProgram;
+        config.foundKernelModule = true;
+    }
+
+    config.currentProgram++;
 }
 
 void handleBasicMemory(Multiboot::BasicMemoryInfo* tag) {
@@ -115,14 +166,6 @@ void printMemoryMap(Multiboot::MemoryMap* tag) {
 
     currentLine++;
 }
-
-struct Configuration {
-    PhysicalMemStats physicalMemoryStats;
-    uint64_t moduleStart;
-    uint64_t moduleEnd;
-    Elf::Program program;
-    Multiboot::MemoryMap* map;
-};
 
 void createFreePageList(Configuration& config) {
 
@@ -234,10 +277,9 @@ void walkMultibootTags(Multiboot::BootInfo* info, Configuration& config) {
                     printString("[Tag] Modules", currentLine++);
                 #endif
 
-                auto modules = static_cast<Modules*>(tag);
-                handleModules(modules, config.program);
-                config.moduleStart = modules->start;
-                config.moduleEnd = modules->end;
+                auto module = static_cast<Modules*>(tag);
+                loadModule(module, config);
+
                 break;
             }
             case TagTypes::BasicMemory: {
@@ -260,6 +302,7 @@ void walkMultibootTags(Multiboot::BootInfo* info, Configuration& config) {
                 #endif
 
                 config.map = static_cast<MemoryMap*>(tag);
+                config.foundMemoryMap = true;
                 break;
             }
             case TagTypes::VBEInfo: {
@@ -418,18 +461,18 @@ void setupInitialPaging(Configuration& config) {
     clearPage(pageDirectory);
     clearPage(pageTable);
 
-    auto kernelVMA = config.program.destinationVirtualAddress;
+    auto kernelVMA = config.programs[config.kernelProgram].destinationVirtualAddress;
     auto pml4 = (kernelVMA >> 39) & 511;
     auto pdp = (kernelVMA >> 30) & 511;
     auto pd = (kernelVMA >> 21) & 511;
-    auto totalPages = (config.program.length / 0x1000) + 1;
+    auto totalPages = (config.programs[config.kernelProgram].length / 0x1000) + 1;
 
     *(pageMapLevel4 + pml4) = reinterpret_cast<uint64_t>(pageDirectoryPointer) | flags;
     *(pageDirectoryPointer + pdp) = reinterpret_cast<uint64_t>(pageDirectory) | flags;
     *(pageDirectory + pd) = reinterpret_cast<uint64_t>(pageTable) | flags;
 
     for (auto i = 0u; i < totalPages; i++) {
-        auto page = config.program.sourcePhysicalAddress + i * 0x1000;
+        auto page = config.programs[config.kernelProgram].sourcePhysicalAddress + i * 0x1000;
         page |= flags;
         *(pageTable + i) = page;
     }
@@ -489,11 +532,24 @@ void startup(uint32_t address, uint32_t magicNumber) {
 
     Configuration config;
     walkMultibootTags(reinterpret_cast<Multiboot::BootInfo*>(address), config);
+
+    if (!config.foundMemoryMap) {
+        panic("Error: loader did not find memory map");
+    }
+
+    if (!config.foundKernelModule) {
+        panic("Error: loader did not find saturn kernel module");
+    }
+
+    if (config.currentProgram != config.maxPrograms) {
+        panic("Error: loader expected to find more kernel modules");
+    }
+
     createFreePageList(config);
     setupInitialPaging(config);
     
     checkForLongMode();
-    enterLongMode(config.program.entryPoint);
+    enterLongMode(config.programs[config.kernelProgram].entryPoint);
 
     panic("Should never get here");
 }
