@@ -173,7 +173,7 @@ bits 64
 global entryPoint64
 entryPoint64:
 
-    mov rax, 0xffffffff800000a0
+    mov rax, [esp + 4] 
     call rax
 
     hlt

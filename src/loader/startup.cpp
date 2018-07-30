@@ -116,9 +116,6 @@ void printMemoryMap(Multiboot::MemoryMap* tag) {
     currentLine++;
 }
 
-extern uint32_t __loader_memory_start;
-extern uint32_t __loader_memory_end;
-
 struct Configuration {
     PhysicalMemStats physicalMemoryStats;
     uint64_t moduleStart;
@@ -211,8 +208,6 @@ void createFreePageList(Configuration& config) {
         }
     }
 }
-
-
 
 void walkMultibootTags(Multiboot::BootInfo* info, Configuration& config) {
     using namespace Multiboot;
@@ -348,6 +343,10 @@ void walkMultibootTags(Multiboot::BootInfo* info, Configuration& config) {
     }
 }
 
+/*
+Loader shouldn't have any dependencies including libc, so
+this basically replaces memset
+*/
 void clearScreen() {
     auto buffer = reinterpret_cast<uint16_t*>(0xb8000);
 
@@ -356,6 +355,13 @@ void clearScreen() {
     }
 }
 
+/*
+Physical pages are stored in a linked list where the first 8 bytes
+stores an address to the next free page.
+
+Allocating a page means taking the head off the list, reading
+that page's next pointer and setting it as the head
+*/
 uint64_t allocatePage(Configuration& config) {
     auto address = config.physicalMemoryStats.nextFreeAddress;
     auto nextPage = *reinterpret_cast<uint64_t*>(address);
@@ -390,7 +396,7 @@ void setupInitialPaging(Configuration& config) {
     auto flags = 3;
 
     *pageMapLevel4 = reinterpret_cast<uint64_t>(pageDirectoryPointer) | flags;
-    //*(pageMapLevel4 + 510) = reinterpret_cast<uintptr_t>(pageMapLevel4) | flags;
+    *(pageMapLevel4 + 510) = reinterpret_cast<uintptr_t>(pageMapLevel4) | flags;
     *pageDirectoryPointer = reinterpret_cast<uint64_t>(pageDirectory) | flags;
     *pageDirectory = reinterpret_cast<uint64_t>(pageTable) | flags;
 
@@ -404,7 +410,6 @@ void setupInitialPaging(Configuration& config) {
     }
 
     //map the kernel
-
     pageDirectoryPointer = reinterpret_cast<uint64_t*>(allocatePage(config));
     pageDirectory = reinterpret_cast<uint64_t*>(allocatePage(config));
     pageTable = reinterpret_cast<uint64_t*>(allocatePage(config));
@@ -417,7 +422,6 @@ void setupInitialPaging(Configuration& config) {
     auto pml4 = (kernelVMA >> 39) & 511;
     auto pdp = (kernelVMA >> 30) & 511;
     auto pd = (kernelVMA >> 21) & 511;
-    auto p = (kernelVMA >> 0) & 4095;
     auto totalPages = (config.program.length / 0x1000) + 1;
 
     *(pageMapLevel4 + pml4) = reinterpret_cast<uint64_t>(pageDirectoryPointer) | flags;
@@ -427,7 +431,7 @@ void setupInitialPaging(Configuration& config) {
     for (auto i = 0u; i < totalPages; i++) {
         auto page = config.program.sourcePhysicalAddress + i * 0x1000;
         page |= flags;
-        *(pageTable + p + i) = page;
+        *(pageTable + i) = page;
     }
 
     loadTopLevelPage(pageMapLevel4Address);
@@ -463,10 +467,10 @@ void checkForLongMode() {
     }
 }
 
-extern "C" void finalEnter();
-void enterLongMode() {
+extern "C" void finalEnter(uint64_t entryPoint);
+void enterLongMode(uint64_t entryPoint) {
     GDT::setup64();
-    finalEnter();
+    finalEnter(entryPoint);
 }
 
 extern "C"
@@ -489,7 +493,7 @@ void startup(uint32_t address, uint32_t magicNumber) {
     setupInitialPaging(config);
     
     checkForLongMode();
-    enterLongMode();
+    enterLongMode(config.program.entryPoint);
 
     panic("Should never get here");
 }
