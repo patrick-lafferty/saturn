@@ -5,7 +5,7 @@ LD = x86_64-saturn-ld
 
 # Global flags
 ARCHDIR = src/kernel/arch/x86_64
-GLOBAL_CXX_FLAGS = -O0 -g -std=c++2a -Wall -Wextra
+GLOBAL_CXX_FLAGS = -O0 -g -std=c++2a -Wall -Wextra -Wloop-analysis -Wpedantic -Wunreachable-code-aggressive
 GLOBAL_CXX_FLAGS += -fno-omit-frame-pointer -ffreestanding -nostdinc -fno-rtti -fno-builtin -fno-exceptions
 # These flags are for libc++
 #GLOBAL_CXX_FLAGS += -D__ELF__
@@ -17,7 +17,7 @@ GLOBAL_LD_FLAGS = -g
 # Macros that create rules for each target
 define ADD_OBJECT_RULES
 
-src/$(1)/%.o: src/$(1)/%.cpp .d/src/$(1)/%.Td
+src/$(1)/%.o: src/$(1)/%.cpp 
 	$(CXX) -c $$< -o $$@ $$(GLOBAL_CXX_FLAGS) $($(1)_CXX_FLAGS)
 
 src/$(1)/%.o: src/$(1)/%.s 
@@ -37,7 +37,7 @@ all: $(BINARIES)
 	grub-mkrescue -o sysroot/system/boot/saturn.iso sysroot/system 
 
 # Dependency management
-DEPENDENCIES = $(patsubst %,.d/%.Td,$(basename $(OBJECTS)))
+DEPENDENCIES = $(patsubst %,.d/%.o.Td,$(basename $(OBJECTS)))
 %.Td: ;
 
 # Manage directory layout
@@ -65,7 +65,32 @@ clean:
 	$(RM) .d/ -rf
 	$(RM) $(OBJECTS)
 
-.PHONY: all sysroot_directories dependency_directories clean
+# Runners
+QEMU_ARGS = -cpu max -smp 2 -m 512M -s -no-reboot -no-shutdown
+QEMU_ARGS += -cdrom sysroot/system/boot/saturn.iso -serial file:saturn.log
+
+UNAME = $(shell uname -r)
+
+ifneq (,$(findstring Microsoft,$(UNAME)))
+RUNNER_EXTENSION = .exe
+endif
+
+QEMU = qemu-system-x86_64$(RUNNER_EXTENSION)
+QEMU32 = qemu-system-i386$(RUNNER_EXTENSION)
+
+qemu:
+	$(QEMU) $(QEMU_ARGS)&
+
+qemu32:
+	$(QEMU32) $(QEMU_ARGS)&
+
+bochs:
+	./meta/bochs-runner.sh
+
+virtualbox:
+	./meta/vbox-runner.sh
+
+.PHONY: all sysroot_directories dependency_directories clean qemu qemu32 bochs virtualbox
 -include $(DEPENDENCIES)
 
 #helpful rule that will display the value of something
