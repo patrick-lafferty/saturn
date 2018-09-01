@@ -98,7 +98,7 @@ namespace Elf {
                     program.entryPoint = header->entryPoint;
                     program.sourcePhysicalAddress = address + programHeader->offset;
                     program.destinationVirtualAddress = programHeader->virtualAddress;
-                    program.length = programHeader->fileSize;
+                    program.length = programHeader->memorySize;
 
                     break;
                 }
