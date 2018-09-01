@@ -45,10 +45,13 @@ void halt() {
     }
 }
 
-[[noreturn]]
-extern "C"
-void main() {
-    printString("Inside kernel", 0, 0);
+#include <memory/physical_memory_manager.h>
 
+extern "C"
+[[noreturn]]
+void initializeKernel(uint64_t firstFreeAddress, uint64_t totalFreePages) {
+    Memory::PhysicalMemoryManager::SetupGlobalManager(firstFreeAddress, totalFreePages);
+
+    printString("Inside kernel", 0, 0);
     halt();
 }

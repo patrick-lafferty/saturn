@@ -510,10 +510,10 @@ void checkForLongMode() {
     }
 }
 
-extern "C" void finalEnter(uint64_t entryPoint);
-void enterLongMode(uint64_t entryPoint) {
+extern "C" void finalEnter(uint64_t entryPoint, uint64_t nextFreeAddress, uint64_t totalFreePages);
+void enterLongMode(uint64_t entryPoint, uint64_t nextFreeAddress, uint64_t totalFreePages) {
     GDT::setup64();
-    finalEnter(entryPoint);
+    finalEnter(entryPoint, nextFreeAddress, totalFreePages);
 }
 
 extern "C"
@@ -527,6 +527,8 @@ void startup(uint32_t address, uint32_t magicNumber) {
 
     clearScreen();
 
+    checkForLongMode();
+
     IDT::setup();
     GDT::setup32();
 
@@ -538,7 +540,7 @@ void startup(uint32_t address, uint32_t magicNumber) {
     }
 
     if (!config.foundKernelModule) {
-        panic("Error: loader did not find saturn kernel module");
+        panic("Error: loader did not find Saturn kernel module");
     }
 
     if (config.currentProgram != config.maxPrograms) {
@@ -549,7 +551,9 @@ void startup(uint32_t address, uint32_t magicNumber) {
     setupInitialPaging(config);
     
     checkForLongMode();
-    enterLongMode(config.programs[config.kernelProgram].entryPoint);
+    enterLongMode(config.programs[config.kernelProgram].entryPoint, 
+        config.physicalMemoryStats.nextFreeAddress,
+        config.physicalMemoryStats.totalPages);
 
     panic("Should never get here");
 }

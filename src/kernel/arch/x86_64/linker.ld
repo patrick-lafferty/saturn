@@ -1,4 +1,4 @@
-ENTRY(main)
+ENTRY(initializeKernel)
 OUTPUT_FORMAT(elf64-x86-64)
 
 KERNEL_VMA = 0xFFFFFFFF80000000;
