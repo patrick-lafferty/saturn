@@ -1,18 +1,22 @@
 # Toolchain
 CXX = clang++-5.0
+AR = x86_64-saturn-ar
 AS = yasm
 LD = x86_64-saturn-ld
 
 # Global flags
 ARCHDIR = src/kernel/arch/x86_64
 GLOBAL_CXX_FLAGS = -O0 -g -std=c++2a -Wall -Wextra -Wloop-analysis -Wpedantic -Wunreachable-code-aggressive
-GLOBAL_CXX_FLAGS += -fno-omit-frame-pointer -ffreestanding -nostdinc -fno-rtti -fno-builtin -fno-exceptions
+GLOBAL_CXX_FLAGS += -fno-omit-frame-pointer -ffreestanding -nostdinc -nostdinc++ -fno-rtti -fno-builtin -fno-exceptions
+GLOBAL_CXX_FLAGS += -target x86_64-saturn-elf -D__ELF__ -D_LIBCPP_HAS_THREAD_API_EXTERNAL
 # These flags are for libc++
-#GLOBAL_CXX_FLAGS += -D__ELF__
-#GLOBAL_CXX_FLAGS += -isysroot sysroot/ -iwithsysroot /system/include -iwithsysroot /libraries/include/freetype2 -I src -I src/libc/include -I ../saturn-libc++/include/c++/v1 .
+TEMP_LIBCXX_PATH = ../saturn-libc++/llvm/projects/libcxx/include -I/usr/lib/llvm-5.0/lib/clang/5.0.2/include 
+CXX_PATHS = -isysroot sysroot/ -iwithsysroot /system/include -I src -I src/libc/include -I src/kernel -I src/kernel/arch/x86_64 -I $(TEMP_LIBCXX_PATH)
+GLOBAL_CXX_FLAGS += $(CXX_PATHS)
 GLOBAL_CXX_FLAGS += -MT $@ -MMD -MP -MF .d/$(strip $@).Td
 GLOBAL_AS_FLAGS = -felf64
-GLOBAL_LD_FLAGS = -g
+LD_PATHS = --sysroot=sysroot/ -L=system/libraries
+GLOBAL_LD_FLAGS = -g $(LD_PATHS)
 
 # Macros that create rules for each target
 define ADD_OBJECT_RULES
@@ -28,10 +32,11 @@ endef
 # Process all of the targets
 include src/loader/make.config
 include src/kernel/make.config
+include src/libc/make.config
 $(foreach target,$(TARGETS), $(eval $(call ADD_OBJECT_RULES,$(target))))
 
 .DEFAULT_GOAL := all
-all: $(BINARIES)
+all: sysroot_directories $(BINARIES)
 	cp src/grub.cfg sysroot/system/boot/grub/grub.cfg
 	$(RM) sysroot/system/boot/saturn.iso
 	grub-mkrescue -o sysroot/system/boot/saturn.iso sysroot/system 
@@ -45,12 +50,12 @@ DEPENDENCIES = $(patsubst %,.d/%.o.Td,$(basename $(OBJECTS)))
 MKDIR = mkdir -p
 
 sysroot_directories:
-	$(MKDIR) sysroot/
-	$(MKDIR) sysroot/system
-	$(MKDIR) sysroot/system/boot
-	$(MKDIR) sysroot/system/boot/grub
-	$(MKDIR) sysroot/system/libraries
-	$(MKDIR) sysroot/system/include
+	$(MKDIR) sysroot/ -p
+	$(MKDIR) sysroot/system -p
+	$(MKDIR) sysroot/system/boot -p
+	$(MKDIR) sysroot/system/boot/grub -p
+	$(MKDIR) sysroot/system/libraries -p
+	$(MKDIR) sysroot/system/include -p
 
 dependency_directories: 
 	$(MKDIR) .d/ -p
