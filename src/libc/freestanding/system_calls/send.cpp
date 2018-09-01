@@ -28,9 +28,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <system_calls.h>
 #include <ipc.h>
 
-extern "C" void sendImplementation(uint32_t recipient, uint32_t message);
+extern "C" void sendImplementation(uint32_t recipient, uint64_t message);
 
 void send(IPC::RecipientType recipient, IPC::Message* message) {
     
-    sendImplementation(static_cast<uint32_t>(recipient), reinterpret_cast<uint32_t>(message));
+    sendImplementation(static_cast<uint32_t>(recipient), reinterpret_cast<uint64_t>(message));
 }

@@ -27,7 +27,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include <system_calls.h>
 #include <services.h>
-#include <task.h>
 
 using namespace Kernel;
 
