@@ -31,17 +31,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 global memcpy
 memcpy:
 
-push ebp
-mov ebp, esp
+push rbp
+mov rbp, rsp
 
-mov edi, [ebp + 8]
-mov eax, edi
-mov esi, [ebp + 12]
-mov ecx, [ebp + 16]
-
+mov rax, rdi
 rep movsb
 
-mov esp, ebp
-pop ebp
+mov rsp, rbp
+pop rbp
 
 ret

@@ -1,15 +1,14 @@
 section .text
 global sendImplementation
 sendImplementation:
-    push ebp
-    mov ebp, esp
+    push rbp
+    mov rbp, rsp
 
-    mov eax, 3
-    mov ebx, [ebp + 8]
-    mov ecx, [ebp + 12]
-
+    mov rax, 3
+    mov rbx, rdi
+    mov rcx, rsi
     int 0xFF
 
-    mov esp, ebp
-    pop ebp
+    mov rsp, rbp
+    pop rbp
     ret
