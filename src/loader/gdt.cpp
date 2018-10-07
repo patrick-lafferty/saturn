@@ -97,7 +97,8 @@ namespace GDT {
         */
         gdt64[0] = 0;
         gdt64[1] = (0b00000000'00100000'10011000'00000000ull) << 32;
-        gdt64[2] = (0b00000000'00000000'10000000'00000000ull) << 32;
+        //Even though AMD says W bit is ignored, Intel requires it
+        gdt64[2] = (0b00000000'00000000'10010010'00000000ull) << 32;
 
         nextGDTIndex = 3;
     }
