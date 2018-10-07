@@ -46,12 +46,33 @@ void halt() {
 }
 
 #include <memory/physical_memory_manager.h>
+#include <memory/block_allocator.h>
+#include <idt/descriptor.h>
+#include <cpu/pic.h>
+#include <gdt.h>
+
+using namespace Memory;
+
+extern "C" void initializeSSE();
 
 extern "C"
 [[noreturn]]
 void initializeKernel(uint64_t firstFreeAddress, uint64_t totalFreePages) {
+
+    GDT::setup();
+
     Memory::PhysicalMemoryManager::SetupGlobalManager(firstFreeAddress, totalFreePages);
+    auto& physicalMemoryManager = PhysicalMemoryManager::GetGlobalManager();
+    /*VirtualMemoryManager virtualMemoryManager;
+    virtualMemoryManager.map(0x6969696969, 0x303030);*/
+    initializeSSE();
+    IDT::initialize();
+    PIC::disable();
+    asm("sti");
+
+    //Memory::BlockAllocator<int> alloc;
 
     printString("Inside kernel", 0, 0);
+    asm("int $0");
     halt();
 }
