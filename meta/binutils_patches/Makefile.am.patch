@@ -1,0 +1,40 @@
+--- Makefile.am	2018-10-14 16:42:44.437436191 -0400
++++ Makefile.saturn.am	2018-10-14 16:45:06.664594876 -0400
+@@ -286,6 +286,7 @@
+ 	eelf_i386_fbsd.c \
+ 	eelf_i386_ldso.c \
+ 	eelf_i386_nacl.c \
++	eelf_i386_saturn.c \
+ 	eelf_i386_sol2.c \
+ 	eelf_i386_vxworks.c \
+ 	eelf_iamcu.c \
+@@ -455,6 +456,7 @@
+ 	eelf_x86_64_cloudabi.c \
+ 	eelf_x86_64_fbsd.c \
+ 	eelf_x86_64_nacl.c \
++	eelf_x86_64_saturn.c \
+ 	eelf_x86_64_sol2.c \
+ 	ehppa64linux.c \
+ 	ei386pep.c \
+@@ -1295,6 +1297,10 @@
+   $(srcdir)/emulparams/elf_nacl.sh \
+   $(ELF_X86_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
+ 
++eelf_i386_saturn.c: $(srcdir)/emulparams/elf_i386_saturn.sh \
++  $(srcdir)/emulparams/elf_i386.sh \
++	$(ELF_X86_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
++
+ eelf_i386_sol2.c: $(srcdir)/emulparams/elf_i386_sol2.sh \
+   $(srcdir)/emulparams/solaris2.sh \
+   $(srcdir)/emultempl/solaris2.em \
+@@ -1846,6 +1852,10 @@
+   $(srcdir)/emulparams/elf_nacl.sh \
+   $(ELF_X86_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
+ 
++eelf_x86_64_saturn.c: $(srcdir)/emulparams/elf_x86_64_saturn.sh \
++  $(ELF_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
++	${GENSCRIPTS} elf_x86_64_saturn "$ (tdir_elf_x86_64_saturn)"
++
+ eelf_x86_64_sol2.c: $(srcdir)/emulparams/elf_x86_64_sol2.sh \
+   $(srcdir)/emulparams/elf_x86_64.sh \
+   $(srcdir)/emulparams/solaris2.sh \

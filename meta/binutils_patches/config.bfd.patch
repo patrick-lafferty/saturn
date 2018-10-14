@@ -1,0 +1,28 @@
+--- config.bfd	2018-10-14 17:02:17.227471245 -0400
++++ config.bfd.saturn	2018-10-14 17:01:42.763938370 -0400
+@@ -761,6 +761,12 @@
+     targ_selfvecs="iamcu_elf32_vec i386chaos_vec"
+     ;;
+ 
++  i[3-7]86-*-saturn*)
++    targ_defvec=i386_elf32_vec
++    targ_selvecs=
++    targ64_selvecs=x86_64_elf64_vec
++    ;;  
++
+   ia16-*-elf)
+     targ_defvec=i386_elf32_vec
+     targ_selvecs="i386_msdos_vec i386_aout_vec"
+@@ -1203,6 +1209,12 @@
+     want64=true
+     ;;
+ #ifdef BFD64
++  x86_64-*-saturn*)
++    targ_defvec=x86_64_elf64_vec
++    targ_selvecs=i386_elf32_vec
++    want64=true
++    ;;
++
+   s390x-*-linux*)
+     targ_defvec=s390_elf64_vec
+     targ_selvecs=s390_elf32_vec
