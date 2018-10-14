@@ -120,6 +120,9 @@ FILE* freopen(const char* restrict filename, const char* restrict mode, FILE* re
 //for bsd_locale_fallbacks
 int vasprintf(char** strp, const char* fmt, va_list ap);
 
+//ONLY for building libc++, this will not get implemented
+char* gets(char*);
+
 #ifdef __cplusplus
 }
 #endif

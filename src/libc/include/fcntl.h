@@ -27,60 +27,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #pragma once
 
-#include <stddef.h>
+/*
+Libc++ wants to see this file when building itself. 
+*/
 
-#define CLOCK_REALTIME 0
-#define CLOCK_MONOTONIC 1
+#include "sys/types.h"
 
-#define CLOCKS_PER_SEC 1
-#define TIME_UTC 1
+#define O_RDONLY 1
 
-#ifdef __cplusplus
-extern "C" {
-
-#undef restrict
-#define restrict
-	
-#endif
-
-typedef int clock_t;
-typedef int time_t;
-
-struct timespec {
-    time_t tv_sec;
-    long tv_nsec;
-};
-
-struct tm {
-    int tm_sec;
-    int tm_min;
-    int tm_hour;
-    int tm_mday;
-    int tm_mon;
-    int tm_year;
-    int tm_wday;
-    int tm_yday;
-    int tm_isdst;
-};
-
-clock_t clock(void);
-double difftime(time_t time1, time_t time0);
-time_t mktime(struct tm* timeptr);
-time_t time(time_t* timer);
-
-char* asctime(const struct tm* timeptr);
-char* ctime(const time_t* timer);
-struct tm* gmtime(const time_t* timer);
-struct tm* localtime(const time_t* timer);
-size_t strftime(char* restrict s,
-    size_t maxSize,
-    const char* restrict format,
-    const struct tm* restrict timeptr);
-
-typedef int clockid_t;
-
-int clock_gettime(clockid_t, struct timespec*);
-
-#ifdef __cplusplus
-}
-#endif
+int open(const char*, int);
+ssize_t read(int, void*, size_t);
+int close(int);

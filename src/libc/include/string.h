@@ -31,6 +31,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef __cplusplus
 extern "C" {
+
+#undef restrict
+#define restrict
+
 #endif
 
 void* prekernel_memset(void* destination, int fillByte, size_t count);
@@ -64,6 +68,7 @@ char* strpbrk(const char* s1, const char* s2);
 size_t strspn(const char* s1, const char* s2);
 char* strtok(char* restrict s1, const char* restrict s2);
 char* strerror(int errnum);
+char* strerror_r(int, char*, size_t);
 
 #ifdef __cplusplus
 }

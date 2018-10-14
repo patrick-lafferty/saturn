@@ -31,6 +31,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef __cplusplus
 extern "C" {
+
+#undef restrict
+#define restrict
+	
 #endif
 
 void* malloc(size_t size);
@@ -39,9 +43,7 @@ void free(void* ptr);
 void* aligned_alloc(size_t alignment, size_t size);
 void* realloc(void* ptr, size_t size);
 
-//TODO: we claim to be msvc-like to avoid using posix_memalign, so libcxx expects this
-#define _aligned_malloc(size, alignment) aligned_alloc(alignment, size)
-#define _aligned_free free
+int posix_memalign(void** ptr, size_t alignment, size_t size);
 
 long strtol(const char* str, char** str_end, int base);
 
