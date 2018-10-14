@@ -93,6 +93,43 @@ the logs using a Gemini expression.
 
 As Saturn is still in its very early stages, there are no releases yet.
 
+# Building
+
+Saturn is currently undergoing a major overhaul and thus isn't runnable, but the build system has now been improved to the point where user builds are possible. This section is just for reference for the time being.
+
+## Requirements
+- clang >= 5.0
+- svn
+- yasm >= 1.3
+- cmake >= 3.11
+- patch >= 2.7.6
+- automake exactly 1.15
+- autoconf exactly 2.69
+- grub2-mkrescue
+
+## Setup
+
+`git clone https://github.com/patrick-lafferty/saturn.git`
+
+`cd saturn`
+
+`make`
+
+
+## Running
+
+Qemu:
+
+`make qemu`
+
+Bochs:
+
+`make bochs`
+
+VirtualBox:
+
+`make virtualbox`
+
 # License
 
 Saturn uses the 3-clause BSD license.
