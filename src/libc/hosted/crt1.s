@@ -33,14 +33,8 @@ global _start
 extern main
 
 _start:
-    mov ebp, 0
-    push ebp
-    mov ebp, esp
-
+    mov rbp, rsp
     ;TODO: call constructors
 
     call main
-
-    pop ebp
-
     ret
