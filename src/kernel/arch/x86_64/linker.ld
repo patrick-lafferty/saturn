@@ -29,6 +29,8 @@ SECTIONS
         *(.bss)
         _bss_end = .;
     }
+    
+    _bss_length = _bss_end - _bss_start; 
 
     .ctors :
     {

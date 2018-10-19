@@ -1,6 +1,6 @@
 %if 0
 
-Copyright (c) 2017, Patrick Lafferty
+Copyright (c) 2018, Patrick Lafferty
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -27,12 +27,10 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 %endif
-section .text
 
 global _start
-extern main
 extern _runConstructors
-extern _runDestructors
+extern initializeKernel
 extern _bss_start
 extern _bss_length
 
@@ -50,13 +48,7 @@ clearBSSSection:
   ret
 
 _start:
-    mov rbp, rsp
-
     call clearBSSSection
     call _runConstructors
 
-    call main
-
-    call _runDestructors
-
-    ret
+    call initializeKernel
