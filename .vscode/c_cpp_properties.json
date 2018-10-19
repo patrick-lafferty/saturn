@@ -1,56 +1,62 @@
 {
     "configurations": [
         {
-            "name": "Mac",
+            "name": "Linux",
             "includePath": [
-                "/usr/include",
-                "/usr/local/include",
-                "${workspaceRoot}"
+                "${workspaceFolder}",
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/src/kernel",
+                "${workspaceFolder}/src/libc/include",
+                "${workspaceFolder}/src/kernel/arch/x86_64",
+                "${workspaceFolder}/sysroot/system/include",
+                "${workspaceFolder}/sysroot/libraries/include/freetype2"
             ],
-            "defines": [],
+            "defines": [
+                "__STDC_HOSTED__=0",
+                "__INT64_TYPE__=long int",
+                "__INT32_TYPE__=int",
+                "__INT16_TYPE__=short",
+                "__INT8_TYPE__=char",
+                "__UINT64_TYPE__=long unsigned int",
+                "__UINT32_TYPE__=unsigned int",
+                "__UINT16_TYPE__=unsigned short",
+                "__UINT8_TYPE__=unsigned char",
+                "__INTPTR_WIDTH__=32",
+                "__INTMAX_TYPE__=long int",
+                "__UINTMAX_TYPE__=long int",
+                "__SIZE_TYPE__=long unsigned int",
+                "__SCHAR_MAX__=127",
+                "__WCHAR_MAX__=2147483647",
+                "__LITTLE_ENDIAN__",
+                "restrict=__restrict"
+            ],
             "intelliSenseMode": "clang-x64",
             "browse": {
                 "path": [
-                    "/usr/include",
-                    "/usr/local/include",
-                    "${workspaceRoot}"
+                    "/usr/lib64/clang/6.0.1/include",
+                    "${workspaceFolder}/src",
+                    "${workspaceFolder}/src/kernel",
+                    "${workspaceFolder}/src/libc/include",
+                    "${workspaceFolder}/src/kernel/arch/i386",
+                    "${workspaceFolder}/sysroot/system/include",
+                    "${workspaceFolder}/sysroot/libraries/include/freetype2",
+                    "${workspaceFolder}/../saturn-ports/llvm/projects/libcxx/include"
                 ],
                 "limitSymbolsToIncludedHeaders": true,
                 "databaseFilename": ""
             },
-            "macFrameworkPath": [
-                "/System/Library/Frameworks",
-                "/Library/Frameworks"
-            ]
-        },
-        {
-            "name": "Linux",
-            "includePath": [
-                "/usr/include",
-                "/usr/local/include",
-                "${workspaceRoot}"
-            ],
-            "defines": [],
-            "intelliSenseMode": "clang-x64",
-            "browse": {
-                "path": [
-                    "/usr/include",
-                    "/usr/local/include",
-                    "${workspaceRoot}"
-                ],
-                "limitSymbolsToIncludedHeaders": true,
-                "databaseFilename": ""
-            }
+            "cStandard": "c11",
+            "cppStandard": "c++17"
         },
         {
             "name": "WSL",
             "includePath": [
-                "${localappdata}/lxss/rootfs/usr/include/clang/5.0.1/include",
+                "${localappdata}/lxss/rootfs/usr/include/clang/5.0.2/include",
                 "${workspaceRoot}",
                 "${workspaceRoot}/src",
                 "${workspaceRoot}/src/kernel",
                 "${workspaceRoot}/src/libc/include",
-                "${workspaceRoot}/src/kernel/arch/i386",
+                "${workspaceRoot}/src/kernel/arch/x86_64",
                 "${workspaceRoot}/sysroot/system/include",
                 "${workspaceRoot}/sysroot/libraries/include/freetype2",
                 "${workspaceRoot}/../saturn-ports/llvm/projects/libcxx/include"
@@ -71,12 +77,14 @@
                 "__SIZE_TYPE__=long unsigned int",
                 "__SCHAR_MAX__=127",
                 "__WCHAR_MAX__=2147483647",
-                "__LITTLE_ENDIAN__"
+                "__LITTLE_ENDIAN__",
+                "restrict=__restrict"
             ],
             "intelliSenseMode": "clang-x64",
             "browse": {
                 "path": [
                     "${localappdata}/lxss/rootfs/usr/include/clang/5.0.1/include",
+                    "/usr/lib64/clang/6.0.1/include",
                     "${workspaceRoot}/src",
                     "${workspaceRoot}/src/kernel",
                     "${workspaceRoot}/src/libc/include",
