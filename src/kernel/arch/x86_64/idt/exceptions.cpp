@@ -27,6 +27,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "exceptions.h"
 #include "descriptor.h"
+#include <cpu/metablocks.h>
+#include <memory/physical_memory_manager.h>
+#include <memory/virtual_memory_manager.h>
 
 namespace IDT {
 
@@ -65,10 +68,98 @@ void printString2(const char* message, int line, int column) {
     }
 }
 
+enum class Exception {
+    DivideError,
+    DebugException,
+    NonMaskableExternalInterrupt,
+    Breakpoint,
+    Overflow,
+    BoundRangeExceeded,
+    InvalidOpcode,
+    DeviceNotAvailable,
+    DoubleFault,
+    CoprocessorSegmentOverrun,
+    InvalidTSS,
+    SegmentNotPresent,
+    StackSegmentFault,
+    GeneralProtectionFault,
+    PageFault,
+    Reserved,
+    FPUError,
+    AlignmentCheck,
+    MachineCheck,
+    SIMDException,
+    VirtualizationException
+};
+
+bool handlePageFault(uintptr_t virtualAddress, uint32_t errorCode) {
+    enum class PageFaultError {
+        ProtectionViolation = 1 << 0,
+        WriteAccess = 1 << 1,
+        UserMode = 1 << 2
+    };
+
+    static int faults = 0;
+
+    if (errorCode & static_cast<uint32_t>(PageFaultError::ProtectionViolation)) {
+        //kprintf("[IDT] Page fault: protection violation [%x]\n", virtualAddress);
+        
+        if (errorCode & static_cast<uint32_t>(PageFaultError::UserMode)) {
+            //kprintf("[IDT] Attempted %s in usermode\n",
+            //    errorCode & static_cast<uint32_t>(PageFaultError::WriteAccess)
+            //        ? "write" : "read");
+        }
+
+        asm volatile("hlt");
+    }
+    else {
+
+        auto& core = CPU::getCurrentCore();
+
+        auto pageStatus = core.virtualMemory->getPageStatus(virtualAddress);
+        
+        if (pageStatus == Memory::PageStatus::Allocated) {
+            //we need to map a physical page
+            auto physicalPage = core.physicalMemory->allocatePage();
+            core.virtualMemory->map(virtualAddress, physicalPage);
+            core.physicalMemory->finishAllocation(virtualAddress);
+
+            faults++;
+
+            return true;
+        }
+        else if (pageStatus == Memory::PageStatus::Mapped) {
+            //this shouldn't happen?
+            //kprintf("[IDT] Page Fault: mapped address?\n");
+            asm volatile("hlt");
+        }
+        else {
+            //kprintf("[IDT] Illegal Memory Access: %x\n", virtualAddress);     
+            asm volatile("hlt");
+        }
+    }
+
+    return false;
+}
+
 void exceptionHandler(ExceptionFrame* frame) {
+
+    switch (static_cast<Exception>(frame->index)) {
+        case Exception::PageFault: {
+            uintptr_t virtualAddress;
+            asm("movq %%CR2, %%rax" : "=a" (virtualAddress));
+
+            if (!handlePageFault(virtualAddress, frame->error)) {
+                //panic(frame);
+            }
+
+            break;
+        }
+    }
+
     char msg[] = {0, 0, 0};
-    msg[0] = '0' + (frame->error / 10);
-    msg[1] = '0' + (frame->error % 10);
+    msg[0] = '0' + (frame->index / 10);
+    msg[1] = '0' + (frame->index % 10);
     static int line = 1;
     printString2(msg, line++, 0);
 }
