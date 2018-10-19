@@ -147,6 +147,21 @@ bool handlePageFault(uintptr_t virtualAddress, uint32_t errorCode) {
 void exceptionHandler(ExceptionFrame* frame) {
 
     switch (static_cast<Exception>(frame->index)) {
+        case Exception::DoubleFault: {
+            log("Double fault");
+            panic();
+            break;
+        }
+        case Exception::InvalidTSS: {
+            log("Invalid TSS");
+            panic();
+            break;
+        }
+        case Exception::GeneralProtectionFault: {
+            log("General protection fault");
+            panic();
+            break;
+        }
         case Exception::PageFault: {
             uintptr_t virtualAddress;
             asm("movq %%CR2, %%rax" : "=a" (virtualAddress));

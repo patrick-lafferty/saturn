@@ -99,7 +99,9 @@ void initializeKernel(uint64_t firstFreeAddress, uint64_t totalFreePages) {
     CPU::setupCore(&physicalMemoryManager, &virtualMemoryManager);
 
     //virtualMemoryManager.map(0x6969696969, 0x303030);
-    int x = *reinterpret_cast<int*>(0xabcdef00);
+    volatile int x = 10;
+    volatile int y = 0;
+    volatile int z = x / y;
 
     log("hello %d and %d", 1, 1);
     log("hello %d and %d", 2, 3);
