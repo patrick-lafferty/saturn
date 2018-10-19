@@ -1,6 +1,5 @@
-%if 0
-
-Copyright (c) 2017, Patrick Lafferty
+/*
+Copyright (c) 2018, Patrick Lafferty
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -25,22 +24,22 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
 ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 
-%endif
-section .text
+extern void (*_constructors_start)();
+extern void (*_constructors_end)();
 
-global _start
-extern main
-extern _runConstructors
-extern _runDestructors
+extern "C" void _runConstructors() {
+    for (auto constructor = &_constructors_start; constructor != &_constructors_end; ++constructor) {
+        (*constructor)();
+    }
+}
 
-_start:
-    mov rbp, rsp
+extern void (*_destructors_start)();
+extern void (*_destructors_end)();
 
-    call _runConstructors
-
-    call main
-
-    call _runDestructors
-
-    ret
+extern "C" void _runDestructors() {
+    for (auto destructor = &_destructors_start; destructor != &_destructors_end; ++destructor) {
+        (*destructor)();
+    }
+}
