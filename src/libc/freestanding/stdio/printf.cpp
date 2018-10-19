@@ -208,7 +208,7 @@ int printf(const char* format, ...) {
     va_end(args);
     
     message.buffer[charactersWritten] = '\0';
-    fwrite(message.buffer, charactersWritten, 1, stdout);
+    //fwrite(message.buffer, charactersWritten, 1, stdout);
 
     return charactersWritten;
 }
@@ -264,8 +264,48 @@ int fprintf(FILE* restrict /*stream*/,
     return 0;
 }
 
-int snprintf(char* restrict /*s*/, 
-    size_t /*n*/, 
-    const char* restrict /*format*/, ...) {
-    return 0;
+int snprintf(char* restrict buffer, size_t maxLength, const char* restrict format, ...) {
+    
+    if (format == nullptr) {
+        return -1;
+    }
+
+    va_list args;
+    va_start(args, format);
+
+    int charactersWritten = 0;
+
+    auto write = [&](auto c) {
+        if (static_cast<size_t>(charactersWritten) < maxLength) {
+            buffer[charactersWritten] = c;
+        }
+
+        charactersWritten++;
+    };
+
+    printf_impl(format, args, write, charactersWritten);
+
+    va_end(args);
+
+    return charactersWritten;
+}
+
+int vsnprintf(char* restrict buffer, size_t maxLength, const char* restrict format, va_list args) {
+    if (buffer == nullptr || format == nullptr) {
+        return -1;
+    }
+
+    int charactersWritten = 0;
+
+    auto write = [&](auto c) {
+        if (static_cast<size_t>(charactersWritten) < maxLength) {
+            buffer[charactersWritten] = c;
+        }
+
+        charactersWritten++;
+    };
+
+    printf_impl(format, args, write, charactersWritten);
+
+    return charactersWritten;
 }
