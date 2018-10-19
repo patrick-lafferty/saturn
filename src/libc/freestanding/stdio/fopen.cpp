@@ -29,6 +29,24 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "file.h"
 #include <system_calls.h>
 
+#ifndef __cplusplus 
+
+/*
+Temporary workaround
+
+libc++ requires libc to be built.
+libc uses c++ in its implementation, and so requires libc++.
+To bootstrap the build, we need a dummy definition of operator
+new so that libc can build, so then libc++ can build,
+so libc can build again, so libc++ can build again.
+*/
+
+void* operator new(size_t) {
+    return nullptr;
+}
+
+#endif
+
 FILE* fopen(const char* restrict filename, const char* restrict /*mode*/) {
     auto result = openSynchronous(filename);
 
