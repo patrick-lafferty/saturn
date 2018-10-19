@@ -25,18 +25,6 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#include <stdint.h>
-
-void printString(const char* message, int line, int column) {
-
-    auto position = line * 80 + column;
-    auto buffer = reinterpret_cast<uint16_t*>(0xb8000) + position;
-
-    while(message && *message != '\0') {
-        *buffer++ = *message++ | (0xF << 8);
-    }
-}
-
 [[noreturn]]
 void halt() {
     while (true) {
@@ -49,11 +37,48 @@ void halt() {
 #include <memory/block_allocator.h>
 #include <idt/descriptor.h>
 #include <cpu/pic.h>
+#include <cpu/metablocks.h>
 #include <gdt.h>
+#include <log.h>
 
 using namespace Memory;
 
 extern "C" void initializeSSE();
+
+class Test {
+public:
+
+    Test() {
+        x = 1336;
+    }
+
+    static void xx() {
+        y++;
+    }
+
+    static int y;
+    int x;
+};
+
+class Test2 {
+public:
+
+    Test2() {
+        x = 2336;
+    }
+
+    static void xx() {
+        y++;
+    }
+
+    static int y;
+    int x;
+};
+
+int Test::y = 5;
+
+static Test test;
+static Test2 test2;
 
 extern "C"
 [[noreturn]]
@@ -63,16 +88,22 @@ void initializeKernel(uint64_t firstFreeAddress, uint64_t totalFreePages) {
 
     Memory::PhysicalMemoryManager::SetupGlobalManager(firstFreeAddress, totalFreePages);
     auto& physicalMemoryManager = PhysicalMemoryManager::GetGlobalManager();
-    /*VirtualMemoryManager virtualMemoryManager;
-    virtualMemoryManager.map(0x6969696969, 0x303030);*/
     initializeSSE();
     IDT::initialize();
     PIC::disable();
     asm("sti");
 
     //Memory::BlockAllocator<int> alloc;
+    VirtualMemoryManager virtualMemoryManager;
 
-    printString("Inside kernel", 0, 0);
-    asm("int $0");
+    CPU::setupCore(&physicalMemoryManager, &virtualMemoryManager);
+
+    //virtualMemoryManager.map(0x6969696969, 0x303030);
+    int x = *reinterpret_cast<int*>(0xabcdef00);
+
+    log("hello %d and %d", 1, 1);
+    log("hello %d and %d", 2, 3);
+    log("hello %d and %d", 5, 8);
+
     halt();
 }

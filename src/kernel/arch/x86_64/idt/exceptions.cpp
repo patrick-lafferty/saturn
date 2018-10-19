@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <cpu/metablocks.h>
 #include <memory/physical_memory_manager.h>
 #include <memory/virtual_memory_manager.h>
+#include <log.h>
 
 namespace IDT {
 
@@ -58,16 +59,6 @@ namespace IDT {
     }
 }
 
-void printString2(const char* message, int line, int column) {
-
-    auto position = line * 80 + column;
-    auto buffer = reinterpret_cast<uint16_t*>(0xb8000) + position;
-
-    while(message && *message != '\0') {
-        *buffer++ = *message++ | (0xF << 8);
-    }
-}
-
 enum class Exception {
     DivideError,
     DebugException,
@@ -92,6 +83,17 @@ enum class Exception {
     VirtualizationException
 };
 
+[[noreturn]]
+void panic() {
+
+    log("Saturn has encountered an unrecoverable error");
+
+    while (true) {
+        asm("cli");
+        asm("hlt");
+    }
+}
+
 bool handlePageFault(uintptr_t virtualAddress, uint32_t errorCode) {
     enum class PageFaultError {
         ProtectionViolation = 1 << 0,
@@ -102,15 +104,15 @@ bool handlePageFault(uintptr_t virtualAddress, uint32_t errorCode) {
     static int faults = 0;
 
     if (errorCode & static_cast<uint32_t>(PageFaultError::ProtectionViolation)) {
-        //kprintf("[IDT] Page fault: protection violation [%x]\n", virtualAddress);
+        log("[IDT] Page fault: protection violation [%x]", virtualAddress);
         
         if (errorCode & static_cast<uint32_t>(PageFaultError::UserMode)) {
-            //kprintf("[IDT] Attempted %s in usermode\n",
-            //    errorCode & static_cast<uint32_t>(PageFaultError::WriteAccess)
-            //        ? "write" : "read");
+            log("[IDT] Attempted %s in usermode",
+                errorCode & static_cast<uint32_t>(PageFaultError::WriteAccess)
+                    ? "write" : "read");
         }
 
-        asm volatile("hlt");
+        panic();
     }
     else {
 
@@ -130,12 +132,12 @@ bool handlePageFault(uintptr_t virtualAddress, uint32_t errorCode) {
         }
         else if (pageStatus == Memory::PageStatus::Mapped) {
             //this shouldn't happen?
-            //kprintf("[IDT] Page Fault: mapped address?\n");
-            asm volatile("hlt");
+            log("[IDT] Page Fault: mapped address?");
+            panic();
         }
         else {
-            //kprintf("[IDT] Illegal Memory Access: %x\n", virtualAddress);     
-            asm volatile("hlt");
+            log("[IDT] Illegal Memory Access: %x", virtualAddress);     
+            panic();
         }
     }
 
@@ -150,16 +152,13 @@ void exceptionHandler(ExceptionFrame* frame) {
             asm("movq %%CR2, %%rax" : "=a" (virtualAddress));
 
             if (!handlePageFault(virtualAddress, frame->error)) {
-                //panic(frame);
+                panic();
             }
 
             break;
         }
+        default: {
+            log("Unhandled exception %d", frame->index);
+        }
     }
-
-    char msg[] = {0, 0, 0};
-    msg[0] = '0' + (frame->index / 10);
-    msg[1] = '0' + (frame->index % 10);
-    static int line = 1;
-    printString2(msg, line++, 0);
 }
