@@ -40,6 +40,7 @@ namespace Elf {
         uint64_t programHeaderOffset;
         uint64_t sectionHeaderOffset;
         uint32_t processorFlags;
+        uint16_t elfHeaderSize;
         uint16_t programHeaderEntrySize;
         uint16_t programHeaderEntryCount;
         uint16_t sectionHeaderEntrySize;
@@ -101,16 +102,19 @@ namespace Elf {
         SHLIB = 5,
         ProgramHeaderTable = 6,
         LOOS = 0x6000'0000,
+        GNUStack = 0x6474'e550,
         HIOS = 0x6fff'ffff,
         LOPROC = 0x7000'0000,
         HIPROC = 0x7fff'ffff
     };
 
+    const int MAX_PROGRAM_HEADERS = 4;
+
     struct Program {
-        uint64_t sourcePhysicalAddress;
-        uint64_t destinationVirtualAddress;
-        uint64_t length;
+        ProgramHeader* headers[MAX_PROGRAM_HEADERS];
+        uint64_t startAddress;
         uint64_t entryPoint;
+        int headerCount;
     };
 
     bool verifyHeader(Header* header);

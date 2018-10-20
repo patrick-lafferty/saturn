@@ -80,9 +80,14 @@ namespace Elf {
             return false;
         }
 
+        auto programStart = address + header->programHeaderOffset;
+        program.startAddress = address;
+        program.entryPoint = header->entryPoint;
+        program.headerCount = 0;
+
         for (auto i = 0u; i < header->programHeaderEntryCount; i++) {
             auto programHeader = reinterpret_cast<ProgramHeader*>(
-                address + header->programHeaderOffset + header->programHeaderEntrySize * i
+                programStart + header->programHeaderEntrySize * i
             );
 
             switch (static_cast<ProgramType>(programHeader->type)) {
@@ -95,11 +100,20 @@ namespace Elf {
                         printString("[ELF] ProgHeader Load ", 0);
                     #endif
 
-                    program.entryPoint = header->entryPoint;
-                    program.sourcePhysicalAddress = address + programHeader->offset;
-                    program.destinationVirtualAddress = programHeader->virtualAddress;
-                    program.length = programHeader->memorySize;
+                    if (program.headerCount >= MAX_PROGRAM_HEADERS) {
+                        printString("[ELF] Found too many LOAD program headers", 0);
+                        return false;
+                    }
 
+                    program.headers[program.headerCount] = programHeader;
+                    program.headerCount++;
+
+                    break;
+                }
+                case ProgramType::GNUStack: {
+                    #if VERBOSE
+                        printString("[ELF] ProgHeader GNU_STACK ", 0);
+                    #endif
                     break;
                 }
                 default: {

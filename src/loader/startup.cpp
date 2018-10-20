@@ -420,6 +420,66 @@ void clearPage(uint64_t* page) {
 
 extern "C" void loadTopLevelPage(uint32_t address);
 
+void mapProgram(uint64_t* pageMapLevel4, Configuration& config, Elf::Program& program) {
+
+    auto tableFlags = 3;
+
+    for (int i = 0; i < program.headerCount; i++) {
+        auto& header = *program.headers[i];
+        auto kernelVMA = header.virtualAddress;
+        auto pml4 = (kernelVMA >> 39) & 511;
+        auto pdp = (kernelVMA >> 30) & 511;
+        auto pd = (kernelVMA >> 21) & 511;
+
+        if (*(pageMapLevel4 + pml4) == 0) {
+            auto pageDirectoryPointer = reinterpret_cast<uint64_t*>(allocatePage(config));
+            clearPage(pageDirectoryPointer);
+            *(pageMapLevel4 + pml4) = reinterpret_cast<uint64_t>(pageDirectoryPointer) | tableFlags;
+        }
+
+        auto pageDirectoryPointer = reinterpret_cast<uint64_t*>(*(pageMapLevel4 + pml4) & ~tableFlags);
+
+        if (*(pageDirectoryPointer + pdp) == 0) {
+            auto pageDirectory = reinterpret_cast<uint64_t*>(allocatePage(config));
+            clearPage(pageDirectory);
+            *(pageDirectoryPointer + pdp) = reinterpret_cast<uint64_t>(pageDirectory) | tableFlags;
+        }
+
+        auto pageDirectory = reinterpret_cast<uint64_t*>(*(pageDirectoryPointer + pdp) & ~tableFlags);
+
+        if (*(pageDirectory + pd) == 0) {
+            auto pageTable = reinterpret_cast<uint64_t*>(allocatePage(config));
+            clearPage(pageTable);
+            *(pageDirectory + pd) = reinterpret_cast<uint64_t>(pageTable) | tableFlags;
+        }
+
+        auto pageTable = reinterpret_cast<uint64_t*>(*(pageDirectory + pd) & ~tableFlags);
+        auto totalPages = (header.memorySize / 0x1000) + 1;
+
+        //TODO: right now this can only handle a single page table
+        auto pageFlags = tableFlags;
+        uint8_t* fileStart = reinterpret_cast<uint8_t*>(program.startAddress + header.offset);
+
+        for (auto i = 0u; i < totalPages; i++) {
+
+            auto pageAddress = allocatePage(config);
+            auto page = reinterpret_cast<uint8_t*>(pageAddress);
+            pageAddress |= pageFlags;
+
+            auto bytesToCopy = header.fileSize > 0x1000 ? 0x1000 : header.fileSize;
+            header.fileSize -= bytesToCopy;
+
+            for (int i = 0; i < bytesToCopy; i++) {
+                *page++ = *fileStart++;
+            }
+
+            auto virtualPage = header.virtualAddress + i * 0x1000;
+            auto pageIndex = (virtualPage >> 12) & 511;
+            *(pageTable + pageIndex) = pageAddress;
+        }
+    }
+}
+
 void setupInitialPaging(Configuration& config) {
     /*
     We set aside the first four physical pages to be used for the 
@@ -452,30 +512,7 @@ void setupInitialPaging(Configuration& config) {
         *pageTable++ = page;
     }
 
-    //map the kernel
-    pageDirectoryPointer = reinterpret_cast<uint64_t*>(allocatePage(config));
-    pageDirectory = reinterpret_cast<uint64_t*>(allocatePage(config));
-    pageTable = reinterpret_cast<uint64_t*>(allocatePage(config));
-
-    clearPage(pageDirectoryPointer);
-    clearPage(pageDirectory);
-    clearPage(pageTable);
-
-    auto kernelVMA = config.programs[config.kernelProgram].destinationVirtualAddress;
-    auto pml4 = (kernelVMA >> 39) & 511;
-    auto pdp = (kernelVMA >> 30) & 511;
-    auto pd = (kernelVMA >> 21) & 511;
-    auto totalPages = (config.programs[config.kernelProgram].length / 0x1000) + 1;
-
-    *(pageMapLevel4 + pml4) = reinterpret_cast<uint64_t>(pageDirectoryPointer) | flags;
-    *(pageDirectoryPointer + pdp) = reinterpret_cast<uint64_t>(pageDirectory) | flags;
-    *(pageDirectory + pd) = reinterpret_cast<uint64_t>(pageTable) | flags;
-
-    for (auto i = 0u; i < totalPages; i++) {
-        auto page = config.programs[config.kernelProgram].sourcePhysicalAddress + i * 0x1000;
-        page |= flags;
-        *(pageTable + i) = page;
-    }
+    mapProgram(pageMapLevel4, config, config.programs[config.kernelProgram]);
 
     loadTopLevelPage(pageMapLevel4Address);
 }
