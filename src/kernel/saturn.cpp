@@ -63,14 +63,25 @@ extern "C" void initializeSSE();
 
 class Test {
     public:
-    bool test() {
+
+    static bool example() {
         bool a = true;
-        int b = 0;
+        int b = 1;
 
         auto isTrue = Assert::isTrue(a, "a isn't true");
         auto isLong = Assert::isGreater(b, 5, "b isn't long");
 
         return Assert::all(isTrue, isLong);
+    }
+
+    static bool canRunTwo() {
+        auto isTrue = Assert::isTrue(false, "false isn't true");
+
+        return Assert::all(isTrue);
+    }
+
+    static bool run() {
+        return Preflight::runTests(example, canRunTwo);
     }
 };
 
@@ -98,8 +109,7 @@ void initializeKernel(uint64_t firstFreeAddress, uint64_t totalFreePages) {
 
 //    testBlockAllocator(physicalMemoryManager, virtualMemoryManager);
 
-    Test t;
-    t.test();
+    Preflight::runTestSuites<Test>();
 
     halt();
 }

@@ -56,3 +56,42 @@ namespace Assert {
         return (... && (assertions)());
     }
 }
+
+namespace Preflight {
+
+    /*
+    A test suite is a class that has multiple test functions.
+    Test functions must be static bool(void);
+    Suites must contain a static function called run that
+    calls all of the tests, and returns bool.
+
+    class SomeTest {
+    public:
+
+        static bool test() {
+            auto assertion = Assert::something(actual, expected, message);
+
+            return Assert::all(assertion, ...);
+        }
+
+        static bool run() {
+            return Preflight::runTests(test, ...);
+        }
+    };
+
+    Then to run test suites, call 
+
+    Preflight::runTestSuites<SomeTest, ...>();
+
+    */    
+
+    template<typename... Tests>
+    decltype(auto) runTests(Tests... tests) {
+        return (... && (tests)());
+    }
+    
+    template<typename... Tests>
+    decltype(auto) runTestSuites() {
+        return (... && (Tests::run()));
+    }
+}
