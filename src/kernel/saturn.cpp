@@ -64,9 +64,11 @@ extern "C" void initializeSSE();
 class Test {
     public:
 
+    static constexpr char* name = "Suite A";
+
     static bool example() {
         bool a = true;
-        int b = 1;
+        int b = 2;
 
         auto isTrue = Assert::isTrue(a, "a isn't true");
         auto isLong = Assert::isGreater(b, 5, "b isn't long");
@@ -75,13 +77,38 @@ class Test {
     }
 
     static bool canRunTwo() {
-        auto isTrue = Assert::isTrue(false, "false isn't true");
+        auto isTrue = Assert::isTrue(true, "true isn't true");
 
         return Assert::all(isTrue);
     }
 
     static bool run() {
-        return Preflight::runTests(example, canRunTwo);
+        using namespace Preflight;
+
+        return Preflight::runTests(
+            test(example, "example test"),
+            test(canRunTwo, "Preflight can run multiple tests")
+        );
+    }
+};
+
+class Test2 {
+    public:
+
+    static constexpr char* name = "Suite B";
+
+    static bool simple() {
+        bool a = true;
+
+        auto isTrue = Assert::isTrue(a, "a isn't true");
+
+        return Assert::all(isTrue);
+    }
+
+    static bool run() {
+        return Preflight::runTests(
+            Preflight::test(simple, "simple")
+        );
     }
 };
 
@@ -109,7 +136,7 @@ void initializeKernel(uint64_t firstFreeAddress, uint64_t totalFreePages) {
 
 //    testBlockAllocator(physicalMemoryManager, virtualMemoryManager);
 
-    Preflight::runTestSuites<Test>();
+    Preflight::runTestSuites<Test, Test2>();
 
     halt();
 }

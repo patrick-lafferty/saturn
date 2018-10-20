@@ -34,7 +34,7 @@ namespace Assert {
         return [&, message = message]() { 
             auto result = t == true;
 
-            if (!result) log(message);
+            if (!result) log("        %s", message);
 
             return result;
         };
@@ -45,7 +45,7 @@ namespace Assert {
         return [&, message = message]() { 
             auto result = t > u;
 
-            if (!result) log(message);
+            if (!result) log("        %s", message);
 
             return result;
         };
@@ -56,6 +56,8 @@ namespace Assert {
         return (... && (assertions)());
     }
 }
+
+#include <utility>
 
 namespace Preflight {
 
@@ -68,14 +70,19 @@ namespace Preflight {
     class SomeTest {
     public:
 
-        static bool test() {
+        static constexpr char* name = "Suite A";
+
+        static bool testA() {
             auto assertion = Assert::something(actual, expected, message);
 
             return Assert::all(assertion, ...);
         }
 
         static bool run() {
-            return Preflight::runTests(test, ...);
+            using namespace Preflight;
+            return runTests(
+                test(testA, "description for testA"),
+                 ...);
         }
     };
 
@@ -83,15 +90,39 @@ namespace Preflight {
 
     Preflight::runTestSuites<SomeTest, ...>();
 
-    */    
+    */   
 
-    template<typename... Tests>
-    decltype(auto) runTests(Tests... tests) {
-        return (... && (tests)());
+    using TestPair = std::pair<bool(*)(), const char*>;
+
+    TestPair test(bool (*f)(), const char* description) {
+        return std::make_pair(f, description);
     }
-    
-    template<typename... Tests>
-    decltype(auto) runTestSuites() {
-        return (... && (Tests::run()));
+
+    template<typename Test>
+    bool runTests(Test test) {
+        log("    %s: ", test.second);
+        auto result = test.first();
+        log("    %s", result ? "passed" : "failed");
+        return result;
+    }
+
+    template<typename Test, typename Test2, typename... Tests>
+    bool runTests(Test test, Test2 test2, Tests... tests) {
+        log("    %s: ", test.second);
+        auto result = test.first();
+        log("    %s", result ? "passed" : "failed");
+        return result && runTests(test2, tests...);
+    }
+
+    template<typename Test>
+    bool runTestSuites() {
+        log("Running suite %s", Test::name);
+        return Test::run();
+    }
+
+    template<typename Test, typename Test2, typename... Tests>
+    bool runTestSuites() {
+        log("Running suite %s", Test::name);
+        return Test::run() && runTestSuites<Test2, Tests...>();
     }
 }
