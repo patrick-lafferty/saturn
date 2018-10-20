@@ -45,40 +45,35 @@ using namespace Memory;
 
 extern "C" void initializeSSE();
 
+/*void testBlockAllocator(Memory::PhysicalMemoryManager& pmm,
+    Memory::VirtualMemoryManager& vmm) {
+    
+    int startingFreePages = pmm.getFreePages();
+    int startingTotalPages = pmm.getTotalPages();
+
+    {
+        Memory::BlockAllocator<int> allocator;
+    }
+
+    int endingFreePages = pmm.getFreePages();
+    int endingTotalPages = pmm.getTotalPages();
+}*/
+
+#include <misc/testing.h>
+
 class Test {
-public:
+    public:
+    bool test() {
+        bool a = true;
+        int b = 0;
 
-    Test() {
-        x = 1336;
+        auto isTrue = Assert::isTrue(a, "a isn't true");
+        auto isLong = Assert::isGreater(b, 5, "b isn't long");
+
+        return Assert::all(isTrue, isLong);
     }
-
-    static void xx() {
-        y++;
-    }
-
-    static int y;
-    int x;
 };
 
-class Test2 {
-public:
-
-    Test2() {
-        x = 2336;
-    }
-
-    static void xx() {
-        y++;
-    }
-
-    static int y;
-    int x;
-};
-
-int Test::y = 5;
-
-static Test test;
-static Test2 test2;
 
 extern "C"
 [[noreturn]]
@@ -93,19 +88,18 @@ void initializeKernel(uint64_t firstFreeAddress, uint64_t totalFreePages) {
     PIC::disable();
     asm("sti");
 
-    //Memory::BlockAllocator<int> alloc;
     VirtualMemoryManager virtualMemoryManager;
 
     CPU::setupCore(&physicalMemoryManager, &virtualMemoryManager);
 
     //virtualMemoryManager.map(0x6969696969, 0x303030);
-    volatile int x = 10;
-    volatile int y = 0;
-    volatile int z = x / y;
 
-    log("hello %d and %d", 1, 1);
-    log("hello %d and %d", 2, 3);
-    log("hello %d and %d", 5, 8);
+    log("Saturn OS 0.4");
+
+//    testBlockAllocator(physicalMemoryManager, virtualMemoryManager);
+
+    Test t;
+    t.test();
 
     halt();
 }
