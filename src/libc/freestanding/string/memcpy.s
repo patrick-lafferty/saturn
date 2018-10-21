@@ -35,6 +35,7 @@ push rbp
 mov rbp, rsp
 
 mov rax, rdi
+mov rcx, rdx
 rep movsb
 
 mov rsp, rbp
