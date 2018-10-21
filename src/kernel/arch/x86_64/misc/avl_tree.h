@@ -80,12 +80,22 @@ public:
 
 			node->parent = iterator;
 			iterator->height = height(iterator->leftChild, iterator->rightChild);
-			rebalance(node);
+			recalculateHeights(iterator->parent);
+			rebalance(iterator);
 		}
     }
 
 	int getNumberOfNodes() const {
 		return nodeCount;
+	}
+
+	int getHeight() const {
+		if (root != nullptr) {
+			return root->height;
+		}
+		else {
+			return -1;
+		}
 	}
 
 	template<class Container>
@@ -126,8 +136,108 @@ private:
 		return 1 + (leftHeight > rightHeight ? leftHeight : rightHeight);
 	}
 
-	void rebalance(Node* start) {
+	int height(Node* node) {
+		if (node != nullptr) {
+			return height(node->leftChild, node->rightChild);
+		}
+		else {
+			return -1;
+		}
+	}
 
+	void leftRotate(Node* node) {
+		auto right = node->rightChild;
+		node->rightChild = right->leftChild;
+		
+		if (node->parent->leftChild == node) {
+			node->parent->leftChild = right;
+		}
+		else {
+			node->parent->rightChild = right;
+		}
+
+		right->parent = node->parent;
+		node->parent = right;
+
+		node->height = height(node->leftChild, node->rightChild);
+		right->height = height(right->leftChild, right->rightChild);
+
+		recalculateHeights(right->parent);
+	}
+
+	void recalculateHeights(Node* node) {
+
+		if (node == nullptr) {
+			return;
+		}
+
+		node->height = height(node->leftChild, node->rightChild);
+
+		if (node->parent != nullptr) {
+			recalculateHeights(node->parent);
+		}
+	}
+
+	void rightRotate(Node* node) {
+		auto left = node->leftChild;
+		node->leftChild = left->rightChild;
+
+		if (node->parent->leftChild == node) {
+			node->parent->leftChild = left;
+		}
+		else {
+			node->parent->rightChild = left;
+		}
+
+		left->parent = node->parent;
+		node->parent = left;
+
+		node->height = height(node->leftChild, node->rightChild);
+		left->height = height(left->leftChild, left->rightChild);
+
+		recalculateHeights(left->parent);
+	}
+
+	void rebalance(Node* start) {
+		auto difference = height(start->leftChild) - height(start->rightChild);
+		bool rightHeavy = difference <= 0;
+
+		if (difference <= 0) {
+			difference = -difference;
+		}
+		
+		if (difference <= 1) {
+			return;
+		}
+
+		if (rightHeavy) {
+			difference = height(start->rightChild->leftChild) - height(start->rightChild->rightChild);
+			bool rightRightHeavy = difference <= 0;
+
+			if (rightRightHeavy) {
+				rightRotate(start);
+			}
+			else {
+				rightRotate(start->rightChild);
+				leftRotate(start);
+			}
+		}
+		else {
+			difference = height(start->leftChild->leftChild) - height(start->leftChild->rightChild);
+			bool leftRightHeavy = difference <= 0;
+
+			if (leftRightHeavy) {
+				leftRotate(start->leftChild);
+				rightRotate(start);
+			}
+			else {
+				leftRotate(start);
+			}
+		}
+
+		if (start->parent != nullptr) {
+			rebalance(start->parent);
+		}
 	}
 
 	Node* root {nullptr};

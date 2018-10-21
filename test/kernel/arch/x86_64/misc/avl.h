@@ -36,6 +36,7 @@ namespace Test {
 
         static bool insertHandlesEmptyTree();
         static bool insertHandlesSimpleTree();
+        static bool insertBalancesTree();
 
         static bool run();
     };

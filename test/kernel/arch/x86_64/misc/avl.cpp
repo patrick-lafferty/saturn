@@ -94,12 +94,36 @@ namespace Test {
         return Assert::all(numberOfNodes, inorder);
     }
 
+    bool AVLTreeSuite::insertBalancesTree() {
+
+        auto testCase = [](std::array<int, 8> values, std::array<int, 8> expectedTraversal) {
+            SimpleAllocator<480> allocator;
+            AVLTree<int, SimpleAllocator<480>> tree {allocator};
+
+            for (auto value : values) {
+                tree.insert(value);
+            }
+
+            std::array<int, 8> result;
+            tree.traverseInOrder(result);
+
+            auto height = Assert::isEqual(tree.getHeight(), 4, "Tree height isn't 4");
+            auto inorder = Assert::arraySame(result, expectedTraversal, "In-order traversal didn't match");
+
+            return Assert::all(height, inorder);
+        };
+
+        return testCase({41, 20, 50, 29, 65, 11, 26, 23}, {11, 20, 23, 26, 29, 41, 50, 65})
+            && testCase({16, 13, 5, 10, 15, 11, 6, 4}, {4, 5, 6, 10, 11, 13, 15, 16});
+    }
+
     bool AVLTreeSuite::run() {
         using namespace Preflight;
 
         return Preflight::runTests(
             test(insertHandlesEmptyTree, "Insert handles empty trees"),
-            test(insertHandlesSimpleTree, "Insert handles simple trees")
+            test(insertHandlesSimpleTree, "Insert handles simple trees"),
+            test(insertBalancesTree, "Insert balances tree when needed")
         );
     }
 }
