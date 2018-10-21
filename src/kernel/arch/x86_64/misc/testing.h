@@ -27,12 +27,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #pragma once
 
+#include <log.h>
+
 namespace Assert {
 
     template<class T>
-    decltype(auto) isTrue(T&& t, const char* message) {
+    decltype(auto) isTrue(T&& actual, const char* message) {
         return [&, message = message]() { 
-            auto result = t == true;
+            auto result = actual == true;
 
             if (!result) log("        %s", message);
 
@@ -41,13 +43,48 @@ namespace Assert {
     }
 
     template<class T, class U>
-    decltype(auto) isGreater(T&& t, U&& u, const char* message) {
+    decltype(auto) isGreater(T&& actual, U&& expected, const char* message) {
         return [&, message = message]() { 
-            auto result = t > u;
+            auto result = actual > expected;
 
             if (!result) log("        %s", message);
 
             return result;
+        };
+    }
+
+    template<class T, class U>
+    decltype(auto) isEqual(T&& actual, U&& expected, const char* message) {
+        return [&, message = message]() { 
+            auto result = actual == expected;
+
+            if (!result) log("        %s", message);
+
+            return result;
+        };
+    }
+
+    template<class T, class U>
+    decltype(auto) arraySame(T&& actual, U&& expected, const char* message) {
+        return [&, message = message]() {
+            bool same = true;
+
+            if (actual.size() != expected.size()) {
+                same = false;
+            }
+            else {
+                auto length = actual.size();
+
+                for (auto i = 0u; i < length; i++) {
+                    if (actual[i] != expected[i]) {
+                        same = false;
+                        break;
+                    }
+                }
+            }
+
+            if (!same) log("        %s", message);
+            return same;
         };
     }
 
@@ -94,7 +131,7 @@ namespace Preflight {
 
     using TestPair = std::pair<bool(*)(), const char*>;
 
-    TestPair test(bool (*f)(), const char* description) {
+    inline TestPair test(bool (*f)(), const char* description) {
         return std::make_pair(f, description);
     }
 
