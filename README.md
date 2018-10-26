@@ -1,5 +1,5 @@
 <p align="center">
-<img src="https://github.com/patrick-lafferty/saturn/blob/master/saturn_logo.png" height="200">
+<img src="https://github.com/patrick-lafferty/saturn/blob/master/saturn_logo.png">
 </p>
 
 # Saturn
