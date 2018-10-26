@@ -1,11 +1,11 @@
 <p align="center">
-<img src="https://github.com/patrick-lafferty/saturn/blob/master/logo.png" height="200">
+<img src="https://github.com/patrick-lafferty/saturn/blob/master/saturn_logo.png" height="200">
 </p>
 
 # Saturn
 <img src="https://img.shields.io/badge/License-BSD%203--Clause-blue.svg">
 
-Saturn is a new operating system I started in late 2017. It is a 32-bit microkernel with multitasking and IPC based around asynchronous message
+Saturn is a new operating system I started in Oct 2017. It is a 64-bit microkernel with multitasking and IPC based around asynchronous message
 passing. With the exception of LLVM's libc++ and FreeType, the entire
 system and services are being written from scratch by me in C++. Saturn is not
 just the kernel, it encompases all the services and drivers needed
