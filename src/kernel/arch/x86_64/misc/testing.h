@@ -42,6 +42,17 @@ namespace Assert {
         };
     }
 
+    template<class T>
+    decltype(auto) isFalse(T&& actual, const char* message) {
+        return [&, message = message]() { 
+            auto result = actual == false;
+
+            if (!result) log("        %s", message);
+
+            return result;
+        };
+    }
+
     template<class T, class U>
     decltype(auto) isGreater(T&& actual, U&& expected, const char* message) {
         return [&, message = message]() { 
@@ -133,6 +144,16 @@ namespace Preflight {
 
     inline TestPair test(bool (*f)(), const char* description) {
         return std::make_pair(f, description);
+    }
+
+    template<typename F, typename Arg>
+    bool runCases(F f, Arg arg) {
+        return f(arg);
+    }
+
+    template<typename F, typename Arg0, typename Arg1, typename... Args>
+    bool runCases(F f, Arg0 arg0, Arg1 arg1, Args... args) {
+        return f(arg0) && runCases(f, arg1, args...);
     }
 
     template<typename Test>
