@@ -35,6 +35,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace Test {
 
+    using namespace Preflight;
+
+
     /*struct Address {
         uint64_t start;
         uint64_t size;
@@ -96,11 +99,16 @@ namespace Test {
 
     bool AVLTreeSuite::insertBalancesTree() {
 
-        auto testCase = [](std::array<int, 8> values, std::array<int, 8> expectedTraversal) {
+        struct TestData {
+            std::array<int, 8> values;
+            std::array<int, 8> expectedTraversal;
+        };
+
+        auto test = [](TestData data) { 
             SimpleAllocator<480> allocator;
             AVLTree<int, SimpleAllocator<480>> tree {allocator};
 
-            for (auto value : values) {
+            for (auto value : data.values) {
                 tree.insert(value);
             }
 
@@ -108,13 +116,88 @@ namespace Test {
             tree.traverseInOrder(result);
 
             auto height = Assert::isEqual(tree.getHeight(), 4, "Tree height isn't 4");
-            auto inorder = Assert::arraySame(result, expectedTraversal, "In-order traversal didn't match");
+            auto inorder = Assert::arraySame(result, data.expectedTraversal, "In-order traversal didn't match");
 
             return Assert::all(height, inorder);
         };
 
-        return testCase({41, 20, 50, 29, 65, 11, 26, 23}, {11, 20, 23, 26, 29, 41, 50, 65})
-            && testCase({16, 13, 5, 10, 15, 11, 6, 4}, {4, 5, 6, 10, 11, 13, 15, 16});
+        return runCases(test, 
+            TestData {{41, 20, 50, 29, 65, 11, 26, 23}, {11, 20, 23, 26, 29, 41, 50, 65}},
+            TestData {{16, 13, 5, 10, 15, 11, 6, 4}, {4, 5, 6, 10, 11, 13, 15, 16}});
+    }
+
+    bool AVLTreeSuite::findAtLeast_HandlesEmptyTree() {
+        SimpleAllocator<480> allocator;
+        AVLTree<int, SimpleAllocator<480>> tree {allocator};
+
+        auto result = tree.findAtLeast(5);
+        auto isEmpty = Assert::isTrue(!result.has_value(), "result shouldn't have a value");
+
+        return Assert::all(isEmpty);
+    }
+
+    bool AVLTreeSuite::findAtLeast_HandlesSingleTreeEqual() {
+        SimpleAllocator<480> allocator;
+        AVLTree<int, SimpleAllocator<480>> tree {allocator};
+
+        tree.insert(5);
+        auto result = tree.findAtLeast(5);
+        auto hasValue = Assert::isTrue(result.has_value(), "result should have a value");
+        auto value = Assert::isEqual(result, 5, "result should have a value");
+
+        return Assert::all(hasValue, value);
+    }
+
+    bool AVLTreeSuite::findAtLeast_HandlesSingleTreeGreater() {
+        SimpleAllocator<480> allocator;
+        AVLTree<int, SimpleAllocator<480>> tree {allocator};
+
+        tree.insert(10);
+        auto result = tree.findAtLeast(5);
+        auto hasValue = Assert::isTrue(result.has_value(), "result should have a value");
+        auto value = Assert::isEqual(result, 10, "result should have a value");
+
+        return Assert::all(hasValue, value);
+    }
+
+    bool AVLTreeSuite::findAtLeast_HandlesSingleTreeLess() {
+        SimpleAllocator<480> allocator;
+        AVLTree<int, SimpleAllocator<480>> tree {allocator};
+
+        tree.insert(1);
+        auto result = tree.findAtLeast(5);
+        auto hasValue = Assert::isFalse(result.has_value(), "result shouldn't have a value");
+
+        return Assert::all(hasValue);
+    }
+
+    bool AVLTreeSuite::findAtLeast_HandlesSimpleTree() {
+         struct TestData {
+            std::array<int, 8> values;
+            int search;
+            int result;
+        };
+
+        auto test = [](TestData data) { 
+            SimpleAllocator<480> allocator;
+            AVLTree<int, SimpleAllocator<480>> tree {allocator};
+
+            for (auto value : data.values) {
+                tree.insert(value);
+            }
+
+            auto result = tree.findAtLeast(data.search);
+            auto equal = Assert::isEqual(result, data.result, "Couldn't find proper successor");
+
+            return Assert::all(equal);
+        };
+
+        return runCases(test, 
+            TestData {{41, 20, 50, 29, 65, 11, 26, 23}, 23, 23},
+            TestData {{41, 20, 50, 29, 65, 11, 26, 23}, 24, 26},
+            TestData {{41, 20, 50, 29, 65, 11, 26, 23}, 65, 65},
+            TestData {{41, 20, 50, 29, 65, 11, 26, 23}, 10, 11},
+            TestData {{41, 20, 50, 29, 65, 11, 26, 23}, 11, 11});
     }
 
     bool AVLTreeSuite::run() {
@@ -123,7 +206,12 @@ namespace Test {
         return Preflight::runTests(
             test(insertHandlesEmptyTree, "Insert handles empty trees"),
             test(insertHandlesSimpleTree, "Insert handles simple trees"),
-            test(insertBalancesTree, "Insert balances tree when needed")
+            test(insertBalancesTree, "Insert balances tree when needed"),
+            test(findAtLeast_HandlesEmptyTree, "FindAtLeast handles empty trees"),
+            test(findAtLeast_HandlesSingleTreeEqual, "FindAtLeast handles single trees with equal root"),
+            test(findAtLeast_HandlesSingleTreeGreater, "FindAtLeast handles single trees with greater root"),
+            test(findAtLeast_HandlesSingleTreeLess, "FindAtLeast handles single trees with less root"),
+            test(findAtLeast_HandlesSimpleTree, "FindAtLeast handles simple trees")
         );
     }
 }

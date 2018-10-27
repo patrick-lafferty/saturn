@@ -27,6 +27,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #pragma once
 
+#include <optional>
+
 template<class T, class Allocator>
 class AVLTree {
 
@@ -113,6 +115,56 @@ public:
 
 		traverse(root, f);
 	}
+
+	T findMinimum() {
+		auto iterator = root;
+
+		while (iterator != nullptr) {
+			if (iterator->leftChild == nullptr) {
+				return iterator->value;
+			}
+			else {
+				iterator = iterator->leftChild;
+			}
+		}
+	}
+
+	std::optional<T> findAtLeast(T item) {
+		auto iterator = root;
+		Node* successor = nullptr;
+
+		while (iterator != nullptr) {
+			if (item >= iterator->value) {
+				if (item == iterator->value) {
+					successor = iterator;
+				}
+
+				iterator = iterator->rightChild;
+			}
+			else {
+				successor = iterator;
+
+				if (iterator->leftChild != nullptr) {
+					iterator = iterator->leftChild;
+				}
+				else {
+					break;
+				}
+			}
+		}
+
+		if (successor != nullptr) {
+			return {successor->value};
+		}
+		else {
+			return {};
+		}
+
+	}
+
+	void remove(T item) {
+
+	}	
 
 private:
 

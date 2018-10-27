@@ -38,6 +38,13 @@ namespace Test {
         static bool insertHandlesSimpleTree();
         static bool insertBalancesTree();
 
+        static bool findAtLeast_HandlesEmptyTree();
+        static bool findAtLeast_HandlesSingleTreeEqual();
+        static bool findAtLeast_HandlesSingleTreeGreater();
+        static bool findAtLeast_HandlesSingleTreeLess();
+        static bool findAtLeast_HandlesSimpleTree();
+
+
         static bool run();
     };
 }
