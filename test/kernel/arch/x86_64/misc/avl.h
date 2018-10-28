@@ -44,6 +44,9 @@ namespace Test {
         static bool findAtLeast_HandlesSingleTreeLess();
         static bool findAtLeast_HandlesSimpleTree();
 
+        static bool remove_HandlesEmptyTree();
+        static bool remove_HandlesSingleTree();
+        static bool remove_HandlesSimpleTree();
 
         static bool run();
     };

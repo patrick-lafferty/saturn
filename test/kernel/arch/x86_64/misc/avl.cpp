@@ -57,6 +57,9 @@ namespace Test {
             return new (ptr) T;
         }
 
+        template<class T>
+        void free(T*) {}
+
     private:
 
         uint8_t staticBuffer[Size];
@@ -200,6 +203,65 @@ namespace Test {
             TestData {{41, 20, 50, 29, 65, 11, 26, 23}, 11, 11});
     }
 
+    bool AVLTreeSuite::remove_HandlesEmptyTree() {
+        SimpleAllocator<480> allocator;
+        AVLTree<int, SimpleAllocator<480>> tree {allocator};
+
+        tree.remove(42);
+
+        auto numberOfNodes = Assert::isEqual(tree.getNumberOfNodes(), 0, "Tree isn't empty");
+
+        return Assert::all(numberOfNodes);
+    }
+
+    bool AVLTreeSuite::remove_HandlesSingleTree() {
+        SimpleAllocator<480> allocator;
+        AVLTree<int, SimpleAllocator<480>> tree {allocator};
+
+        tree.insert(42);
+        tree.remove(42);
+
+        auto numberOfNodes = Assert::isEqual(tree.getNumberOfNodes(), 0, "Tree isn't empty");
+
+        return Assert::all(numberOfNodes);
+    }
+
+    bool AVLTreeSuite::remove_HandlesSimpleTree() {
+        
+        struct TestData {
+            std::array<int, 8> values;
+            std::array<int, 7> expectedTraversal;
+            int valueToRemove;
+        };
+
+        auto test = [](TestData data) { 
+            SimpleAllocator<480> allocator;
+            AVLTree<int, SimpleAllocator<480>> tree {allocator};
+
+            for (auto value : data.values) {
+                tree.insert(value);
+            }
+
+            tree.remove(data.valueToRemove);
+
+            std::array<int, 7> result;
+            tree.traverseInOrder(result);
+
+            auto numberOfNodes = Assert::isEqual(tree.getNumberOfNodes(), 7, "Tree doesn't have 7 nodes");
+            auto inorder = Assert::arraySame(result, data.expectedTraversal, "In-order traversal didn't match");
+
+            return Assert::all(numberOfNodes, inorder);
+        };
+
+        return runCases(test, 
+            TestData {{41, 20, 50, 29, 65, 11, 26, 23}, {20, 23, 26, 29, 41, 50, 65}, 11},
+            TestData {{41, 20, 50, 29, 65, 11, 26, 23}, {11, 20, 23, 26, 29, 41, 50}, 65},
+            TestData {{41, 20, 50, 29, 65, 11, 26, 23}, {11, 20, 23, 29, 41, 50, 65}, 26},
+            TestData {{41, 20, 50, 29, 65, 11, 26, 23}, {11, 20, 23, 26, 29, 41, 65}, 50},
+            TestData {{41, 20, 50, 29, 65, 11, 26, 23}, {11, 23, 26, 29, 41, 50, 65}, 20}
+        );
+    }
+
     bool AVLTreeSuite::run() {
         using namespace Preflight;
 
@@ -211,7 +273,10 @@ namespace Test {
             test(findAtLeast_HandlesSingleTreeEqual, "FindAtLeast handles single trees with equal root"),
             test(findAtLeast_HandlesSingleTreeGreater, "FindAtLeast handles single trees with greater root"),
             test(findAtLeast_HandlesSingleTreeLess, "FindAtLeast handles single trees with less root"),
-            test(findAtLeast_HandlesSimpleTree, "FindAtLeast handles simple trees")
+            test(findAtLeast_HandlesSimpleTree, "FindAtLeast handles simple trees"),
+            test(remove_HandlesEmptyTree, "Remove handles empty trees"),
+            test(remove_HandlesSingleTree, "Remove handles single trees"),
+            test(remove_HandlesSimpleTree, "Remove handles simple trees")
         );
     }
 }

@@ -116,19 +116,6 @@ public:
 		traverse(root, f);
 	}
 
-	T findMinimum() {
-		auto iterator = root;
-
-		while (iterator != nullptr) {
-			if (iterator->leftChild == nullptr) {
-				return iterator->value;
-			}
-			else {
-				iterator = iterator->leftChild;
-			}
-		}
-	}
-
 	std::optional<T> findAtLeast(T item) {
 		auto iterator = root;
 		Node* successor = nullptr;
@@ -159,14 +146,99 @@ public:
 		else {
 			return {};
 		}
-
 	}
 
 	void remove(T item) {
+		auto iterator = root;
+
+		while (iterator != nullptr) {
+			if (item == iterator->value) {
+				break;
+			}
+			else if (item > iterator->value) {
+				iterator = iterator->rightChild;
+			}
+			else {
+				iterator = iterator->leftChild;
+			}
+		}
+
+		if (iterator == nullptr) {
+			//the item doesn't exist in this tree
+			return;
+		}
+
+		nodeCount--;
+
+		bool isRoot = iterator == root;
+
+		if (iterator->leftChild == nullptr
+				&& iterator->rightChild == nullptr) {
+
+			auto parent = iterator->parent;
+
+			if (parent != nullptr) {
+				if (parent->leftChild == iterator) {
+					parent->leftChild = nullptr;
+				}
+				else {
+					parent->rightChild = nullptr;
+				}
+			}
+
+			allocator.template free<Node>(iterator);
+		}
+		else if (iterator->leftChild == nullptr) {
+			iterator->value = iterator->rightChild->value;
+			allocator.template free<Node>(iterator->rightChild);
+			iterator->rightChild = nullptr;
+		}
+		else if (iterator->rightChild == nullptr) {
+			iterator->value = iterator->leftChild->value;
+			allocator.template free<Node>(iterator->leftChild);
+			iterator->leftChild = nullptr;
+		}
+		else {
+			auto successor = findSuccessor(iterator->rightChild);
+
+			if (successor != nullptr) {
+				auto parent = successor->parent;
+
+				if (parent->leftChild == successor) {
+					parent->leftChild = nullptr;
+				}
+				else {
+					parent->rightChild = nullptr;
+				}
+
+				iterator->value = successor->value;
+				allocator.template free<Node>(successor);
+				rebalance(parent);
+			}
+		}
+
+		if (isRoot) {
+			root = nullptr;
+		}
 
 	}	
 
 private:
+
+	Node* findSuccessor(Node* start) {
+		auto iterator = start;
+
+		while (iterator != nullptr) {
+			if (iterator->leftChild == nullptr) {
+				return iterator;
+			}
+			else {
+				iterator = iterator->leftChild;
+			}
+		}
+
+		return nullptr;
+	}
 
 	template<class F>
 	void traverse(Node* node, F&& f) {
