@@ -40,7 +40,7 @@ namespace Memory {
         remainingPages = size / 0x1000;
     }
 
-    std::optional<uintptr_t> AddressReservation::allocatePages(int count) {
+    std::optional<uintptr_t> AddressReservation::allocatePages(uint64_t count) {
         
         if (remainingPages < count) {
             return {};

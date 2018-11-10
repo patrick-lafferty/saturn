@@ -42,7 +42,7 @@ namespace Memory {
 
         AddressReservation(uintptr_t start, uint64_t size);
 
-        std::optional<uintptr_t> allocatePages(int count);
+        std::optional<uintptr_t> allocatePages(uint64_t count);
 
         friend bool operator==(const AddressReservation& left, const AddressReservation& right) {
             return left.startAddress == right.startAddress;
@@ -98,11 +98,24 @@ namespace Memory {
 
             template<class T, typename... Args>
             T* allocate(Args&&... args) {
-                auto buffer = reinterpret_cast<T*>(currentPage);
+                
+                struct Allocation {
+                    uintptr_t nextFree;
+                    T value;
+                };
+
+                if (freeList != 0) {
+                    auto allocation = reinterpret_cast<Allocation*>(freeList);
+                    freeList = allocation->nextFree;
+                    allocation->nextFree = 0;
+                    return &allocation->value;
+                }
+
+                auto buffer = reinterpret_cast<Allocation*>(currentPage);
 
                 if (availableItems == 0) {
                     preparePage();
-                    availableItems = 0x1000 / sizeof(T);
+                    availableItems = 0x1000 / sizeof(Allocation);
                     currentPage += 0x1000;
                 }
 
@@ -110,15 +123,37 @@ namespace Memory {
                 auto ptr = buffer + currentItems;
                 currentItems++;
 
-                return new (ptr) T(std::forward<Args>(args)...);
+                auto item = new (ptr) Allocation {0, std::forward<Args>(args)...};
+
+                return &item->value;
             }
 
             template<class T>
-            void free(T*) {}
+            void free(T* item) {
+                struct Allocation {
+                    uintptr_t nextFree;
+                    T value;
+                };
+
+                if (freeList == 0) {
+                    auto address = reinterpret_cast<uintptr_t>(item) - sizeof(uintptr_t);
+                    auto ptr = reinterpret_cast<Allocation*>(address);
+                    ptr->nextFree = 0;
+                    freeList = address;
+                } 
+                else {
+                    auto address = reinterpret_cast<uintptr_t>(item) - sizeof(uintptr_t);
+                    auto ptr = reinterpret_cast<Allocation*>(address);
+                    ptr->nextFree = freeList;
+                    freeList = address;
+                }
+            }
 
         private:
 
             void preparePage();
+
+            uintptr_t freeList {0};
         };
 
         Allocator allocator;        
