@@ -33,6 +33,48 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace Memory {
 
+    AddressReservation::AddressReservation(uintptr_t start, uint64_t size)
+        : startAddress {start}, size {size} {
+        
+        nextPage = startAddress;
+        remainingPages = size / 0x1000;
+    }
+
+    std::optional<uintptr_t> AddressReservation::allocatePages(int count) {
+        
+        if (remainingPages < count) {
+            return {};
+        }
+
+        remainingPages -= count;
+        auto page = nextPage;
+        nextPage += count * 0x1000;
+
+        return page;
+    }
+
+    AddressReservation AddressReservation::split(uint64_t size) {
+        AddressReservation sibling {startAddress, size};
+        startAddress += size;
+        nextPage = startAddress;
+        this->size -= size;
+        remainingPages = this->size / 0x1000;
+
+        return sibling;
+    }
+
+    uint64_t AddressReservation::getSize() const {
+        return size;
+    }
+
+    void AddressReservation::clearFreeFlag() {
+        isFree = false;
+    }
+
+    bool AddressReservation::isAvailable() const {
+        return isFree;
+    }
+
     AddressSpace::Allocator::Allocator() {
         preparePage();
     }
@@ -55,20 +97,19 @@ namespace Memory {
 
     std::optional<AddressReservation> AddressSpace::reserve(uint64_t size) {
         auto node = space.findByTraversal([=](auto& value) {
-            return value.size >= size && value.isFree;
+            return value.getSize() >= size && value.isAvailable();
         });
 
         if (node.has_value()) {
             auto result = node.value();
             space.remove(result); 
 
-            if (result.size > size) {
-                AddressReservation remaining {result.startAddress + size, result.size - size};
+            if (result.getSize() > size) {
+                auto remaining = result.split(size);
                 space.insert(remaining);
-                result.size = size;
             }
             
-            result.isFree = false;
+            result.clearFreeFlag();
             space.insert(result);
 
             return result;

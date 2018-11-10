@@ -37,19 +37,35 @@ namespace Memory {
     within its range, so the old-style vmm->allocatePages happens
     here essentially.
     */
-    struct AddressReservation {
+    class AddressReservation {
+    public:
+
+        AddressReservation(uintptr_t start, uint64_t size);
+
+        std::optional<uintptr_t> allocatePages(int count);
+
+        friend bool operator==(const AddressReservation& left, const AddressReservation& right) {
+            return left.startAddress == right.startAddress;
+        }
+
+        friend bool operator<(const AddressReservation& left, const AddressReservation& right) {
+            return left.startAddress < right.startAddress;
+        }
+
+        AddressReservation split(uint64_t size);
+
+        uint64_t getSize() const;
+        void clearFreeFlag();
+        bool isAvailable() const;
+
+    private:
+
         uintptr_t startAddress;
         uint64_t size;
         bool isFree {true};
+        uint64_t remainingPages; 
+        uintptr_t nextPage;
     };
-
-    inline bool operator==(const AddressReservation& left, const AddressReservation& right) {
-        return left.startAddress == right.startAddress;
-    }
-
-    inline bool operator<(const AddressReservation& left, const AddressReservation& right) {
-        return left.startAddress < right.startAddress;
-    }
 
     inline bool operator>(const AddressReservation& left, const AddressReservation& right) {
         return operator<(right, left);
@@ -80,8 +96,8 @@ namespace Memory {
             int currentItems;
             uintptr_t currentPage {509ul << 39};
 
-            template<class T>
-            T* allocate() {
+            template<class T, typename... Args>
+            T* allocate(Args&&... args) {
                 auto buffer = reinterpret_cast<T*>(currentPage);
 
                 if (availableItems == 0) {
@@ -94,7 +110,7 @@ namespace Memory {
                 auto ptr = buffer + currentItems;
                 currentItems++;
 
-                return new (ptr) T;
+                return new (ptr) T(std::forward<Args>(args)...);
             }
 
             template<class T>
