@@ -148,6 +148,15 @@ public:
 		}
 	}
 
+	template<class Func>
+	std::optional<T> findByTraversal(Func&& f) {
+		if (root == nullptr) {
+			return {};
+		}
+
+		return traversalSearch(root, f);
+	}
+
 	void remove(T item) {
 		auto iterator = root;
 
@@ -251,6 +260,34 @@ private:
 		if (node->rightChild != nullptr) {
 			traverse(node->rightChild, f);
 		}
+	}
+
+	template<class F>
+	std::optional<T> traversalSearch(Node* node, F&& f) {
+
+		if (node->leftChild != nullptr) {
+			if (f(node->leftChild->value)) {
+				return node->leftChild->value;
+			}
+			else {
+				traversalSearch(node->leftChild, f);
+			}
+		}
+
+		if (f(node->value)) {
+			return node->value;
+		}
+
+		if (node->rightChild != nullptr) {
+			if (f(node->rightChild->value)) {
+				return node->rightChild->value;
+			}
+			else {
+				traversalSearch(node->rightChild, f);
+			}
+		}
+
+		return {};
 	}
 
 	int height(Node* left, Node* right) {
