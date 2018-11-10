@@ -33,6 +33,8 @@ template<class T, class Allocator>
 class AVLTree {
 
 	struct Node {
+		Node(T value) : value {value} {}
+
 		T value;
 		Node* parent {nullptr};
 		Node* leftChild {nullptr};
@@ -46,8 +48,7 @@ public:
 		: allocator {allocator} {}
 
     void insert(T item) {
-		auto node = allocator.template allocate<Node>();
-		node->value = item;
+		auto node = allocator.template allocate<Node>(item);
 		nodeCount++;
 
 		if (root == nullptr) {

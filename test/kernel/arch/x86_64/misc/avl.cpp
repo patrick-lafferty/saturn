@@ -37,12 +37,6 @@ namespace Test {
 
     using namespace Preflight;
 
-
-    /*struct Address {
-        uint64_t start;
-        uint64_t size;
-    };*/
-
     template<unsigned int Size>
     class SimpleAllocator {
     public:
@@ -50,11 +44,11 @@ namespace Test {
         SimpleAllocator() 
             : next {&staticBuffer[0]} {}
 
-        template<class T>
-        T* allocate() {
+        template<class T, typename... Args>
+        T* allocate(Args&&... args) {
             auto ptr = next;
             next += sizeof(T);
-            return new (ptr) T;
+            return new (ptr) T(std::forward<Args>(args)...);
         }
 
         template<class T>
