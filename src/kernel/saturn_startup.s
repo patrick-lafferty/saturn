@@ -48,7 +48,13 @@ clearBSSSection:
   ret
 
 _start:
+
+    push rdi
+    push rsi
+
     call clearBSSSection
     call _runConstructors
 
+    pop rsi
+    pop rdi
     call initializeKernel
