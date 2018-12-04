@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "physical_memory_manager.h"
 #include <cpu/metablocks.h>
 #include <utility>
+#include "address_space.h"
 
 namespace Memory {
 
@@ -40,51 +41,55 @@ namespace Memory {
     is the main way kernel allocations are done.
 
     BlockAllocator keeps allocating new pages and only frees memory
-    for its entire range at once using releaseMemory.
+    for its entire range at once using releaseMemory, but it can 
+    reuse memory for previously freed allocations.
     */
     template<typename T>
     class BlockAllocator {
     public:
 
-        BlockAllocator() {
+        BlockAllocator(int initialElementCount)
+            : elementsPerBlock {initialElementCount} {
             
-            firstMetaBlock = allocateBlockMeta();
-            currentMetaBlock = firstMetaBlock;
+            initialBlock = createBlock(initialElementCount * 10);
+            currentBlock = initialBlock;
         }
 
         template<typename... Args>
         T* allocate(Args&&... args) {
 
-            auto currentBlock = &currentMetaBlock->blocks[currentMetaBlock->currentBlock];
+            if (freeList != nullptr) {
+                auto allocation = freeList;
+                freeList = allocation->nextFree;
+                return new (&allocation->value) T(std::forward<Args>(args)...);
+            }
 
             if (currentBlock->remainingAllocations == 0) {
-                currentMetaBlock->currentBlock++;
+                auto block = createBlock(elementsPerBlock);
 
-                if (currentMetaBlock->currentBlock < BlockMeta::MaxBlocks) {
-                    currentMetaBlock->blocks[currentMetaBlock->currentBlock] = allocateBlock();
-                }
-                else {
-                    auto meta = allocateBlockMeta();
-                    currentMetaBlock->next = meta;
-                    currentMetaBlock = meta;
+                if (block == nullptr) {
+                    return nullptr;
                 }
 
-                currentBlock = &currentMetaBlock->blocks[currentMetaBlock->currentBlock];
+                currentBlock->next = block;
+                currentBlock = block;
             }
 
             auto ptr = currentBlock->buffer++;
-            currentBlock->remainingAllocations--; 
+            currentBlock->remainingAllocations--;
             return new (ptr) T(std::forward<Args>(args)...);
         }
 
         T* allocateMultiple(int count) {
+
+            //TODO: this should be an ArrayAllocator or SequentialAllocator
 
              /*
             Note: potentially wastes some memory since we're not starting at
             the current position in the buffer, but we can't guarantee that
             the next page address comes right after this one.
             */
-            auto currentBlock = &currentMetaBlock->blocks[currentMetaBlock->currentBlock];
+            /*auto currentBlock = &currentMetaBlock->blocks[currentMetaBlock->currentBlock];
 
             if (currentBlock->remainingAllocations < count) {
                 if (currentBlock->currentBlock < BlockMeta::MaxBlocks) {
@@ -102,85 +107,89 @@ namespace Memory {
             auto ptr = currentBlock->buffer;
             currentBlock->buffer += count;
             currentBlock->remainingAllocations -= count;
-            return ptr;
+            return ptr;*/
+        }
+
+        void free(T* ptr) {
+            auto address = reinterpret_cast<uintptr_t>(ptr);
+            address -= sizeof(uintptr_t);
+            auto allocation = reinterpret_cast<Allocation*>(address);
+
+            if (freeList != nullptr) {
+                allocation->next = freeList;
+                freeList = allocation;
+            }
+            else {
+                freeList = allocation;
+            }
         }
 
         void releaseMemory() {
-            auto iterator = firstMetaBlock;
+
+            auto iterator = initialBlock;
             auto& core = CPU::getCurrentCore();
 
             while (iterator != nullptr) {
-                for (auto i = 0; i < iterator->currentBlock; i++) {
-                    auto& block = iterator->blocks[i];
-                    core.virtualMemory->freePages(block.blockStart, block.pagesRequired);
-                }
-
+                core.addressSpace->release(iterator->reservation);
                 iterator = iterator->next;
             }
         }
 
     private:
 
-        /*
-        Each page can store 128 BlockMetas, with the last one being
-        a pointer to a next page of 128 BlockMetas
-        */
+        struct Allocation {
+            Allocation* nextFree;
+            T value;
+        };
+
+        Allocation* freeList {nullptr};
+
         struct Block {
-            uintptr_t blockStart {0};
-            uintptr_t pageCount {0};
-            T* buffer;
-            uint64_t remainingAllocations {0};
-        };
-
-        struct BlockMeta {
-            Block blocks[120];
-            BlockMeta* next {nullptr};
-            int currentBlock {0};
-            static const int MaxBlocks {120};
-        };
-
-        uintptr_t allocatePages(int pagesRequired) {
-            auto& core = CPU::getCurrentCore();
-            auto address = core.virtualMemory->allocatePages(pagesRequired, static_cast<uint32_t>(Memory::PageTableFlags::AllowWrite));
-
-            for (auto i = 0; i < pagesRequired; i++) {
-                auto virtualPage = address + Memory::PageSize * i;
-                auto physicalPage = core.physicalMemory->allocatePage();
-                core.virtualMemory->map(virtualPage, physicalPage);
-                core.physicalMemory->finishAllocation(virtualPage);
+            Block(Allocation* buffer, int allocations, AddressReservation reservation)
+                : buffer {buffer}, 
+                    remainingAllocations {allocations},
+                    reservation {reservation} {
             }
 
-            return address;
-        }
+            Allocation* buffer {nullptr};
+            int remainingAllocations {0};
+            AddressReservation reservation;
+            Block* next {nullptr};
+        };
 
-        Block allocateBlock(int numberOfTs) {
+        Block* createBlock(int numberOfElements) {
+            auto& core = CPU::getCurrentCore(); 
+            auto requiredSize = sizeof(Allocation) * numberOfElements;
+            requiredSize += sizeof(Block);
+            requiredSize = requiredSize & ~0xFFF + 0x1000;
 
-            auto size = sizeof(T) * numberOfTs;
-            auto pagesRequired = (size / Memory::PageSize) + ((size % Memory::PageSize) > 0);
-            auto address = allocatePages(pagesRequired);
+            auto maybeReservation = core.addressSpace->reserve(requiredSize);
+            if (!maybeReservation.has_value()) {
+                return nullptr;
+            }
 
-            Block block;
-            block.blockStart = address;
-            block.pageCount = pagesRequired;
-            block.remainingAllocations = numberOfTs;
-            block.buffer = reinterpret_cast<T*>(address);
+            auto reservation = maybeReservation.value();
+            auto maybeAllocation = reservation.allocatePages(requiredSize / 0x1000);
+            
+            if (!maybeAllocation.has_value()) {
+                return nullptr;
+            }
 
+            auto allocation = maybeAllocation.value();
+
+            uint8_t* ptr = reinterpret_cast<uint8_t*>(allocation);
+            auto block = new (ptr) Block(
+                reinterpret_cast<Allocation*>(ptr + sizeof(Block)),
+                numberOfElements,
+                reservation);
+            
             return block;
         }
 
-        Block allocateBlock() {
-            auto tsPerPage = sizeof(T) / Memory::PageSize;
-            return allocateBlock(tsPerPage);
-        }
+        Block* initialBlock;
+        Block* currentBlock;
 
-        BlockMeta* allocateBlockMeta() {
-            auto meta = reinterpret_cast<BlockMeta*>(allocatePages(1));            
-            meta->blocks[0] = allocateBlock();
-
-            return meta;
-        }
-
-        BlockMeta* firstMetaBlock;
-        BlockMeta* currentMetaBlock;
+        int elementsPerBlock;
+         
     };
 }
