@@ -35,6 +35,7 @@ namespace Memory {
     void PhysicalMemoryManager::SetupGlobalManager(uint64_t firstFreeAddress, uint64_t totalFreePages) {
         GlobalManager.nextFreeAddress = firstFreeAddress;
         GlobalManager.totalPages = totalFreePages;
+        GlobalManager.freePages = totalFreePages;
     }
 
     PhysicalMemoryManager& PhysicalMemoryManager::GetGlobalManager() {
