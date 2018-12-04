@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace Memory {
     class PhysicalMemoryManager;
     class VirtualMemoryManager;
+    class AddressSpace;
 }
 
 namespace CPU {
@@ -48,10 +49,12 @@ namespace CPU {
         CoreMeta* self;
         Memory::PhysicalMemoryManager* physicalMemory;
         Memory::VirtualMemoryManager* virtualMemory;
+        Memory::AddressSpace* addressSpace;
     };
 
     void setupCore(Memory::PhysicalMemoryManager* physicalMemory,
-            Memory::VirtualMemoryManager* virtualMemory);
+            Memory::VirtualMemoryManager* virtualMemory,
+            Memory::AddressSpace* addressSpace);
     CoreMeta& getCurrentCore();
 
     struct ProcessMeta {

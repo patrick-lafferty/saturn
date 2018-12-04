@@ -31,11 +31,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace CPU {
 
     void setupCore(Memory::PhysicalMemoryManager* physicalMemory,
-            Memory::VirtualMemoryManager* virtualMemory) {
+            Memory::VirtualMemoryManager* virtualMemory,
+            Memory::AddressSpace* addressSpace) {
         static CoreMeta core;
         core.self = &core;
         core.physicalMemory = physicalMemory;
         core.virtualMemory = virtualMemory;
+        core.addressSpace = addressSpace;
 
         auto address = reinterpret_cast<uintptr_t>(&core);
 
