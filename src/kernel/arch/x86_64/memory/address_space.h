@@ -94,7 +94,7 @@ namespace Memory {
 
             int availableItems;
             int currentItems;
-            uintptr_t currentPage {509ul << 39};
+            uintptr_t currentPage {(0xFFFFul << 48) + (509ul << 39)};
 
             template<class T, typename... Args>
             T* allocate(Args&&... args) {
