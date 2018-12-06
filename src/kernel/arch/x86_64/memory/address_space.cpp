@@ -53,12 +53,10 @@ namespace Memory {
         return page;
     }
 
-    AddressReservation AddressReservation::split(uint64_t size) {
-        AddressReservation sibling {startAddress, size};
-        startAddress += size;
-        nextPage = startAddress;
-        this->size -= size;
-        remainingPages = this->size / 0x1000;
+    AddressReservation AddressReservation::split(uint64_t requiredSize) {
+        AddressReservation sibling {startAddress + requiredSize, this->size - requiredSize};
+        this->size = requiredSize;
+        this->remainingPages = this->size / 0x1000;
 
         return sibling;
     }
@@ -76,16 +74,14 @@ namespace Memory {
     }
 
     AddressSpace::Allocator::Allocator() {
-        preparePage();
     }
 
-    void AddressSpace::Allocator::preparePage() {
+    void AddressSpace::Allocator::preparePage(size_t itemSize) {
         auto& core = CPU::getCurrentCore();
-        auto frame = core.physicalMemory->allocatePage();
-        auto flags = 3;
-        core.virtualMemory->map(currentPage, frame, flags);
-        core.physicalMemory->finishAllocation(currentPage);
+
+        core.virtualMemory->allocatePagingTablesFor(currentPage, core.physicalMemory);
         currentItems = 0;
+        availableItems = 0x1000 / itemSize;
     }
 
     AddressSpace::AddressSpace()

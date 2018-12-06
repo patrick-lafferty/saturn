@@ -92,9 +92,10 @@ namespace Memory {
 
             Allocator();
 
-            int availableItems;
-            int currentItems;
+            int availableItems {0};
+            int currentItems {0};
             uintptr_t currentPage {(0xFFFFul << 48) + (509ul << 39)};
+            uintptr_t currentBuffer {(0xFFFFul << 48) + (509ul << 39)};
 
             template<class T, typename... Args>
             T* allocate(Args&&... args) {
@@ -108,22 +109,23 @@ namespace Memory {
                     auto allocation = reinterpret_cast<Allocation*>(freeList);
                     freeList = allocation->nextFree;
                     allocation->nextFree = 0;
+                    allocation->value = T {std::forward<Args>(args)...};
                     return &allocation->value;
                 }
 
-                auto buffer = reinterpret_cast<Allocation*>(currentPage);
-
                 if (availableItems == 0) {
-                    preparePage();
-                    availableItems = 0x1000 / sizeof(Allocation);
+                    preparePage(sizeof(Allocation));
+                    currentBuffer = currentPage;
                     currentPage += 0x1000;
                 }
+
+                auto buffer = reinterpret_cast<Allocation*>(currentBuffer);
 
                 availableItems--;
                 auto ptr = buffer + currentItems;
                 currentItems++;
 
-                auto item = new (ptr) Allocation {0, std::forward<Args>(args)...};
+                auto item = new (ptr) Allocation {0, T {std::forward<Args>(args)...}};
 
                 return &item->value;
             }
@@ -151,7 +153,7 @@ namespace Memory {
 
         private:
 
-            void preparePage();
+            void preparePage(size_t itemSize);
 
             uintptr_t freeList {0};
         };
