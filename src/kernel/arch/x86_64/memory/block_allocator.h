@@ -161,7 +161,7 @@ namespace Memory {
             auto& core = CPU::getCurrentCore(); 
             auto requiredSize = sizeof(Allocation) * numberOfElements;
             requiredSize += sizeof(Block);
-            requiredSize = requiredSize & ~0xFFF + 0x1000;
+            requiredSize = (requiredSize & ~0xFFF) + 0x1000;
 
             auto maybeReservation = core.addressSpace->reserve(requiredSize);
             if (!maybeReservation.has_value()) {
