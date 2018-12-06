@@ -65,6 +65,8 @@ namespace Memory {
         uint64_t totalPages {0};
         uint64_t freePages {0};
 
+        bool waitingToFinish {false};
+
         static PhysicalMemoryManager GlobalManager;
     };
 }

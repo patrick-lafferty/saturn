@@ -58,10 +58,17 @@ namespace Memory {
 
         freePages--;
 
+        if (waitingToFinish) {
+            int pause = 0;
+        }
+
+        waitingToFinish = true;
+
         return nextFreeAddress;
     }
 
     void PhysicalMemoryManager::finishAllocation(uintptr_t pageAddress) {
+        waitingToFinish = false;
         uint64_t* page = reinterpret_cast<uint64_t*>(pageAddress & ~0xFFF);
         nextFreeAddress = *page;
         memset(page, 0, PageSize);
