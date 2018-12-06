@@ -68,6 +68,7 @@ namespace Memory {
     enum class PageStatus {
         Allocated,
         Mapped,
+        UnallocatedPageTable,
         Invalid
     };
 
@@ -81,6 +82,8 @@ namespace Memory {
 
         void map(uintptr_t virtualAddress, uintptr_t physicalAddress, uint32_t flags = 0);
         void unmap(uintptr_t virtualAddress, int count = 1);
+
+        void allocatePagingTablesFor(uintptr_t virtualAddress, PhysicalMemoryManager* pmm);
 
         PageStatus getPageStatus(uintptr_t virtualAddress);
 

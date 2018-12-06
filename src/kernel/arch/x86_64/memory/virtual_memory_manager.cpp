@@ -70,11 +70,40 @@ namespace Memory {
 		PageDirectoryPointerStartAddress	
 		+ (510ul << 12);
 
-	void reserveIndex(PagingIndex index) {
+	void reserveIndex(uintptr_t virtualAddress, PagingIndex index, PhysicalMemoryManager* physicalMemory) {
 		auto& map = *reinterpret_cast<volatile PageMapLevel4*>(Level4StartAddress);
+		auto nextAddress = PageDirectoryPointerStartAddress + (((virtualAddress) >> 27) & 0x00001ff000);
 
 		if (map.directoryPointers[index.level4] == 0) {
-			//allocate level4
+			auto physicalPage = physicalMemory->allocatePage();
+			map.directoryPointers[index.level4] = physicalPage | 3;
+			physicalMemory->finishAllocation(nextAddress);//Level4StartAddress + 0x1000 * index.level4);
+		}
+
+		auto& directoryPointer = *reinterpret_cast<volatile PageDirectoryPointer*>(nextAddress);
+		nextAddress = PageDirectoryStartAddress + (((virtualAddress) >> 18) & 0x003ffff000);
+		
+		if (directoryPointer.directoryTables[index.directoryPointer] == 0) {
+			auto physicalPage = physicalMemory->allocatePage();
+			directoryPointer.directoryTables[index.directoryPointer] = physicalPage | 3;
+			physicalMemory->finishAllocation(nextAddress); //PageDirectoryPointerStartAddress + 0x1000 * index.directoryPointer);
+		}
+
+		auto& directory = *reinterpret_cast<volatile PageDirectoryTable*>(nextAddress);
+		nextAddress = PageTableStartAddress + (((virtualAddress) >> 9) & 0x7ffffff000);
+
+		if (directory.pageTables[index.directory] == 0) {
+			auto physicalPage = physicalMemory->allocatePage();
+			directory.pageTables[index.directory] = physicalPage | 3;
+			physicalMemory->finishAllocation(nextAddress);//PageDirectoryStartAddress + 0x1000 * index.directory);
+		}
+
+		auto& table = *reinterpret_cast<volatile PageTable*>(nextAddress);
+
+		if (table.pages[index.table] == 0) {
+			auto physicalPage = physicalMemory->allocatePage();
+			table.pages[index.table] = physicalPage | 3;
+			physicalMemory->finishAllocation(virtualAddress & ~0xFFF);//PageTableStartAddress + 0x1000 * index.table);
 		}
 	}
 
@@ -93,10 +122,15 @@ namespace Memory {
 		table->pages[index] = 0;
 	}
 
+	void VirtualMemoryManager::allocatePagingTablesFor(uintptr_t virtualAddress, PhysicalMemoryManager* physicalMemoryManager) {
+		auto index = calculateIndex(virtualAddress);
+		reserveIndex(virtualAddress, index, physicalMemoryManager);	
+	}
+
 	PageStatus VirtualMemoryManager::getPageStatus(uintptr_t virtualAddress) {
 		auto index = (virtualAddress >> 12) & 511;
 		auto tableAddress = PageTableStartAddress + ((virtualAddress >> 9) & 0x7FFFFFF000);
-		auto table = reinterpret_cast<volatile PageTable*>(tableAddress);
+		auto table = reinterpret_cast<PageTable*>(tableAddress);
 		auto physicalAddress = table->pages[index];
 
 		if (physicalAddress & 0xFF) {
@@ -109,7 +143,7 @@ namespace Memory {
 		}
 		else if (virtualAddress > PageTableStartAddress) {
 			//this is a page table/directory/directory pointer
-			return PageStatus::Allocated;
+			return PageStatus::UnallocatedPageTable;
 		}
 		else {
 			return PageStatus::Invalid;
