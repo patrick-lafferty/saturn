@@ -130,6 +130,12 @@ bool handlePageFault(uintptr_t virtualAddress, uint32_t errorCode) {
 
             return true;
         }
+        else if (pageStatus == Memory::PageStatus::UnallocatedPageTable) {
+
+            core.virtualMemory->allocatePagingTablesFor(virtualAddress, core.physicalMemory);
+            faults++;
+            return true;
+        }
         else if (pageStatus == Memory::PageStatus::Mapped) {
             //this shouldn't happen?
             log("[IDT] Page Fault: mapped address?");
