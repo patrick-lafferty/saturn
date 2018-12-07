@@ -45,73 +45,7 @@ using namespace Memory;
 
 extern "C" void initializeSSE();
 
-/*void testBlockAllocator(Memory::PhysicalMemoryManager& pmm,
-    Memory::VirtualMemoryManager& vmm) {
-    
-    int startingFreePages = pmm.getFreePages();
-    int startingTotalPages = pmm.getTotalPages();
-
-    {
-        Memory::BlockAllocator<int> allocator;
-    }
-
-    int endingFreePages = pmm.getFreePages();
-    int endingTotalPages = pmm.getTotalPages();
-}*/
-
-#include <misc/testing.h>
-
-class Test {
-    public:
-
-    static constexpr char* name = "Suite A";
-
-    static bool example() {
-        bool a = true;
-        int b = 2;
-
-        auto isTrue = Assert::isTrue(a, "a isn't true");
-        auto isLong = Assert::isGreater(b, 5, "b isn't long");
-
-        return Assert::all(isTrue, isLong);
-    }
-
-    static bool canRunTwo() {
-        auto isTrue = Assert::isTrue(true, "true isn't true");
-
-        return Assert::all(isTrue);
-    }
-
-    static bool run() {
-        using namespace Preflight;
-
-        return Preflight::runTests(
-            test(example, "example test"),
-            test(canRunTwo, "Preflight can run multiple tests")
-        );
-    }
-};
-
-class Test2 {
-    public:
-
-    static constexpr char* name = "Suite B";
-
-    static bool simple() {
-        bool a = true;
-
-        auto isTrue = Assert::isTrue(a, "a isn't true");
-
-        return Assert::all(isTrue);
-    }
-
-    static bool run() {
-        return Preflight::runTests(
-            Preflight::test(simple, "simple")
-        );
-    }
-};
-
+#include "../../test/kernel/kernel.h"
 
 extern "C"
 [[noreturn]]
@@ -128,15 +62,14 @@ void initializeKernel(uint64_t firstFreeAddress, uint64_t totalFreePages) {
 
     VirtualMemoryManager virtualMemoryManager;
 
-    CPU::setupCore(&physicalMemoryManager, &virtualMemoryManager);
+    CPU::setupCore(&physicalMemoryManager, &virtualMemoryManager, nullptr);
+    AddressSpace space;
 
-    //virtualMemoryManager.map(0x6969696969, 0x303030);
+    CPU::getCurrentCore().addressSpace = &space;
 
     log("Saturn OS 0.4");
 
-//    testBlockAllocator(physicalMemoryManager, virtualMemoryManager);
-
-    Preflight::runTestSuites<Test, Test2>();
+    Test::runKernelTests();
 
     halt();
 }
