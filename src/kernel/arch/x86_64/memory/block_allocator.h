@@ -116,7 +116,7 @@ namespace Memory {
             auto allocation = reinterpret_cast<Allocation*>(address);
 
             if (freeList != nullptr) {
-                allocation->next = freeList;
+                allocation->nextFree = freeList;
                 freeList = allocation;
             }
             else {

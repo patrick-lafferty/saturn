@@ -37,38 +37,6 @@ namespace Test {
 
     using namespace Preflight;
 
-    /*bool BlockAllocatorSuite::remove_HandlesSimpleTree() {
-        
-        struct TestData {
-            std::array<int, 8> values;
-            std::array<int, 7> expectedTraversal;
-            int valueToRemove;
-        };
-
-        auto test = [](TestData data) { 
-            SimpleAllocator<480> allocator;
-            AVLTree<int, SimpleAllocator<480>> tree {allocator};
-
-            for (auto value : data.values) {
-                tree.insert(value);
-            }
-
-            tree.remove(data.valueToRemove);
-
-            std::array<int, 7> result;
-            tree.traverseInOrder(result);
-
-            auto numberOfNodes = Assert::isEqual(tree.getNumberOfNodes(), 7, "Tree doesn't have 7 nodes");
-            auto inorder = Assert::arraySame(result, data.expectedTraversal, "In-order traversal didn't match");
-
-            return Assert::all(numberOfNodes, inorder);
-        };
-
-        return runCases(test, 
-            TestData {{41, 20, 50, 29, 65, 11, 26, 23}, {20, 23, 26, 29, 41, 50, 65}, 11},
-        );
-    }*/
-
     bool BlockAllocatorSuite::allocate_HandlesSimpleAllocations() {
         Memory::BlockAllocator<int> allocator(5);
 
@@ -136,7 +104,35 @@ namespace Test {
     }
 
     bool BlockAllocatorSuite::allocate_HandlesFreeList() {
-        return true;
+
+        Memory::BlockAllocator<int> allocator(5);
+        int* allocations[100];
+
+        std::array<int, 100> expected, actual;
+
+        for (int i = 0; i < 100; i++) {
+            allocations[i] = allocator.allocate();
+            *allocations[i] = i;
+            expected[i] = i;
+        }
+
+        for (int i = 25; i < 75; i++) {
+            allocator.free(allocations[i]);
+        }
+
+        for (int i = 25; i < 75; i++) {
+            allocations[i] = allocator.allocate();
+            *allocations[i] = i;
+        }
+
+        //Note: separate loop incase successive memory writes overwrote previous values
+        for (int i = 0; i < 100; i++) {
+            actual[i] = *allocations[i];
+        }
+
+        auto allValuesMatch = Assert::arraySame(actual, expected, "Allocated values were not from 1 to 100");
+
+        return Assert::all(allValuesMatch);
     }
 
     bool BlockAllocatorSuite::run() {
