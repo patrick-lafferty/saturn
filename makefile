@@ -31,6 +31,10 @@ define ADD_OBJECT_RULES
 src/$(1)/%.o: src/$(1)/%.cpp 
 	$(CXX) -c $$< -o $$@ $$(GLOBAL_CXX_FLAGS) $($(1)_CXX_FLAGS)
 
+test/$(1)/%.o: test/$(1)/%.cpp 
+	$(CXX) -c $$< -o $$@ $$(GLOBAL_CXX_FLAGS) $($(1)_CXX_FLAGS)
+
+
 src/$(1)/%.o: src/$(1)/%.s 
 	$$(AS) $$< -o $$@ $$(GLOBAL_AS_FLAGS) $$($(1)_AS_FLAGS)
 

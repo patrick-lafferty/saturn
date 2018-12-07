@@ -1,7 +1,7 @@
 romimage: file=$BXSHARE/BIOS-bochs-latest
 vgaromimage: file=$BXSHARE/VGABIOS-lgpl-latest
 
-display_library: win32, options="gui_debug"
+display_library: x #, options="gui_debug"
 
 ata0-master: type=cdrom, path=sysroot/system/boot/saturn.iso, status=inserted
 
