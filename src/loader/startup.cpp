@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "panic.h"
 #include "idt_32.h"
 #include "gdt.h"
+#include <misc/kernel_initial_arguments.h>
 
 struct PhysicalMemStats {
     uint64_t firstAddress;
@@ -82,6 +83,7 @@ struct Configuration {
     bool foundKernelModule {false};
     int currentProgram {0};
     int kernelProgram {-1};
+    uintptr_t oldRDSP {0};
 };
 
 int strcmp(const char* lhs, const char* rhs) {
@@ -355,6 +357,10 @@ void walkMultibootTags(Multiboot::BootInfo* info, Configuration& config) {
                     printString("[Tag] Old RDSP", currentLine++);
                 #endif
 
+                auto address = reinterpret_cast<uintptr_t>(tag);
+                address += 8;
+                config.oldRDSP = address;
+
                 break;
             }
             case TagTypes::NewRDSP: {
@@ -547,10 +553,10 @@ void checkForLongMode() {
     }
 }
 
-extern "C" void finalEnter(uint64_t entryPoint, uint64_t nextFreeAddress, uint64_t totalFreePages);
-void enterLongMode(uint64_t entryPoint, uint64_t nextFreeAddress, uint64_t totalFreePages) {
+extern "C" void finalEnter(uint64_t entryPoint, KernelConfig* config);
+void enterLongMode(uint64_t entryPoint, KernelConfig& config) {
     GDT::setup64();
-    finalEnter(entryPoint, nextFreeAddress, totalFreePages);
+    finalEnter(entryPoint, &config);
 }
 
 extern "C"
@@ -588,9 +594,14 @@ void startup(uint32_t address, uint32_t magicNumber) {
     setupInitialPaging(config);
     
     checkForLongMode();
-    enterLongMode(config.programs[config.kernelProgram].entryPoint, 
+
+    KernelConfig kernel {
         config.physicalMemoryStats.nextFreeAddress,
-        config.physicalMemoryStats.totalPages);
+        config.physicalMemoryStats.totalPages,
+        config.oldRDSP  
+    };
+
+    enterLongMode(config.programs[config.kernelProgram].entryPoint, kernel);
 
     panic("Should never get here");
 }

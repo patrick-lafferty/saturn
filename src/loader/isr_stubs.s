@@ -174,8 +174,7 @@ global entryPoint64
 entryPoint64:
 
     mov rax, [esp + 4] 
-    mov rdi, [esp + 12]
-    mov rsi, [esp + 20]
+    mov edi, [esp + 12]
     
     call rax
 
