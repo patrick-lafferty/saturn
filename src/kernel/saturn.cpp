@@ -55,6 +55,7 @@ void initializeKernel(uint64_t firstFreeAddress, uint64_t totalFreePages) {
 
     Memory::PhysicalMemoryManager::SetupGlobalManager(firstFreeAddress, totalFreePages);
     auto& physicalMemoryManager = PhysicalMemoryManager::GetGlobalManager();
+    
     initializeSSE();
     IDT::initialize();
     PIC::disable();
@@ -62,10 +63,7 @@ void initializeKernel(uint64_t firstFreeAddress, uint64_t totalFreePages) {
 
     VirtualMemoryManager virtualMemoryManager;
 
-    CPU::setupCore(&physicalMemoryManager, &virtualMemoryManager, nullptr);
-    AddressSpace space;
-
-    CPU::getCurrentCore().addressSpace = &space;
+    CPU::setupInitialCore(&physicalMemoryManager, &virtualMemoryManager);
 
     log("Saturn OS 0.4");
 

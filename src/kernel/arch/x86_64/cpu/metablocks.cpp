@@ -27,8 +27,34 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "metablocks.h"
 #include "msr.h"
+#include <memory/address_space.h>
 
 namespace CPU {
+
+    CoreMeta InitialCore;
+    CoreMeta* Cores;
+
+    void storeCore(CoreMeta* core) {
+        auto address = reinterpret_cast<uintptr_t>(core);
+
+        writeModelSpecificRegister(ModelSpecificRegister::GSBase, 
+            address & 0xFFFFFFFF, address >> 32);
+        writeModelSpecificRegister(ModelSpecificRegister::KernelGSBase, 
+            address & 0xFFFFFFFF, address >> 32);
+    }
+
+    void setupInitialCore(Memory::PhysicalMemoryManager* physicalMemory,
+            Memory::VirtualMemoryManager* virtualMemory) {
+        
+        InitialCore.self = &InitialCore;
+        InitialCore.physicalMemory = physicalMemory;
+        InitialCore.virtualMemory = virtualMemory;
+
+        storeCore(&InitialCore);
+
+        static Memory::AddressSpace space;
+        InitialCore.addressSpace = &space;
+    }
 
     void setupCore(Memory::PhysicalMemoryManager* physicalMemory,
             Memory::VirtualMemoryManager* virtualMemory,
@@ -39,12 +65,7 @@ namespace CPU {
         core.virtualMemory = virtualMemory;
         core.addressSpace = addressSpace;
 
-        auto address = reinterpret_cast<uintptr_t>(&core);
-
-        writeModelSpecificRegister(ModelSpecificRegister::GSBase, 
-            address & 0xFFFFFFFF, address >> 32);
-        writeModelSpecificRegister(ModelSpecificRegister::KernelGSBase, 
-            address & 0xFFFFFFFF, address >> 32);
+        storeCore(&core);
     }
 
     CoreMeta& getCurrentCore() {

@@ -52,6 +52,9 @@ namespace CPU {
         Memory::AddressSpace* addressSpace;
     };
 
+    void setupInitialCore(Memory::PhysicalMemoryManager* physicalMemory,
+            Memory::VirtualMemoryManager* virtualMemory);
+
     void setupCore(Memory::PhysicalMemoryManager* physicalMemory,
             Memory::VirtualMemoryManager* virtualMemory,
             Memory::AddressSpace* addressSpace);
