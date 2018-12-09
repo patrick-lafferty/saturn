@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2017, Patrick Lafferty
+Copyright (c) 2018, Patrick Lafferty
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -25,41 +25,48 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#include "descriptor.h"
-#include "exceptions.h"
-#include "irqs.h"
+#pragma once
 
-IDT::Entry idt[256];
-IDT::EntryPointer idtPointer;
+#include <stdint.h>
 
 namespace IDT {
-
-    void initialize() {
-        idtPointer.limit = sizeof(idt) - 1;
-        idtPointer.base = reinterpret_cast<uintptr_t>(&idt);
-
-        loadExceptions();
-        loadIRQs();
-        loadIDT();
-    }
-    
-    Entry encodeEntry(uint64_t address, uint16_t kernelSegment, bool isUserspaceCallable) {
-        Entry entry;
-
-        entry.offset_low = address & 0xFFFF;
-        entry.selector = kernelSegment;
-        entry.stackTableOffset = 0;
-        entry.attributes = 0x8E;
-        entry.offset_mid = (address >> 16) & 0xFFFF;
-        entry.offset_high = address >> 32;
-        entry.zero = 0;
-     
-        if (isUserspaceCallable) {
-            /*
-            Set the DPL (see above) to 0b11 for ring3
-            */
-            entry.attributes |= 0x60;
-        }
-        return entry;
-    }
+    void loadIRQs();
 }
+
+extern "C" void irq0();
+extern "C" void irq1();
+extern "C" void irq2();
+extern "C" void irq3();
+extern "C" void irq4();
+extern "C" void irq5();
+extern "C" void irq6();
+extern "C" void irq7();
+extern "C" void irq8();
+extern "C" void irq9();
+extern "C" void irq10();
+extern "C" void irq11();
+extern "C" void irq12();
+extern "C" void irq13();
+extern "C" void irq14();
+extern "C" void irq15();
+
+struct IrqFrame {
+    uint64_t rax;
+    uint64_t rbx;
+    uint64_t rcx;
+    uint64_t rdx;
+    uint64_t rsi;
+    uint64_t rdi;
+    uint64_t rbp;
+    uint64_t r8;
+    uint64_t r9;
+    uint64_t r10;
+    uint64_t r11;
+    uint64_t r12;
+    uint64_t r13;
+    uint64_t r14;
+    uint64_t r15;
+    uint32_t index;
+};
+
+extern "C" void irqHandler(IrqFrame* frame);

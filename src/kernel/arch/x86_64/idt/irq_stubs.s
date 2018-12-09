@@ -1,5 +1,6 @@
-/*
-Copyright (c) 2017, Patrick Lafferty
+%if 0
+
+Copyright (c) 2018, Patrick Lafferty
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -24,42 +25,84 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
 ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-#include "descriptor.h"
-#include "exceptions.h"
-#include "irqs.h"
 
-IDT::Entry idt[256];
-IDT::EntryPointer idtPointer;
+%endif
 
-namespace IDT {
+bits 64
 
-    void initialize() {
-        idtPointer.limit = sizeof(idt) - 1;
-        idtPointer.base = reinterpret_cast<uintptr_t>(&idt);
+section .text
 
-        loadExceptions();
-        loadIRQs();
-        loadIDT();
-    }
-    
-    Entry encodeEntry(uint64_t address, uint16_t kernelSegment, bool isUserspaceCallable) {
-        Entry entry;
+%macro Stub 1
+    global irq%1
 
-        entry.offset_low = address & 0xFFFF;
-        entry.selector = kernelSegment;
-        entry.stackTableOffset = 0;
-        entry.attributes = 0x8E;
-        entry.offset_mid = (address >> 16) & 0xFFFF;
-        entry.offset_high = address >> 32;
-        entry.zero = 0;
-     
-        if (isUserspaceCallable) {
-            /*
-            Set the DPL (see above) to 0b11 for ring3
-            */
-            entry.attributes |= 0x60;
-        }
-        return entry;
-    }
-}
+    irq%1:
+        push %1
+        jmp Stub_Common
+%endmacro
+
+extern irqHandler
+
+Stub_Common:
+
+;TODO: use swapgs if IOPL is 0x3000
+
+    push r15
+    push r14
+    push r13
+    push r12
+    push r11
+    push r10
+    push r9
+    push r8
+    push rbp
+    push rdi
+    push rsi
+    push rdx
+    push rcx
+    push rbx
+    push rax
+
+    mov rdi, rsp
+    mov rbx, rsp
+    and rsp, ~0xF
+
+    call irqHandler
+
+    mov rsp, rbx
+
+    pop rax
+    pop rbx
+    pop rcx
+    pop rdx
+    pop rsi
+    pop rdi
+    pop rbp
+    pop r8
+    pop r9
+    pop r10
+    pop r11
+    pop r12
+    pop r13
+    pop r14
+    pop r15
+
+    add rsp, 8
+
+    iretq
+
+Stub 0 
+Stub 1 
+Stub 2 
+Stub 3 
+Stub 4 
+Stub 5 
+Stub 6 
+Stub 7 
+Stub 8
+Stub 9
+Stub 10
+Stub 11
+Stub 12
+Stub 13
+Stub 14
+Stub 15

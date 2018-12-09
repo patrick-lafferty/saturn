@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2017, Patrick Lafferty
+Copyright (c) 2018, Patrick Lafferty
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -25,41 +25,35 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#include "descriptor.h"
-#include "exceptions.h"
 #include "irqs.h"
-
-IDT::Entry idt[256];
-IDT::EntryPointer idtPointer;
+#include "descriptor.h"
+#include <log.h>
+#include <cpu/apic.h>
 
 namespace IDT {
 
-    void initialize() {
-        idtPointer.limit = sizeof(idt) - 1;
-        idtPointer.base = reinterpret_cast<uintptr_t>(&idt);
-
-        loadExceptions();
-        loadIRQs();
-        loadIDT();
+    void loadIRQs() {
+        idt[206] = encodeEntry(reinterpret_cast<uintptr_t>(&irq0), 0x08);
+        idt[207] = encodeEntry(reinterpret_cast<uintptr_t>(&irq1), 0x08);
+        idt[49] = encodeEntry(reinterpret_cast<uintptr_t>(&irq2), 0x08);
+        idt[35] = encodeEntry(reinterpret_cast<uintptr_t>(&irq3), 0x08);
+        idt[36] = encodeEntry(reinterpret_cast<uintptr_t>(&irq4), 0x08);
+        idt[37] = encodeEntry(reinterpret_cast<uintptr_t>(&irq5), 0x08);
+        idt[38] = encodeEntry(reinterpret_cast<uintptr_t>(&irq6), 0x08);
+        idt[39] = encodeEntry(reinterpret_cast<uintptr_t>(&irq7), 0x08);
+        idt[51] = encodeEntry(reinterpret_cast<uintptr_t>(&irq8), 0x08);
+        idt[41] = encodeEntry(reinterpret_cast<uintptr_t>(&irq9), 0x08);
+        idt[42] = encodeEntry(reinterpret_cast<uintptr_t>(&irq10), 0x08);
+        idt[43] = encodeEntry(reinterpret_cast<uintptr_t>(&irq11), 0x08);
+        idt[44] = encodeEntry(reinterpret_cast<uintptr_t>(&irq12), 0x08);
+        idt[45] = encodeEntry(reinterpret_cast<uintptr_t>(&irq13), 0x08);
+        idt[46] = encodeEntry(reinterpret_cast<uintptr_t>(&irq14), 0x08);
+        idt[47] = encodeEntry(reinterpret_cast<uintptr_t>(&irq15), 0x08);
     }
-    
-    Entry encodeEntry(uint64_t address, uint16_t kernelSegment, bool isUserspaceCallable) {
-        Entry entry;
+}
 
-        entry.offset_low = address & 0xFFFF;
-        entry.selector = kernelSegment;
-        entry.stackTableOffset = 0;
-        entry.attributes = 0x8E;
-        entry.offset_mid = (address >> 16) & 0xFFFF;
-        entry.offset_high = address >> 32;
-        entry.zero = 0;
-     
-        if (isUserspaceCallable) {
-            /*
-            Set the DPL (see above) to 0b11 for ring3
-            */
-            entry.attributes |= 0x60;
-        }
-        return entry;
-    }
+void irqHandler(IrqFrame* frame) {
+
+   log("irq %d", frame->index);
+   APIC::signalEndOfInterrupt();
 }
