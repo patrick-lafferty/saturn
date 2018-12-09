@@ -83,6 +83,30 @@ enum class Exception {
     VirtualizationException
 };
 
+const char* exceptions[] = {
+    "Divide Error",
+    "Debug Exception",
+    "Non-Maskable External Interrupt",
+    "Breakpoint",
+    "Overflow",
+    "Bound Range Exceeded",
+    "Invalid/Undefined Opcode",
+    "Device not available [math coprocessor]",
+    "Double Fault",
+    "Coprocessor Segment Overrun",
+    "Invalid TSS",
+    "Segment not present",
+    "Stack-Segment Fault",
+    "General Protection Fault",
+    "Page Fault",
+    "Reserved [15]",
+    "x87 FPU Error",
+    "Alignment Check",
+    "Machine Check",
+    "SIMD Floating-Point Exception",
+    "Virtualization Exception"
+};
+
 [[noreturn]]
 void panic() {
 
@@ -179,7 +203,9 @@ void exceptionHandler(ExceptionFrame* frame) {
             break;
         }
         default: {
-            log("Unhandled exception %d", frame->index);
+            log("Unhandled exception %d: %s", frame->index, exceptions[frame->index]);
+            panic();
+            break;
         }
     }
 }

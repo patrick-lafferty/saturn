@@ -53,7 +53,7 @@ extern exceptionHandler
 
 Stub_Common:
 
-;TODO: use swapgs is IOPL is 0x3000
+;TODO: use swapgs if IOPL is 0x3000
 
     push r15
     push r14
