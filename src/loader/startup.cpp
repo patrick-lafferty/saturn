@@ -533,14 +533,8 @@ void mapACPI(uint64_t* pageMapLevel4, Configuration& config) {
     }
 }
 
-void mapAPIC(uint64_t* pageMapLevel4, Configuration& config) {
-
-    uint64_t apicLocation = 0xfec00000;
-
-    auto pageTable = preparePageTable(apicLocation, pageMapLevel4, config);
+void identityMap(uint64_t* pageTable, uint64_t address, uint64_t totalPages) {
     auto pageFlags = 3 | 0b10000;
-    auto totalPages = (0xfef00000 - 0xfec00000) / 0x1000;
-    auto address = config.physicalMemoryStats.acpiLocation;
 
     for (auto i = 0u; i < totalPages; i++) {
         auto pageAddress = address | pageFlags;
@@ -548,6 +542,19 @@ void mapAPIC(uint64_t* pageMapLevel4, Configuration& config) {
         *(pageTable + pageIndex) = pageAddress;
         address += 0x1000;
     }
+}
+
+void mapAPIC(uint64_t* pageMapLevel4, Configuration& config) {
+
+    uint64_t apicLocation = 0xfec00000;
+
+    auto pageTable = preparePageTable(apicLocation, pageMapLevel4, config);
+    auto totalPages = (0xfed00000 - 0xfec00000) / 0x1000;
+    identityMap(pageTable, apicLocation, totalPages);
+
+    apicLocation = 0xfee00000;
+    pageTable = preparePageTable(apicLocation, pageMapLevel4, config);
+    identityMap(pageTable, apicLocation, totalPages);
 }
 
 void setupInitialPaging(Configuration& config) {
