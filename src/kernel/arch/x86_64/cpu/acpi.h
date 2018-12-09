@@ -25,52 +25,42 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-[[noreturn]]
-void halt() {
-    while (true) {
-        asm("cli \n"
-            "hlt");
-    }
-}
+#pragma once
 
-#include <memory/physical_memory_manager.h>
-#include <memory/block_allocator.h>
-#include <idt/descriptor.h>
-#include <cpu/pic.h>
-#include <cpu/metablocks.h>
-#include <cpu/initialize.h>
-#include <gdt.h>
-#include <log.h>
-#include <misc/kernel_initial_arguments.h>
+#include <stdint.h>
+#include <optional>
 
-using namespace Memory;
+namespace CPU {
 
-extern "C" void initializeSSE();
+    struct RootSystemDescriptionPointer {
+        uint8_t signature[8];
+        uint8_t checksum {1};
+        uint8_t oemid[6];
+        uint8_t revision;
+        uint32_t rsdtAddress;
+    } __attribute__((packed));
 
-#include "../../test/kernel/kernel.h"
+    struct SystemDescriptionTableHeader {
+        uint8_t signature[4];
+        uint32_t length;
+        uint8_t revision;
+        uint8_t checksum;
+        uint8_t oemid[6];
+        uint8_t oemTableId[8];
+        uint32_t oemRevision;
+        uint32_t creatorId;
+        uint32_t creatorRevision;
+    } __attribute__((packed));
 
-extern "C"
-[[noreturn]]
-void initializeKernel(KernelConfig* config) {
+    struct RootSystemDescriptorTable {
+        SystemDescriptionTableHeader header;
+        uint32_t firstTableAddress;
+    };
 
-    GDT::setup();
+    struct ACPITableHeader {
+        uintptr_t apicStartAddress;
+        uint64_t apicTableLength;
+    };
 
-    Memory::PhysicalMemoryManager::SetupGlobalManager(config->nextFreeAddress, config->totalFreePages);
-    auto& physicalMemoryManager = PhysicalMemoryManager::GetGlobalManager();
-
-    initializeSSE();
-    IDT::initialize();
-    PIC::disable();
-    asm("sti");
-
-    VirtualMemoryManager virtualMemoryManager;
-
-    CPU::setupInitialCore(&physicalMemoryManager, &virtualMemoryManager);
-    CPU::initialize(config);
-
-    log("Saturn OS 0.4");
-
-    Test::runKernelTests();
-
-    halt();
+    std::optional<ACPITableHeader> parseACPITables(uintptr_t rsdpAddress);
 }

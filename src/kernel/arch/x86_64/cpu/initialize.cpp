@@ -25,52 +25,32 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-[[noreturn]]
-void halt() {
-    while (true) {
-        asm("cli \n"
-            "hlt");
-    }
-}
-
-#include <memory/physical_memory_manager.h>
-#include <memory/block_allocator.h>
-#include <idt/descriptor.h>
-#include <cpu/pic.h>
-#include <cpu/metablocks.h>
-#include <cpu/initialize.h>
-#include <gdt.h>
-#include <log.h>
+#include "initialize.h"
+#include "acpi.h"
 #include <misc/kernel_initial_arguments.h>
+#include "metablocks.h"
+#include <memory/virtual_memory_manager.h>
 
-using namespace Memory;
+namespace CPU {
 
-extern "C" void initializeSSE();
+    void unmapACPITables(KernelConfig* config) {
+        auto& core = getCurrentCore();
 
-#include "../../test/kernel/kernel.h"
+        uintptr_t address = config->acpiLocation;
+        auto pages = config->acpiLength / 0x1000;
 
-extern "C"
-[[noreturn]]
-void initializeKernel(KernelConfig* config) {
+        for (auto i = 0u; i < pages; i++) {
+            core.virtualMemory->unmap(address, 1);
+            address += 0x1000;
+        }
+    }
 
-    GDT::setup();
+    void initialize(KernelConfig* config) {
 
-    Memory::PhysicalMemoryManager::SetupGlobalManager(config->nextFreeAddress, config->totalFreePages);
-    auto& physicalMemoryManager = PhysicalMemoryManager::GetGlobalManager();
+        if (auto acpiTable = CPU::parseACPITables(config->rsdpAddress)) {
 
-    initializeSSE();
-    IDT::initialize();
-    PIC::disable();
-    asm("sti");
+        }
 
-    VirtualMemoryManager virtualMemoryManager;
-
-    CPU::setupInitialCore(&physicalMemoryManager, &virtualMemoryManager);
-    CPU::initialize(config);
-
-    log("Saturn OS 0.4");
-
-    Test::runKernelTests();
-
-    halt();
+        unmapACPITables(config);
+    }
 }
