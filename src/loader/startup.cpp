@@ -533,6 +533,23 @@ void mapACPI(uint64_t* pageMapLevel4, Configuration& config) {
     }
 }
 
+void mapAPIC(uint64_t* pageMapLevel4, Configuration& config) {
+
+    uint64_t apicLocation = 0xfec00000;
+
+    auto pageTable = preparePageTable(apicLocation, pageMapLevel4, config);
+    auto pageFlags = 3 | 0b10000;
+    auto totalPages = (0xfef00000 - 0xfec00000) / 0x1000;
+    auto address = config.physicalMemoryStats.acpiLocation;
+
+    for (auto i = 0u; i < totalPages; i++) {
+        auto pageAddress = address | pageFlags;
+        auto pageIndex = (address >> 12) & 511;
+        *(pageTable + pageIndex) = pageAddress;
+        address += 0x1000;
+    }
+}
+
 void setupInitialPaging(Configuration& config) {
     /*
     We set aside the first four physical pages to be used for the 
@@ -567,6 +584,7 @@ void setupInitialPaging(Configuration& config) {
 
     mapProgram(pageMapLevel4, config, config.programs[config.kernelProgram]);
     mapACPI(pageMapLevel4, config);
+    mapAPIC(pageMapLevel4, config);
 
     loadTopLevelPage(pageMapLevel4Address);
 }
