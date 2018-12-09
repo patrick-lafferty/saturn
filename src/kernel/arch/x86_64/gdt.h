@@ -38,8 +38,8 @@ namespace GDT {
     } __attribute__((packed));
     
     void setup();
-    void addTSSEntry(uint32_t address, uint32_t size);
+    void addTSSEntry(uintptr_t address, uint32_t size);
 }
 
-extern "C" uint64_t Gdt[3];
+extern "C" uint64_t Gdt[9];
 extern "C" GDT::DescriptorPointer<uint64_t> GdtPointer;

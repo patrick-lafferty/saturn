@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "gdt.h"
 
-uint64_t Gdt[3];
+uint64_t Gdt[9];
 GDT::DescriptorPointer<uint64_t> GdtPointer;
 
 extern "C" void gdt_flush();
@@ -42,7 +42,7 @@ namespace GDT {
 
     void setup() {
 
-        GdtPointer.limit = 8 * 3 - 1;
+        GdtPointer.limit = 8 * 9 - 1;
         GdtPointer.base = reinterpret_cast<uint64_t>(&Gdt[0]);
 
         /* 
@@ -58,6 +58,35 @@ namespace GDT {
         nextGDTIndex = 3;
 
         gdt_flush();
+    }
+
+    struct Descriptor {
+        uint16_t limitLow;
+        uint16_t baseLow;
+        uint8_t baseMiddle;
+        uint8_t access;
+        uint8_t flags;
+        uint8_t baseHigh;
+    } __attribute__((packed));
+
+    void addTSSEntry(uintptr_t address, uint32_t size) {
+        /*
+        In long mode TSS entries are stored as two consecutive
+        GDT entries, with the format:
+
+        first entry:
+
+        bit 63-bit56     | 0's.. bit 47 | 0's.. bit 43-bit 40 | bits 39 - 16         | bits 15 - 0
+        4th byte of base |             1               1001   |  first 3 addr bytes  | first 2 bytes of limit
+        */
+        uint64_t firstEntry = ((address & 0xFFFFFF) << 16) | (size & 0xFFFF);
+        firstEntry |= (1ul << 47);
+        firstEntry |= (0b1001ul << 40);
+
+        uint64_t secondEntry = address >> 32;
+
+        Gdt[nextGDTIndex++] = firstEntry;
+        Gdt[nextGDTIndex++] = secondEntry;
     }
 
 }
