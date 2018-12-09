@@ -32,5 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 struct KernelConfig {
     uint64_t nextFreeAddress;
     uint64_t totalFreePages;
-    uint64_t rdspAddress;
+    uint64_t rsdpAddress;
+    uint64_t acpiLocation;
+    uint64_t acpiLength;
 };

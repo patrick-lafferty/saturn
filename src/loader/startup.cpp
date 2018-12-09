@@ -37,7 +37,8 @@ struct PhysicalMemStats {
     uint64_t firstAddress;
     uint64_t nextFreeAddress;
     uint64_t totalPages;
-    uint64_t acpiLocation;
+    uint64_t acpiLocation {0};
+    uint64_t acpiLength {0};
 };
 
 void freePhysicalPages(uint64_t pageAddress, uint64_t count, PhysicalMemStats& stats) {
@@ -83,7 +84,8 @@ struct Configuration {
     bool foundKernelModule {false};
     int currentProgram {0};
     int kernelProgram {-1};
-    uintptr_t oldRDSP {0};
+    uintptr_t oldRSDP {0};
+    uint8_t rsdp[20];
 };
 
 int strcmp(const char* lhs, const char* rhs) {
@@ -210,6 +212,21 @@ void createFreePageList(Configuration& config) {
 
                 break;
             }
+            case MemoryType::ReservedACPI: {
+                #if VERBOSE
+                    printString("ACPI: ", currentLine);
+                    printInteger(entry->baseAddress, currentLine, 11);
+                    currentLine++;
+                #endif
+
+                if (config.physicalMemoryStats.acpiLength == 0
+                        && entry->baseAddress > 0x100'0000) {
+                    config.physicalMemoryStats.acpiLocation = entry->baseAddress;
+                    config.physicalMemoryStats.acpiLength = entry->length;
+                }
+
+                break;
+            }
             case MemoryType::UsableACPI: {
 
                 #if VERBOSE
@@ -217,6 +234,9 @@ void createFreePageList(Configuration& config) {
                     printInteger(entry->baseAddress, currentLine, 11);
                     currentLine++;
                 #endif
+
+                config.physicalMemoryStats.acpiLocation = entry->baseAddress;
+                config.physicalMemoryStats.acpiLength = entry->length;
 
                 break;
             }
@@ -245,6 +265,8 @@ void createFreePageList(Configuration& config) {
                 #if VERBOSE
                     printString("Unknown!", currentLine);
                     printInteger(entry->type, currentLine, 11);
+                    printInteger(entry->baseAddress, currentLine, 15);
+                    printInteger(entry->length, currentLine, 25);
                     currentLine++;
                 #endif
 
@@ -359,7 +381,13 @@ void walkMultibootTags(Multiboot::BootInfo* info, Configuration& config) {
 
                 auto address = reinterpret_cast<uintptr_t>(tag);
                 address += 8;
-                config.oldRDSP = address;
+                uint8_t* rsdp = reinterpret_cast<uint8_t*>(address);
+                
+                for (int i = 0; i < 20; i++) {
+                    config.rsdp[i] = *rsdp++;
+                }
+
+                config.oldRSDP = reinterpret_cast<uintptr_t>(&config.rsdp[0]);
 
                 break;
             }
@@ -426,44 +454,49 @@ void clearPage(uint64_t* page) {
 
 extern "C" void loadTopLevelPage(uint32_t address);
 
-void mapProgram(uint64_t* pageMapLevel4, Configuration& config, Elf::Program& program) {
-
+uint64_t* preparePageTable(uint64_t virtualAddress, uint64_t* pageMapLevel4, Configuration& config) {
     auto tableFlags = 3;
+
+    auto pml4 = (virtualAddress >> 39) & 511;
+    auto pdp = (virtualAddress >> 30) & 511;
+    auto pd = (virtualAddress >> 21) & 511;
+
+    if (*(pageMapLevel4 + pml4) == 0) {
+        auto pageDirectoryPointer = reinterpret_cast<uint64_t*>(allocatePage(config));
+        clearPage(pageDirectoryPointer);
+        *(pageMapLevel4 + pml4) = reinterpret_cast<uint64_t>(pageDirectoryPointer) | tableFlags;
+    }
+
+    auto pageDirectoryPointer = reinterpret_cast<uint64_t*>(*(pageMapLevel4 + pml4) & ~tableFlags);
+
+    if (*(pageDirectoryPointer + pdp) == 0) {
+        auto pageDirectory = reinterpret_cast<uint64_t*>(allocatePage(config));
+        clearPage(pageDirectory);
+        *(pageDirectoryPointer + pdp) = reinterpret_cast<uint64_t>(pageDirectory) | tableFlags;
+    }
+
+    auto pageDirectory = reinterpret_cast<uint64_t*>(*(pageDirectoryPointer + pdp) & ~tableFlags);
+
+    if (*(pageDirectory + pd) == 0) {
+        auto pageTable = reinterpret_cast<uint64_t*>(allocatePage(config));
+        clearPage(pageTable);
+        *(pageDirectory + pd) = reinterpret_cast<uint64_t>(pageTable) | tableFlags;
+    }
+
+    auto pageTable = reinterpret_cast<uint64_t*>(*(pageDirectory + pd) & ~tableFlags);
+    return pageTable;
+}
+
+void mapProgram(uint64_t* pageMapLevel4, Configuration& config, Elf::Program& program) {
 
     for (int i = 0; i < program.headerCount; i++) {
         auto& header = *program.headers[i];
         auto kernelVMA = header.virtualAddress;
-        auto pml4 = (kernelVMA >> 39) & 511;
-        auto pdp = (kernelVMA >> 30) & 511;
-        auto pd = (kernelVMA >> 21) & 511;
-
-        if (*(pageMapLevel4 + pml4) == 0) {
-            auto pageDirectoryPointer = reinterpret_cast<uint64_t*>(allocatePage(config));
-            clearPage(pageDirectoryPointer);
-            *(pageMapLevel4 + pml4) = reinterpret_cast<uint64_t>(pageDirectoryPointer) | tableFlags;
-        }
-
-        auto pageDirectoryPointer = reinterpret_cast<uint64_t*>(*(pageMapLevel4 + pml4) & ~tableFlags);
-
-        if (*(pageDirectoryPointer + pdp) == 0) {
-            auto pageDirectory = reinterpret_cast<uint64_t*>(allocatePage(config));
-            clearPage(pageDirectory);
-            *(pageDirectoryPointer + pdp) = reinterpret_cast<uint64_t>(pageDirectory) | tableFlags;
-        }
-
-        auto pageDirectory = reinterpret_cast<uint64_t*>(*(pageDirectoryPointer + pdp) & ~tableFlags);
-
-        if (*(pageDirectory + pd) == 0) {
-            auto pageTable = reinterpret_cast<uint64_t*>(allocatePage(config));
-            clearPage(pageTable);
-            *(pageDirectory + pd) = reinterpret_cast<uint64_t>(pageTable) | tableFlags;
-        }
-
-        auto pageTable = reinterpret_cast<uint64_t*>(*(pageDirectory + pd) & ~tableFlags);
+        auto pageTable = preparePageTable(kernelVMA, pageMapLevel4, config);
         auto totalPages = (header.memorySize / 0x1000) + 1;
 
         //TODO: right now this can only handle a single page table
-        auto pageFlags = tableFlags;
+        auto pageFlags = 3;
         uint8_t* fileStart = reinterpret_cast<uint8_t*>(program.startAddress + header.offset);
 
         for (auto i = 0u; i < totalPages; i++) {
@@ -483,6 +516,20 @@ void mapProgram(uint64_t* pageMapLevel4, Configuration& config, Elf::Program& pr
             auto pageIndex = (virtualPage >> 12) & 511;
             *(pageTable + pageIndex) = pageAddress;
         }
+    }
+}
+
+void mapACPI(uint64_t* pageMapLevel4, Configuration& config) {
+    auto pageTable = preparePageTable(config.physicalMemoryStats.acpiLocation, pageMapLevel4, config);
+    auto pageFlags = 3;
+    auto totalPages = config.physicalMemoryStats.acpiLength / 0x1000;
+    auto address = config.physicalMemoryStats.acpiLocation;
+
+    for (auto i = 0u; i < totalPages; i++) {
+        auto pageAddress = address | pageFlags;
+        auto pageIndex = (address >> 12) & 511;
+        *(pageTable + pageIndex) = pageAddress;
+        address += 0x1000;
     }
 }
 
@@ -519,6 +566,7 @@ void setupInitialPaging(Configuration& config) {
     }
 
     mapProgram(pageMapLevel4, config, config.programs[config.kernelProgram]);
+    mapACPI(pageMapLevel4, config);
 
     loadTopLevelPage(pageMapLevel4Address);
 }
@@ -593,12 +641,12 @@ void startup(uint32_t address, uint32_t magicNumber) {
     createFreePageList(config);
     setupInitialPaging(config);
     
-    checkForLongMode();
-
     KernelConfig kernel {
         config.physicalMemoryStats.nextFreeAddress,
         config.physicalMemoryStats.totalPages,
-        config.oldRDSP  
+        config.oldRSDP,
+        config.physicalMemoryStats.acpiLocation,
+        config.physicalMemoryStats.acpiLength
     };
 
     enterLongMode(config.programs[config.kernelProgram].entryPoint, kernel);

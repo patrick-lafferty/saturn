@@ -89,6 +89,7 @@ namespace Multiboot {
 
     enum class MemoryType {
         AvailableRAM = 1,
+        ReservedACPI = 2,
         UsableACPI = 3,
         Reserved = 4,
         Defective = 5
