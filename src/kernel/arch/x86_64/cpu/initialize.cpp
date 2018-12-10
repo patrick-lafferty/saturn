@@ -30,6 +30,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <misc/kernel_initial_arguments.h>
 #include "metablocks.h"
 #include <memory/virtual_memory_manager.h>
+#include <memory/block_allocator.h>
+#include "apic.h"
+#include "timers/rtc.h"
+#include "tss.h"
+
+using namespace Memory;
 
 namespace CPU {
 
@@ -46,9 +52,25 @@ namespace CPU {
     }
 
     void initialize(KernelConfig* config) {
+        BlockAllocator<TSS> tssAllocator {1};
+
+        setupTSS(tssAllocator);
+        loadTSSRegister();
 
         if (auto acpiTable = CPU::parseACPITables(config->rsdpAddress)) {
+            APIC::initialize();
 
+            APIC::Allocators allocators {
+                BlockAllocator<APIC::LocalAPICHeader> {10},
+                BlockAllocator<APIC::IOAPICHeader> {10},
+                BlockAllocator<APIC::InterruptSourceOverride> {10},
+                BlockAllocator<APIC::LocalAPICNMI> {10}
+            };
+
+            auto structures = APIC::loadAPICStructures(*acpiTable, allocators);
+            APIC::setupISAIRQs(structures.ioHeaders[0]);
+
+            RTC::enable(0xD);
         }
 
         unmapACPITables(config);
