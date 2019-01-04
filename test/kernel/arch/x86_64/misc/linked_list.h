@@ -25,15 +25,20 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-
-#include "misc.h"
-#include <misc/testing.h>
-#include "avl.h"
-#include "linked_list.h"
+#pragma once
 
 namespace Test {
 
-    bool runMiscTests() {
-        return Preflight::runTestSuites<LinkedListSuite>();
-    }
+    class LinkedListSuite {
+    public:
+
+        static constexpr char* name = "Linked List";
+
+        static bool add_HandlesEmptyList();
+        static bool add_HandlesNonEmptyList();
+
+        static bool reverse_Works();
+
+        static bool run();
+    };
 }

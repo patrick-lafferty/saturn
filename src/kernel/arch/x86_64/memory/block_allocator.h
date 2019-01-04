@@ -48,7 +48,7 @@ namespace Memory {
     class BlockAllocator {
     public:
 
-        BlockAllocator(int initialElementCount)
+        BlockAllocator(int initialElementCount = 10)
             : elementsPerBlock {initialElementCount} {
             
             initialBlock = createBlock(initialElementCount * 10);

@@ -25,15 +25,60 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+#pragma once
 
-#include "misc.h"
-#include <misc/testing.h>
-#include "avl.h"
-#include "linked_list.h"
+template<class T, template<class> class Allocator>
+class LinkedList {
 
-namespace Test {
+public:
 
-    bool runMiscTests() {
-        return Preflight::runTestSuites<LinkedListSuite>();
+    struct Node {
+        Node* next {nullptr};
+        T value;
+    };
+
+    ~LinkedList() {
+        allocator.releaseMemory();
     }
-}
+
+    const Node* getHead() const {
+        return head;
+    }
+
+    /*
+    Prepends the value to the head of the list
+    */
+    void add(T value) {
+        if (head == nullptr) {
+            head = allocator.allocate();
+            head->value = value;
+        }
+        else {
+            auto node = allocator.allocate();
+            node->value = value;
+            node->next = head;
+            head = node;
+        }
+    }
+
+    /*
+    Reverses the list in-place
+    */
+    void reverse() {
+        Node* reversed = nullptr;
+
+        while (head != nullptr) {
+            auto next = head->next;
+            head->next = reversed;
+            reversed = head;
+            head = next;
+        }
+
+        head = reversed;
+    }
+
+private:
+
+    Node* head {nullptr};
+    Allocator<Node> allocator;
+};

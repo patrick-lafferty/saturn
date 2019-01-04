@@ -29,10 +29,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "kernel.h"
 #include <misc/testing.h>
 #include "arch/x86_64/misc/misc.h"
+#include "arch/x86_64/memory/memory.h"
 
 namespace Test {
 
     bool runKernelTests() {
-        return runMiscTests();
+        return runMiscTests()
+          && runMemoryTests();
     }
 }
