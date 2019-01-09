@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdint.h>
 #include "acpi.h"
 #include <memory/block_allocator.h>
+#include <misc/linked_list.h>
 
 namespace APIC {
 
@@ -193,20 +194,13 @@ namespace APIC {
     struct APICStructures {
         uint32_t localAPICAddress;
         uint32_t apicFlags;
-        LocalAPICHeader* localHeaders {nullptr};
-        IOAPICHeader* ioHeaders {nullptr};
-        InterruptSourceOverride* interruptOverrides {nullptr};
-        LocalAPICNMI* nmis {nullptr};
+        LinkedList<LocalAPICHeader, Memory::BlockAllocator> localHeaders;
+        LinkedList<IOAPICHeader, Memory::BlockAllocator> ioHeaders;
+        LinkedList<InterruptSourceOverride, Memory::BlockAllocator> interruptOverrides;
+        LinkedList<LocalAPICNMI, Memory::BlockAllocator> nmis;
     };
 
-    struct Allocators {
-        Memory::BlockAllocator<LocalAPICHeader> localAPICAllocator;
-        Memory::BlockAllocator<IOAPICHeader> ioAPICAllocator;
-        Memory::BlockAllocator<InterruptSourceOverride> interruptAllocator;
-        Memory::BlockAllocator<LocalAPICNMI> nmiAPICAllocator;
-    };
-
-    APICStructures loadAPICStructures(CPU::ACPITableHeader table, Allocators& allocators);
+    APICStructures loadAPICStructures(CPU::ACPITableHeader table);//, Allocators& allocators);
 
     void sendInitIPI(int targetAPICId);
     void sendStartupIPI(int targetAPICId, int vector);
@@ -220,7 +214,32 @@ namespace APIC {
 
     void sendInterprocessorInterrupt(int targetAPICId, InterprocessorInterrupt ipi);
 
-    void setupIOAPICs(APICStructures& structures, APICStats stats);
-    void setupISAIRQs(IOAPICHeader ioAPIC);
+    void setupIOAPICs(APICStructures& structures, int startingAPICInterrupt);
+    void setupISAIRQs(int startingAPICInterrupt);
     void setupAPICTimer();
+
+    enum class ISAIrqs : uint8_t {
+        Timer = 0,
+        Keyboard,
+        Cascade,
+        COM2,
+        COM1,
+        LPT2,
+        Floppy,
+        LPT1,
+        RTC,
+        Free1,
+        Free2,
+        Free3,
+        PS2Mouse,
+        PrimaryATA = 14,
+        SecondaryATA = 15,
+        NotMapped = 0xFF
+    };
+
+    struct Meta {
+        uintptr_t localAPICAddress;
+        uintptr_t ioAPICAddress; 
+        ISAIrqs irqMap[16];
+    };
 }
