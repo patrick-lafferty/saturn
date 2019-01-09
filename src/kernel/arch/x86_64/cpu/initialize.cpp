@@ -57,20 +57,23 @@ namespace CPU {
         setupTSS(tssAllocator);
         loadTSSRegister();
 
+        BlockAllocator<APIC::Meta> apicMetaAllocator {1};
+        auto& initialCore = getCurrentCore();
+        initialCore.apic = apicMetaAllocator.allocate();
+
         if (auto acpiTable = CPU::parseACPITables(config->rsdpAddress)) {
             APIC::initialize();
 
-            APIC::Allocators allocators {
-                BlockAllocator<APIC::LocalAPICHeader> {10},
-                BlockAllocator<APIC::IOAPICHeader> {10},
-                BlockAllocator<APIC::InterruptSourceOverride> {10},
-                BlockAllocator<APIC::LocalAPICNMI> {10}
-            };
+            auto structures = APIC::loadAPICStructures(*acpiTable);
+            int startingAPICInterrupt = 32;
+            APIC::setupIOAPICs(structures, startingAPICInterrupt);
+            APIC::setupISAIRQs(startingAPICInterrupt);
 
-            auto structures = APIC::loadAPICStructures(*acpiTable, allocators);
-            APIC::setupISAIRQs(structures.ioHeaders[0]);
+            initialCore.apic->localAPICAddress = structures.localAPICAddress;
+            initialCore.apic->ioAPICAddress = structures.ioHeaders.getHead()->value.address;
 
-            RTC::enable(0xD);
+            //RTC::enable(0xD);
+            RTC::disable();
         }
 
         unmapACPITables(config);

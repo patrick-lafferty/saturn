@@ -33,15 +33,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace IDT {
 
     void loadIRQs() {
-        idt[206] = encodeEntry(reinterpret_cast<uintptr_t>(&irq0), 0x08);
-        idt[207] = encodeEntry(reinterpret_cast<uintptr_t>(&irq1), 0x08);
-        idt[49] = encodeEntry(reinterpret_cast<uintptr_t>(&irq2), 0x08);
+        idt[32] = encodeEntry(reinterpret_cast<uintptr_t>(&irq0), 0x08);
+        idt[33] = encodeEntry(reinterpret_cast<uintptr_t>(&irq1), 0x08);
+        idt[34] = encodeEntry(reinterpret_cast<uintptr_t>(&irq2), 0x08);
         idt[35] = encodeEntry(reinterpret_cast<uintptr_t>(&irq3), 0x08);
         idt[36] = encodeEntry(reinterpret_cast<uintptr_t>(&irq4), 0x08);
         idt[37] = encodeEntry(reinterpret_cast<uintptr_t>(&irq5), 0x08);
         idt[38] = encodeEntry(reinterpret_cast<uintptr_t>(&irq6), 0x08);
         idt[39] = encodeEntry(reinterpret_cast<uintptr_t>(&irq7), 0x08);
-        idt[51] = encodeEntry(reinterpret_cast<uintptr_t>(&irq8), 0x08);
+        idt[40] = encodeEntry(reinterpret_cast<uintptr_t>(&irq8), 0x08);
         idt[41] = encodeEntry(reinterpret_cast<uintptr_t>(&irq9), 0x08);
         idt[42] = encodeEntry(reinterpret_cast<uintptr_t>(&irq10), 0x08);
         idt[43] = encodeEntry(reinterpret_cast<uintptr_t>(&irq11), 0x08);

@@ -114,4 +114,8 @@ namespace Memory {
             return {};
         }
     }
+
+    void AddressSpace::release(AddressReservation reservation) {
+        //TODO: implement release
+    }
 }

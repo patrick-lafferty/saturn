@@ -33,6 +33,10 @@ namespace Memory {
     class AddressSpace;
 }
 
+namespace APIC {
+    struct Meta;
+}
+
 namespace CPU {
 
     /*
@@ -42,6 +46,8 @@ namespace CPU {
 
     };
 
+    struct APICMeta;
+
     /*
     Stored in GS segment
     */
@@ -50,6 +56,7 @@ namespace CPU {
         Memory::PhysicalMemoryManager* physicalMemory;
         Memory::VirtualMemoryManager* virtualMemory;
         Memory::AddressSpace* addressSpace;
+        APIC::Meta* apic;
     };
 
     void setupInitialCore(Memory::PhysicalMemoryManager* physicalMemory,
@@ -58,6 +65,7 @@ namespace CPU {
     void setupCore(Memory::PhysicalMemoryManager* physicalMemory,
             Memory::VirtualMemoryManager* virtualMemory,
             Memory::AddressSpace* addressSpace);
+
     CoreMeta& getCurrentCore();
 
     struct ProcessMeta {
