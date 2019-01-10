@@ -176,6 +176,8 @@ entryPoint64:
     mov rax, [esp + 4] 
     mov edi, [esp + 12]
     
+    and esp, -16
+
     call rax
 
     hlt

@@ -57,4 +57,7 @@ _start:
 
     pop rsi
     pop rdi
+
+    and rsp, -16
+
     call initializeKernel
