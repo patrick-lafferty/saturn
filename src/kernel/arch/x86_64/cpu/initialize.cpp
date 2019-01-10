@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <memory/block_allocator.h>
 #include "apic.h"
 #include "timers/rtc.h"
+#include "timers/pit.h"
 #include "tss.h"
 
 using namespace Memory;
@@ -73,6 +74,7 @@ namespace CPU {
             initialCore.apic->ioAPICAddress = structures.ioHeaders.getHead()->value.address;
 
             //RTC::enable(0xD);
+            PIT::disable();
             RTC::disable();
         }
 

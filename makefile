@@ -17,7 +17,7 @@ else
 LIBCXX_PATH = toolchain/llvm/projects/libcxx/include
 endif
 
-LIBCXX_PATH += -I/usr/lib64/clang/6.0.1/include
+LIBCXX_PATH += -I/usr/lib64/clang/7.0.0/include
 CXX_PATHS = -isysroot sysroot/ -iwithsysroot /system/include -I src -I src/libc/include -I src/kernel -I src/kernel/arch/x86_64 -I $(LIBCXX_PATH)
 GLOBAL_CXX_FLAGS += $(CXX_PATHS)
 GLOBAL_CXX_FLAGS += -MT $@ -MMD -MP -MF .d/$(strip $@).Td
@@ -82,7 +82,7 @@ clean:
 	$(RM) $(OBJECTS)
 
 # Runners
-QEMU_ARGS = -cpu max -smp 2 -m 512M -s -no-reboot -no-shutdown
+QEMU_ARGS = -cpu max -smp 2 --enable-kvm -m 512M -s -no-reboot -no-shutdown
 QEMU_ARGS += -cdrom sysroot/system/boot/saturn.iso -serial file:saturn.log
 
 UNAME = $(shell uname -r)

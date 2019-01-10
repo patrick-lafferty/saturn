@@ -476,19 +476,22 @@ asm("xchgw %bx, %bx");
 
         while (iterator != nullptr) {
             auto& interruptOverride = iterator->value;
+            auto irq = static_cast<ISAIrqs>(interruptOverride.source);
 
-            core.apic->irqMap[interruptOverride.globalSystemInterruptVector] = 
-                static_cast<ISAIrqs>(interruptOverride.source);
+            if (irq != ISAIrqs::Timer) {
+                
+                core.apic->irqMap[interruptOverride.globalSystemInterruptVector] = irq;
 
-            writeIOAPICRegister(ioAddress, 
-                interruptOverride.globalSystemInterruptVector, 
-                combineFlags(
-                    startingAPICInterrupt + interruptOverride.globalSystemInterruptVector,
-                    IO_DeliveryMode::Fixed,
-                    IO_DestinationMode::Physical,
-                    interruptOverride.flags & 0b01 ? IO_Polarity::ActiveHigh : IO_Polarity::ActiveLow,
-                    interruptOverride.flags & 0b0100 ? IO_TriggerMode::Edge : IO_TriggerMode::Level
-            ), 0);
+                writeIOAPICRegister(ioAddress, 
+                    interruptOverride.globalSystemInterruptVector, 
+                    combineFlags(
+                        startingAPICInterrupt + interruptOverride.globalSystemInterruptVector,
+                        IO_DeliveryMode::Fixed,
+                        IO_DestinationMode::Physical,
+                        interruptOverride.flags & 0b01 ? IO_Polarity::ActiveHigh : IO_Polarity::ActiveLow,
+                        interruptOverride.flags & 0b0100 ? IO_TriggerMode::Edge : IO_TriggerMode::Level
+                ), 0);
+            }
 
             iterator = iterator->next;
         }
