@@ -59,6 +59,8 @@ public:
             node->next = head;
             head = node;
         }
+
+        size++;
     }
 
     /*
@@ -77,8 +79,11 @@ public:
         head = reversed;
     }
 
+    int getSize() const { return size; }
+
 private:
 
     Node* head {nullptr};
     Allocator<Node> allocator;
+    int size {0};
 };
