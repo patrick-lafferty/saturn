@@ -82,7 +82,7 @@ clean:
 	$(RM) $(OBJECTS)
 
 # Runners
-QEMU_ARGS = -cpu max -smp 2 --enable-kvm -m 512M -s -no-reboot -no-shutdown
+QEMU_ARGS = -cpu max -smp 2  -m 512M -s -no-reboot -no-shutdown
 QEMU_ARGS += -cdrom sysroot/system/boot/saturn.iso -serial file:saturn.log
 
 UNAME = $(shell uname -r)
