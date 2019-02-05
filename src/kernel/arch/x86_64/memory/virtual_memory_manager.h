@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
 #include <stdint.h>
+#include <optional>
 
 namespace Kernel {
     struct Task;
@@ -77,13 +78,15 @@ namespace Memory {
 
         static VirtualMemoryManager CreateFromLoader();
 
-        VirtualMemoryManager();//PhysicalMemoryManager* physicalMemory);
+        VirtualMemoryManager() = default;
         VirtualMemoryManager(VirtualMemoryManager const&) = delete;
 
         void map(uintptr_t virtualAddress, uintptr_t physicalAddress, uint32_t flags = 0);
         void unmap(uintptr_t virtualAddress, int count = 1);
 
         void allocatePagingTablesFor(uintptr_t virtualAddress, PhysicalMemoryManager* pmm);
+
+        std::optional<uintptr_t> cloneInto(VirtualMemoryManager& clone);
 
         PageStatus getPageStatus(uintptr_t virtualAddress);
 
