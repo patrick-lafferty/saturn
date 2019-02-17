@@ -20,7 +20,7 @@ endif
 LIBCXX_PATH += -I/usr/lib64/clang/7.0.0/include
 CXX_PATHS = -isysroot sysroot/ -iwithsysroot /system/include -I src -I src/libc/include -I src/kernel -I src/kernel/arch/x86_64 -I $(LIBCXX_PATH)
 GLOBAL_CXX_FLAGS += $(CXX_PATHS)
-GLOBAL_CXX_FLAGS += -MT $@ -MMD -MP -MF .d/$(strip $@).Td
+GLOBAL_CXX_FLAGS += -MT $@ -MMD -MP -MF .d/$(strip $@).Td -Werror=unused-result
 GLOBAL_AS_FLAGS = -f elf64
 LD_PATHS = --sysroot=sysroot/ -L=system/libraries
 GLOBAL_LD_FLAGS = -g $(LD_PATHS)

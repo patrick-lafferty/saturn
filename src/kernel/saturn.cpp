@@ -25,13 +25,6 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-[[noreturn]]
-void halt() {
-    while (true) {
-        asm("cli \n"
-            "hlt");
-    }
-}
 
 #include <memory/physical_memory_manager.h>
 #include <memory/block_allocator.h>
@@ -39,6 +32,7 @@ void halt() {
 #include <cpu/pic.h>
 #include <cpu/metablocks.h>
 #include <cpu/initialize.h>
+#include <cpu/halt.h>
 #include <gdt.h>
 #include <log.h>
 #include <misc/kernel_initial_arguments.h>
@@ -52,25 +46,30 @@ extern "C" void initializeSSE();
 extern "C"
 [[noreturn]]
 void initializeKernel(KernelConfig* config) {
-
+    PIC::disable();
     GDT::setup();
-
     Memory::PhysicalMemoryManager::SetupGlobalManager(config->nextFreeAddress, config->totalFreePages);
     auto& physicalMemoryManager = PhysicalMemoryManager::GetGlobalManager();
 
     initializeSSE();
     IDT::initialize();
-    PIC::disable();
     asm("sti");
 
     VirtualMemoryManager virtualMemoryManager;
 
+    auto p1 = physicalMemoryManager.allocateDMAPage();
+    auto p2 = physicalMemoryManager.allocateDMAPage();
+    auto p3 = physicalMemoryManager.allocateDMAPage();
+
+    physicalMemoryManager.freeDMAPage(p2);
+
     CPU::setupInitialCore(&physicalMemoryManager, &virtualMemoryManager);
+
+  //  Test::runKernelTests();
     CPU::initialize(config);
 
     log("Saturn OS 0.4");
 
-    Test::runKernelTests();
 
-    halt();
+    halt("Todo: add OS here");
 }

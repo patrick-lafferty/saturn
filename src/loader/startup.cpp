@@ -39,6 +39,7 @@ struct PhysicalMemStats {
     uint64_t totalPages;
     uint64_t acpiLocation {0};
     uint64_t acpiLength {0};
+    bool reservedDMARegion {false};
 };
 
 void freePhysicalPages(uint64_t pageAddress, uint64_t count, PhysicalMemStats& stats) {
@@ -51,6 +52,20 @@ void freePhysicalPages(uint64_t pageAddress, uint64_t count, PhysicalMemStats& s
     need a page table at entry 127)
     */
     const int PageSize = 0x1000;
+    const int firstMegabyte = 0x100'000;
+    const int sixteenthMegabyte = 0x1'000'000;
+
+    if (pageAddress >= firstMegabyte
+        && pageAddress <= sixteenthMegabyte
+        && count > 0xf00) {
+        /*
+        Saturn reserves physical addresses 1MB to 16MB for DMA
+        and other things that need a guaranteed low physical address
+        */
+        count -= (sixteenthMegabyte - pageAddress) / PageSize;  
+        pageAddress = sixteenthMegabyte;
+        stats.reservedDMARegion = true;
+    }
 
     stats.firstAddress = pageAddress;
     pageAddress += PageSize * 4;
@@ -667,6 +682,11 @@ void startup(uint32_t address, uint32_t magicNumber) {
     }
 
     createFreePageList(config);
+
+    if (!config.physicalMemoryStats.reservedDMARegion) {
+        panic("Error: Couldn't reserve the first 16MB for DMA - you need more RAM!");
+    }
+
     setupInitialPaging(config);
     
     KernelConfig kernel {

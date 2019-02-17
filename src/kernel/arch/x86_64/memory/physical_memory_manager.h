@@ -46,6 +46,7 @@ namespace Memory {
         page mapped before it can be read. so, each call to 
         allocatePage() needs to be followed by finishAllocation()
         */
+        [[nodiscard]]
         uintptr_t allocatePage();
 
         /*
@@ -59,6 +60,13 @@ namespace Memory {
         uint32_t getFreePages();
         uint32_t getTotalPages();
 
+        /*
+        TODO: consider further reserving the first 0-1MB into a real mode region
+        */
+        [[nodiscard]]
+        static uintptr_t allocateDMAPage();
+        static void freeDMAPage(uintptr_t address);
+
     private:
 
         uintptr_t nextFreeAddress {0};
@@ -68,5 +76,7 @@ namespace Memory {
         bool waitingToFinish {false};
 
         static PhysicalMemoryManager GlobalManager;
+
+        static uint64_t DMAFreePages [512];
     };
 }

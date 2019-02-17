@@ -31,8 +31,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace Memory {
 
     PhysicalMemoryManager PhysicalMemoryManager::GlobalManager;
+    uint64_t PhysicalMemoryManager::DMAFreePages[512];
 
     void PhysicalMemoryManager::SetupGlobalManager(uint64_t firstFreeAddress, uint64_t totalFreePages) {
+
+        memset(DMAFreePages, 0xFFFF'FFFF, sizeof(DMAFreePages));
+
         GlobalManager.nextFreeAddress = firstFreeAddress;
         GlobalManager.totalPages = totalFreePages;
         GlobalManager.freePages = totalFreePages;
@@ -87,5 +91,48 @@ namespace Memory {
         *page = nextFreeAddress;
         nextFreeAddress = physicalAddress;
         freePages++;
+    }
+
+    uintptr_t PhysicalMemoryManager::allocateDMAPage() {
+        //TODO: locks
+
+        const int firstMegabyte = 0x100'000;
+
+        for (int i = 3; i < 512; i++) {
+            if (DMAFreePages[i] > 0) {
+                uint32_t index {0};
+
+                asm("bsf %1, %0"
+                    : "=r" (index)
+                    : "rm" (DMAFreePages[i]));
+
+                DMAFreePages[i] &= ~(1 << index);
+
+                auto page = 64 * PageSize * i;
+                page += index * PageSize;
+
+                return page + firstMegabyte;
+            }
+        }
+
+        return 0;
+    }
+
+    void PhysicalMemoryManager::freeDMAPage(uintptr_t address) {
+        const int firstMegabyte = 0x100'000;
+
+        if (address < firstMegabyte) {
+            return;
+        }
+
+        address -= firstMegabyte;
+        int index = address / (64 * 0x1000);
+        int bit = (address % (64 * 0x1000)) / PageSize;
+
+        if (index >= 512) {
+            return;
+        }
+
+        DMAFreePages[index] |= (1 << bit);
     }
 }
