@@ -184,8 +184,9 @@ void createFreePageList(Configuration& config) {
             case MemoryType::AvailableRAM: {
 
                 #if VERBOSE
-                    printString("Available: ", currentLine);
-                    printInteger(entry->baseAddress, currentLine, 11);
+                    printString("Available Mem (start, size): ", currentLine);
+                    printInteger(entry->baseAddress, currentLine, 29);
+                    printInteger(entry->length, currentLine, 39);
                     currentLine++;
                 #endif
 
@@ -214,8 +215,9 @@ void createFreePageList(Configuration& config) {
             }
             case MemoryType::ReservedACPI: {
                 #if VERBOSE
-                    printString("ACPI: ", currentLine);
-                    printInteger(entry->baseAddress, currentLine, 11);
+                    printString("Reserved ACPI (start, size): ", currentLine);
+                    printInteger(entry->baseAddress, currentLine, 29);
+                    printInteger(entry->length, currentLine, 39);
                     currentLine++;
                 #endif
 
@@ -230,8 +232,9 @@ void createFreePageList(Configuration& config) {
             case MemoryType::UsableACPI: {
 
                 #if VERBOSE
-                    printString("Usable: ", currentLine);
-                    printInteger(entry->baseAddress, currentLine, 11);
+                    printString("Usable ACPI (start, size): ", currentLine);
+                    printInteger(entry->baseAddress, currentLine, 27);
+                    printInteger(entry->length, currentLine, 27);
                     currentLine++;
                 #endif
 
@@ -286,19 +289,19 @@ void walkMultibootTags(Multiboot::BootInfo* info, Configuration& config) {
         switch (static_cast<TagTypes>(tag->type)) {
             case TagTypes::BootCommandLine: {
                 #if VERBOSE
-                    printString("[Tag] Boot Command Line", currentLine++);
+                    printString("[Found Tag] Boot Command Line", currentLine++);
                 #endif
                 break;
             }
             case TagTypes::BootLoaderName: {
                 #if VERBOSE
-                    printString("[Tag] Boot Loader Name", currentLine++);
+                    printString("[Found Tag] Boot Loader Name", currentLine++);
                 #endif
                 break;
             }
             case TagTypes::Modules: {
                 #if VERBOSE
-                    printString("[Tag] Modules", currentLine++);
+                    printString("[Found Tag] Modules", currentLine++);
                 #endif
 
                 auto module = static_cast<Modules*>(tag);
@@ -308,7 +311,7 @@ void walkMultibootTags(Multiboot::BootInfo* info, Configuration& config) {
             }
             case TagTypes::BasicMemory: {
                 #if VERBOSE
-                    printString("[Tag] Basic Memory", currentLine++);
+                    printString("[Found Tag] Basic Memory", currentLine++);
                     handleBasicMemory(static_cast<BasicMemoryInfo*>(tag));
                 #endif
 
@@ -316,13 +319,13 @@ void walkMultibootTags(Multiboot::BootInfo* info, Configuration& config) {
             }
             case TagTypes::BIOSBootDevice: {
                 #if VERBOSE
-                    printString("[Tag] BIOS Boot Device", currentLine++);
+                    printString("[Found Tag] BIOS Boot Device", currentLine++);
                 #endif
                 break;
             }
             case TagTypes::MemoryMap: {
                 #if VERBOSE
-                    printString("[Tag] Memory Map", currentLine++);
+                    printString("[Found Tag] Memory Map", currentLine++);
                 #endif
 
                 config.map = static_cast<MemoryMap*>(tag);
@@ -331,52 +334,52 @@ void walkMultibootTags(Multiboot::BootInfo* info, Configuration& config) {
             }
             case TagTypes::VBEInfo: {
                 #if VERBOSE
-                    printString("[Tag] VBE Info", currentLine++);
+                    printString("[Found Tag] VBE Info", currentLine++);
                 #endif
 
                 break;
             }
             case TagTypes::FramebufferInfo: {
                 #if VERBOSE
-                    printString("[Tag] Framebuffer Info", currentLine++);
+                    printString("[Found Tag] Framebuffer Info", currentLine++);
                 #endif
                 
                 break;
             }
             case TagTypes::ELFSymbols: {
                 #if VERBOSE
-                    printString("[Tag] ELF Symbols", currentLine++);
+                    printString("[Found Tag] ELF Symbols", currentLine++);
                 #endif
 
                 break;
             }
             case TagTypes::APMTable: {
                 #if VERBOSE
-                    printString("[Tag] APM Table", currentLine++);
+                    printString("[Found Tag] APM Table", currentLine++);
                 #endif
                 break;
             }
             case TagTypes::EFI32Table: {
                 #if VERBOSE
-                    printString("[Tag] EFI32 Table", currentLine++);
+                    printString("[Found Tag] EFI32 Table", currentLine++);
                 #endif
                 break;
             }
             case TagTypes::EFI64Table: {
                 #if VERBOSE
-                    printString("[Tag] EFI64 Table", currentLine++);
+                    printString("[Found Tag] EFI64 Table", currentLine++);
                 #endif
                 break;
             }
             case TagTypes::SMBIOSTable: {
                 #if VERBOSE
-                    printString("[Tag] SMBIOS Table", currentLine++);
+                    printString("[Found Tag] SMBIOS Table", currentLine++);
                 #endif
                 break;
             }
             case TagTypes::OldRDSP: {
                 #if VERBOSE
-                    printString("[Tag] Old RDSP", currentLine++);
+                    printString("[Found Tag] Old RDSP", currentLine++);
                 #endif
 
                 auto address = reinterpret_cast<uintptr_t>(tag);
@@ -393,20 +396,20 @@ void walkMultibootTags(Multiboot::BootInfo* info, Configuration& config) {
             }
             case TagTypes::NewRDSP: {
                 #if VERBOSE
-                    printString("[Tag] New RDSP", currentLine++);
+                    printString("[Found Tag] New RDSP", currentLine++);
                 #endif
 
                 break;
             }
             case TagTypes::NetworkingInfo: {
                 #if VERBOSE
-                    printString("[Tag] Networking Info", currentLine++);
+                    printString("[Found Tag] Networking Info", currentLine++);
                 #endif
                 break;
             }
             case TagTypes::EFIMemoryMap: {
                 #if VERBOSE
-                    printString("[Tag] EFI Memory Map", currentLine++);
+                    printString("[Found Tag] EFI Memory Map", currentLine++);
                 #endif
                 break;
             }
