@@ -61,7 +61,15 @@ namespace Memory {
         uint32_t getTotalPages();
 
         /*
-        TODO: consider further reserving the first 0-1MB into a real mode region
+        The first 640kb is reserved for the rare times where we're
+        stuck in real mode, such as AP trampolines
+        */
+        [[nodiscard]]
+        static uintptr_t allocateRealModePage();
+        static void freeRealModePage(uintptr_t address);
+
+        /*
+        Separate range for 1MB - 16MB, for DMA
         */
         [[nodiscard]]
         static uintptr_t allocateDMAPage();
@@ -77,6 +85,8 @@ namespace Memory {
 
         static PhysicalMemoryManager GlobalManager;
 
+        //640kb ought to be enough for anyone
+        static uint64_t RealModeFreePages [20];
         static uint64_t DMAFreePages [512];
     };
 }

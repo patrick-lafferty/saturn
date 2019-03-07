@@ -31,11 +31,23 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace Memory {
 
     PhysicalMemoryManager PhysicalMemoryManager::GlobalManager;
+    uint64_t PhysicalMemoryManager::RealModeFreePages[20];
     uint64_t PhysicalMemoryManager::DMAFreePages[512];
 
     void PhysicalMemoryManager::SetupGlobalManager(uint64_t firstFreeAddress, uint64_t totalFreePages) {
 
         memset(DMAFreePages, 0xFFFF'FFFF, sizeof(DMAFreePages));
+        memset(RealModeFreePages, 0xFFFF'FFFF, sizeof(RealModeFreePages));
+
+        /*
+        The first 4 pages are used to store the initial page table,
+        so we need to mark that as used
+
+        TODO: move the table somewhere else in physical memory later
+        */
+        for (int i = 0; i < 4; i++) {
+            auto used = allocateRealModePage();
+        }
 
         GlobalManager.nextFreeAddress = firstFreeAddress;
         GlobalManager.totalPages = totalFreePages;
@@ -93,10 +105,49 @@ namespace Memory {
         freePages++;
     }
 
-    uintptr_t PhysicalMemoryManager::allocateDMAPage() {
+    const int firstMegabyte = 0x100'000;
+
+    uintptr_t PhysicalMemoryManager::allocateRealModePage() {
         //TODO: locks
 
-        const int firstMegabyte = 0x100'000;
+        for (int i = 0; i < 20; i++) {
+            if (RealModeFreePages[i] > 0) {
+                uint32_t index {0};
+
+                asm("bsf %1, %0"
+                    : "=r" (index)
+                    : "rm" (RealModeFreePages[i]));
+
+                RealModeFreePages[i] &= ~(1 << index);
+
+                auto page = 64 * PageSize * i;
+                page += index * PageSize;
+
+                return page;
+            }
+        }
+
+        return 0;
+    }
+
+    void PhysicalMemoryManager::freeRealModePage(uintptr_t address) {
+
+        if (address >= firstMegabyte) {
+            return;
+        }
+
+        int index = address / (64 * 0x1000);
+        int bit = (address % (64 * 0x1000)) / PageSize;
+
+        if (index >= 20) {
+            return;
+        }
+
+        RealModeFreePages[index] |= (1 << bit);
+    }
+
+    uintptr_t PhysicalMemoryManager::allocateDMAPage() {
+        //TODO: locks
 
         for (int i = 3; i < 512; i++) {
             if (DMAFreePages[i] > 0) {
@@ -119,7 +170,6 @@ namespace Memory {
     }
 
     void PhysicalMemoryManager::freeDMAPage(uintptr_t address) {
-        const int firstMegabyte = 0x100'000;
 
         if (address < firstMegabyte) {
             return;
