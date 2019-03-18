@@ -64,69 +64,76 @@ namespace Memory {
 		PageDirectoryPointerStartAddress	
 		+ (510ul << 12);
 
-	void reserveIndex(uintptr_t virtualAddress, PagingIndex index, PhysicalMemoryManager* physicalMemory) {
+	PhysicalAddress reserveIndex(VirtualAddress linear, PagingIndex index, PhysicalMemoryManager* physicalMemory) {
 		auto& map = *reinterpret_cast<volatile PageMapLevel4*>(Level4StartAddress);
-		auto nextAddress = PageDirectoryPointerStartAddress + (((virtualAddress) >> 27) & 0x00001ff000);
+		auto nextAddress = PageDirectoryPointerStartAddress + (((linear.address) >> 27) & 0x00001ff000);
 
 		if (map.directoryPointers[index.level4] == 0) {
 			auto physicalPage = physicalMemory->allocatePage();
-			map.directoryPointers[index.level4] = physicalPage | 3;
-			physicalMemory->finishAllocation(nextAddress);
+			map.directoryPointers[index.level4] = physicalPage.address | 3;
+			physicalMemory->finishAllocation({nextAddress});
 		}
 
 		auto& directoryPointer = *reinterpret_cast<volatile PageDirectoryPointer*>(nextAddress);
-		nextAddress = PageDirectoryStartAddress + (((virtualAddress) >> 18) & 0x003ffff000);
+		nextAddress = PageDirectoryStartAddress + (((linear.address) >> 18) & 0x003ffff000);
 		
 		if (directoryPointer.directoryTables[index.directoryPointer] == 0) {
 			auto physicalPage = physicalMemory->allocatePage();
-			directoryPointer.directoryTables[index.directoryPointer] = physicalPage | 3;
-			physicalMemory->finishAllocation(nextAddress); 
+			directoryPointer.directoryTables[index.directoryPointer] = physicalPage.address | 3;
+			physicalMemory->finishAllocation({nextAddress}); 
 		}
 
 		auto& directory = *reinterpret_cast<volatile PageDirectoryTable*>(nextAddress);
-		nextAddress = PageTableStartAddress + (((virtualAddress) >> 9) & 0x7ffffff000);
+		nextAddress = PageTableStartAddress + (((linear.address) >> 9) & 0x7ffffff000);
 
 		if (directory.pageTables[index.directory] == 0) {
 			auto physicalPage = physicalMemory->allocatePage();
-			directory.pageTables[index.directory] = physicalPage | 3;
-			physicalMemory->finishAllocation(nextAddress);
+			directory.pageTables[index.directory] = physicalPage.address | 3;
+			physicalMemory->finishAllocation({nextAddress});
 		}
 
 		auto& table = *reinterpret_cast<volatile PageTable*>(nextAddress);
 
 		if (table.pages[index.table] == 0) {
 			auto physicalPage = physicalMemory->allocatePage();
-			table.pages[index.table] = physicalPage | 3;
-			physicalMemory->finishAllocation(virtualAddress & ~0xFFF);
+			table.pages[index.table] = physicalPage.address | 3;
+			physicalMemory->finishAllocation({linear.address & ~0xFFF});
+
+            return physicalPage;
 		}
+        else {
+            return {table.pages[index.table] & ~3};
+        }
 	}
 
-	void VirtualMemoryManager::map(uintptr_t virtualAddress, uintptr_t physicalAddress, uint32_t flags) {
+	void VirtualMemoryManager::map(VirtualAddress linear, PhysicalAddress physical, uint32_t flags) {
 
-		auto index = (virtualAddress >> 12) & 511;
-		auto tableAddress = PageTableStartAddress + ((virtualAddress >> 9) & 0x7FFFFFF000);
+		auto index = (linear.address >> 12) & 511;
+		auto tableAddress = PageTableStartAddress + ((linear.address >> 9) & 0x7FFFFFF000);
 		auto table = reinterpret_cast<volatile PageTable*>(tableAddress);
-		table->pages[index] = physicalAddress | 3;
+		table->pages[index] = physical.address | 3;
 	}
 
-	void VirtualMemoryManager::unmap(uintptr_t virtualAddress, int count) {
-		auto index = (virtualAddress >> 12) & 511;
-		uintptr_t tableAddress = PageTableStartAddress + (virtualAddress >> 9) & 0x7FFFFFF000;
+	void VirtualMemoryManager::unmap(VirtualAddress linear) {
+		auto index = (linear.address >> 12) & 511;
+		uintptr_t tableAddress = PageTableStartAddress + (linear.address >> 9) & 0x7FFFFFF000;
 		auto table = reinterpret_cast<volatile PageTable*>(tableAddress);
 		table->pages[index] = 0;
 	}
 
-	void VirtualMemoryManager::allocatePagingTablesFor(uintptr_t virtualAddress, PhysicalMemoryManager* physicalMemoryManager) {
-		auto index = calculateIndex(virtualAddress);
-		reserveIndex(virtualAddress, index, physicalMemoryManager);	
+	PhysicalAddress VirtualMemoryManager::allocatePagingTablesFor(VirtualAddress linear, 
+            PhysicalMemoryManager* physicalMemoryManager) {
+		auto index = calculateIndex(linear.address);
+		return reserveIndex(linear, index, physicalMemoryManager);	
 	}
 
-	std::optional<uintptr_t> VirtualMemoryManager::cloneInto(VirtualMemoryManager& clone) {
+	std::optional<PhysicalAddress> VirtualMemoryManager::clone() {
 		/*
 		Clones need the first page table (first 2MB that's identity mapped),
 		as well as the last PDP (511 = kernel)
 		*/
 		auto& core = CPU::getCurrentCore();
+		//TODO: this should be a kernel address space
 		auto maybeReservation = core.addressSpace->reserve(PageSize * 4);
 
 		if (!maybeReservation.has_value()) {
@@ -141,10 +148,16 @@ namespace Memory {
 		}
 
 		auto allocation = maybeAllocation.value();
-		auto pageMapLevel4 = reinterpret_cast<uintptr_t*>(allocation);
-		auto pageDirectoryPointer = reinterpret_cast<uintptr_t*>(allocation + PageSize);
-		auto pageDirectory = reinterpret_cast<uintptr_t*>(allocation + PageSize * 2);
-		auto pageTable = reinterpret_cast<uintptr_t*>(allocation + PageSize * 3);
+
+        auto pml4PhysicalAddress = allocatePagingTablesFor(allocation, core.physicalMemory);
+        allocatePagingTablesFor({allocation.address + PageSize * 1}, core.physicalMemory);
+        allocatePagingTablesFor({allocation.address + PageSize * 2}, core.physicalMemory);
+        allocatePagingTablesFor({allocation.address + PageSize * 3}, core.physicalMemory);
+
+		auto pageMapLevel4 = reinterpret_cast<uintptr_t*>(allocation.address);
+		auto pageDirectoryPointer = reinterpret_cast<uintptr_t*>(allocation.address + PageSize);
+		auto pageDirectory = reinterpret_cast<uintptr_t*>(allocation.address + PageSize * 2);
+		auto pageTable = reinterpret_cast<uintptr_t*>(allocation.address + PageSize * 3);
 		auto& currentMap = *reinterpret_cast<volatile PageMapLevel4*>(Level4StartAddress);
 
 		auto flags = 3;
@@ -164,12 +177,12 @@ namespace Memory {
 			*pageTable++ = page;
 		}
 
-		return allocation;
+		return pml4PhysicalAddress;
 	}
 
-	PageStatus VirtualMemoryManager::getPageStatus(uintptr_t virtualAddress) {
-		auto index = (virtualAddress >> 12) & 511;
-		auto tableAddress = PageTableStartAddress + ((virtualAddress >> 9) & 0x7FFFFFF000);
+	PageStatus VirtualMemoryManager::getPageStatus(VirtualAddress linear) {
+		auto index = (linear.address >> 12) & 511;
+		auto tableAddress = PageTableStartAddress + ((linear.address >> 9) & 0x7FFFFFF000);
 		auto table = reinterpret_cast<PageTable*>(tableAddress);
 		auto physicalAddress = table->pages[index];
 
@@ -181,7 +194,7 @@ namespace Memory {
 				return PageStatus::Allocated;
 			}
 		}
-		else if (virtualAddress > PageTableStartAddress) {
+		else if (linear.address > PageTableStartAddress) {
 			//this is a page table/directory/directory pointer
 			return PageStatus::UnallocatedPageTable;
 		}

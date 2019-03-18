@@ -34,7 +34,7 @@ namespace Memory {
     uint64_t PhysicalMemoryManager::RealModeFreePages[20];
     uint64_t PhysicalMemoryManager::DMAFreePages[512];
 
-    void PhysicalMemoryManager::SetupGlobalManager(uint64_t firstFreeAddress, uint64_t totalFreePages) {
+    void PhysicalMemoryManager::SetupGlobalManager(PhysicalAddress firstFree, uint64_t totalFreePages) {
 
         memset(DMAFreePages, 0xFFFF'FFFF, sizeof(DMAFreePages));
         memset(RealModeFreePages, 0xFFFF'FFFF, sizeof(RealModeFreePages));
@@ -49,7 +49,7 @@ namespace Memory {
             auto used = allocateRealModePage();
         }
 
-        GlobalManager.nextFreeAddress = firstFreeAddress;
+        GlobalManager.nextFreeAddress = firstFree.address;
         GlobalManager.totalPages = totalFreePages;
         GlobalManager.freePages = totalFreePages;
     }
@@ -58,7 +58,7 @@ namespace Memory {
         return GlobalManager;
     }
 
-    uintptr_t PhysicalMemoryManager::allocatePage() {
+    PhysicalAddress PhysicalMemoryManager::allocatePage() {
         /*
         TODO:
 
@@ -69,7 +69,7 @@ namespace Memory {
         to support locks there.
         */
         if (freePages == 0) {
-            return 0;
+            return {0};
         }
 
         freePages--;
@@ -80,12 +80,12 @@ namespace Memory {
 
         waitingToFinish = true;
 
-        return nextFreeAddress;
+        return {nextFreeAddress};
     }
 
-    void PhysicalMemoryManager::finishAllocation(uintptr_t pageAddress) {
+    void PhysicalMemoryManager::finishAllocation(VirtualAddress linear) {
         waitingToFinish = false;
-        uint64_t* page = reinterpret_cast<uint64_t*>(pageAddress & ~0xFFF);
+        uint64_t* page = reinterpret_cast<uint64_t*>(linear.address & ~0xFFF);
         nextFreeAddress = *page;
         memset(page, 0, PageSize);
     }
@@ -98,16 +98,16 @@ namespace Memory {
         return totalPages;
     }
 
-    void PhysicalMemoryManager::freePage(uintptr_t virtualAddress, uintptr_t physicalAddress) {
-        auto page = reinterpret_cast<uint64_t*>(virtualAddress & ~0xfff);
+    void PhysicalMemoryManager::freePage(VirtualAddress linear, PhysicalAddress physical) {
+        auto page = reinterpret_cast<uint64_t*>(linear.address & ~0xfff);
         *page = nextFreeAddress;
-        nextFreeAddress = physicalAddress;
+        nextFreeAddress = physical.address;
         freePages++;
     }
 
     const int firstMegabyte = 0x100'000;
 
-    uintptr_t PhysicalMemoryManager::allocateRealModePage() {
+    PhysicalAddress PhysicalMemoryManager::allocateRealModePage() {
         //TODO: locks
 
         for (int i = 0; i < 20; i++) {
@@ -120,24 +120,24 @@ namespace Memory {
 
                 RealModeFreePages[i] &= ~(1 << index);
 
-                auto page = 64 * PageSize * i;
+                auto page = 64ul * PageSize * i;
                 page += index * PageSize;
 
-                return page;
+                return {page};
             }
         }
 
-        return 0;
+        return {0};
     }
 
-    void PhysicalMemoryManager::freeRealModePage(uintptr_t address) {
+    void PhysicalMemoryManager::freeRealModePage(VirtualAddress linear) {
 
-        if (address >= firstMegabyte) {
+        if (linear.address >= firstMegabyte) {
             return;
         }
 
-        int index = address / (64 * 0x1000);
-        int bit = (address % (64 * 0x1000)) / PageSize;
+        int index = linear.address / (64 * 0x1000);
+        int bit = (linear.address % (64 * 0x1000)) / PageSize;
 
         if (index >= 20) {
             return;
@@ -146,7 +146,7 @@ namespace Memory {
         RealModeFreePages[index] |= (1 << bit);
     }
 
-    uintptr_t PhysicalMemoryManager::allocateDMAPage() {
+    PhysicalAddress PhysicalMemoryManager::allocateDMAPage() {
         //TODO: locks
 
         for (int i = 3; i < 512; i++) {
@@ -159,25 +159,25 @@ namespace Memory {
 
                 DMAFreePages[i] &= ~(1 << index);
 
-                auto page = 64 * PageSize * i;
+                auto page = 64ul * PageSize * i;
                 page += index * PageSize;
 
-                return page + firstMegabyte;
+                return {page + firstMegabyte};
             }
         }
 
-        return 0;
+        return {0};
     }
 
-    void PhysicalMemoryManager::freeDMAPage(uintptr_t address) {
+    void PhysicalMemoryManager::freeDMAPage(VirtualAddress linear) {
 
-        if (address < firstMegabyte) {
+        if (linear.address < firstMegabyte) {
             return;
         }
 
-        address -= firstMegabyte;
-        int index = address / (64 * 0x1000);
-        int bit = (address % (64 * 0x1000)) / PageSize;
+        linear.address -= firstMegabyte;
+        int index = linear.address / (64 * 0x1000);
+        int bit = (linear.address % (64 * 0x1000)) / PageSize;
 
         if (index >= 512) {
             return;

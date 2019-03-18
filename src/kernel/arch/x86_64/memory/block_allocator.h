@@ -177,7 +177,7 @@ namespace Memory {
 
             auto allocation = maybeAllocation.value();
 
-            uint8_t* ptr = reinterpret_cast<uint8_t*>(allocation);
+            uint8_t* ptr = reinterpret_cast<uint8_t*>(allocation.address);
             auto block = new (ptr) Block(
                 reinterpret_cast<Allocation*>(ptr + sizeof(Block)),
                 numberOfElements,

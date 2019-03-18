@@ -118,7 +118,7 @@ void panic() {
     }
 }
 
-bool handlePageFault(uintptr_t virtualAddress, uint32_t errorCode) {
+bool handlePageFault(Memory::VirtualAddress linear, uint32_t errorCode) {
     enum class PageFaultError {
         ProtectionViolation = 1 << 0,
         WriteAccess = 1 << 1,
@@ -128,7 +128,7 @@ bool handlePageFault(uintptr_t virtualAddress, uint32_t errorCode) {
     static int faults = 0;
 
     if (errorCode & static_cast<uint32_t>(PageFaultError::ProtectionViolation)) {
-        log("[IDT] Page fault: protection violation [%x]", virtualAddress);
+        log("[IDT] Page fault: protection violation [%x]", linear.address);
         
         if (errorCode & static_cast<uint32_t>(PageFaultError::UserMode)) {
             log("[IDT] Attempted %s in usermode",
@@ -142,13 +142,13 @@ bool handlePageFault(uintptr_t virtualAddress, uint32_t errorCode) {
 
         auto& core = CPU::getCurrentCore();
 
-        auto pageStatus = core.virtualMemory->getPageStatus(virtualAddress);
+        auto pageStatus = core.virtualMemory->getPageStatus(linear);
         
         if (pageStatus == Memory::PageStatus::Allocated) {
             //we need to map a physical page
             auto physicalPage = core.physicalMemory->allocatePage();
-            core.virtualMemory->map(virtualAddress, physicalPage);
-            core.physicalMemory->finishAllocation(virtualAddress);
+            core.virtualMemory->map(linear, physicalPage);
+            core.physicalMemory->finishAllocation(linear);
 
             faults++;
 
@@ -156,7 +156,7 @@ bool handlePageFault(uintptr_t virtualAddress, uint32_t errorCode) {
         }
         else if (pageStatus == Memory::PageStatus::UnallocatedPageTable) {
 
-            core.virtualMemory->allocatePagingTablesFor(virtualAddress, core.physicalMemory);
+            core.virtualMemory->allocatePagingTablesFor(linear, core.physicalMemory);
             faults++;
             return true;
         }
@@ -166,7 +166,7 @@ bool handlePageFault(uintptr_t virtualAddress, uint32_t errorCode) {
             panic();
         }
         else {
-            log("[IDT] Illegal Memory Access: %x", virtualAddress);     
+            log("[IDT] Illegal Memory Access: %x", linear.address);     
             panic();
         }
     }
@@ -196,7 +196,7 @@ void exceptionHandler(ExceptionFrame* frame) {
             uintptr_t virtualAddress;
             asm("movq %%CR2, %%rax" : "=a" (virtualAddress));
 
-            if (!handlePageFault(virtualAddress, frame->error)) {
+            if (!handlePageFault({virtualAddress}, frame->error)) {
                 panic();
             }
 

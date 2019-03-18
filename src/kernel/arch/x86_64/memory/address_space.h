@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <optional>
 #include <misc/avl_tree.h>
+#include "addresses.h"
 
 namespace Memory {
 
@@ -40,16 +41,16 @@ namespace Memory {
     class AddressReservation {
     public:
 
-        AddressReservation(uintptr_t start, uint64_t size);
+        AddressReservation(VirtualAddress start, uint64_t size);
 
-        std::optional<uintptr_t> allocatePages(uint64_t count);
+        std::optional<VirtualAddress> allocatePages(uint64_t count);
 
         friend bool operator==(const AddressReservation& left, const AddressReservation& right) {
-            return left.startAddress == right.startAddress;
+            return left.start.address == right.start.address;
         }
 
         friend bool operator<(const AddressReservation& left, const AddressReservation& right) {
-            return left.startAddress < right.startAddress;
+            return left.start.address < right.start.address;
         }
 
         AddressReservation split(uint64_t size);
@@ -60,11 +61,11 @@ namespace Memory {
 
     private:
 
-        uintptr_t startAddress;
+        VirtualAddress start;
         uint64_t size;
         bool isFree {true};
         uint64_t remainingPages; 
-        uintptr_t nextPage;
+        VirtualAddress nextPage;
     };
 
     inline bool operator>(const AddressReservation& left, const AddressReservation& right) {
@@ -94,8 +95,8 @@ namespace Memory {
 
             int availableItems {0};
             int currentItems {0};
-            uintptr_t currentPage {(0xFFFFul << 48) + (509ul << 39)};
-            uintptr_t currentBuffer {(0xFFFFul << 48) + (509ul << 39)};
+            VirtualAddress currentPage {(0xFFFFul << 48) + (509ul << 39)};
+            VirtualAddress currentBuffer {(0xFFFFul << 48) + (509ul << 39)};
 
             template<class T, typename... Args>
             T* allocate(Args&&... args) {
@@ -116,10 +117,10 @@ namespace Memory {
                 if (availableItems == 0) {
                     preparePage(sizeof(Allocation));
                     currentBuffer = currentPage;
-                    currentPage += 0x1000;
+                    currentPage.address += 0x1000;
                 }
 
-                auto buffer = reinterpret_cast<Allocation*>(currentBuffer);
+                auto buffer = reinterpret_cast<Allocation*>(currentBuffer.address);
 
                 availableItems--;
                 auto ptr = buffer + currentItems;

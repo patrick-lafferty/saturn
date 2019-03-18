@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <stdint.h>
 #include <optional>
+#include "addresses.h"
 
 namespace Kernel {
     struct Task;
@@ -81,15 +82,32 @@ namespace Memory {
         VirtualMemoryManager() = default;
         VirtualMemoryManager(VirtualMemoryManager const&) = delete;
 
-        void map(uintptr_t virtualAddress, uintptr_t physicalAddress, uint32_t flags = 0);
-        void unmap(uintptr_t virtualAddress, int count = 1);
+        /*
+        Maps virtualAddress to physicalAddress so that any reads/writes
+        to virtualAddress actually happen in RAM at physicalAddress
+        */
+        void map(VirtualAddress virtualAddress, PhysicalAddress physicalAddress, uint32_t flags = 0);
 
-        void allocatePagingTablesFor(uintptr_t virtualAddress, PhysicalMemoryManager* pmm);
+        /*
+        Removes the mapping. This does not free the physical page.
+        */
+        void unmap(VirtualAddress virtualAddress);
 
-        std::optional<uintptr_t> cloneInto(VirtualMemoryManager& clone);
+        /*
+        Ensures that all of the appropriate paging structures are
+        setup for this virtual address. Returns the physical address
+        of the page if it was allocated in this func
+        */
+        PhysicalAddress allocatePagingTablesFor(VirtualAddress virtualAddress, PhysicalMemoryManager* pmm);
 
-        PageStatus getPageStatus(uintptr_t virtualAddress);
+        /*
+        Copies the initial 2MB identity map and the kernel PDP
+        and sets up a new paging hierarchy.
 
+        Returns the physical address of the level 4 page map.
+        */
+        std::optional<PhysicalAddress> clone();
+
+        PageStatus getPageStatus(VirtualAddress virtualAddress);
     };
-
 }

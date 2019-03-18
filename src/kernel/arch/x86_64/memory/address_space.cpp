@@ -33,14 +33,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace Memory {
 
-    AddressReservation::AddressReservation(uintptr_t start, uint64_t size)
-        : startAddress {start}, size {size} {
+    AddressReservation::AddressReservation(VirtualAddress start, uint64_t size)
+        : start{start}, size {size} {
         
-        nextPage = startAddress;
+        nextPage = start;
         remainingPages = size / 0x1000;
     }
 
-    std::optional<uintptr_t> AddressReservation::allocatePages(uint64_t count) {
+    std::optional<VirtualAddress> AddressReservation::allocatePages(uint64_t count) {
         
         if (remainingPages < count) {
             return {};
@@ -48,13 +48,13 @@ namespace Memory {
 
         remainingPages -= count;
         auto page = nextPage;
-        nextPage += count * 0x1000;
+        nextPage.address += count * 0x1000;
 
         return page;
     }
 
     AddressReservation AddressReservation::split(uint64_t requiredSize) {
-        AddressReservation sibling {startAddress + requiredSize, this->size - requiredSize};
+        AddressReservation sibling {{start.address + requiredSize}, this->size - requiredSize};
         this->size = requiredSize;
         this->remainingPages = this->size / 0x1000;
 
@@ -87,7 +87,7 @@ namespace Memory {
     AddressSpace::AddressSpace()
         : space {allocator} {
         
-        AddressReservation initial {0, 2UL << 40};
+        AddressReservation initial {{0}, 2UL << 40};
         space.insert(initial);
     }
 

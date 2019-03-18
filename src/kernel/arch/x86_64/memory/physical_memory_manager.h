@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
 #include <stdint.h>
+#include "addresses.h"
 
 namespace Memory {
 
@@ -36,7 +37,7 @@ namespace Memory {
     class PhysicalMemoryManager {
     public:
 
-        static void SetupGlobalManager(uint64_t firstFreeAddress, uint64_t totalFreePages);
+        static void SetupGlobalManager(PhysicalAddress firstFreeAddress, uint64_t totalFreePages);
         static PhysicalMemoryManager& GetGlobalManager();
 
         /*
@@ -47,15 +48,15 @@ namespace Memory {
         allocatePage() needs to be followed by finishAllocation()
         */
         [[nodiscard]]
-        uintptr_t allocatePage();
+        PhysicalAddress allocatePage();
 
         /*
         here pageAddress is the virtual address mapped from the physical
         address of the previous call to allocatePage. now we can read the
         page and get the physical address of the next page
         */
-        void finishAllocation(uintptr_t pageAddress);
-        void freePage(uintptr_t virtualAddress, uintptr_t physicalAddress);
+        void finishAllocation(VirtualAddress pageAddress);
+        void freePage(VirtualAddress virtualAddress, PhysicalAddress physicalAddress);
 
         uint32_t getFreePages();
         uint32_t getTotalPages();
@@ -65,15 +66,15 @@ namespace Memory {
         stuck in real mode, such as AP trampolines
         */
         [[nodiscard]]
-        static uintptr_t allocateRealModePage();
-        static void freeRealModePage(uintptr_t address);
+        static PhysicalAddress allocateRealModePage();
+        static void freeRealModePage(VirtualAddress address);
 
         /*
         Separate range for 1MB - 16MB, for DMA
         */
         [[nodiscard]]
-        static uintptr_t allocateDMAPage();
-        static void freeDMAPage(uintptr_t address);
+        static PhysicalAddress allocateDMAPage();
+        static void freeDMAPage(VirtualAddress address);
 
     private:
 
