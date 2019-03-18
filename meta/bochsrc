@@ -7,8 +7,15 @@ ata0-master: type=cdrom, path=sysroot/system/boot/saturn.iso, status=inserted
 
 boot: cdrom
 
-cpu: count=1, ips=50000000
-memory: guest=512, host=512
+cpu: model=corei7_sandy_bridge_2600k , count=2, ips=50000000
+memory: guest=256, host=256
+
+info: action=report
+debug: action=report, PIT=ignore, harddrv=ignore, XGUI=ignore, pit82c54=ignore, PIC=ignore, ioapic=ignore, siminterface=ignore, memory=ignore, floppy=ignore
+
+#log: bochs_log.txt
+
+#debug_symbols: file="saturn.sym"
 
 magic_break: enabled=1
 

@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-bochs="bochs"
 kernel=$(uname -r)
 
 if [[ $kernel = *"Microsoft"* ]]; 
@@ -20,6 +19,10 @@ then
     BXSHARE=$biosPath
     export BXSHARE
     export WSLENV=$WSLENV:BXSHARE/p 
-fi
 
-$bochs -f meta/bochsrc -q
+    $bochs -f meta/bochsrc -q
+
+else
+    #expect bochs to be built and stored adjacent to saturn dir
+    BXSHARE=../bochs/bios ../bochs/bochs -f meta/bochsrc -q
+fi
