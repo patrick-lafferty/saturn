@@ -107,14 +107,22 @@ bits 64
 global entryPoint64
 entryPoint64:
     
+    ;we only had 32-bits to store a 64-bit stack address,
+    ;but the top 32-bits are constant (fixed at PDP 511 ie last)
+    ;so just add that here
+    mov rax, 0xffffff8000000000
+    add rsp, rax
+
     ;tell the bootstrap processor that we're done with
     ;the trampoline, so it can reuse/free it
     pop rax ; the status flag address
     mov dword [rax], 9001
     pop rax
+    pop rdi
+    pop rsi
 
-    and esp, -16
-    mov ebp, esp
+    and rsp, -16
+    mov rbp, rsp
     call rax
 
     cli
