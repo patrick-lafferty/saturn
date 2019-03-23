@@ -35,10 +35,33 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "timers/rtc.h"
 #include "timers/pit.h"
 #include "tss.h"
+#include "halt.h"
+#include "trampoline.h"
+#include "idt/descriptor.h"
 
 using namespace Memory;
+extern "C" void initializeSSE();
 
 namespace CPU {
+
+    void kernel_sleep(int milliseconds) {
+        RTC::enable(6);
+
+        while (milliseconds > 0) {
+            asm("hlt");
+            milliseconds--;
+            RTC::reset();
+        }
+
+        RTC::disable();
+    }
+
+    void applicationProcessorStartup(int cpuId, int apicId) {
+        initializeSSE();
+        IDT::initialize();
+
+        halt("AP started");
+    }
 
     void unmapACPITables(KernelConfig* config) {
         auto& core = getCurrentCore();
@@ -47,9 +70,57 @@ namespace CPU {
         auto pages = config->acpiLength / 0x1000;
 
         for (auto i = 0u; i < pages; i++) {
-            core.virtualMemory->unmap(address, 1);
+            core.virtualMemory->unmap({address});
             address += 0x1000;
         }
+    }
+
+    void initializeApplicationProcessors(LinkedList<APIC::LocalAPICHeader, BlockAllocator>& headers) {
+        auto& core = getCurrentCore();
+        auto storage = core.physicalMemory->allocateRealModePage();
+        storage = core.physicalMemory->allocateRealModePage();
+        BlockAllocator<Trampoline::Stack> stackAllocator {AddressSpace::Domain::KernelStacks};
+        int validAPs = 0;
+        auto iterator = headers.getHead()->next;
+
+        while (iterator != nullptr) {
+            auto stack = stackAllocator.allocate();
+            stack->data.kernelFuncAddress = reinterpret_cast<uintptr_t>(applicationProcessorStartup);
+            stack->data.cpuId = validAPs + 1;
+            stack->data.apicId = iterator->value.apicId;
+            auto trampoline = Trampoline::create(stack, storage);
+            auto readyFlag = reinterpret_cast<int*>(stack->data.cpuReadyFlagAddress);
+
+            auto vmm = core.virtualMemory->clone();
+            trampoline->data64Bit.pageDirectoryAddress = vmm.value().address;
+
+            APIC::sendInitIPI(iterator->value.apicId);
+            kernel_sleep(200);
+            APIC::sendStartupIPI(iterator->value.apicId, storage.address / 0x1000);
+
+            //wait for up to 500ms
+            int x = 50;
+
+            while (*readyFlag != 1 && x > 0) {
+                kernel_sleep(10);
+                x -= 1;
+            }
+
+            if (*readyFlag == 1) {
+                validAPs++;
+                *readyFlag = 1337;
+
+                while (*readyFlag <= 9000) {
+                    kernel_sleep(10);
+                }
+            }
+
+            iterator = iterator->next;
+        }
+        
+        halt("finished loading APs?");
+
+        core.physicalMemory->freeRealModePage({storage.address});
     }
 
     void initialize(KernelConfig* config) {
@@ -66,16 +137,22 @@ namespace CPU {
             APIC::initialize();
 
             auto structures = APIC::loadAPICStructures(*acpiTable);
+            initialCore.apic->localAPICAddress = structures.localAPICAddress;
+            initialCore.apic->ioAPICAddress = structures.ioHeaders.getHead()->value.address;
+
             int startingAPICInterrupt = 32;
             APIC::setupIOAPICs(structures, startingAPICInterrupt);
             APIC::setupISAIRQs(startingAPICInterrupt);
 
-            initialCore.apic->localAPICAddress = structures.localAPICAddress;
-            initialCore.apic->ioAPICAddress = structures.ioHeaders.getHead()->value.address;
+            if (structures.localHeaders.getSize() > 1) {
+                initializeApplicationProcessors(structures.localHeaders);
+            }
 
-            //RTC::enable(0xD);
+            RTC::enable(0xD);
             PIT::disable();
-            RTC::disable();
+        }
+        else {
+            halt("Failed to parse the ACPI tables, halting.");
         }
 
         unmapACPITables(config);
