@@ -38,8 +38,14 @@ namespace GDT {
     } __attribute__((packed));
     
     void setup();
-    void addTSSEntry(uintptr_t address, uint32_t size);
+    void load();
+    bool addTSSEntry(uintptr_t address, uint32_t size);
+
+    /*
+    TODO: Support any number of entries by re-allocating GDT
+    */
+    inline const int MaxEntries = 9;
 }
 
-extern "C" uint64_t Gdt[9];
+extern "C" uint64_t Gdt[GDT::MaxEntries];
 extern "C" GDT::DescriptorPointer<uint64_t> GdtPointer;

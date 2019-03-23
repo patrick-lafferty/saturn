@@ -31,14 +31,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace CPU {
 
-    void setupTSS(Memory::BlockAllocator<TSS>& allocator) {
+    bool setupTSS(Memory::BlockAllocator<TSS>& allocator) {
 
         auto tss = allocator.allocate();
-        GDT::addTSSEntry(reinterpret_cast<uintptr_t>(tss), sizeof(TSS) - 1);
+        return GDT::addTSSEntry(reinterpret_cast<uintptr_t>(tss), sizeof(TSS) - 1);
     }
 
-    void loadTSSRegister() {
-
-        asm("ltr %%ax" : : "a"(0x18));
+    void loadTSSRegister(int id) {
+        auto offset = 0x18 + id * 0x10;
+        asm("ltr %%ax" : : "a"(offset));
     }
 }

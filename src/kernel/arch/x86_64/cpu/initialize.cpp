@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "halt.h"
 #include "trampoline.h"
 #include "idt/descriptor.h"
+#include <gdt.h>
 
 using namespace Memory;
 extern "C" void initializeSSE();
@@ -58,7 +59,10 @@ namespace CPU {
 
     void applicationProcessorStartup(int cpuId, int apicId) {
         initializeSSE();
+        GDT::load();
         IDT::initialize();
+
+        loadTSSRegister(cpuId);
 
         halt("AP started");
     }
@@ -75,7 +79,8 @@ namespace CPU {
         }
     }
 
-    void initializeApplicationProcessors(LinkedList<APIC::LocalAPICHeader, BlockAllocator>& headers) {
+    void initializeApplicationProcessors(LinkedList<APIC::LocalAPICHeader, BlockAllocator>& headers,
+            BlockAllocator<TSS>& tssAllocator) {
         auto& core = getCurrentCore();
         auto storage = core.physicalMemory->allocateRealModePage();
         storage = core.physicalMemory->allocateRealModePage();
@@ -110,6 +115,10 @@ namespace CPU {
                 validAPs++;
                 *readyFlag = 1337;
 
+                if (!setupTSS(tssAllocator)) {
+                    halt("Could not setup an AP's TSS");
+                }
+
                 while (*readyFlag <= 9000) {
                     kernel_sleep(10);
                 }
@@ -124,10 +133,10 @@ namespace CPU {
     }
 
     void initialize(KernelConfig* config) {
-        BlockAllocator<TSS> tssAllocator {1};
+        BlockAllocator<TSS> tssAllocator;
 
         setupTSS(tssAllocator);
-        loadTSSRegister();
+        loadTSSRegister(0);
 
         BlockAllocator<APIC::Meta> apicMetaAllocator {1};
         auto& initialCore = getCurrentCore();
@@ -145,7 +154,7 @@ namespace CPU {
             APIC::setupISAIRQs(startingAPICInterrupt);
 
             if (structures.localHeaders.getSize() > 1) {
-                initializeApplicationProcessors(structures.localHeaders);
+                initializeApplicationProcessors(structures.localHeaders, tssAllocator);
             }
 
             RTC::enable(0xD);

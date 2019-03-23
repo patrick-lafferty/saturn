@@ -63,6 +63,6 @@ namespace CPU {
         uint16_t iopbAddress;
     } __attribute__((packed));
 
-    void setupTSS(Memory::BlockAllocator<TSS>& allocator);
-    void loadTSSRegister();
+    bool setupTSS(Memory::BlockAllocator<TSS>& allocator);
+    void loadTSSRegister(int id);
 }

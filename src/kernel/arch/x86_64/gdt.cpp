@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "gdt.h"
 
-uint64_t Gdt[9];
+uint64_t Gdt[GDT::MaxEntries];
 GDT::DescriptorPointer<uint64_t> GdtPointer;
 
 extern "C" void gdt_flush();
@@ -42,7 +42,7 @@ namespace GDT {
 
     void setup() {
 
-        GdtPointer.limit = 8 * 9 - 1;
+        GdtPointer.limit = 8 * MaxEntries - 1;
         GdtPointer.base = reinterpret_cast<uint64_t>(&Gdt[0]);
 
         /* 
@@ -56,6 +56,10 @@ namespace GDT {
         Gdt[2] = (0b00000000'00000000'10010010'00000000ull) << 32;
 
         nextGDTIndex = 3;
+        load();
+    }
+
+    void load() {
 
         gdt_flush();
     }
@@ -69,7 +73,12 @@ namespace GDT {
         uint8_t baseHigh;
     } __attribute__((packed));
 
-    void addTSSEntry(uintptr_t address, uint32_t size) {
+    bool addTSSEntry(uintptr_t address, uint32_t size) {
+
+        if (nextGDTIndex > (MaxEntries - 2)) {
+            return false;
+        }
+
         /*
         In long mode TSS entries are stored as two consecutive
         GDT entries, with the format:
@@ -87,6 +96,8 @@ namespace GDT {
 
         Gdt[nextGDTIndex++] = firstEntry;
         Gdt[nextGDTIndex++] = secondEntry;
+
+        return true;
     }
 
 }
