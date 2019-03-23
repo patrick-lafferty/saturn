@@ -48,12 +48,19 @@ namespace Memory {
     class BlockAllocator {
     public:
 
-        BlockAllocator(int initialElementCount = 10)
-            : elementsPerBlock {initialElementCount} {
-            
+        explicit BlockAllocator(int initialElementCount = 10)
+                : BlockAllocator(initialElementCount, AddressSpace::Domain::Default) {}
+
+        BlockAllocator(int initialElementCount, AddressSpace::Domain space) 
+                : elementsPerBlock {initialElementCount} {
+
+            spaceToUse = space;
             initialBlock = createBlock(initialElementCount * 10);
             currentBlock = initialBlock;
         }
+
+        BlockAllocator(AddressSpace::Domain space)
+                : BlockAllocator(10, space) {}
 
         template<typename... Args>
         T* allocate(Args&&... args) {
@@ -130,12 +137,14 @@ namespace Memory {
             auto& core = CPU::getCurrentCore();
 
             while (iterator != nullptr) {
-                core.addressSpace->release(iterator->reservation);
+                core.addressSpaces[static_cast<int>(spaceToUse)]->release(iterator->reservation);
                 iterator = iterator->next;
             }
         }
 
     private:
+
+        AddressSpace::Domain spaceToUse {AddressSpace::Domain::Default};
 
         struct Allocation {
             Allocation* nextFree;
@@ -163,7 +172,7 @@ namespace Memory {
             requiredSize += sizeof(Block);
             requiredSize = (requiredSize & ~0xFFF) + 0x1000;
 
-            auto maybeReservation = core.addressSpace->reserve(requiredSize);
+            auto maybeReservation = core.addressSpaces[static_cast<int>(spaceToUse)]->reserve(requiredSize);
             if (!maybeReservation.has_value()) {
                 return nullptr;
             }
@@ -178,8 +187,9 @@ namespace Memory {
             auto allocation = maybeAllocation.value();
 
             uint8_t* ptr = reinterpret_cast<uint8_t*>(allocation.address);
-            auto block = new (ptr) Block(
-                reinterpret_cast<Allocation*>(ptr + sizeof(Block)),
+            uint8_t* blockPtr = ptr + requiredSize - sizeof(Block);
+            auto block = new (blockPtr) Block(
+                reinterpret_cast<Allocation*>(ptr),
                 numberOfElements,
                 reservation);
             

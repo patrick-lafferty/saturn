@@ -73,7 +73,17 @@ namespace Memory {
         return isFree;
     }
 
-    AddressSpace::Allocator::Allocator() {
+    AddressSpace::Allocator::Allocator(AddressSpace::Domain domain) {
+        /*
+        We're using PDP 509 for allocator scratch space.
+
+        Divide that by how many address space domains, and that's
+        how much each address space's allocator can use
+        */
+        auto slice = PDPSize / static_cast<int>(AddressSpace::Domain::Last);
+
+        currentPage.address += slice * static_cast<int>(domain);
+        currentBuffer.address += slice * static_cast<int>(domain);
     }
 
     void AddressSpace::Allocator::preparePage(size_t itemSize) {
@@ -85,9 +95,17 @@ namespace Memory {
     }
 
     AddressSpace::AddressSpace()
-        : space {allocator} {
+            : AddressSpace({0}, 2UL << 40, Domain::Default) {}
+
+    AddressSpace::AddressSpace(VirtualAddress start, uint64_t size, Domain domain)
+            : allocator {domain}, space {allocator} {
+
+        //Need to sign extend addresses
+        if (start.address & (1ul << 47)) {
+            start.address += (0xFFFFul << 48);
+        }
         
-        AddressReservation initial {{0}, 2UL << 40};
+        AddressReservation initial {start, size};
         space.insert(initial);
     }
 

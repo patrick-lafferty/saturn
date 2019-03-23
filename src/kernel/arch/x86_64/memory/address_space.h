@@ -33,6 +33,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace Memory {
 
+    inline const uint64_t PDPSize = 0x8000000000ul;
+
     /*
     AddressReservation is responsible for handing out memory addresses
     within its range, so the old-style vmm->allocatePages happens
@@ -79,7 +81,14 @@ namespace Memory {
     class AddressSpace {
     public:
 
+        enum class Domain {
+            Default,
+            KernelStacks,
+            Last
+        };
+
         AddressSpace();
+        AddressSpace(VirtualAddress start, uint64_t size, Domain domain);
 
         std::optional<AddressReservation> reserve(uint64_t size);
         void release(AddressReservation reservation);
@@ -91,7 +100,7 @@ namespace Memory {
 
         struct Allocator {
 
-            Allocator();
+            Allocator(Domain domain);
 
             int availableItems {0};
             int currentItems {0};

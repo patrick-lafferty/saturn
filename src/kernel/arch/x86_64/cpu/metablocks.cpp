@@ -52,8 +52,12 @@ namespace CPU {
 
         storeCore(&InitialCore);
 
-        static Memory::AddressSpace space;
-        InitialCore.addressSpace = &space;
+        using namespace Memory;
+
+        static AddressSpace space;
+        static AddressSpace stackSpace {{PDPSize * 511ul + 0x200000ul}, 0x200000, AddressSpace::Domain::KernelStacks};
+        InitialCore.addressSpaces[static_cast<int>(AddressSpace::Domain::Default)] = &space;
+        InitialCore.addressSpaces[static_cast<int>(AddressSpace::Domain::KernelStacks)] = &stackSpace;
     }
 
     void setupCore(Memory::PhysicalMemoryManager* physicalMemory,
@@ -63,7 +67,7 @@ namespace CPU {
         core.self = &core;
         core.physicalMemory = physicalMemory;
         core.virtualMemory = virtualMemory;
-        core.addressSpace = addressSpace;
+        core.addressSpaces[static_cast<int>(Memory::AddressSpace::Domain::Default)] = addressSpace;
 
         storeCore(&core);
     }

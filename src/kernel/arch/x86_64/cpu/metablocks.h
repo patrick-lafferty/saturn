@@ -27,10 +27,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #pragma once
 
+#include <memory/address_space.h>
+
 namespace Memory {
     class PhysicalMemoryManager;
     class VirtualMemoryManager;
-    class AddressSpace;
 }
 
 namespace APIC {
@@ -55,7 +56,7 @@ namespace CPU {
         CoreMeta* self;
         Memory::PhysicalMemoryManager* physicalMemory;
         Memory::VirtualMemoryManager* virtualMemory;
-        Memory::AddressSpace* addressSpace;
+        Memory::AddressSpace* addressSpaces[static_cast<int>(Memory::AddressSpace::Domain::Last)];
         APIC::Meta* apic;
     };
 
