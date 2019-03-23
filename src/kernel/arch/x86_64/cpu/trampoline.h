@@ -37,12 +37,16 @@ namespace CPU::Trampoline {
         T gdtPointerAddress;
     };
 
-    struct Stack {
+    struct InitialStackData {
         uintptr_t cpuReadyFlagAddress;
         uintptr_t kernelFuncAddress;
-        int cpuId;
-        int apicId;
-        char data[0x400];
+        uint64_t cpuId;
+        uint64_t apicId;
+    };
+
+    struct Stack {
+        char buffer[0x1000 - sizeof(InitialStackData)];
+        InitialStackData data;
     };
 
     struct Trampoline {

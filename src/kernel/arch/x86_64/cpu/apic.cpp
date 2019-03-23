@@ -343,7 +343,6 @@ namespace APIC {
         memcpy(&apic.localAPICAddress, ptr, 4);
         ptr += 4;
 
-asm("xchgw %bx, %bx");
         #ifdef VerboseAPIC
             log("[APIC] Local APIC Address: %x\n", apic.localAPICAddress);
         #endif
@@ -439,7 +438,6 @@ asm("xchgw %bx, %bx");
             }
         }
 
-asm("xchgw %bx, %bx");
         apic.localHeaders.reverse();
         apic.ioHeaders.reverse();
         apic.interruptOverrides.reverse();
@@ -516,7 +514,6 @@ asm("xchgw %bx, %bx");
     }
 
     void setupISAIRQs(int startingAPICInterrupt) {
-        return;
 
         auto& core = CPU::getCurrentCore();
         mapIRQ(core.apic, ISAIrqs::Keyboard, startingAPICInterrupt);

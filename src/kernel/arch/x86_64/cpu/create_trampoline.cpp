@@ -97,7 +97,7 @@ namespace CPU::Trampoline {
     Trampoline* create(Stack* stack, Memory::PhysicalAddress storageAddress) {
         auto storage = reinterpret_cast<uint8_t*>(storageAddress.address);
 
-        const int requiredSpace = sizeof(Trampoline) + sizeof(Stack) + trampoline_size;
+        const int requiredSpace = sizeof(Trampoline) + trampoline_size;
         const int PageSize = 0x1000;
 
         if (requiredSpace >= PageSize) {
@@ -167,12 +167,12 @@ namespace CPU::Trampoline {
 
         setupTemporaryGDT64(*gdt64, *gdt64Pointer);
 
-        stack->cpuReadyFlagAddress = storageAddress.address + (PageSize - sizeof(Trampoline)) - 8;
+        stack->data.cpuReadyFlagAddress = storageAddress.address + (PageSize - sizeof(Trampoline)) - 8;
 
         auto trampoline = reinterpret_cast<Trampoline*>(storageAddress.address + (PageSize - sizeof(Trampoline)));
         trampoline->data32Bit.gdtPointerAddress = reinterpret_cast<uintptr_t>(gdtPointer);
         trampoline->data64Bit.gdtPointerAddress = reinterpret_cast<uintptr_t>(gdt64Pointer);
-        trampoline->stackAddress = reinterpret_cast<uintptr_t>(stack);
+        trampoline->stackAddress = reinterpret_cast<uintptr_t>(stack) + sizeof(Stack) - sizeof(InitialStackData);
 
         return trampoline;
     }
