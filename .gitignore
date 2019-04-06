@@ -9,3 +9,4 @@ warnings.log
 saturn.log
 notes.org
 toolchain/
+.vscode/ipch
