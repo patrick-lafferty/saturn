@@ -32,7 +32,7 @@ namespace Test {
     class AVLTreeSuite {
     public:
 
-        static constexpr char* name = "AVL Tree";
+        static constexpr const char* name = "AVL Tree";
 
         static bool insertHandlesEmptyTree();
         static bool insertHandlesSimpleTree();

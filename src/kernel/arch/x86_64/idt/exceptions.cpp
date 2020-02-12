@@ -170,8 +170,6 @@ bool handlePageFault(Memory::VirtualAddress linear, uint32_t errorCode) {
             panic();
         }
     }
-
-    return false;
 }
 
 void exceptionHandler(ExceptionFrame* frame) {
@@ -180,17 +178,14 @@ void exceptionHandler(ExceptionFrame* frame) {
         case Exception::DoubleFault: {
             log("Double fault");
             panic();
-            break;
         }
         case Exception::InvalidTSS: {
             log("Invalid TSS");
             panic();
-            break;
         }
         case Exception::GeneralProtectionFault: {
             log("General protection fault");
             panic();
-            break;
         }
         case Exception::PageFault: {
             uintptr_t virtualAddress;
@@ -205,7 +200,6 @@ void exceptionHandler(ExceptionFrame* frame) {
         default: {
             log("Unhandled exception %d: %s", frame->index, exceptions[frame->index]);
             panic();
-            break;
         }
     }
 }

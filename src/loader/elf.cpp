@@ -93,7 +93,6 @@ namespace Elf {
             switch (static_cast<ProgramType>(programHeader->type)) {
                 case ProgramType::Null: {
                     continue;
-                    break;
                 }
                 case ProgramType::Load: {
                     #if VERBOSE

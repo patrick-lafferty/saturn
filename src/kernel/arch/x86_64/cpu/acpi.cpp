@@ -91,7 +91,5 @@ namespace CPU {
             kprintf("\n[ACPI] Root Checksum invalid\n");
             return {};
         }
-
-        return {};
     }
 }

@@ -118,7 +118,7 @@ namespace Preflight {
     class SomeTest {
     public:
 
-        static constexpr char* name = "Suite A";
+        static constexpr const char* name = "Suite A";
 
         static bool testA() {
             auto assertion = Assert::something(actual, expected, message);

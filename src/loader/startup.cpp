@@ -526,7 +526,7 @@ void mapProgram(uint64_t* pageMapLevel4, Configuration& config, Elf::Program& pr
             auto bytesToCopy = header.fileSize > 0x1000 ? 0x1000 : header.fileSize;
             header.fileSize -= bytesToCopy;
 
-            for (int i = 0; i < bytesToCopy; i++) {
+            for (auto i = 0u; i < bytesToCopy; i++) {
                 *page++ = *fileStart++;
             }
 

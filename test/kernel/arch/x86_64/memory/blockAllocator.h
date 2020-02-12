@@ -32,7 +32,7 @@ namespace Test {
     class BlockAllocatorSuite {
     public:
 
-        static constexpr char* name = "BlockAllocator";
+        static constexpr const char* name = "BlockAllocator";
 
         static bool allocate_HandlesSimpleAllocations();
         static bool allocate_HandlesExcessiveAllocations();

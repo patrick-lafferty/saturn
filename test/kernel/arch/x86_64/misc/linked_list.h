@@ -32,7 +32,7 @@ namespace Test {
     class LinkedListSuite {
     public:
 
-        static constexpr char* name = "Linked List";
+        static constexpr const char* name = "Linked List";
 
         static bool add_HandlesEmptyList();
         static bool add_HandlesNonEmptyList();

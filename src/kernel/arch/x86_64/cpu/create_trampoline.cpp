@@ -123,7 +123,7 @@ namespace CPU::Trampoline {
         */
         uint8_t* code = storage;
         int patchesApplied = 0;
-        for (int i = 0; i < trampoline_size; i++) {
+        for (auto i = 0u; i < trampoline_size; i++) {
             if (*code == 0xea) {
                 if (*(code + 3) == 0x08) {
                     //this is the first jump to patch
